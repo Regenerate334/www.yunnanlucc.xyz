@@ -66,8 +66,8 @@ my_webgis_project/
 │   ├── assets/                  # 资源文件
 │   └── App.vue                  # 根组件
 ├── package.json                 # 项目依赖
-├── vite.config.js              # Vite配置
-└── tailwind.config.js          # Tailwind配置
+├── vite.config.js               # Vite配置
+└── tailwind.config.js           # Tailwind配置
 ```
 
 ## 🚀 快速开始
