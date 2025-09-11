@@ -1,6 +1,7 @@
 # 云南国土空间规划监测预警平台
 
 一个基于Vue 3 + Cesium的现代化WebGIS平台，专注于国土空间规划监测预警和空间分析功能。
+<img width="2556" height="1227" alt="image" src="https://github.com/user-attachments/assets/247a6808-4dff-45ea-a121-0b735069881a" />
 
 ## 🌟 项目特色
 
@@ -144,20 +145,6 @@ http://localhost:8080/geoserver/WebGIS/wms
 - [ ] 移动端适配优化
 - [ ] 用户权限管理系统
 - [ ] 数据导出功能
-
-## 📄 许可证
-
-本项目采用 MIT 许可证 - 查看 [LICENSE](LICENSE) 文件了解详情
-
-## 👥 贡献
-
-欢迎提交 Issue 和 Pull Request 来帮助改进项目！
-
-## 📞 联系方式
-
-- 项目作者：彭派
-- 项目类型：学术研究项目
-- 应用领域：国土空间规划、地理信息系统
 
 ---
 
