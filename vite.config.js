@@ -8,4 +8,16 @@ export default defineConfig({
     vue(),
     cesium() // 使用Cesium插件
   ],
+  server: {
+    proxy: {
+      '/api': {
+        target: 'http://localhost:5174',
+        changeOrigin: true
+      },
+      '/health': {
+        target: 'http://localhost:5174',
+        changeOrigin: true
+      }
+    }
+  }
 });

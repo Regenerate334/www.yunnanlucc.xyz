@@ -129,11 +129,11 @@
       </div>
       <div class="card trend-card">
         <div class="card-title">年度总面积变化</div>
-        <div ref="lineChartRef" class="chart"></div>
+        <StackedTrend />
       </div>
       <div class="card pie-card">
         <div class="card-title">{{ years[yearIndex] }} 年地类占比</div>
-        <div ref="pieChartRef" class="chart"></div>
+        <RoseCurrent />
       </div>
     </div>
 
@@ -154,6 +154,8 @@
 
 <script setup>
 import { onMounted, ref, watch, nextTick } from 'vue'; 
+import StackedTrend from './charts/StackedTrend.vue';
+import RoseCurrent from './charts/RoseCurrent.vue';
 import * as Cesium from 'cesium'; 
 import 'cesium/Build/Cesium/Widgets/widgets.css';
 
@@ -197,6 +199,8 @@ const lineChartRef = ref(null);
 let lineChartInstance = null;
 const pieChartRef = ref(null);
 let pieChartInstance = null;
+// 从后端拉取的实际数据
+const serverSeries = ref([]); // [{year, landuse_type, area_km2}]
 
 // 占位数据结构：每年各类面积（km²）
 const yearsAll = ref([1985, ...Array.from({ length: 2023 - 1990 + 1 }, (_, i) => 1990 + i)]);
@@ -221,6 +225,33 @@ function generateMock() {
   mockSeriesByYear.value = data;
 }
 generateMock();
+
+// 拉取后端真实序列并覆盖占位数据
+async function fetchSeriesFromServer() {
+  try {
+    const resp = await fetch('/api/clcd/series');
+    const data = await resp.json();
+    serverSeries.value = data;
+    const grouped = {};
+    // 后端已返回 class_name；兼容旧字段 class_code/landuse_type
+    data.forEach(row => {
+      const y = row.year ?? row.Year ?? row.y;
+      const name = (row.class_name || row.class || row.name);
+      const area = Number(row.area_km2 ?? row.area ?? 0);
+      if (!grouped[y]) grouped[y] = {};
+      if (name) grouped[y][name] = area;
+    });
+    const yearsSorted = Array.from(new Set(data.map(d => d.year))).sort((a,b)=>a-b);
+    yearsAll.value = yearsSorted;
+    years.value = yearsSorted; // 同步时间滑块年份源
+    mockSeriesByYear.value = grouped; // 用真实数据覆盖
+    renderLineChart();
+    renderPieChart();
+    recomputeRanks();
+  } catch (e) {
+    console.error('fetch series failed', e);
+  }
+}
 
 // 占位接口：从后端获取数据，填充 mockSeriesByYear
 async function fetchCLCDSeriesFromAPI() {
@@ -393,6 +424,8 @@ onMounted(() => {
       pieChartInstance && pieChartInstance.resize();
     });
   });
+  // 拉取真实数据
+  fetchSeriesFromServer();
 });
 </script>
 
