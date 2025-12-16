@@ -1,0 +1,38 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>API Test</title>
+</head>
+<body>
+    <h1>API Test Page</h1>
+    <button onclick="testAPI()">Test /api/clcd/test</button>
+    <button onclick="testSummary()">Test /api/clcd/2023/summary</button>
+    <pre id="result"></pre>
+
+    <script>
+        async function testAPI() {
+            const result = document.getElementById('result');
+            try {
+                result.textContent = 'Loading...';
+                const response = await fetch('http://localhost:5174/api/clcd/test');
+                const text = await response.text();
+                result.textContent = `Status: ${response.status}\n${text}`;
+            } catch (err) {
+                result.textContent = `Error: ${err.message}`;
+            }
+        }
+
+        async function testSummary() {
+            const result = document.getElementById('result');
+            try {
+                result.textContent = 'Loading...';
+                const response = await fetch('http://localhost:5174/api/clcd/2023/summary');
+                const text = await response.text();
+                result.textContent = `Status: ${response.status}\n${text}`;
+            } catch (err) {
+                result.textContent = `Error: ${err.message}`;
+            }
+        }
+    </script>
+</body>
+</html>
