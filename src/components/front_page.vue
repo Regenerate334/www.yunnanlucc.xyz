@@ -36,6 +36,11 @@
       <div class="panel-card chart-panel">
         <LandUsePieChart :year="selectedYear" :seriesData="currentYearData" :compact="true" />
       </div>
+
+      <!-- 土地利用趋势图 -->
+      <div class="panel-card chart-panel trend-panel">
+        <LandUseTrendChart :seriesData="cachedClcdData" />
+      </div>
     </div>
   </div>
 </template>
@@ -48,6 +53,7 @@ import YearRangeSelector from './controls/YearRangeSelector.vue';
 import ViewResetControl from './controls/ViewResetControl.vue';
 import BaseMapSelector from './controls/BaseMapSelector.vue';
 import LandUsePieChart from './charts/LandUsePieChart.vue';
+import LandUseTrendChart from './charts/LandUseTrendChart.vue';
 import { useMapStore } from '../stores/map.ts';
 
 const mapStore = useMapStore();
@@ -55,7 +61,7 @@ const mapStore = useMapStore();
 let viewer = null;
 let clcdLayer = null; // 用于存储当前 CLCD 图层的引用
 let baseMapLayer = null; // 用于存储当前底图图层
-let cachedClcdData = null; // 缓存 CLCD 数据，避免重复加载
+const cachedClcdData = ref([]); // 缓存 CLCD 数据，避免重复加载
 
 const selectedYear = ref(1985); // 当前选择的年份，默认1985
 const currentYearData = ref({}); // 当前年份的数据
@@ -190,10 +196,10 @@ onMounted(() => {
 async function loadYearData(year) {
   try {
     // 只在第一次加载 JSON 文件，之后使用缓存
-    if (!cachedClcdData) {
+    if (cachedClcdData.value.length === 0) {
       const response = await fetch('/data/clcd_province.json');
       if (response.ok) {
-        cachedClcdData = await response.json();
+        cachedClcdData.value = await response.json();
         console.log('CLCD 数据已加载并缓存 (1985-2023)');
       } else {
         console.error('加载 CLCD 数据失败');
@@ -202,8 +208,8 @@ async function loadYearData(year) {
     }
 
     // 从缓存中按需查询指定年份
-    if (cachedClcdData) {
-      const yearData = cachedClcdData.find(item => item.year === year);
+    if (cachedClcdData.value.length > 0) {
+      const yearData = cachedClcdData.value.find(item => item.year === year);
 
       if (yearData) {
         // 映射为前端需要的字段名（英文 → 中文）
@@ -413,7 +419,7 @@ html {
   position: fixed;
   right: 20px;
   top: 20px;
-  width: 320px;
+  width: 450px;
   max-height: calc(100vh - 40px);
   overflow-y: auto;
   display: flex;

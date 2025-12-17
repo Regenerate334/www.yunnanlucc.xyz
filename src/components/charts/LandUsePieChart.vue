@@ -8,16 +8,16 @@
   <div class="land-use-pie-chart" :class="{ compact: compact }">
     <!-- 图表标题 -->
     <div class="chart-title">{{ chartTitle }}</div>
-    
+
     <!-- ECharts容器 -->
     <div ref="chartContainer" class="chart-container"></div>
-    
+
     <!-- 加载状态 -->
     <div v-if="loading" class="loading-message">
       <div class="loading-spinner"></div>
       <div class="loading-text">加载中...</div>
     </div>
-    
+
     <!-- 空数据状态 -->
     <div v-else-if="!hasData" class="no-data-message">
       暂无数据
@@ -62,7 +62,7 @@ const hasData = computed(() => {
 
 const chartData = computed(() => {
   if (!props.seriesData) return []
-  
+
   const mapping = {
     '耕地': 'Cropland',
     '林地': 'Forest',
@@ -74,7 +74,7 @@ const chartData = computed(() => {
     '建设用地': 'Impervious',
     '湿地': 'Wetland'
   }
-  
+
   // 颜色映射 (与 front_page.vue 保持一致)
   const colors = {
     '耕地': 'rgb(250,227,156)',
@@ -91,7 +91,7 @@ const chartData = computed(() => {
   const data = []
   // 遍历属性，排除非地类属性（如 year, code, name 等）
   const excludeKeys = ['year', 'code', 'name', 'level', 'parentCode']
-  
+
   Object.keys(props.seriesData).forEach(key => {
     if (!excludeKeys.includes(key) && typeof props.seriesData[key] === 'number') {
       data.push({
@@ -103,14 +103,14 @@ const chartData = computed(() => {
       })
     }
   })
-  
+
   return data.sort((a, b) => b.value - a.value)
 })
 
 // ==================== 图表配置 ====================
 const getChartOption = () => {
   const totalArea = chartData.value.reduce((sum, item) => sum + item.value, 0)
-  
+
   return {
     tooltip: {
       trigger: 'item',
@@ -119,7 +119,7 @@ const getChartOption = () => {
       textStyle: {
         color: '#ffffff'
       },
-      formatter: function(params) {
+      formatter: function (params) {
         const percent = totalArea ? ((params.value / totalArea) * 100).toFixed(2) : 0
         return `${params.name}<br/>面积: ${params.value.toFixed(2)} km²<br/>占比: ${percent}%`
       }
@@ -144,8 +144,8 @@ const getChartOption = () => {
       {
         name: '土地利用结构',
         type: 'pie',
-        radius: ['30%', '50%'],  // 使用环形图，减小半径
-        center: ['35%', '50%'],  // 向左移动中心点
+        radius: ['0%', '60%'],  // 实心饼图
+        center: ['40%', '50%'],  // 调整中心点
         data: chartData.value,
         emphasis: {
           itemStyle: {
@@ -156,18 +156,19 @@ const getChartOption = () => {
         },
         label: {
           show: true,
+          position: 'outside',
           formatter: '{b}\n{d}%',
           color: '#fff',
-          fontSize: 11,
-          overflow: 'truncate',
-          width: 60
+          fontSize: 12,
+          overflow: 'break',
+          width: 80
         },
         labelLine: {
           show: true,
-          length: 10,
-          length2: 5,
+          length: 15,
+          length2: 10,
           lineStyle: {
-            color: 'rgba(255, 255, 255, 0.3)'
+            color: 'rgba(255, 255, 255, 0.5)'
           }
         }
       }
@@ -262,7 +263,12 @@ watch(() => props.year, () => {
 }
 
 @keyframes spin {
-  0% { transform: rotate(0deg); }
-  100% { transform: rotate(360deg); }
+  0% {
+    transform: rotate(0deg);
+  }
+
+  100% {
+    transform: rotate(360deg);
+  }
 }
 </style>
