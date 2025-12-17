@@ -112,6 +112,16 @@ const getChartOption = () => {
   const totalArea = chartData.value.reduce((sum, item) => sum + item.value, 0)
 
   return {
+    title: {
+      text: `${props.year}年土地利用结构`,
+      left: 'center',
+      top: 10,
+      textStyle: {
+        color: '#fff',
+        fontSize: 16,
+        fontWeight: 'bold'
+      }
+    },
     tooltip: {
       trigger: 'item',
       backgroundColor: 'rgba(42, 61, 110, 0.9)',
@@ -124,28 +134,12 @@ const getChartOption = () => {
         return `${params.name}<br/>面积: ${params.value.toFixed(2)} km²<br/>占比: ${percent}%`
       }
     },
-    legend: {
-      type: 'scroll',
-      orient: 'vertical',
-      right: 15,
-      top: '15%',
-      bottom: '15%',
-      textStyle: {
-        color: '#fff',
-        fontSize: 12
-      },
-      pageTextStyle: {
-        color: '#fff'
-      },
-      itemWidth: 12,
-      itemHeight: 12
-    },
     series: [
       {
         name: '土地利用结构',
         type: 'pie',
         radius: ['0%', '60%'],  // 实心饼图
-        center: ['40%', '50%'],  // 调整中心点
+        center: ['50%', '55%'],  // 居中显示
         data: chartData.value,
         emphasis: {
           itemStyle: {

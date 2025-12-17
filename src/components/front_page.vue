@@ -19,6 +19,9 @@
       <BaseMapSelector @change="handleBaseMapChange" />
     </div>
 
+    <!-- 测量工具 - 顶部中间偏右 -->
+    <MeasurementControl />
+
     <!-- 右侧图表面板区域 -->
     <div class="right-panels">
       <!-- CLCD 图例 -->
@@ -54,6 +57,7 @@ import ViewResetControl from './controls/ViewResetControl.vue';
 import BaseMapSelector from './controls/BaseMapSelector.vue';
 import LandUsePieChart from './charts/LandUsePieChart.vue';
 import LandUseTrendChart from './charts/LandUseTrendChart.vue';
+import MeasurementControl from './controls/MeasurementControl.vue';
 import { useMapStore } from '../stores/map.ts';
 
 const mapStore = useMapStore();
