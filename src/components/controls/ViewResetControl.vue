@@ -7,15 +7,28 @@
 </template>
 
 <script setup>
-import { useMapStore } from '../../stores/map.ts';
-
-const mapStore = useMapStore();
+import * as Cesium from 'cesium';
 
 /**
- * 重置视图到默认位置（云南省）
+ * 重置视图到默认位置（云南省）- 带平滑飞行动画
  */
 function resetView() {
-  mapStore.flyToYunnan();
+  const viewer = window.cesiumViewer;
+  
+  if (!viewer) {
+    return;
+  }
+  
+  // 使用 flyTo 实现平滑飞行动画（2秒）
+  viewer.camera.flyTo({
+    destination: Cesium.Cartesian3.fromDegrees(101.8, 25.2, 1900000),
+    orientation: {
+      heading: Cesium.Math.toRadians(0),
+      pitch: Cesium.Math.toRadians(-90),
+      roll: 0.0
+    },
+    duration: 2.0  // 飞行动画持续2秒
+  });
 }
 </script>
 
@@ -28,19 +41,20 @@ function resetView() {
   width: 48px;
   height: 48px;
   border-radius: 8px;
-  border: 1px solid rgba(255, 255, 255, 0.2);
-  background: rgba(42, 61, 110, 0.85);
-  backdrop-filter: blur(8px);
+  border: 1px solid rgba(255, 255, 255, 0.4); /* 增强边框 */
+  background: transparent; /* 完全透明背景 */
   cursor: pointer;
   display: flex;
   align-items: center;
   justify-content: center;
   transition: all 0.3s ease;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+  /* 移除阴影和毛玻璃，使其看起来像纯图标 */
+  box-shadow: none;
+  backdrop-filter: none;
 }
 
 .reset-btn:hover {
-  background: rgba(52, 71, 130, 0.95);
+  background: rgba(52, 71, 130, 0.4);
   border-color: rgba(255, 255, 255, 0.4);
   transform: translateY(-2px);
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.25);

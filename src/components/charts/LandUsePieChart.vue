@@ -49,6 +49,7 @@ const props = defineProps({
 // ==================== 响应式数据 ====================
 const chartContainer = ref(null)
 const chartInstance = ref(null)
+const loading = ref(false)
 
 // ==================== 计算属性 ====================
 const chartTitle = computed(() => {
@@ -124,36 +125,51 @@ const getChartOption = () => {
       }
     },
     legend: {
-      top: 'bottom',
+      type: 'scroll',
+      orient: 'vertical',
+      right: 15,
+      top: '15%',
+      bottom: '15%',
       textStyle: {
+        color: '#fff',
+        fontSize: 12
+      },
+      pageTextStyle: {
         color: '#fff'
-      }
+      },
+      itemWidth: 12,
+      itemHeight: 12
     },
     series: [
       {
         name: '土地利用结构',
         type: 'pie',
-        radius: [20, 100],
-        center: ['50%', '45%'],
-        roseType: 'area',
-        itemStyle: {
-          borderRadius: 8,
-          borderColor: 'rgba(42, 61, 110, 0.8)',
-          borderWidth: 1
-        },
-        label: {
-          show: false
-        },
+        radius: ['30%', '50%'],  // 使用环形图，减小半径
+        center: ['35%', '50%'],  // 向左移动中心点
+        data: chartData.value,
         emphasis: {
-          label: {
-            show: true,
-            fontSize: 14,
-            fontWeight: 'bold',
-            color: '#fff',
-            formatter: '{b}\n{d}%'
+          itemStyle: {
+            shadowBlur: 10,
+            shadowOffsetX: 0,
+            shadowColor: 'rgba(0, 0, 0, 0.5)'
           }
         },
-        data: chartData.value
+        label: {
+          show: true,
+          formatter: '{b}\n{d}%',
+          color: '#fff',
+          fontSize: 11,
+          overflow: 'truncate',
+          width: 60
+        },
+        labelLine: {
+          show: true,
+          length: 10,
+          length2: 5,
+          lineStyle: {
+            color: 'rgba(255, 255, 255, 0.3)'
+          }
+        }
       }
     ]
   }
@@ -208,7 +224,7 @@ watch(() => props.year, () => {
   position: relative;
   width: 100%;
   height: 100%;
-  background: rgba(42, 61, 110, 0.85);
+  background: rgba(42, 61, 110, 0.2);
   border: 1px solid rgba(255, 255, 255, 0.12);
   border-radius: 10px;
   backdrop-filter: blur(8px);
@@ -216,12 +232,12 @@ watch(() => props.year, () => {
 }
 
 .chart-title {
-  padding: 12px 16px;
-  font-size: 16px;
+  padding: 8px 12px;
+  font-size: 14px;
   font-weight: 600;
   color: #9cc9ff;
   border-bottom: 1px solid rgba(255, 255, 255, 0.12);
-  background: rgba(42, 61, 110, 0.95);
+  background: rgba(42, 61, 110, 0.3);
 }
 
 .chart-container {

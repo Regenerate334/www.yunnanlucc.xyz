@@ -25,7 +25,7 @@ export const useMapStore = defineStore('map', () => {
         cities: null,
         counties: null
     })
- 
+
     // 交互状态
     const highlightedEntity = ref<Cesium.Entity | null>(null)
     const hoveredEntity = ref<Cesium.Entity | null>(null)
@@ -125,20 +125,18 @@ export const useMapStore = defineStore('map', () => {
     }
 
     /**
-     * 飞向云南省
+     * 飞向云南省（复位到初始默认视图）
      */
     function flyToYunnan() {
         if (!viewer.value) return
 
-        const yunnanRectangle = (window as any).Cesium.Rectangle.fromDegrees(97.0, 21.0, 107.0, 30.0)
-        viewer.value.camera.flyTo({
-            destination: yunnanRectangle,
+        viewer.value.camera.setView({
+            destination: (window as any).Cesium.Cartesian3.fromDegrees(101.8, 25.2, 1900000),
             orientation: {
-                heading: 0.0,
-                pitch: -(window as any).Cesium.Math.PI_OVER_TWO,
+                heading: (window as any).Cesium.Math.toRadians(0),
+                pitch: (window as any).Cesium.Math.toRadians(-90),
                 roll: 0.0
-            },
-            duration: 2
+            }
         })
     }
 

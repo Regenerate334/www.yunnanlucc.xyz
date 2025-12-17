@@ -3,17 +3,22 @@
     <div class="background-layer"></div>
     <div class="mask-layer"></div>
     <div id="cesiumContainer"></div>
-    
+
     <!-- 年份选择器 - 左上角 -->
     <div class="year-selector-container">
       <YearRangeSelector v-model:selectedYear="selectedYear" :width="200" />
     </div>
-    
+
     <!-- 复位视图控制按钮 - 左上角 -->
     <div class="reset-control-container">
       <ViewResetControl />
     </div>
-    
+
+    <!-- 底图选择器 - 左上角 -->
+    <div class="basemap-selector-container">
+      <BaseMapSelector @change="handleBaseMapChange" />
+    </div>
+
     <!-- 右侧图表面板区域 -->
     <div class="right-panels">
       <!-- CLCD 图例 -->
@@ -26,7 +31,7 @@
           </div>
         </div>
       </div>
-      
+
       <!-- 当年土地利用结构饼图 -->
       <div class="panel-card chart-panel">
         <LandUsePieChart :year="selectedYear" :seriesData="currentYearData" :compact="true" />
@@ -41,6 +46,7 @@ import * as Cesium from 'cesium';
 import 'cesium/Build/Cesium/Widgets/widgets.css';
 import YearRangeSelector from './controls/YearRangeSelector.vue';
 import ViewResetControl from './controls/ViewResetControl.vue';
+import BaseMapSelector from './controls/BaseMapSelector.vue';
 import LandUsePieChart from './charts/LandUsePieChart.vue';
 import { useMapStore } from '../stores/map.ts';
 
@@ -48,6 +54,9 @@ const mapStore = useMapStore();
 
 let viewer = null;
 let clcdLayer = null; // 用于存储当前 CLCD 图层的引用
+let baseMapLayer = null; // 用于存储当前底图图层
+let cachedClcdData = null; // 缓存 CLCD 数据，避免重复加载
+
 const selectedYear = ref(1985); // 当前选择的年份，默认1985
 const currentYearData = ref({}); // 当前年份的数据
 
@@ -80,7 +89,6 @@ const legendNames = {
 // 监听年份变化，自动更新 CLCD 图层和图表数据
 watch(selectedYear, (newYear) => {
   if (newYear && viewer) {
-    console.log('年份已更改为:', newYear);
     loadCLCDLayer(newYear);
     loadYearData(newYear);
   }
@@ -102,79 +110,177 @@ onMounted(() => {
       fullscreenButton: false,
       shouldAnimate: true
     });
-    
+
     viewer.cesiumWidget.creditContainer.style.display = "none";
-    
+
     // 禁用倾斜控制，保持垂直视角
     viewer.scene.screenSpaceCameraController.enableTilt = false;
-    
-    // 添加天地图底图
-    viewer.imageryLayers.addImageryProvider(
-      new Cesium.WebMapTileServiceImageryProvider({
-        url: "http://t0.tianditu.gov.cn/img_w/wmts?service=wmts&request=GetTile&version=1.0.0&LAYER=img&tileMatrixSet=w&TileMatrix={TileMatrix}&TileRow={TileRow}&TileCol={TileCol}&style=default&format=tiles&tk=ab70e90828db5b27aa040f2cb879c7f1",
-        layer: "tdtImgBasicLayer",
-        style: "default",
-        format: "image/jpeg",
-        tileMatrixSetID: "w",
-        maximumLevel: 18
-      })
-    );
-    
+    // 添加默认底图（天地图影像）
+    loadBaseMap('imagery');
+
+    // 加载云南省边界
+    Cesium.GeoJsonDataSource.load('/data/yunnan_boundary.geo.json', {
+      stroke: Cesium.Color.fromCssColorString('#00E5FF'), // 青色
+      fill: Cesium.Color.TRANSPARENT,
+      strokeWidth: 10, // 加粗
+      markerSize: 0,
+      clampToGround: true
+    }).then(function (dataSource) {
+      viewer.dataSources.add(dataSource);
+      const entities = dataSource.entities.values;
+
+      // 遍历所有实体，只保留云南省（code: 530000 或 name: 云南）
+      for (let i = entities.length - 1; i >= 0; i--) {
+        const entity = entities[i];
+        const name = entity.properties.name ? entity.properties.name.getValue() : '';
+        const code = entity.properties.code ? entity.properties.code.getValue() : '';
+
+        if (name.includes('云南') || code == '530000') {
+          // 云南省，设置样式
+          if (entity.polyline) {
+            entity.polyline.width = 10; // 加粗
+            // 使用轮廓材质效果
+            entity.polyline.material = new Cesium.PolylineOutlineMaterialProperty({
+              color: Cesium.Color.fromCssColorString('#00E5FF'), // 内部青色
+              outlineColor: Cesium.Color.fromCssColorString('#00838F'), // 外部深青色描边
+              outlineWidth: 6 // 加粗描边
+            });
+            entity.polyline.clampToGround = true;
+          }
+          if (entity.polygon) {
+            entity.polygon.fill = false;
+            entity.polygon.outline = true;
+            entity.polygon.outlineColor = Cesium.Color.fromCssColorString('#00E5FF');
+            entity.polygon.outlineWidth = 6; // 加粗
+          }
+        } else {
+          // 移除不是云南省区域
+          dataSource.entities.remove(entity);
+        }
+      }
+    }).catch(function (error) {
+      console.error('加载云南边界数据失败:', error);
+    });
+
     // 设置初始视角到云南省中心（垂直俯视）
     viewer.camera.setView({
       destination: Cesium.Cartesian3.fromDegrees(101.8, 25.2, 1900000),
       orientation: {
-        heading: Cesium.Math.toRadians(0),
         pitch: Cesium.Math.toRadians(-90),
         roll: 0.0
       }
     });
-    
+
+    // 将 viewer 挂载到 window 对象上，供其他组件使用
+    window.cesiumViewer = viewer;
+
     // 将 viewer 注册到 map store，以便其他组件可以使用
     mapStore.setViewer(viewer);
-    
+
     // 加载默认年份（1985）的 CLCD 图层
     loadCLCDLayer(selectedYear.value);
     loadYearData(selectedYear.value);
-    
+
   } catch (e) {
     console.error('Cesium initialization error:', e);
   }
 });
 
-// 加载当年数据（用于图表）
+// 加载当年数据（用于图表）- 带缓存优化
 async function loadYearData(year) {
   try {
-    // 尝试从后端加载数据
-    const response = await fetch(`/api/clcd/${year}/summary`);
-    if (response.ok) {
-      const data = await response.json();
-      currentYearData.value = data;
-    } else {
-      // 使用 Mock 数据
-      currentYearData.value = generateMockData(year);
+    // 只在第一次加载 JSON 文件，之后使用缓存
+    if (!cachedClcdData) {
+      const response = await fetch('/data/clcd_province.json');
+      if (response.ok) {
+        cachedClcdData = await response.json();
+        console.log('CLCD 数据已加载并缓存 (1985-2023)');
+      } else {
+        console.error('加载 CLCD 数据失败');
+        return;
+      }
+    }
+
+    // 从缓存中按需查询指定年份
+    if (cachedClcdData) {
+      const yearData = cachedClcdData.find(item => item.year === year);
+
+      if (yearData) {
+        // 映射为前端需要的字段名（英文 → 中文）
+        currentYearData.value = {
+          year: yearData.year,
+          耕地: yearData.cropland,
+          林地: yearData.forest,
+          灌木: yearData.shrubland,
+          草地: yearData.grassland,
+          水域: yearData.water,
+          冰雪: yearData.tundra,
+          裸地: yearData.bareland,
+          建设用地: yearData.impervious,
+          湿地: yearData.wetland
+        };
+      } else {
+        console.warn(`未找到 ${year} 年的数据`);
+      }
     }
   } catch (e) {
-    console.warn('Failed to load year data, using mock data:', e);
-    currentYearData.value = generateMockData(year);
+    console.error('加载 CLCD 数据失败:', e);
   }
 }
 
-// 生成 Mock 数据
-function generateMockData(year) {
-  const yearIndex = year - 1985;
-  return {
-    year: year,
-    耕地: 120000 - yearIndex * 300 + 2000 * Math.sin(yearIndex / 2),
-    林地: 150000 + yearIndex * 200,
-    灌木: 22000 + 80 * yearIndex,
-    草地: 80000 - yearIndex * 150,
-    水域: 12000 + 12 * yearIndex,
-    冰雪: Math.max(200 - yearIndex * 5, 20),
-    裸地: 16000 - 60 * yearIndex,
-    建设用地: 9000 + 300 * yearIndex,
-    湿地: 9000 + 20 * yearIndex
-  };
+// 加载底图
+function loadBaseMap(mapType) {
+  if (!viewer) return;
+
+  // 移除现有底图
+  if (baseMapLayer) {
+    viewer.imageryLayers.remove(baseMapLayer);
+    baseMapLayer = null;
+  }
+
+  const token = 'ab70e90828db5b27aa040f2cb879c7f1';
+  let layerName, url;
+
+  switch (mapType) {
+    case 'imagery':
+      // 天地图影像
+      layerName = 'img';
+      url = `http://t0.tianditu.gov.cn/img_w/wmts?service=wmts&request=GetTile&version=1.0.0&LAYER=${layerName}&tileMatrixSet=w&TileMatrix={TileMatrix}&TileRow={TileRow}&TileCol={TileCol}&style=default&format=tiles&tk=${token}`;
+      break;
+    case 'vector':
+      // 天地图矢量
+      layerName = 'vec';
+      url = `http://t0.tianditu.gov.cn/vec_w/wmts?service=wmts&request=GetTile&version=1.0.0&LAYER=${layerName}&tileMatrixSet=w&TileMatrix={TileMatrix}&TileRow={TileRow}&TileCol={TileCol}&style=default&format=tiles&tk=${token}`;
+      break;
+    case 'terrain':
+      // 天地图地形
+      layerName = 'ter';
+      url = `http://t0.tianditu.gov.cn/ter_w/wmts?service=wmts&request=GetTile&version=1.0.0&LAYER=${layerName}&tileMatrixSet=w&TileMatrix={TileMatrix}&TileRow={TileRow}&TileCol={TileCol}&style=default&format=tiles&tk=${token}`;
+      break;
+    default:
+      return;
+  }
+
+  try {
+    const imageryProvider = new Cesium.WebMapTileServiceImageryProvider({
+      url: url,
+      layer: layerName,
+      style: 'default',
+      format: 'image/jpeg',
+      tileMatrixSetID: 'w',
+      maximumLevel: 18
+    });
+
+    // 在索引 0 位置添加底图，确保底图在最底层
+    baseMapLayer = viewer.imageryLayers.addImageryProvider(imageryProvider, 0);
+  } catch (e) {
+    console.error('加载底图失败:', e);
+  }
+}
+
+// 处理底图切换
+function handleBaseMapChange(mapType) {
+  loadBaseMap(mapType);
 }
 
 // 加载指定年份的 CLCD WMS 图层
@@ -184,7 +290,7 @@ function loadCLCDLayer(year) {
     viewer.imageryLayers.remove(clcdLayer, true);
     clcdLayer = null;
   }
-  
+
   try {
     clcdLayer = viewer.imageryLayers.addImageryProvider(
       new Cesium.WebMapServiceImageryProvider({
@@ -208,7 +314,8 @@ function loadCLCDLayer(year) {
 
 <style>
 /* 全局样式：移除浏览器默认边距 */
-body, html {
+body,
+html {
   margin: 0 !important;
   padding: 0 !important;
   overflow: hidden;
@@ -225,20 +332,20 @@ body, html {
 </style>
 
 <style scoped>
-#cesiumContainerWrapper { 
+#cesiumContainerWrapper {
   position: fixed;
   top: 0;
   left: 0;
   margin: 0;
   padding: 0;
-  width: 100vw; 
-  height: 100vh; 
-  overflow: hidden; 
+  width: 100vw;
+  height: 100vh;
+  overflow: hidden;
 }
 
-#cesiumContainer { 
-  width: 100%; 
-  height: 100%; 
+#cesiumContainer {
+  width: 100%;
+  height: 100%;
   position: relative;
   z-index: 10;
 }
@@ -275,15 +382,29 @@ body, html {
 
 .year-selector-container {
   position: fixed;
-  top: 20px;
+  top: 40px;
+  /* 距离顶部 20px */
   left: 20px;
+  /* 距离左侧 20px */
   z-index: 200;
 }
 
 .reset-control-container {
   position: fixed;
-  top: 80px;
-  left: 20px;
+  bottom: 10px;
+  /* 底部定位 */
+  left: 90px;
+  z-index: 200;
+  top: auto;
+  /* 顶部定位 */
+}
+
+.basemap-selector-container {
+  position: fixed;
+  top: 40px;
+  /* 距离顶部 20px */
+  left: 250px;
+  /* 距离左侧 20px */
   z-index: 200;
 }
 
@@ -303,7 +424,7 @@ body, html {
 
 /* 面板卡片通用样式 */
 .panel-card {
-  background: rgba(42, 61, 110, 0.85);
+  background: rgba(42, 61, 110, 0.2);
   border: 1px solid rgba(255, 255, 255, 0.12);
   border-radius: 10px;
   backdrop-filter: blur(8px);
@@ -312,42 +433,47 @@ body, html {
 
 /* 面板标题 */
 .panel-title {
-  padding: 12px 16px;
-  font-size: 16px;
+  padding: 8px 12px;
+  font-size: 14px;
   font-weight: 600;
   color: #9cc9ff;
   border-bottom: 1px solid rgba(255, 255, 255, 0.12);
-  background: rgba(42, 61, 110, 0.95);
+  background: rgba(42, 61, 110, 0.3);
 }
 
 /* 图例面板样式 */
 .legend-panel {
-  padding-bottom: 10px;
+  padding-bottom: 8px;
 }
 
 .legend-grid {
   display: grid;
   grid-template-columns: 1fr 1fr;
-  gap: 8px 12px;
-  padding: 12px 16px;
+  gap: 4px 8px;
+  /* 间距 */
+  padding: 8px 12px;
+  /* 内边距 */
 }
 
 .legend-item {
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: 6px;
+  /* 间距 */
 }
 
 .legend-color {
-  width: 14px;
-  height: 14px;
+  width: 12px;
+  /* 减小色块 */
+  height: 12px;
   border-radius: 3px;
   border: 1px solid rgba(255, 255, 255, 0.3);
   flex-shrink: 0;
 }
 
 .legend-name {
-  font-size: 13px;
+  font-size: 12px;
+  /* 减小字体 */
   color: #ffffff;
 }
 

@@ -213,51 +213,51 @@ onUnmounted(() => {
   align-items: center;
   justify-content: center;
   gap: 8px;
-  background: rgba(42, 61, 110, 0.85); /* 使用新的RGB颜色(42, 61, 110)，85%透明度 */
-  border: 1px solid rgba(255, 255, 255, 0.12); /* 与图例边框色保持一致 */
+  background: rgba(42, 61, 110, 0.2);
+  border: 1px solid rgba(255, 255, 255, 0.12);
   border-radius: 6px;
   padding: 8px 12px;
   cursor: pointer;
   transition: all 0.2s ease;
   user-select: none;
-  backdrop-filter: blur(8px); /* 与图例毛玻璃效果保持一致 */
+  backdrop-filter: blur(8px);
 }
 .display-button:hover {
-  border-color: rgba(255, 255, 255, 0.3); /* 悬停时边框稍微亮一些 */
-  background: rgba(42, 61, 110, 0.95); /* 悬停时背景更加不透明 */
+  border-color: rgba(255, 255, 255, 0.3);
+  background: rgba(42, 61, 110, 0.4);
 }
 .display-button.active {
-  border-color: #9cc9ff; /* 使用图例标题色作为激活状态 */
-  box-shadow: 0 0 0 3px rgba(156, 201, 255, 0.2); /* 使用图例标题色的透明版本 */
+  border-color: #9cc9ff;
+  box-shadow: 0 0 0 3px rgba(156, 201, 255, 0.2);
 }
 .icon {
-  color: #ffffff; /* 使用纯白色 */
+  color: #ffffff;
 }
 .button-text {
   font-size: 13px;
   font-weight: 500;
-  color: #ffffff; /* 使用纯白色 */
+  color: #ffffff;
 }
 .popover-panel {
   position: absolute;
   top: 100%;
   left: 0;
   right: 0;
-  background: rgba(42, 61, 110, 0.85); /* 使用新的RGB颜色(42, 61, 110)，85%透明度 */
-  border: 1px solid rgba(255, 255, 255, 0.12); /* 与图例边框色保持一致 */
+  background: rgba(42, 61, 110, 0.2);
+  border: 1px solid rgba(255, 255, 255, 0.12);
   border-radius: 8px;
   box-shadow: 0 10px 25px rgba(0, 0, 0, 0.1);
   z-index: 1000;
   margin-top: 4px;
-  backdrop-filter: blur(8px); /* 与图例毛玻璃效果保持一致 */
+  backdrop-filter: blur(8px);
 }
 .popover-header {
   display: flex;
   align-items: center;
   justify-content: space-between;
   padding: 12px 16px;
-  border-bottom: 1px solid rgba(255, 255, 255, 0.12); /* 使用图例边框色 */
-  background: rgba(42, 61, 110, 0.95); /* 头部背景更加不透明 */
+  border-bottom: 1px solid rgba(255, 255, 255, 0.12);
+  background: rgba(42, 61, 110, 0.3);
   border-radius: 6px 6px 0 0;
 }
 .nav-button {
