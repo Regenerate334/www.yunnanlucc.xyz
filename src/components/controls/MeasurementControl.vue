@@ -1,16 +1,15 @@
 <template>
     <div class="measurement-control-container">
-        <!-- 工具栏 -->
-        <div class="toolbar">
-            <div class="tool-btn" :class="{ active: activeTool === 'distance' }" @click="activateTool('distance')"
+        <!-- 测量按钮组 -->
+        <div class="measurement-buttons">
+            <button class="measure-btn" :class="{ active: activeTool === 'distance' }" @click="activateTool('distance')"
                 title="测距">
                 <span class="icon">📏</span>
-                <span class="label">测距</span>
-            </div>
-            <div class="tool-btn" :class="{ active: activeTool === 'area' }" @click="activateTool('area')" title="测面">
+            </button>
+            <button class="measure-btn" :class="{ active: activeTool === 'area' }" @click="activateTool('area')"
+                title="测面积">
                 <span class="icon">📐</span>
-                <span class="label">测面</span>
-            </div>
+            </button>
         </div>
 
         <!-- 结果面板 -->
@@ -412,51 +411,62 @@ onUnmounted(() => {
 
 <style scoped>
 .measurement-control-container {
-    position: absolute;
-    top: 20px;
-    right: 480px;
-    /* 放在图表面板左侧 (450px + 30px gap) */
-    z-index: 200;
+    position: relative;
     display: flex;
     flex-direction: column;
     align-items: flex-end;
     gap: 10px;
 }
 
-.toolbar {
+.measurement-buttons {
     display: flex;
-    gap: 1px;
-    background: rgba(42, 61, 110, 0.8);
-    border: 1px solid rgba(255, 255, 255, 0.2);
-    border-radius: 4px;
-    overflow: hidden;
+    gap: 10px;
 }
 
-.tool-btn {
+.measure-btn {
+    width: 48px;
+    height: 48px;
+    border-radius: 8px;
+    border: 1px solid rgba(255, 255, 255, 0.4);
+    background: transparent;
+    cursor: pointer;
     display: flex;
     align-items: center;
-    gap: 5px;
-    padding: 6px 12px;
-    cursor: pointer;
-    color: #fff;
-    transition: all 0.2s;
+    justify-content: center;
+    transition: all 0.3s ease;
+    box-shadow: none;
+    backdrop-filter: none;
 }
 
-.tool-btn:hover {
-    background: rgba(255, 255, 255, 0.1);
+.measure-btn:hover {
+    background: rgba(52, 71, 130, 0.4);
+    border-color: rgba(255, 255, 255, 0.4);
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.25);
 }
 
-.tool-btn.active {
+.measure-btn.active {
     background: rgba(0, 229, 255, 0.3);
-    color: #00e5ff;
+    border-color: rgba(0, 229, 255, 0.6);
+}
+
+.measure-btn:active {
+    transform: translateY(0);
+    box-shadow: 0 2px 6px rgba(0, 0, 0, 0.2);
 }
 
 .icon {
-    font-size: 16px;
+    font-size: 24px;
+    opacity: 0.9;
+    transition: all 0.3s ease;
 }
 
-.label {
-    font-size: 14px;
+.measure-btn:hover .icon {
+    opacity: 1;
+}
+
+.measure-btn.active .icon {
+    opacity: 1;
 }
 
 /* 结果面板样式 */

@@ -168,7 +168,7 @@ app.get('/api/clcd/:year/county-summary', async (req, res) => {
   } catch (err) { handleError(res, err); }
 });
 
-const port = Number(process.env.PORT || 5174);
+const port = Number(process.env.PORT || 3000);
 app.listen(port, () => {
   console.log(`[server] listening on http://localhost:${port}`);
 });

@@ -19,8 +19,15 @@
       <BaseMapSelector @change="handleBaseMapChange" />
     </div>
 
-    <!-- 测量工具 - 顶部中间偏右 -->
-    <MeasurementControl />
+    <!-- 底部控制按钮组 - 复位视图、测距、测面积 -->
+    <div class="bottom-controls-container">
+      <ViewResetControl />
+      <DistanceMeasureButton :isActive="activeTool === 'distance'" @toggle="toggleDistanceTool" />
+      <AreaMeasureButton :isActive="activeTool === 'area'" @toggle="toggleAreaTool" />
+    </div>
+
+    <!-- 测量结果面板 -->
+    <MeasurementControl v-if="false" />
 
     <!-- 右侧图表面板区域 -->
     <div class="right-panels">
@@ -58,6 +65,8 @@ import BaseMapSelector from './controls/BaseMapSelector.vue';
 import LandUsePieChart from './charts/LandUsePieChart.vue';
 import LandUseTrendChart from './charts/LandUseTrendChart.vue';
 import MeasurementControl from './controls/MeasurementControl.vue';
+import DistanceMeasureButton from './controls/DistanceMeasureButton.vue';
+import AreaMeasureButton from './controls/AreaMeasureButton.vue';
 import { useMapStore } from '../stores/map.ts';
 
 const mapStore = useMapStore();
@@ -69,6 +78,7 @@ const cachedClcdData = ref([]); // 缓存 CLCD 数据，避免重复加载
 
 const selectedYear = ref(1985); // 当前选择的年份，默认1985
 const currentYearData = ref({}); // 当前年份的数据
+const activeTool = ref(null); // 当前激活的测量工具: 'distance' | 'area' | null
 
 // CLCD 颜色映射
 const clcdColors = {
@@ -94,6 +104,23 @@ const legendNames = {
   Barren: '裸地',
   Impervious: '建设用地',
   Wetland: '湿地'
+};
+
+// 测量工具切换方法
+const toggleDistanceTool = () => {
+  if (activeTool.value === 'distance') {
+    activeTool.value = null;
+  } else {
+    activeTool.value = 'distance';
+  }
+};
+
+const toggleAreaTool = () => {
+  if (activeTool.value === 'area') {
+    activeTool.value = null;
+  } else {
+    activeTool.value = 'area';
+  }
 };
 
 // 监听年份变化，自动更新 CLCD 图层和图表数据
@@ -399,14 +426,20 @@ html {
   z-index: 200;
 }
 
-.reset-control-container {
+/* 复位视图、测距、测面积按钮 */
+.bottom-controls-container {
   position: fixed;
-  bottom: 10px;
-  /* 底部定位 */
+  bottom: 20px;
+  /* 距离底部的距离 */
   left: 90px;
+  /* 距离左侧的距离 */
   z-index: 200;
-  top: auto;
-  /* 顶部定位 */
+  display: flex;
+  flex-direction: column;
+  /* 垂直排列 */
+  align-items: center;
+  gap: 10px;
+  /* 按钮之间的间距 */
 }
 
 .basemap-selector-container {
