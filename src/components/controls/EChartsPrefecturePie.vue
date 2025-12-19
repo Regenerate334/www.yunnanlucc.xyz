@@ -23,6 +23,7 @@
 <script setup>
 import { ref, onUnmounted, watch, nextTick } from 'vue';
 import * as echarts from 'echarts';
+import { centroid } from '@turf/turf';
 import iconUrl from '../../assets/prefecture_pie_icon.png';
 
 const props = defineProps({
@@ -36,25 +37,23 @@ let citiesGeoJSON = null;
 let citiesData = null;
 let landUseData = null;
 
-// 城市布局配置：手动调整饼图中心和标签位置
-// 标签位置根据地图空白区域灵活调整
 const cityLayout = {
-  '昆明市': { name: '昆明', labelPosition: 'bottom', labelOffset: [0, 10] },
-  '曲靖市': { name: '曲靖', labelPosition: 'right', labelOffset: [10, 0] },
-  '玉溪市': { name: '玉溪', labelPosition: 'bottom', labelOffset: [0, 10] },
-  '保山市': { name: '保山', labelPosition: 'left', labelOffset: [-10, 0] },
-  '昭通市': { name: '昭通', labelPosition: 'top', labelOffset: [0, -10] },
-  '丽江市': { name: '丽江', labelPosition: 'top', labelOffset: [0, -10] },
-  '普洱市': { name: '普洱', centerOffset: [-0.3, 0.3], labelPosition: 'bottom', labelOffset: [0, 15] },
-  '临沧市': { name: '临沧', centerOffset: [-0.3, 0.3], labelPosition: 'left', labelOffset: [-10, 10] },
-  '楚雄彝族自治州': { name: '楚雄', labelPosition: 'top', labelOffset: [0, -5] },
-  '红河哈尼族彝族自治州': { name: '红河', labelPosition: 'bottom', labelOffset: [0, 10] },
-  '文山壮族苗族自治州': { name: '文山', labelPosition: 'right', labelOffset: [10, 10] },
-  '西双版纳傣族自治州': { name: '西双版纳', labelPosition: 'bottom', labelOffset: [0, 10] },
-  '大理白族自治州': { name: '大理', labelPosition: 'left', labelOffset: [-10, -10] },
-  '德宏傣族景颇族自治州': { name: '德宏', labelPosition: 'left', labelOffset: [-10, 0] },
-  '怒江傈僳族自治州': { name: '怒江', labelPosition: 'left', labelOffset: [-10, 0] },
-  '迪庆藏族自治州': { name: '迪庆', labelPosition: 'top', labelOffset: [0, -10] }
+  '昆明市': { name: '昆明' },
+  '曲靖市': { name: '曲靖' },
+  '玉溪市': { name: '玉溪' },
+  '保山市': { name: '保山' },
+  '昭通市': { name: '昭通' },
+  '丽江市': { name: '丽江' },
+  '普洱市': { name: '普洱' },
+  '临沧市': { name: '临沧' },
+  '楚雄彝族自治州': { name: '楚雄' },
+  '红河哈尼族彝族自治州': { name: '红河' },
+  '文山壮族苗族自治州': { name: '文山' },
+  '西双版纳傣族自治州': { name: '西双版纳' },
+  '大理白族自治州': { name: '大理' },
+  '德宏傣族景颇族自治州': { name: '德宏' },
+  '怒江傈僳族自治州': { name: '怒江' },
+  '迪庆藏族自治州': { name: '迪庆' }
 };
 
 const landUseColors = {
@@ -88,20 +87,13 @@ async function loadCitiesData() {
   citiesData = citiesGeoJSON.features.map(f => {
     const name = f.properties.name;
     const config = cityLayout[name] || {};
-    const center = f.properties.center;
-
-    // 应用中心偏移
-    let finalCenter = center;
-    if (config.centerOffset) {
-      finalCenter = [center[0] + config.centerOffset[0], center[1] + config.centerOffset[1]];
-    }
+    const centerPoint = centroid(f);
+    const geometricCenter = centerPoint.geometry.coordinates;
 
     return {
       name: name,
       displayName: config.name || name,
-      center: finalCenter,
-      labelPosition: config.labelPosition || 'bottom',
-      labelOffset: config.labelOffset || [0, 10]
+      geoCenter: geometricCenter
     };
   });
 }
@@ -113,32 +105,46 @@ async function loadLandUseData() {
 }
 
 function getCityLandUse(cityName, year) {
-  if (!landUseData) {
-    console.warn('Land use data not loaded');
-    return [];
-  }
-
+  if (!landUseData) return [];
   const record = landUseData.find(d => {
     const regionName = d.region_name || '';
     return regionName.includes(cityName) && d.year === year;
   });
-
-  if (!record) {
-    console.warn(`No data found for ${cityName} in ${year}`);
-    return [];
-  }
+  if (!record) return [];
 
   const types = ['cropland', 'forest', 'shrubland', 'grassland', 'water', 'wetland', 'impervious', 'bareland', 'tundra'];
-  const result = types
+  return types
     .map(type => ({
       name: landUseNames[type],
       value: record[type] || 0,
       itemStyle: { color: landUseColors[type] }
     }))
     .filter(item => item.value > 0);
+}
 
-  console.log(`${cityName} ${year}: ${result.length} land use types found`);
-  return result;
+// 更新饼图位置和大小 - 支持缩放
+function updatePiePositions() {
+  if (!chartInstance || !citiesData) return;
+
+  const geoCoordSys = chartInstance.getModel().getComponent('geo', 0).coordinateSystem;
+  const zoom = geoCoordSys.getZoom();
+  const baseRadius = 40;
+  const scaledRadius = baseRadius * zoom;
+
+  const seriesUpdates = citiesData.map((city) => {
+    const pixelPoint = chartInstance.convertToPixel('geo', city.geoCenter);
+    if (!pixelPoint) {
+      return {};
+    }
+    return {
+      center: pixelPoint,
+      radius: [0, scaledRadius]
+    };
+  });
+
+  chartInstance.setOption({
+    series: seriesUpdates
+  });
 }
 
 async function initChart() {
@@ -154,37 +160,98 @@ async function initChart() {
   }
 
   chartInstance = echarts.init(chartContainer.value);
+  const baseOption = getBaseChartOption(props.year);
+  chartInstance.setOption(baseOption);
+  updatePiePositions();
 
-  const option = getChartOption(props.year);
-  chartInstance.setOption(option);
+  chartInstance.on('georoam', () => {
+    updatePiePositions();
+  });
+
+  chartInstance.on('mouseover', (params) => {
+    if (params.seriesType === 'pie') {
+      const cityName = params.seriesName;
+      const cityIndex = citiesData.findIndex(c => c.name === cityName);
+
+      if (cityIndex !== -1) {
+        const hoverData = new Array(citiesData.length).fill(null);
+        hoverData[cityIndex] = {
+          name: cityName,
+          value: citiesData[cityIndex].geoCenter,
+          label: {
+            show: true,
+            formatter: `{a|${params.percent.toFixed(1)}%}`,
+            rich: {
+              a: {
+                color: '#fff',
+                fontSize: 14,
+                fontWeight: 'bold',
+                backgroundColor: 'rgba(0,0,0,0.7)',
+                padding: [4, 8],
+                borderRadius: 4
+              }
+            }
+          }
+        };
+
+        chartInstance.setOption({
+          series: [
+            ...new Array(citiesData.length).fill({}),
+            {
+              id: 'hoverLabel',
+              data: hoverData
+            }
+          ]
+        });
+      }
+    }
+  });
+
+  chartInstance.on('mouseout', (params) => {
+    if (params.seriesType === 'pie') {
+      chartInstance.setOption({
+        series: [
+          ...new Array(citiesData.length).fill({}),
+          {
+            id: 'hoverLabel',
+            data: []
+          }
+        ]
+      });
+    }
+  });
 
   window.addEventListener('resize', handleResize);
 }
 
-function getChartOption(year) {
+function getBaseChartOption(year) {
   const pieSeries = citiesData.map(city => ({
     type: 'pie',
-    coordinateSystem: 'geo',
-    geoIndex: 0,
     name: city.name,
-    center: city.center,
-    radius: ['0%', '8%'],
+    center: [0, 0],
+    radius: [0, 40],
     data: getCityLandUse(city.name, year),
     label: { show: false },
     emphasis: {
       label: {
         show: true,
-        fontSize: 12,
+        position: 'inside',
+        formatter: '{b}\n{d}%', // 显示地类名称和百分比
+        fontSize: 10,
         fontWeight: 'bold',
-        formatter: '{b}\n{d}%',
-        position: 'outside' // 确保百分比标签显示在外部
+        color: '#fff',
+        textBorderColor: '#000',
+        textBorderWidth: 1
+      },
+      itemStyle: {
+        shadowBlur: 10,
+        shadowOffsetX: 0,
+        shadowColor: 'rgba(0, 0, 0, 0.5)'
       }
     },
     labelLine: { show: false },
     zlevel: 2,
-    animation: true,
-    animationDuration: 1000,
-    animationEasing: 'cubicOut'
+    animation: false
   }));
 
   return {
@@ -236,7 +303,7 @@ function getChartOption(year) {
       emphasis: {
         label: { show: false },
         itemStyle: {
-          areaColor: '#d1d5db', // 鼠标悬浮时的高亮颜色
+          areaColor: '#d1d5db',
           shadowBlur: 10,
           shadowColor: 'rgba(0, 0, 0, 0.3)'
         }
@@ -246,55 +313,37 @@ function getChartOption(year) {
     series: [
       ...pieSeries,
       {
+        id: 'hoverLabel',
         type: 'scatter',
         coordinateSystem: 'geo',
         geoIndex: 0,
-        data: citiesData.map(city => ({
-          name: city.displayName,
-          value: city.center,
-          label: {
-            position: city.labelPosition,
-            offset: city.labelOffset
-          }
-        })),
+        data: [],
         symbolSize: 0,
         label: {
           show: true,
-          formatter: '{b}',
-          fontSize: 12,
-          color: '#333',
-          fontWeight: 'bold',
-          textBorderColor: '#fff',
-          textBorderWidth: 2
+          position: 'bottom',
+          offset: [0, 20],
+          color: '#fff',
+          fontSize: 14,
+          fontWeight: 'bold'
         },
-        zlevel: 3
+        zlevel: 4
       }
     ]
   };
 }
 
 function updateYear(newYear) {
-  console.log(`updateYear called with: ${newYear}`);
-  if (!chartInstance) {
-    console.error('Chart instance not available');
-    return;
-  }
-  if (!citiesData || !landUseData) {
-    console.error('Data not loaded');
-    return;
-  }
-
-  console.log(`Generating option for year ${newYear}`);
-  const option = getChartOption(newYear);
-  console.log('Setting new option on chart, series count:', option.series.length);
-
-  chartInstance.setOption(option, { notMerge: true });
-  console.log('Chart updated successfully');
+  if (!chartInstance || !citiesData || !landUseData) return;
+  const baseOption = getBaseChartOption(newYear);
+  chartInstance.setOption(baseOption, { notMerge: true });
+  updatePiePositions();
 }
 
 function handleResize() {
   if (chartInstance) {
     chartInstance.resize();
+    updatePiePositions();
   }
 }
 
@@ -316,8 +365,7 @@ async function toggleChart() {
   }
 }
 
-watch(() => props.year, (newYear, oldYear) => {
-  console.log(`Year prop changed from ${oldYear} to ${newYear}, isVisible:`, isVisible.value);
+watch(() => props.year, (newYear) => {
   if (isVisible.value && chartInstance) {
     updateYear(newYear);
   }
@@ -383,7 +431,6 @@ onUnmounted(() => {
   z-index: 999;
 }
 
-/* 弹窗 - 与年份选择器二级菜单相同样式 */
 .modal-window {
   position: fixed;
   top: 50%;
@@ -391,9 +438,6 @@ onUnmounted(() => {
   transform: translate(-50%, -50%);
   width: 95vw;
   height: 90vh;
-  /* 移除最大宽高限制，以匹配底图大小 */
-  /* max-width: 1000px; */
-  /* max-height: 700px; */
   background: rgba(42, 61, 110, 0.2);
   border: 1px solid rgba(255, 255, 255, 0.12);
   border-radius: 8px;
