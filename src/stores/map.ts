@@ -35,6 +35,7 @@ export const useMapStore = defineStore('map', () => {
     const infoCardVisible = ref(false)
     const infoCardPosition = ref({ x: 0, y: 0 })
     const infoCardData = ref<any>(null)
+    const activeMeasurementTool = ref<string | null>(null) // 'distance' | 'area' | null
 
     // ============================================
     // 方法 (Actions)
@@ -154,6 +155,7 @@ export const useMapStore = defineStore('map', () => {
         infoCardVisible,
         infoCardPosition,
         infoCardData,
+        activeMeasurementTool,
 
         // 方法
         setViewer,

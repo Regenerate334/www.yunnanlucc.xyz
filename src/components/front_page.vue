@@ -19,15 +19,15 @@
       <BaseMapSelector @change="handleBaseMapChange" />
     </div>
 
-    <!-- 底部控制按钮组 - 复位视图、测距、测面积 -->
+    <!-- 底部控制按钮组 - 复位视图、测距、测面积、地级市饼图 -->
     <div class="bottom-controls-container">
       <ViewResetControl />
-      <DistanceMeasureButton :isActive="activeTool === 'distance'" @toggle="toggleDistanceTool" />
-      <AreaMeasureButton :isActive="activeTool === 'area'" @toggle="toggleAreaTool" />
+      <DistanceMeasureButton />
+      <AreaMeasureButton />
+      <EChartsPrefecturePie :year="selectedYear" />
     </div>
 
-    <!-- 测量结果面板 -->
-    <MeasurementControl v-if="false" />
+    <!-- 测量结果面板已集成到按钮组件中 -->
 
     <!-- 右侧图表面板区域 -->
     <div class="right-panels">
@@ -64,9 +64,9 @@ import ViewResetControl from './controls/ViewResetControl.vue';
 import BaseMapSelector from './controls/BaseMapSelector.vue';
 import LandUsePieChart from './charts/LandUsePieChart.vue';
 import LandUseTrendChart from './charts/LandUseTrendChart.vue';
-import MeasurementControl from './controls/MeasurementControl.vue';
 import DistanceMeasureButton from './controls/DistanceMeasureButton.vue';
 import AreaMeasureButton from './controls/AreaMeasureButton.vue';
+import EChartsPrefecturePie from './controls/EChartsPrefecturePie.vue';
 import { useMapStore } from '../stores/map.ts';
 
 const mapStore = useMapStore();
@@ -78,7 +78,6 @@ const cachedClcdData = ref([]); // 缓存 CLCD 数据，避免重复加载
 
 const selectedYear = ref(1985); // 当前选择的年份，默认1985
 const currentYearData = ref({}); // 当前年份的数据
-const activeTool = ref(null); // 当前激活的测量工具: 'distance' | 'area' | null
 
 // CLCD 颜色映射
 const clcdColors = {
@@ -106,22 +105,7 @@ const legendNames = {
   Wetland: '湿地'
 };
 
-// 测量工具切换方法
-const toggleDistanceTool = () => {
-  if (activeTool.value === 'distance') {
-    activeTool.value = null;
-  } else {
-    activeTool.value = 'distance';
-  }
-};
-
-const toggleAreaTool = () => {
-  if (activeTool.value === 'area') {
-    activeTool.value = null;
-  } else {
-    activeTool.value = 'area';
-  }
-};
+// 测量工具切换逻辑已移动到按钮组件内部
 
 // 监听年份变化，自动更新 CLCD 图层和图表数据
 watch(selectedYear, (newYear) => {
@@ -145,8 +129,27 @@ onMounted(() => {
       navigationHelpButton: false,
       infoBox: false,
       fullscreenButton: false,
-      shouldAnimate: true
+      shouldAnimate: true,
+      contextOptions: {
+        webgl: {
+          alpha: true,
+          depth: true,
+          stencil: true,
+          antialias: true,
+          powerPreference: "high-performance",
+          preserveDrawingBuffer: true,
+          failIfMajorPerformanceCaveat: false
+        },
+        allowTextureFilterAnisotropic: true
+      }
     });
+
+    // 开启抗锯齿
+    viewer.scene.postProcessStages.fxaa.enabled = true;
+    // 开启高动态范围渲染
+    viewer.scene.highDynamicRange = true;
+    // 设置分辨率缩放因子，提高清晰度
+    viewer.resolutionScale = window.devicePixelRatio || 1.0;
 
     viewer.cesiumWidget.creditContainer.style.display = "none";
 
@@ -199,7 +202,7 @@ onMounted(() => {
       console.error('加载云南边界数据失败:', error);
     });
 
-    // 设置初始视角到云南省中心（垂直俯视）
+    // 设置初始视角到云南省中心，垂直俯视视角
     viewer.camera.setView({
       destination: Cesium.Cartesian3.fromDegrees(101.8, 25.2, 1900000),
       orientation: {
@@ -429,9 +432,9 @@ html {
 /* 复位视图、测距、测面积按钮 */
 .bottom-controls-container {
   position: fixed;
-  bottom: 20px;
+  bottom: 30px;
   /* 距离底部的距离 */
-  left: 90px;
+  left: 20px;
   /* 距离左侧的距离 */
   z-index: 200;
   display: flex;
@@ -440,6 +443,8 @@ html {
   align-items: center;
   gap: 10px;
   /* 按钮之间的间距 */
+  min-height: 160px;
+  /* 确保有足够空间显示弹出窗口 */
 }
 
 .basemap-selector-container {
@@ -516,7 +521,7 @@ html {
 
 .legend-name {
   font-size: 12px;
-  /* 减小字体 */
+  /* 字体 */
   color: #ffffff;
 }
 
@@ -532,6 +537,38 @@ html {
 /* 右侧面板滚动条样式 */
 .right-panels::-webkit-scrollbar {
   width: 6px;
+}
+
+/* 土地利用结构图按钮样式 */
+.control-btn {
+  width: 48px;
+  height: 48px;
+  border-radius: 6px;
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  background: rgba(42, 61, 110, 0.2);
+  backdrop-filter: blur(8px);
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.3s ease;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+}
+
+.control-btn:hover {
+  background: rgba(52, 71, 130, 0.4);
+  border-color: rgba(255, 255, 255, 0.4);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.25);
+}
+
+.control-btn.active {
+  background: rgba(156, 201, 255, 0.2);
+  border-color: #9cc9ff;
+  box-shadow: 0 0 0 3px rgba(156, 201, 255, 0.2);
+}
+
+.control-btn .icon {
+  font-size: 24px;
 }
 
 .right-panels::-webkit-scrollbar-track {

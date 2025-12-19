@@ -14,11 +14,11 @@ import * as Cesium from 'cesium';
  */
 function resetView() {
   const viewer = window.cesiumViewer;
-  
+
   if (!viewer) {
     return;
   }
-  
+
   // 使用 flyTo 实现平滑飞行动画（2秒）
   viewer.camera.flyTo({
     destination: Cesium.Cartesian3.fromDegrees(101.8, 25.2, 1900000),
@@ -40,23 +40,21 @@ function resetView() {
 .reset-btn {
   width: 48px;
   height: 48px;
-  border-radius: 8px;
-  border: 1px solid rgba(255, 255, 255, 0.4); /* 增强边框 */
-  background: transparent; /* 完全透明背景 */
+  border-radius: 6px;
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  background: rgba(42, 61, 110, 0.2);
+  backdrop-filter: blur(8px);
   cursor: pointer;
   display: flex;
   align-items: center;
   justify-content: center;
   transition: all 0.3s ease;
-  /* 移除阴影和毛玻璃，使其看起来像纯图标 */
-  box-shadow: none;
-  backdrop-filter: none;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
 }
 
 .reset-btn:hover {
   background: rgba(52, 71, 130, 0.4);
   border-color: rgba(255, 255, 255, 0.4);
-  transform: translateY(-2px);
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.25);
 }
 
