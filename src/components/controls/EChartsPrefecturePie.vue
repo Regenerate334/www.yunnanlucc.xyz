@@ -11,7 +11,7 @@
     <transition name="slide-fade">
       <div v-if="isVisible" class="modal-window" @click.stop>
         <div class="modal-header">
-          <span class="modal-title">地级市土地利用结构 - {{ props.year }}年</span>
+          <span class="modal-title">{{ props.year }}年 - 地级市土地利用结构</span>
           <button class="close-btn" @click.stop="toggleChart">✕</button>
         </div>
         <div ref="chartContainer" class="chart-container"></div>
@@ -138,7 +138,12 @@ function updatePiePositions() {
     }
     return {
       center: pixelPoint,
-      radius: [0, scaledRadius]
+      radius: [0, scaledRadius],
+      emphasis: {
+        label: {
+          fontSize: Math.max(14, 14 * zoom) // 字体随缩放大小变化，最小14px
+        }
+      }
     };
   });
 
@@ -236,8 +241,10 @@ function getBaseChartOption(year) {
       label: {
         show: true,
         position: 'inside',
-        formatter: '{b}\n{d}%', // 显示地类名称和百分比
-        fontSize: 10,
+        formatter: params => {
+          return `${params.seriesName}\n${params.value.toFixed(0)} km²\n${params.percent.toFixed(1)}%`;
+        },
+        fontSize: 14,
         fontWeight: 'bold',
         color: '#fff',
         textBorderColor: '#000',
@@ -279,7 +286,7 @@ function getBaseChartOption(year) {
     legend: {
       data: Object.values(landUseNames),
       orient: 'horizontal',
-      bottom: '5%',
+      bottom: '0%', // 继续下移图例
       left: 'center',
       textStyle: {
         color: '#fff',
@@ -293,8 +300,8 @@ function getBaseChartOption(year) {
       roam: true,
       scaleLimit: { min: 0.8, max: 3 },
       aspectScale: 1.0,
-      layoutCenter: ['50%', '45%'],
-      layoutSize: '90%',
+      layoutCenter: ['50%', '50%'],
+      layoutSize: '100%',
       itemStyle: {
         areaColor: '#e7e8ea',
         borderColor: '#fff',
@@ -436,7 +443,7 @@ onUnmounted(() => {
   top: 50%;
   left: 50%;
   transform: translate(-50%, -50%);
-  width: 95vw;
+  width: 50vw;
   height: 90vh;
   background: rgba(42, 61, 110, 0.2);
   border: 1px solid rgba(255, 255, 255, 0.12);
@@ -455,15 +462,25 @@ onUnmounted(() => {
   background: rgba(255, 255, 255, 0.05);
   color: white;
   display: flex;
-  justify-content: space-between;
+  justify-content: flex-end;
+  /* 按钮靠右 */
   align-items: center;
   border-bottom: 1px solid rgba(255, 255, 255, 0.12);
+  position: relative;
+  /* 为标题绝对定位做参照 */
 }
 
 .modal-title {
   font-size: 16px;
   font-weight: 600;
   color: #fff;
+  position: absolute;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 100%;
+  text-align: center;
+  pointer-events: none;
+  /* 防止遮挡点击 */
 }
 
 .close-btn {
