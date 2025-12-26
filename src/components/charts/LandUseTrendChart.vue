@@ -18,197 +18,217 @@ const props = defineProps({
 const chartContainer = ref(null)
 const chartInstance = ref(null)
 
-// 土地利用类型映射（英文 -> 中文）
+// 土地利用类型映射
 const landTypeMap = {
-  'Cropland': '耕地',
-  'Forest': '林地',
-  'Shrub': '灌木',
-  'Grassland': '草地',
-  'Water': '水域',
-  'Snow/Ice': '冰雪',
-  'Barren': '裸地',
-  'Impervious': '建设用地',
-  'Wetland': '湿地'
+  'cropland': '耕地',
+  'forest': '林地',
+  'shrub': '灌木',
+  'grassland': '草地',
+  'water': '水域',
+  'snow_ice': '冰雪',
+  'barren': '裸地',
+  'impervious': '建设用地',
+  'wetland': '湿地'
 }
 
-// 将宽表数据转换为长表数据 [Year, Type, Area]
-const rawData = computed(() => {
-  if (!props.seriesData || props.seriesData.length === 0) return []
-
-  // Header row
-  const result = [['Year', 'Type', 'Area']]
-
-  props.seriesData.forEach(item => {
-    const year = item.year
-    Object.keys(landTypeMap).forEach(key => {
-      // key 是英文名 (如 Cropland), landTypeMap[key] 是中文名 (如 耕地)
-      // 数据中的 key 是小写 (如 cropland)
-      const dataKey = key.toLowerCase() === 'snow/ice' ? 'snow_ice' : key.toLowerCase()
-      const area = item[dataKey]
-      if (area !== undefined) {
-        result.push([year, landTypeMap[key], area])
-      }
-    })
-  })
-
-  return result
-})
-
-const run = (_rawData) => {
-  if (!chartInstance.value) return;
-
-  // 确保图表容器有尺寸
-  chartInstance.value.resize();
-
-  const countries = Object.values(landTypeMap); // 对应示例中的 countries
-  const datasetWithFilters = [];
-  const seriesList = [];
-
-  echarts.util.each(countries, function (country) {
-    var datasetId = 'dataset_' + country;
-    datasetWithFilters.push({
-      id: datasetId,
-      fromDatasetId: 'dataset_raw',
-      transform: {
-        type: 'filter',
-        config: {
-          and: [
-            { dimension: 'Type', '=': country }
-          ]
-        }
-      }
-    });
-    seriesList.push({
-      type: 'line',
-      datasetId: datasetId,
-      showSymbol: false,
-      name: country,
-      endLabel: {
-        show: true,
-        formatter: function (params) {
-          // params.value: [Year, Type, Area]
-          return params.value[1] + ': ' + Math.round(params.value[2]);
-        },
-        color: 'inherit' // 继承系列颜色
-      },
-      labelLayout: {
-        moveOverlap: 'shiftY'
-      },
-      emphasis: {
-        focus: 'series'
-      },
-      encode: {
-        x: 'Year',
-        y: 'Area',
-        label: ['Type', 'Area'],
-        itemName: 'Year',
-        tooltip: ['Area']
-      }
-    });
-  });
-
-  const option = {
-    animationDuration: 3000, // 保持动画
-    dataset: [
-      {
-        id: 'dataset_raw',
-        source: _rawData
-      },
-      ...datasetWithFilters
-    ],
-    tooltip: {
-      order: 'valueDesc',
-      trigger: 'axis',
-      axisPointer: {
-        type: 'line',
-        lineStyle: {
-          color: 'rgba(255, 255, 255, 0.5)'
-        }
-      },
-      backgroundColor: 'rgba(50, 50, 50, 0.9)',
-      borderColor: '#999',
-      borderWidth: 1,
-      textStyle: { color: '#fff' }
-    },
-    xAxis: {
-      type: 'category',
-      nameLocation: 'middle',
-      axisLabel: { color: '#fff' }, // 适配暗色背景
-      axisLine: { lineStyle: { color: 'rgba(255, 255, 255, 0.3)' } }
-    },
-    yAxis: {
-      type: 'log',
-      name: '面积 (km²)',
-      nameTextStyle: { color: '#fff' },
-      axisLabel: { color: '#fff' },
-      axisLine: { lineStyle: { color: 'rgba(255, 255, 255, 0.3)' } },
-      splitLine: { lineStyle: { color: 'rgba(255, 255, 255, 0.1)' } },
-      logBase: 10
-    },
-    grid: {
-      right: 100, // 为 endLabel 留出空间
-      top: 40,
-      bottom: 30,
-      left: 60
-    },
-    series: seriesList
-  };
-
-  chartInstance.value.setOption(option);
-}
+const landUseColors = {
+  'cropland': '#FAE39C',
+  'forest': '#446F33',
+  'shrub': '#33A02C',
+  'grassland': '#ABD37B',
+  'water': '#1E69B4',
+  'wetland': '#2899E8',
+  'impervious': '#E24290',
+  'barren': '#CFBDA3',
+  'snow_ice': '#A6CEE3'
+};
 
 const initChart = () => {
   if (!chartContainer.value) return
   chartInstance.value = echarts.init(chartContainer.value)
 
-  // Use ResizeObserver to handle container resize
   const resizeObserver = new ResizeObserver(() => {
-    if (chartInstance.value) {
-      chartInstance.value.resize()
-    }
+    if (chartInstance.value) chartInstance.value.resize()
   })
   resizeObserver.observe(chartContainer.value)
-
-  // Store observer to disconnect later
   chartInstance.value._resizeObserver = resizeObserver
+}
+
+const updateChart = () => {
+  if (!chartInstance.value || !props.seriesData.length) return
+
+  // 1. 提取年份作为 X 轴数据
+  const years = props.seriesData.map(d => d.year).sort((a, b) => a - b);
+
+  // 2. 构建 Series 数据
+  const series = Object.keys(landTypeMap).map(key => {
+    const data = years.map(year => {
+      const record = props.seriesData.find(d => d.year === year);
+      const val = record ? record[key] : 0;
+      return val / 1000000; // 转换为 km²
+    });
+
+    return {
+      name: landTypeMap[key],
+      type: 'line',
+      // 不再使用堆叠，改为动态排序风格 (Line Race)
+      showSymbol: false,
+      smooth: true,
+      emphasis: { focus: 'series' },
+      endLabel: {
+        show: true,
+        formatter: function (params) {
+          const val = params.value;
+          const areaStr = val >= 10000
+            ? (val / 10000).toFixed(1) + '万'
+            : val.toFixed(0);
+          return params.seriesName + ': ' + areaStr;
+        },
+        distance: 10,
+        color: 'inherit',
+        fontSize: 12,
+        fontWeight: 'bold'
+      },
+      labelLayout: {
+        moveOverlap: 'shiftY'
+      },
+      data: data,
+      itemStyle: { color: landUseColors[key] }
+    };
+  });
+
+  const option = {
+    animationDuration: 10000,
+    title: {
+      text: '土地利用类型变化趋势 (Line Race)',
+      left: 'center',
+      textStyle: { color: '#fff', fontSize: 16 }
+    },
+    tooltip: {
+      show: true,
+      trigger: 'axis',
+      confine: false, // 允许超出容器，避免被遮挡
+      appendToBody: true, // 关键：将 tooltip 渲染到 body，避免 z-index 问题
+      order: 'valueDesc',
+      axisPointer: {
+        type: 'line',
+        lineStyle: {
+          color: 'rgba(255, 255, 255, 0.5)',
+          type: 'dashed',
+          width: 2
+        }
+      },
+      backgroundColor: 'rgba(255, 255, 255, 0.98)',
+      borderColor: '#ddd',
+      borderWidth: 1,
+      textStyle: {
+        color: '#333',
+        fontSize: 14,
+        lineHeight: 20
+      },
+      padding: [12, 16],
+      extraCssText: 'box-shadow: 0 4px 12px rgba(0,0,0,0.15); z-index: 99999 !important; border-radius: 4px;',
+      formatter: function (params) {
+        if (!params || params.length === 0) return '';
+
+        let html = `<div style="font-weight:600; margin-bottom:10px; padding-bottom:8px; border-bottom:2px solid #e0e0e0; color:#333; font-size:15px;">`;
+        html += `${params[0].axisValue}年`;
+        html += `</div>`;
+
+        params.forEach(item => {
+          const val = item.value;
+          const areaStr = val >= 10000
+            ? (val / 10000).toFixed(2) + ' 万km²'
+            : val.toFixed(0) + ' km²';
+
+          html += `<div style="display:flex; justify-content:space-between; align-items:center; margin:6px 0; min-width:220px;">`;
+          html += `<span style="display:flex; align-items:center; gap:8px;">`;
+          html += `<span style="display:inline-block; width:12px; height:12px; border-radius:50%; background:${item.color};"></span>`;
+          html += `<span style="color:#555;">${item.seriesName}</span>`;
+          html += `</span>`;
+          html += `<span style="font-weight:700; color:#000; font-family:monospace; margin-left:24px;">${areaStr}</span>`;
+          html += `</div>`;
+        });
+
+        return html;
+      }
+    },
+    legend: {
+      show: false // Line Race 风格通常使用 endLabel，不需要图例
+    },
+    grid: {
+      left: '3%',
+      right: '150', // 为右侧标签留出空间
+      bottom: '10%',
+      top: '12%',
+      containLabel: true
+    },
+    toolbox: {
+      feature: {
+        saveAsImage: {}
+      },
+      iconStyle: {
+        borderColor: '#fff'
+      }
+    },
+    xAxis: [
+      {
+        type: 'category',
+        boundaryGap: false,
+        data: years,
+        axisLabel: { color: '#fff' },
+        axisLine: { lineStyle: { color: 'rgba(255,255,255,0.3)' } }
+      }
+    ],
+    yAxis: [
+      {
+        type: 'value',
+        name: '面积 (km²)',
+        nameTextStyle: { color: '#fff' },
+        axisLabel: {
+          color: '#fff',
+          formatter: (value) => {
+            if (value >= 10000) return (value / 10000).toFixed(1) + '万';
+            return value;
+          }
+        },
+        splitLine: { lineStyle: { color: 'rgba(255,255,255,0.1)' } }
+      }
+    ],
+    series: series
+  };
+
+  chartInstance.value.setOption(option, true);
 }
 
 onMounted(() => {
   nextTick(() => {
     initChart()
-    if (rawData.value.length > 1) {
-      run(rawData.value)
-    }
+    updateChart()
   })
 })
 
 onUnmounted(() => {
   if (chartInstance.value) {
-    if (chartInstance.value._resizeObserver) {
-      chartInstance.value._resizeObserver.disconnect()
-    }
+    if (chartInstance.value._resizeObserver) chartInstance.value._resizeObserver.disconnect()
     chartInstance.value.dispose()
   }
 })
 
 watch(() => props.seriesData, () => {
-  if (rawData.value.length > 1) {
-    run(rawData.value)
-  }
+  updateChart()
 }, { deep: true })
-
 </script>
 
 <style scoped>
 .land-use-trend-chart {
   width: 100%;
   height: 100%;
-  position: relative;
 }
 
 .chart-container {
   width: 100%;
   height: 100%;
-  min-height: 300px;
+  min-height: 400px;
 }
 </style>

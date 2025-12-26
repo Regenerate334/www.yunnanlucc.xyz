@@ -96,8 +96,8 @@ function toggleChart() {
   top: 50%;
   left: 50%;
   transform: translate(-50%, -50%);
-  width: 80vw;
-  height: 70vh;
+  width: 90vw;
+  height: 85vh;
   background: rgba(42, 61, 110, 0.2);
   border: 1px solid rgba(255, 255, 255, 0.12);
   border-radius: 8px;

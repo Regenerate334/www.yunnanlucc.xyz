@@ -9,6 +9,39 @@ const app = express();
 app.use(cors());
 app.use(express.json());
 
+// Request logging middleware
+app.use((req, res, next) => {
+  const start = process.hrtime();
+  const timestamp = new Date().toISOString();
+  const ip = req.headers['x-forwarded-for'] || req.socket.remoteAddress;
+
+  // Log request
+  console.log(`\n[${timestamp}] ${req.method} ${req.url} - IP: ${ip}`);
+  if (Object.keys(req.query).length > 0) {
+    console.log('  Query:', JSON.stringify(req.query));
+  }
+  if (req.body && Object.keys(req.body).length > 0) {
+    console.log('  Body:', JSON.stringify(req.body));
+  }
+
+  // Log response when finished
+  res.on('finish', () => {
+    const duration = process.hrtime(start);
+    const ms = (duration[0] * 1000 + duration[1] / 1e6).toFixed(2);
+    const status = res.statusCode;
+
+    // Simple color coding for status (using ANSI escape codes)
+    let statusColor = '\x1b[0m'; // Reset
+    if (status >= 500) statusColor = '\x1b[31m'; // Red
+    else if (status >= 400) statusColor = '\x1b[33m'; // Yellow
+    else if (status >= 200) statusColor = '\x1b[32m'; // Green
+
+    console.log(`  Response: ${statusColor}${status}\x1b[0m | Duration: ${ms}ms`);
+  });
+
+  next();
+});
+
 const pool = new pg.Pool({
   host: process.env.PGHOST || 'localhost',
   port: Number(process.env.PGPORT || 5432),
@@ -18,11 +51,17 @@ const pool = new pg.Pool({
   max: 10
 });
 
-console.log('[db] connect =>', {
-  host: process.env.PGHOST || 'localhost',
-  port: Number(process.env.PGPORT || 5432),
-  user: process.env.PGUSER || 'postgres',
-  database: process.env.PGDATABASE || 'yunnan_CLCD'
+// Test DB connection and log status
+pool.connect((err, client, release) => {
+  if (err) {
+    console.error('\x1b[31m[db] connection error:\x1b[0m', err.stack);
+  } else {
+    console.log('\x1b[32m[db] connected successfully\x1b[0m to', {
+      host: process.env.PGHOST || 'localhost',
+      database: process.env.PGDATABASE || 'yunnan_CLCD'
+    });
+    release();
+  }
 });
 
 function handleError(res, err) {

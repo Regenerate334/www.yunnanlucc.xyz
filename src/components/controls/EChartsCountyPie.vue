@@ -1,7 +1,8 @@
 <template>
     <div class="echarts-county-pie">
-        <button @click="toggleChart" class="control-btn" :class="{ active: isVisible }" title="ECharts 县级市土地利用结构">
+        <button @click="toggleChart" class="control-btn" :class="{ active: isVisible }" title="县级土地利用饼图">
             <img :src="iconUrl" alt="图标" class="icon-img" />
+            <span class="btn-label">县</span>
         </button>
 
         <transition name="fade">
@@ -21,10 +22,11 @@
                         </div>
                         <transition name="dropdown-fade">
                             <div v-if="isDropdownOpen" class="options-panel">
-                                <div class="options-grid">
+                                <div class="options-list">
                                     <div v-for="city in prefectureList" :key="city.code" class="option-item"
                                         :class="{ selected: city.code === selectedAdcode }"
                                         @click="selectPrefecture(city)">
+                                        <span class="dot" v-if="city.code === selectedAdcode"></span>
                                         {{ city.name }}
                                     </div>
                                 </div>
@@ -42,7 +44,7 @@
 <script setup>
 import { ref, watch, onMounted, onUnmounted, nextTick } from 'vue';
 import * as echarts from 'echarts';
-import { centroid } from '@turf/turf';
+import { centroid, area } from '@turf/turf';
 
 const props = defineProps({
     year: {
@@ -51,15 +53,14 @@ const props = defineProps({
     }
 });
 
-// 使用新的静态资源路径
 const iconUrl = '/assets/images/icons/prefecture_pie.png';
 
 const isVisible = ref(false);
 const chartContainer = ref(null);
 let chartInstance = null;
 let countyGeoJSON = null;
-let countyData = null; // Map features
-let countyStats = null; // Statistics
+let countyData = null;
+let countyStats = null;
 const prefectureList = ref([]);
 const selectedAdcode = ref('530100'); // Default to Kunming
 const currentPrefectureName = ref('昆明市');
@@ -77,7 +78,6 @@ function selectPrefecture(city) {
     isDropdownOpen.value = false;
 }
 
-// Click outside to close dropdown
 function handleClickOutside(event) {
     if (dropdownRef.value && !dropdownRef.value.contains(event.target)) {
         isDropdownOpen.value = false;
@@ -123,25 +123,25 @@ const landUseNames = {
 
 async function loadCountyGeo() {
     try {
-        // Use Aliyun DataV API for dynamic fetching
         const resp = await fetch(`https://geo.datav.aliyun.com/areas_v3/bound/${selectedAdcode.value}_full.json`);
         if (!resp.ok) throw new Error('GeoJSON not found');
         countyGeoJSON = await resp.json();
+
+        countyData = countyGeoJSON.features.map(f => {
+            const name = f.properties.name;
+            const centerPoint = centroid(f);
+            const geometricCenter = centerPoint.geometry.coordinates;
+            const regionArea = area(f);
+
+            return {
+                name: name,
+                geoCenter: geometricCenter,
+                area: regionArea
+            };
+        });
     } catch (e) {
         console.error("Failed to load GeoJSON:", e);
-        return;
     }
-
-    countyData = countyGeoJSON.features.map(f => {
-        const name = f.properties.name;
-        const centerPoint = centroid(f);
-        const geometricCenter = centerPoint.geometry.coordinates;
-
-        return {
-            name: name,
-            geoCenter: geometricCenter
-        };
-    });
 }
 
 async function loadCountyStats() {
@@ -150,8 +150,6 @@ async function loadCountyStats() {
         const response = await fetch('/api/clcd/county');
         if (response.ok) {
             countyStats = await response.json();
-        } else {
-            console.error('Failed to fetch county data');
         }
     } catch (e) {
         console.error('Error fetching county data:', e);
@@ -160,141 +158,32 @@ async function loadCountyStats() {
 
 function getLandUseSeriesData(regionName, year) {
     if (!countyStats) return [];
+    const data = countyStats.find(d => d.region_name === regionName && d.year == year);
+    if (!data) return [];
 
-    // Find data for specific region and year
-    const countyData = countyStats.find(d => d.region_name === regionName && d.year === year);
+    const typeMapping = {
+        cropland: 'cropland',
+        forest: 'forest',
+        shrubland: 'shrub',
+        grassland: 'grassland',
+        water: 'water',
+        wetland: 'wetland',
+        impervious: 'impervious',
+        bareland: 'barren',
+        tundra: 'snow_ice'
+    };
 
-    if (!countyData) return [];
-
-    const types = ['cropland', 'forest', 'shrubland', 'grassland', 'water', 'wetland', 'impervious',
-        'bareland', 'tundra'];
-
+    const types = ['cropland', 'forest', 'shrubland', 'grassland', 'water', 'wetland', 'impervious', 'bareland', 'tundra'];
     return types.map(type => {
-        let value = countyData[type];
-
-        if (value === undefined) {
-            if (type === 'tundra' && countyData['snow_ice'] !== undefined) value = countyData['snow_ice'];
-            if (type === 'shrubland' && countyData['shrub'] !== undefined) value = countyData['shrub'];
-            if (type === 'bareland' && countyData['barren'] !== undefined) value = countyData['barren'];
-        }
-
+        const dbKey = typeMapping[type];
+        const val = Number(data[dbKey]);
+        const valInKm2 = isNaN(val) ? 0 : val / 1000000;
         return {
             name: landUseNames[type],
-            value: value,
+            value: valInKm2,
             itemStyle: { color: landUseColors[type] }
         };
     }).filter(item => item.value > 0);
-}
-
-function getBaseChartOption(year, dataList) {
-    const pieSeries = dataList.map(item => ({
-        type: 'pie',
-        name: item.name,
-        center: [0, 0],
-        radius: [0, 40],
-        data: getLandUseSeriesData(item.name, year),
-        label: { show: false },
-        emphasis: {
-            label: {
-                show: true,
-                position: 'inside',
-                formatter: params => {
-                    return `${params.seriesName}\n${params.value.toFixed(0)} km²\n${params.percent.toFixed(1)}%`;
-                },
-                fontSize: 14,
-                fontWeight: 'bold',
-                color: '#fff',
-                textBorderColor: '#000',
-                textBorderWidth: 1
-            },
-            itemStyle: {
-                shadowBlur: 10,
-                shadowOffsetX: 0,
-                shadowColor: 'rgba(0, 0, 0, 0.5)'
-            }
-        },
-        labelLine: { show: false },
-        zlevel: 2,
-        animation: false
-    }));
-
-    return {
-        backgroundColor: 'transparent',
-        tooltip: {
-            trigger: 'item',
-            borderColor: '#999',
-            borderWidth: 1,
-            backgroundColor: 'rgba(50, 50, 50, 0.9)',
-            textStyle: { color: '#fff' },
-            formatter: params => {
-                if (params.seriesType === 'pie') {
-                    return `
-        <div style="padding: 8px;">
-          <strong style="font-size: 14px;">${params.seriesName}</strong><br />
-          <span style="color: ${params.color};">●</span> ${params.name}:
-          <strong>${params.value.toFixed(2)}</strong> km²<br />
-          占比: <strong>${params.percent.toFixed(1)}%</strong>
-        </div>
-        `;
-                }
-                return '';
-            }
-        },
-        legend: {
-            data: Object.values(landUseNames),
-            orient: 'horizontal',
-            bottom: '0%',
-            left: 'center',
-            textStyle: {
-                color: '#fff',
-                fontSize: 12
-            },
-            itemWidth: 16,
-            itemHeight: 16
-        },
-        geo: {
-            map: `map_${selectedAdcode.value}`,
-            roam: true,
-            scaleLimit: { min: 0.8, max: 10 },
-            aspectScale: 1.0,
-            layoutCenter: ['50%', '50%'],
-            layoutSize: '100%',
-            itemStyle: {
-                areaColor: '#e7e8ea',
-                borderColor: '#fff',
-                borderWidth: 1
-            },
-            emphasis: {
-                label: { show: false },
-                itemStyle: {
-                    areaColor: '#d1d5db',
-                    shadowBlur: 10,
-                    shadowColor: 'rgba(0, 0, 0, 0.3)'
-                }
-            },
-            zlevel: 0
-        },
-        series: [
-            ...pieSeries,
-            {
-                id: 'hoverLabel',
-                type: 'scatter',
-                coordinateSystem: 'geo',
-                geoIndex: 0,
-                data: [],
-                symbolSize: 0,
-                label: {
-                    show: true,
-                    position: 'bottom',
-                    offset: [0, 20],
-                    color: '#fff',
-                    fontSize: 14,
-                    fontWeight: 'bold'
-                },
-                zlevel: 4
-            }
-        ]
-    };
 }
 
 function updatePiePositions() {
@@ -302,27 +191,29 @@ function updatePiePositions() {
 
     const geoCoordSys = chartInstance.getModel().getComponent('geo', 0).coordinateSystem;
     const zoom = geoCoordSys.getZoom();
-    const baseRadius = 40;
-    const scaledRadius = baseRadius * zoom;
+
+    const maxArea = Math.max(...countyData.map(c => c.area || 0));
+    const baseRadius = 30;
 
     const seriesUpdates = countyData.map((item) => {
-        const pixelPoint = chartInstance.convertToPixel('geo', item.geoCenter);
-        if (!pixelPoint) {
-            return {};
-        }
+        const areaScale = item.area ? Math.sqrt(item.area / maxArea) : 0.5;
+        const adaptiveRadius = baseRadius * (0.5 + 0.5 * areaScale) * zoom;
+
         return {
-            center: pixelPoint,
-            radius: [0, scaledRadius],
+            radius: [0, adaptiveRadius],
             emphasis: {
                 label: {
-                    fontSize: Math.max(12, 12 * zoom)
+                    fontSize: Math.max(10, 11 * zoom * (0.8 + 0.2 * areaScale))
                 }
             }
         };
     });
 
     chartInstance.setOption({
-        series: seriesUpdates
+        series: seriesUpdates,
+        geo: {
+            regions: [] // Clear dynamic regions to avoid redundant labels
+        }
     });
 }
 
@@ -338,7 +229,10 @@ async function initChart() {
         echarts.registerMap(mapName, countyGeoJSON);
     }
 
-    chartInstance = echarts.init(chartContainer.value);
+    chartInstance = echarts.init(chartContainer.value, null, {
+        devicePixelRatio: window.devicePixelRatio,
+        renderer: 'canvas'
+    });
     const option = getBaseChartOption(props.year, countyData);
     chartInstance.setOption(option);
 
@@ -351,9 +245,106 @@ async function initChart() {
     window.addEventListener('resize', handleResize);
 }
 
+function getBaseChartOption(year, dataList) {
+    const pieSeries = dataList.map(item => ({
+        type: 'pie',
+        coordinateSystem: 'geo',
+        name: item.name,
+        center: item.name,
+        radius: [0, 30],
+        data: getLandUseSeriesData(item.name, year),
+        label: { show: false },
+        tooltip: { show: false },
+        emphasis: {
+            label: {
+                show: true,
+                position: 'inside',
+                formatter: params => {
+                    const val = params.value;
+                    const areaStr = val >= 10000
+                        ? (val / 10000).toFixed(2) + ' 万km²'
+                        : val.toFixed(2) + ' km²';
+                    return `${params.name}\n${areaStr}\n${params.percent.toFixed(1)}%`;
+                },
+                fontSize: 12,
+                fontWeight: '700',
+                fontFamily: "'Inter', 'Microsoft YaHei', sans-serif",
+                color: '#1e293b',
+                textBorderColor: '#fff',
+                textBorderWidth: 2
+            },
+            itemStyle: {
+                shadowBlur: 10,
+                shadowOffsetX: 0,
+                shadowColor: 'rgba(0, 0, 0, 0.5)'
+            }
+        },
+        labelLine: { show: false },
+        zlevel: 2,
+        animation: false
+    }));
+
+    return {
+        backgroundColor: 'transparent',
+        tooltip: {
+            show: true,
+            trigger: 'item',
+            backgroundColor: '#fff',
+            padding: [6, 10],
+            borderRadius: 4,
+            borderWidth: 0,
+            shadowBlur: 10,
+            shadowColor: 'rgba(0,0,0,0.15)',
+            textStyle: {
+                color: '#1e293b',
+                fontSize: 14,
+                fontWeight: '600',
+                fontFamily: "'Inter', 'Microsoft YaHei', sans-serif"
+            },
+            formatter: params => {
+                if (params.componentType === 'geo') {
+                    return params.name;
+                }
+                return null;
+            }
+        },
+        legend: {
+            data: Object.values(landUseNames),
+            orient: 'horizontal',
+            bottom: '0%',
+            left: 'center',
+            textStyle: { color: '#fff', fontSize: 12 },
+            itemWidth: 16,
+            itemHeight: 16
+        },
+        geo: {
+            map: `map_${selectedAdcode.value}`,
+            roam: true,
+            scaleLimit: { min: 0.8, max: 10 },
+            aspectScale: 1.0,
+            layoutCenter: ['50%', '50%'],
+            layoutSize: '90%',
+            label: { show: false },
+            itemStyle: {
+                areaColor: '#e7e8ea',
+                borderColor: '#fff',
+                borderWidth: 1
+            },
+            emphasis: {
+                label: { show: false }, // Force hide geo labels
+                itemStyle: {
+                    areaColor: '#fef08a'
+                }
+            },
+            zlevel: 0
+        },
+        series: pieSeries
+    };
+}
+
 async function updateYear(newYear) {
     if (!chartInstance) return;
-    await loadCountyStats(); // Ensure data is loaded
+    await loadCountyStats();
     const baseOption = getBaseChartOption(newYear, countyData);
     chartInstance.setOption(baseOption, { notMerge: true });
     updatePiePositions();
@@ -368,7 +359,6 @@ function handleResize() {
 
 async function toggleChart() {
     isVisible.value = !isVisible.value;
-
     if (isVisible.value) {
         await nextTick();
         if (chartInstance) {
@@ -405,14 +395,11 @@ async function loadPrefectureList() {
 
 async function handlePrefectureChange() {
     if (!chartInstance) return;
-
     await loadCountyGeo();
-
     const mapName = `map_${selectedAdcode.value}`;
     if (!echarts.getMap(mapName)) {
         echarts.registerMap(mapName, countyGeoJSON);
     }
-
     const option = getBaseChartOption(props.year, countyData);
     chartInstance.setOption(option, { notMerge: true });
     updatePiePositions();
@@ -458,6 +445,17 @@ watch(() => props.year, (newYear) => {
     background: rgba(156, 201, 255, 0.2);
     border-color: #9cc9ff;
     box-shadow: 0 0 3px rgba(156, 201, 255, 0.2);
+}
+
+.btn-label {
+    position: absolute;
+    bottom: 2px;
+    right: 4px;
+    font-size: 10px;
+    color: rgba(255, 255, 255, 0.8);
+    font-weight: bold;
+    text-shadow: 0 1px 2px rgba(0, 0, 0, 0.5);
+    pointer-events: none;
 }
 
 .icon-img {
@@ -556,7 +554,7 @@ watch(() => props.year, (newYear) => {
     border-radius: 4px;
     color: white;
     cursor: pointer;
-    min-width: 120px;
+    width: 140px;
     transition: all 0.3s ease;
     backdrop-filter: blur(8px);
 }
@@ -578,44 +576,69 @@ watch(() => props.year, (newYear) => {
     position: absolute;
     top: 100%;
     left: 0;
-    width: 300px;
-    max-height: 400px;
+    width: 100%;
+    max-height: 350px;
     overflow-y: auto;
-    background: rgba(30, 41, 59, 0.95);
+    background: rgba(42, 61, 110, 0.2);
     border: 1px solid rgba(255, 255, 255, 0.12);
     border-radius: 4px;
     margin-top: 4px;
-    padding: 8px;
+    padding: 4px;
     z-index: 1001;
-    backdrop-filter: blur(12px);
-    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3);
+    backdrop-filter: blur(8px);
+    box-shadow: 0 10px 25px rgba(0, 0, 0, 0.1);
 }
 
-.options-grid {
-    display: grid;
-    grid-template-columns: repeat(3, 1fr);
-    gap: 4px;
+.options-panel::-webkit-scrollbar {
+    width: 4px;
+}
+
+.options-panel::-webkit-scrollbar-track {
+    background: transparent;
+}
+
+.options-panel::-webkit-scrollbar-thumb {
+    background: rgba(255, 255, 255, 0.2);
+    border-radius: 2px;
+}
+
+.options-list {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
 }
 
 .option-item {
-    padding: 6px 4px;
-    text-align: center;
+    padding: 10px 12px;
+    text-align: left;
     cursor: pointer;
-    border-radius: 4px;
-    color: rgba(255, 255, 255, 0.8);
-    transition: all 0.2s;
-    font-size: 13px;
+    border-radius: 6px;
+    color: rgba(255, 255, 255, 0.7);
+    transition: all 0.2s ease;
+    font-size: 14px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
 }
 
 .option-item:hover {
-    background: rgba(255, 255, 255, 0.1);
+    background: rgba(255, 255, 255, 0.08);
     color: #fff;
+    padding-left: 16px;
 }
 
 .option-item.selected {
-    background: rgba(59, 130, 246, 0.5);
-    color: #fff;
-    font-weight: 500;
+    background: rgba(59, 130, 246, 0.2);
+    color: #60a5fa;
+    font-weight: 600;
+}
+
+.dot {
+    width: 6px;
+    height: 6px;
+    background: #60a5fa;
+    border-radius: 50%;
+    box-shadow: 0 0 8px rgba(96, 165, 250, 0.6);
 }
 
 .chart-container {

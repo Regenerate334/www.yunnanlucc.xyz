@@ -1,7 +1,8 @@
 <template>
   <div class="echarts-prefecture-pie">
-    <button @click="toggleChart" class="control-btn" :class="{ active: isVisible }" title="ECharts 地级市土地利用结构">
+    <button @click="toggleChart" class="control-btn" :class="{ active: isVisible }" title="地级市土地利用饼图">
       <img :src="iconUrl" alt="图标" class="icon-img" />
+      <span class="btn-label">市</span>
     </button>
 
     <transition name="fade">
@@ -11,7 +12,7 @@
     <transition name="slide-fade">
       <div v-if="isVisible" class="modal-window" @click.stop>
         <div class="modal-header">
-          <span class="modal-title">{{ props.year }}年 - 地级市土地利用结构</span>
+          <span class="modal-title">{{ props.year }}年云南省地级市土地利用结构</span>
           <button class="close-btn" @click.stop="toggleChart">✕</button>
         </div>
         <div ref="chartContainer" class="chart-container"></div>
@@ -23,7 +24,8 @@
 <script setup>
 import { ref, onUnmounted, watch, nextTick } from 'vue';
 import * as echarts from 'echarts';
-import { centroid } from '@turf/turf';
+import { centroid, area } from '@turf/turf';
+
 const iconUrl = '/assets/images/icons/prefecture_pie.png';
 
 const props = defineProps({
@@ -42,16 +44,16 @@ const cityLayout = {
   '曲靖市': { name: '曲靖' },
   '玉溪市': { name: '玉溪' },
   '保山市': { name: '保山' },
-  '昭通市': { name: '昭通' },
+  '昭通市': { name: '昭通', offset: [0, -10] },
   '丽江市': { name: '丽江' },
   '普洱市': { name: '普洱' },
   '临沧市': { name: '临沧' },
   '楚雄彝族自治州': { name: '楚雄' },
   '红河哈尼族彝族自治州': { name: '红河' },
   '文山壮族苗族自治州': { name: '文山' },
-  '西双版纳傣族自治州': { name: '西双版纳' },
+  '西双版纳傣族自治州': { name: '西双版纳', offset: [0, -15] },
   '大理白族自治州': { name: '大理' },
-  '德宏傣族景颇族自治州': { name: '德宏' },
+  '德宏傣族景颇族自治州': { name: '德宏', offset: [20, 0] },
   '怒江傈僳族自治州': { name: '怒江' },
   '迪庆藏族自治州': { name: '迪庆' }
 };
@@ -89,11 +91,14 @@ async function loadCitiesData() {
     const config = cityLayout[name] || {};
     const centerPoint = centroid(f);
     const geometricCenter = centerPoint.geometry.coordinates;
+    const regionArea = area(f);
 
     return {
       name: name,
       displayName: config.name || name,
-      geoCenter: geometricCenter
+      geoCenter: geometricCenter,
+      area: regionArea,
+      customOffset: config.offset || [0, 0]
     };
   });
 }
@@ -104,8 +109,6 @@ async function loadLandUseData() {
     const response = await fetch('/api/clcd/prefecture');
     if (response.ok) {
       landUseData = await response.json();
-    } else {
-      console.error('Failed to fetch prefecture data');
     }
   } catch (e) {
     console.error('Error fetching prefecture data:', e);
@@ -116,47 +119,66 @@ function getCityLandUse(cityName, year) {
   if (!landUseData) return [];
   const record = landUseData.find(d => {
     const regionName = d.region_name || '';
-    return regionName.includes(cityName) && d.year === year;
+    return regionName.includes(cityName) && d.year == year;
   });
+
   if (!record) return [];
+
+  const typeMapping = {
+    cropland: 'cropland',
+    forest: 'forest',
+    shrubland: 'shrub',
+    grassland: 'grassland',
+    water: 'water',
+    wetland: 'wetland',
+    impervious: 'impervious',
+    bareland: 'barren',
+    tundra: 'snow_ice'
+  };
 
   const types = ['cropland', 'forest', 'shrubland', 'grassland', 'water', 'wetland', 'impervious', 'bareland', 'tundra'];
   return types
-    .map(type => ({
-      name: landUseNames[type],
-      value: record[type] || 0,
-      itemStyle: { color: landUseColors[type] }
-    }))
+    .map(type => {
+      const dbKey = typeMapping[type];
+      const val = Number(record[dbKey]);
+      const valInKm2 = isNaN(val) ? 0 : val / 1000000;
+
+      return {
+        name: landUseNames[type],
+        value: valInKm2,
+        itemStyle: { color: landUseColors[type] }
+      };
+    })
     .filter(item => item.value > 0);
 }
 
-// 更新饼图位置和大小 - 支持缩放
 function updatePiePositions() {
   if (!chartInstance || !citiesData) return;
 
   const geoCoordSys = chartInstance.getModel().getComponent('geo', 0).coordinateSystem;
   const zoom = geoCoordSys.getZoom();
-  const baseRadius = 40;
-  const scaledRadius = baseRadius * zoom;
+  const maxArea = Math.max(...citiesData.map(c => c.area || 0));
+  const baseRadius = 35;
 
   const seriesUpdates = citiesData.map((city) => {
-    const pixelPoint = chartInstance.convertToPixel('geo', city.geoCenter);
-    if (!pixelPoint) {
-      return {};
-    }
+    const areaScale = city.area ? Math.sqrt(city.area / maxArea) : 0.5;
+    const adaptiveRadius = baseRadius * (0.5 + 0.5 * areaScale) * zoom;
+
     return {
-      center: pixelPoint,
-      radius: [0, scaledRadius],
+      radius: [0, adaptiveRadius],
       emphasis: {
         label: {
-          fontSize: Math.max(14, 14 * zoom) // 字体随缩放大小变化，最小14px
+          fontSize: Math.max(12, 13 * zoom * (0.8 + 0.2 * areaScale))
         }
       }
     };
   });
 
   chartInstance.setOption({
-    series: seriesUpdates
+    series: seriesUpdates,
+    geo: {
+      regions: []
+    }
   });
 }
 
@@ -172,7 +194,10 @@ async function initChart() {
     echarts.registerMap('yunnan_cities', citiesGeoJSON);
   }
 
-  chartInstance = echarts.init(chartContainer.value);
+  chartInstance = echarts.init(chartContainer.value, null, {
+    devicePixelRatio: window.devicePixelRatio,
+    renderer: 'canvas'
+  });
   const baseOption = getBaseChartOption(props.year);
   chartInstance.setOption(baseOption);
   updatePiePositions();
@@ -181,82 +206,38 @@ async function initChart() {
     updatePiePositions();
   });
 
-  chartInstance.on('mouseover', (params) => {
-    if (params.seriesType === 'pie') {
-      const cityName = params.seriesName;
-      const cityIndex = citiesData.findIndex(c => c.name === cityName);
-
-      if (cityIndex !== -1) {
-        const hoverData = new Array(citiesData.length).fill(null);
-        hoverData[cityIndex] = {
-          name: cityName,
-          value: citiesData[cityIndex].geoCenter,
-          label: {
-            show: true,
-            formatter: `{a|${params.percent.toFixed(1)}%}`,
-            rich: {
-              a: {
-                color: '#fff',
-                fontSize: 14,
-                fontWeight: 'bold',
-                backgroundColor: 'rgba(0,0,0,0.7)',
-                padding: [4, 8],
-                borderRadius: 4
-              }
-            }
-          }
-        };
-
-        chartInstance.setOption({
-          series: [
-            ...new Array(citiesData.length).fill({}),
-            {
-              id: 'hoverLabel',
-              data: hoverData
-            }
-          ]
-        });
-      }
-    }
-  });
-
-  chartInstance.on('mouseout', (params) => {
-    if (params.seriesType === 'pie') {
-      chartInstance.setOption({
-        series: [
-          ...new Array(citiesData.length).fill({}),
-          {
-            id: 'hoverLabel',
-            data: []
-          }
-        ]
-      });
-    }
-  });
-
   window.addEventListener('resize', handleResize);
 }
 
 function getBaseChartOption(year) {
   const pieSeries = citiesData.map(city => ({
     type: 'pie',
+    coordinateSystem: 'geo',
     name: city.name,
-    center: [0, 0],
-    radius: [0, 40],
+    center: city.name,
+    radius: [0, 35],
     data: getCityLandUse(city.name, year),
     label: { show: false },
+    tooltip: { show: false },
     emphasis: {
+      scale: true,
+      scaleSize: 10,
       label: {
         show: true,
         position: 'inside',
         formatter: params => {
-          return `${params.seriesName}\n${params.value.toFixed(0)} km²\n${params.percent.toFixed(1)}%`;
+          const val = params.value;
+          const areaStr = val >= 10000
+            ? (val / 10000).toFixed(2) + ' 万km²'
+            : val.toFixed(2) + ' km²';
+          return `${params.name}\n${areaStr}\n${params.percent.toFixed(1)}%`;
         },
-        fontSize: 14,
-        fontWeight: 'bold',
-        color: '#fff',
-        textBorderColor: '#000',
-        textBorderWidth: 1
+        fontSize: 13,
+        fontWeight: '700',
+        fontFamily: "'Inter', 'Microsoft YaHei', sans-serif",
+        color: '#1e293b',
+        textBorderColor: '#fff',
+        textBorderWidth: 2
       },
       itemStyle: {
         shadowBlur: 10,
@@ -272,29 +253,32 @@ function getBaseChartOption(year) {
   return {
     backgroundColor: 'transparent',
     tooltip: {
+      show: true,
       trigger: 'item',
-      borderColor: '#999',
-      borderWidth: 1,
-      backgroundColor: 'rgba(50, 50, 50, 0.9)',
-      textStyle: { color: '#fff' },
+      backgroundColor: '#fff',
+      padding: [8, 12],
+      borderRadius: 4,
+      borderWidth: 0,
+      shadowBlur: 10,
+      shadowColor: 'rgba(0,0,0,0.15)',
+      textStyle: {
+        color: '#1e293b',
+        fontSize: 15,
+        fontWeight: '600',
+        fontFamily: "'Inter', 'Microsoft YaHei', sans-serif"
+      },
       formatter: params => {
-        if (params.seriesType === 'pie') {
-          return `
-            <div style="padding: 8px;">
-              <strong style="font-size: 14px;">${params.seriesName}</strong><br/>
-              <span style="color: ${params.color};">●</span> ${params.name}: 
-              <strong>${params.value.toFixed(2)}</strong> km²<br/>
-              占比: <strong>${params.percent.toFixed(1)}%</strong>
-            </div>
-          `;
+        if (params.componentType === 'geo') {
+          const city = citiesData.find(c => c.name === params.name);
+          return city ? city.displayName : params.name;
         }
-        return '';
+        return null;
       }
     },
     legend: {
       data: Object.values(landUseNames),
       orient: 'horizontal',
-      bottom: '0%', // 继续下移图例
+      bottom: '0%',
       left: 'center',
       textStyle: {
         color: '#fff',
@@ -306,10 +290,11 @@ function getBaseChartOption(year) {
     geo: {
       map: 'yunnan_cities',
       roam: true,
-      scaleLimit: { min: 0.8, max: 3 },
+      scaleLimit: { min: 0.8, max: 4 },
       aspectScale: 1.0,
       layoutCenter: ['50%', '50%'],
-      layoutSize: '100%',
+      layoutSize: '90%',
+      label: { show: false },
       itemStyle: {
         areaColor: '#e7e8ea',
         borderColor: '#fff',
@@ -318,33 +303,12 @@ function getBaseChartOption(year) {
       emphasis: {
         label: { show: false },
         itemStyle: {
-          areaColor: '#d1d5db',
-          shadowBlur: 10,
-          shadowColor: 'rgba(0, 0, 0, 0.3)'
+          areaColor: '#fef08a'
         }
       },
       zlevel: 0
     },
-    series: [
-      ...pieSeries,
-      {
-        id: 'hoverLabel',
-        type: 'scatter',
-        coordinateSystem: 'geo',
-        geoIndex: 0,
-        data: [],
-        symbolSize: 0,
-        label: {
-          show: true,
-          position: 'bottom',
-          offset: [0, 20],
-          color: '#fff',
-          fontSize: 14,
-          fontWeight: 'bold'
-        },
-        zlevel: 4
-      }
-    ]
+    series: pieSeries
   };
 }
 
@@ -364,7 +328,6 @@ function handleResize() {
 
 async function toggleChart() {
   isVisible.value = !isVisible.value;
-
   if (isVisible.value) {
     await nextTick();
     if (chartInstance) {
@@ -430,6 +393,17 @@ onUnmounted(() => {
   box-shadow: 0 0 3px rgba(156, 201, 255, 0.2);
 }
 
+.btn-label {
+  position: absolute;
+  bottom: 2px;
+  right: 4px;
+  font-size: 10px;
+  color: rgba(255, 255, 255, 0.8);
+  font-weight: bold;
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.5);
+  pointer-events: none;
+}
+
 .icon-img {
   width: 100%;
   height: 100%;
@@ -471,11 +445,9 @@ onUnmounted(() => {
   color: white;
   display: flex;
   justify-content: flex-end;
-  /* 按钮靠右 */
   align-items: center;
   border-bottom: 1px solid rgba(255, 255, 255, 0.12);
   position: relative;
-  /* 为标题绝对定位做参照 */
 }
 
 .modal-title {
@@ -488,7 +460,6 @@ onUnmounted(() => {
   width: 100%;
   text-align: center;
   pointer-events: none;
-  /* 防止遮挡点击 */
 }
 
 .close-btn {
