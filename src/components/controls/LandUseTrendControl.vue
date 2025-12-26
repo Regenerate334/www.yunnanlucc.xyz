@@ -1,10 +1,7 @@
 <template>
   <div class="land-use-trend-control">
     <button @click="toggleChart" class="control-btn" :class="{ active: isVisible }" title="土地利用变化趋势">
-      <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"
-        stroke-linejoin="round">
-        <polyline points="22 12 18 12 15 21 9 3 6 12 2 12"></polyline>
-      </svg>
+      <img src="/src/assets/zhexiantu_icon.png" alt="趋势图" class="icon-img" />
     </button>
 
     <transition name="fade">
@@ -18,7 +15,15 @@
           <button class="close-btn" @click.stop="toggleChart">✕</button>
         </div>
         <div class="chart-wrapper">
-          <LandUseTrendChart :seriesData="seriesData" />
+          <div v-if="isLoading" class="loading-container">
+            <div class="spinner"></div>
+            <span>正在从数据库加载趋势数据...</span>
+          </div>
+          <div v-else-if="hasError && localSeriesData.length === 0" class="error-container">
+            <span>数据加载失败，请检查后端服务。</span>
+            <button @click="fetchTrendData" class="retry-btn">重试</button>
+          </div>
+          <LandUseTrendChart v-else :seriesData="localSeriesData" />
         </div>
       </div>
     </transition>
@@ -26,7 +31,7 @@
 </template>
 
 <script setup>
-import { ref, onMounted, onUnmounted } from 'vue';
+import { ref, onMounted } from 'vue';
 import LandUseTrendChart from '../charts/LandUseTrendChart.vue';
 
 const props = defineProps({
@@ -37,9 +42,35 @@ const props = defineProps({
 });
 
 const isVisible = ref(false);
+const localSeriesData = ref([]);
+const isLoading = ref(false);
+const hasError = ref(false);
+
+async function fetchTrendData() {
+  if (localSeriesData.value.length > 0) return; // 避免重复加载
+
+  isLoading.value = true;
+  hasError.value = false;
+  try {
+    const response = await fetch('/api/clcd/province');
+    if (!response.ok) throw new Error('Failed to fetch trend data');
+    localSeriesData.value = await response.json();
+  } catch (error) {
+    console.error('Error fetching trend data:', error);
+    hasError.value = true;
+    if (props.seriesData && props.seriesData.length > 0) {
+      localSeriesData.value = props.seriesData;
+    }
+  } finally {
+    isLoading.value = false;
+  }
+}
 
 function toggleChart() {
   isVisible.value = !isVisible.value;
+  if (isVisible.value) {
+    fetchTrendData();
+  }
 }
 </script>
 
@@ -76,9 +107,10 @@ function toggleChart() {
   box-shadow: 0 0 3px rgba(156, 201, 255, 0.2);
 }
 
-.icon {
-  width: 24px;
-  height: 24px;
+.icon-img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
 }
 
 .modal-backdrop {
@@ -159,6 +191,50 @@ function toggleChart() {
   height: 100%;
   padding: 16px;
   overflow: hidden;
+  position: relative;
+}
+
+.loading-container,
+.error-container {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 15px;
+  color: #9cc9ff;
+  font-size: 16px;
+}
+
+.spinner {
+  width: 40px;
+  height: 40px;
+  border: 4px solid rgba(156, 201, 255, 0.1);
+  border-left-color: #00E5FF;
+  border-radius: 50%;
+  animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+.retry-btn {
+  padding: 8px 20px;
+  background: rgba(0, 229, 255, 0.2);
+  border: 1px solid #00E5FF;
+  color: #fff;
+  border-radius: 4px;
+  cursor: pointer;
+  transition: all 0.3s;
+}
+
+.retry-btn:hover {
+  background: rgba(0, 229, 255, 0.4);
 }
 
 .fade-enter-active,

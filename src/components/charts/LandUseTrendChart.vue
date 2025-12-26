@@ -5,7 +5,7 @@
 </template>
 
 <script setup>
-import { ref, onMounted, onUnmounted, watch, nextTick, computed } from 'vue'
+import { ref, onMounted, onUnmounted, watch, nextTick } from 'vue'
 import * as echarts from 'echarts'
 
 const props = defineProps({
@@ -18,7 +18,6 @@ const props = defineProps({
 const chartContainer = ref(null)
 const chartInstance = ref(null)
 
-// 土地利用类型映射
 const landTypeMap = {
   'cropland': '耕地',
   'forest': '林地',
@@ -37,10 +36,10 @@ const landUseColors = {
   'shrub': '#33A02C',
   'grassland': '#ABD37B',
   'water': '#1E69B4',
-  'wetland': '#2899E8',
-  'impervious': '#E24290',
+  'snow_ice': '#A6CEE3',
   'barren': '#CFBDA3',
-  'snow_ice': '#A6CEE3'
+  'impervious': '#E24290',
+  'wetland': '#2899E8'
 };
 
 const initChart = () => {
@@ -57,144 +56,177 @@ const initChart = () => {
 const updateChart = () => {
   if (!chartInstance.value || !props.seriesData.length) return
 
-  // 1. 提取年份作为 X 轴数据
   const years = props.seriesData.map(d => d.year).sort((a, b) => a - b);
+  const keys = Object.keys(landTypeMap);
 
-  // 2. 构建 Series 数据
-  const series = Object.keys(landTypeMap).map(key => {
-    const data = years.map(year => {
-      const record = props.seriesData.find(d => d.year === year);
-      const val = record ? record[key] : 0;
-      return val / 1000000; // 转换为 km²
+  const grids = [];
+  const xAxes = [];
+  const yAxes = [];
+  const series = [];
+  const titles = [];
+
+  const cols = 3;
+  const rows = 3;
+
+  // 布局参数
+  const leftMargin = 5;
+  const rightMargin = 5;
+  const topMargin = 8;
+  const bottomMargin = 12;
+  const hGap = 6; // 水平间距
+  const vGap = 10; // 垂直间距
+
+  const gridWidth = (100 - leftMargin - rightMargin - hGap * (cols - 1)) / cols;
+  const gridHeight = (100 - topMargin - bottomMargin - vGap * (rows - 1)) / rows;
+
+  keys.forEach((key, index) => {
+    const r = Math.floor(index / cols);
+    const c = index % cols;
+
+    const left = leftMargin + c * (gridWidth + hGap);
+    const top = topMargin + r * (gridHeight + vGap);
+
+    // 1. 定义网格
+    grids.push({
+      left: left + '%',
+      top: top + '%',
+      width: gridWidth + '%',
+      height: gridHeight + '%',
+      containLabel: false
     });
 
-    return {
+    // 2. 定义标题 (放在每个子图上方)
+    titles.push({
+      text: landTypeMap[key],
+      left: (left + gridWidth / 2) + '%',
+      top: (top - 4) + '%',
+      textAlign: 'center',
+      textStyle: { color: '#00E5FF', fontSize: 14, fontWeight: 'bold' }
+    });
+
+    // 3. 定义 X 轴
+    xAxes.push({
+      gridIndex: index,
+      type: 'category',
+      boundaryGap: false,
+      data: years,
+      axisLabel: {
+        show: r === rows - 1, // 只有最后一行显示年份
+        color: '#fff',
+        fontSize: 10,
+        margin: 12,
+        interval: 0, // 强制显示所有标签
+        rotate: 45   // 斜着放置标签
+      },
+      axisLine: { lineStyle: { color: 'rgba(255,255,255,0.2)' } },
+      axisTick: { show: r === rows - 1 }
+    });
+
+    // 4. 定义 Y 轴 (独立缩放)
+    yAxes.push({
+      gridIndex: index,
+      type: 'value',
+      scale: true, // 关键：自动缩放，突出拐点
+      name: 'km²',
+      nameTextStyle: { color: '#888', fontSize: 10 },
+      axisLabel: {
+        color: '#fff',
+        fontSize: 10,
+        formatter: (value) => {
+          if (value >= 10000) return (value / 10000).toFixed(1) + '万';
+          return value.toFixed(0);
+        }
+      },
+      splitLine: { lineStyle: { color: 'rgba(255,255,255,0.05)' } },
+      axisLine: { show: true, lineStyle: { color: 'rgba(255,255,255,0.1)' } }
+    });
+
+    // 5. 定义数据序列
+    const data = years.map(year => {
+      const record = props.seriesData.find(d => d.year === year);
+      return (record ? record[key] : 0) / 1000000;
+    });
+
+    series.push({
       name: landTypeMap[key],
       type: 'line',
-      // 不再使用堆叠，改为动态排序风格 (Line Race)
-      showSymbol: false,
-      smooth: true,
-      emphasis: { focus: 'series' },
-      endLabel: {
-        show: true,
-        formatter: function (params) {
-          const val = params.value;
-          const areaStr = val >= 10000
-            ? (val / 10000).toFixed(1) + '万'
-            : val.toFixed(0);
-          return params.seriesName + ': ' + areaStr;
-        },
-        distance: 10,
-        color: 'inherit',
-        fontSize: 12,
-        fontWeight: 'bold'
-      },
-      labelLayout: {
-        moveOverlap: 'shiftY'
-      },
+      xAxisIndex: index,
+      yAxisIndex: index,
       data: data,
-      itemStyle: { color: landUseColors[key] }
-    };
+      showSymbol: true,
+      symbolSize: 4,
+      smooth: false,
+      itemStyle: { color: landUseColors[key] },
+      lineStyle: { width: 3, shadowBlur: 10, shadowColor: 'rgba(0,0,0,0.5)', shadowOffsetY: 2 },
+      areaStyle: {
+        color: new echarts.graphic.LinearGradient(0, 0, 0, 1, [
+          { offset: 0, color: landUseColors[key] + '66' },
+          { offset: 1, color: landUseColors[key] + '00' }
+        ])
+      },
+      emphasis: {
+        lineStyle: { width: 5, shadowBlur: 15 }
+      },
+      animationDelay: function (idx) {
+        return idx * 50; // 逐年延迟，形成生长动画效果
+      }
+    });
   });
 
   const option = {
-    animationDuration: 10000,
-    title: {
-      text: '土地利用类型变化趋势 (Line Race)',
-      left: 'center',
-      textStyle: { color: '#fff', fontSize: 16 }
-    },
+    backgroundColor: 'transparent',
+    animationDuration: 2000,
+    animationEasing: 'quadraticOut',
+    title: [
+      {
+        text: '土地利用类型变化趋势',
+        left: 'center',
+        top: 10,
+        textStyle: { color: '#fff', fontSize: 18 }
+      },
+      ...titles
+    ],
     tooltip: {
-      show: true,
       trigger: 'axis',
-      confine: false, // 允许超出容器，避免被遮挡
-      appendToBody: true, // 关键：将 tooltip 渲染到 body，避免 z-index 问题
-      order: 'valueDesc',
-      axisPointer: {
-        type: 'line',
-        lineStyle: {
-          color: 'rgba(255, 255, 255, 0.5)',
-          type: 'dashed',
-          width: 2
-        }
-      },
-      backgroundColor: 'rgba(255, 255, 255, 0.98)',
-      borderColor: '#ddd',
+      confine: true,
+      appendToBody: true,
+      backgroundColor: 'rgba(20, 30, 60, 0.95)',
+      borderColor: '#345',
       borderWidth: 1,
-      textStyle: {
-        color: '#333',
-        fontSize: 14,
-        lineHeight: 20
+      textStyle: { color: '#fff', fontSize: 12 },
+      axisPointer: {
+        type: 'cross',
+        lineStyle: { color: 'rgba(255,255,255,0.3)', type: 'dashed' }
       },
-      padding: [12, 16],
-      extraCssText: 'box-shadow: 0 4px 12px rgba(0,0,0,0.15); z-index: 99999 !important; border-radius: 4px;',
       formatter: function (params) {
         if (!params || params.length === 0) return '';
+        const year = params[0].axisValue;
+        const record = props.seriesData.find(d => d.year == year);
+        if (!record) return year;
 
-        let html = `<div style="font-weight:600; margin-bottom:10px; padding-bottom:8px; border-bottom:2px solid #e0e0e0; color:#333; font-size:15px;">`;
-        html += `${params[0].axisValue}年`;
-        html += `</div>`;
+        let html = `<div style="font-weight:bold; margin-bottom:8px; border-bottom:1px solid #456; padding-bottom:5px;">${year}年 详细数据</div>`;
+        const sortedKeys = Object.keys(landTypeMap).sort((a, b) => record[b] - record[a]);
 
-        params.forEach(item => {
-          const val = item.value;
+        sortedKeys.forEach(k => {
+          const val = record[k] / 1000000;
           const areaStr = val >= 10000
             ? (val / 10000).toFixed(2) + ' 万km²'
-            : val.toFixed(0) + ' km²';
+            : val.toFixed(2) + ' km²';
 
-          html += `<div style="display:flex; justify-content:space-between; align-items:center; margin:6px 0; min-width:220px;">`;
-          html += `<span style="display:flex; align-items:center; gap:8px;">`;
-          html += `<span style="display:inline-block; width:12px; height:12px; border-radius:50%; background:${item.color};"></span>`;
-          html += `<span style="color:#555;">${item.seriesName}</span>`;
-          html += `</span>`;
-          html += `<span style="font-weight:700; color:#000; font-family:monospace; margin-left:24px;">${areaStr}</span>`;
-          html += `</div>`;
+          html += `<div style="display:flex; justify-content:space-between; align-items:center; margin:3px 0; min-width:180px;">
+            <span style="display:flex; align-items:center;">
+              <span style="display:inline-block; width:8px; height:8px; border-radius:50%; background:${landUseColors[k]}; margin-right:8px;"></span>
+              ${landTypeMap[k]}
+            </span>
+            <span style="font-weight:bold; margin-left:15px; font-family:monospace;">${areaStr}</span>
+          </div>`;
         });
-
         return html;
       }
     },
-    legend: {
-      show: false // Line Race 风格通常使用 endLabel，不需要图例
-    },
-    grid: {
-      left: '3%',
-      right: '150', // 为右侧标签留出空间
-      bottom: '10%',
-      top: '12%',
-      containLabel: true
-    },
-    toolbox: {
-      feature: {
-        saveAsImage: {}
-      },
-      iconStyle: {
-        borderColor: '#fff'
-      }
-    },
-    xAxis: [
-      {
-        type: 'category',
-        boundaryGap: false,
-        data: years,
-        axisLabel: { color: '#fff' },
-        axisLine: { lineStyle: { color: 'rgba(255,255,255,0.3)' } }
-      }
-    ],
-    yAxis: [
-      {
-        type: 'value',
-        name: '面积 (km²)',
-        nameTextStyle: { color: '#fff' },
-        axisLabel: {
-          color: '#fff',
-          formatter: (value) => {
-            if (value >= 10000) return (value / 10000).toFixed(1) + '万';
-            return value;
-          }
-        },
-        splitLine: { lineStyle: { color: 'rgba(255,255,255,0.1)' } }
-      }
-    ],
+    grid: grids,
+    xAxis: xAxes,
+    yAxis: yAxes,
     series: series
   };
 
@@ -229,6 +261,6 @@ watch(() => props.seriesData, () => {
 .chart-container {
   width: 100%;
   height: 100%;
-  min-height: 400px;
+  min-height: 600px;
 }
 </style>

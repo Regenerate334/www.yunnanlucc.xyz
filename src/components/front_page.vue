@@ -27,6 +27,7 @@
       <EChartsPrefecturePie :year="selectedYear" />
       <EChartsCountyPie :year="selectedYear" />
       <LandUseTrendControl :seriesData="cachedClcdData" />
+      <RegionalTrendControl />
     </div>
 
     <!-- 测量结果面板集成到按钮组件 -->
@@ -65,6 +66,7 @@ import AreaMeasureButton from './controls/AreaMeasureButton.vue';
 import EChartsPrefecturePie from './controls/EChartsPrefecturePie.vue';
 import EChartsCountyPie from './controls/EChartsCountyPie.vue';
 import LandUseTrendControl from './controls/LandUseTrendControl.vue';
+import RegionalTrendControl from './controls/RegionalTrendControl.vue';
 import { useMapStore } from '../stores/map.ts';
 
 const mapStore = useMapStore();

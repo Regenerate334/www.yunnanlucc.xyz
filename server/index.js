@@ -112,7 +112,6 @@ app.get('/api/clcd/:year/summary', async (req, res) => {
   const year = Number(req.params.year);
   if (!Number.isInteger(year)) return res.status(400).json({ error: 'Invalid year' });
   try {
-    // landuse_type: 假设为数值编码，前端映射到名称；area_sqm -> km²
     const sql = `
       SELECT landuse_type, SUM(area_sqm) / 1e6 AS area_km2
       FROM public.yunnan_clcd_merged_table
@@ -130,7 +129,7 @@ app.get('/api/clcd/:year/summary', async (req, res) => {
   } catch (err) { handleError(res, err); }
 });
 
-// 获取年度总面积堆叠序列：返回 years x classes 的矩阵
+// 获取年度总面积堆叠序列
 app.get('/api/clcd/series', async (req, res) => {
   try {
     const level = (req.query.level || 'province').toString();
@@ -150,33 +149,9 @@ app.get('/api/clcd/series', async (req, res) => {
       GROUP BY year, landuse_type
       ORDER BY year, landuse_type
     `;
-    console.time(`[series] ${level}:${code} ${start}-${end}`);
     const { rows } = await pool.query(sql, params);
-    console.timeEnd(`[series] ${level}:${code} ${start}-${end}`);
     const mapped = rows.map(r => ({
       year: Number(r.year),
-      class_code: Number(r.landuse_type),
-      class_name: CLCD_CLASS_MAP[Number(r.landuse_type)] || String(r.landuse_type),
-      area_km2: Number(r.area_km2)
-    }));
-    res.json(mapped);
-  } catch (err) { handleError(res, err); }
-});
-
-// 可选：按州市统计
-app.get('/api/clcd/:year/prefecture-summary', async (req, res) => {
-  const year = Number(req.params.year);
-  try {
-    const sql = `
-      SELECT prefecture, landuse_type, SUM(area_sqm)/1e6 AS area_km2
-      FROM public.yunnan_clcd_merged_table
-      WHERE year = $1
-      GROUP BY prefecture, landuse_type
-      ORDER BY prefecture, landuse_type
-    `;
-    const { rows } = await pool.query(sql, [year]);
-    const mapped = rows.map(r => ({
-      prefecture: r.prefecture,
       class_code: Number(r.landuse_type),
       class_name: CLCD_CLASS_MAP[Number(r.landuse_type)] || String(r.landuse_type),
       area_km2: Number(r.area_km2)
@@ -188,34 +163,66 @@ app.get('/api/clcd/:year/prefecture-summary', async (req, res) => {
 // 获取省份数据（宽表格式）
 app.get('/api/clcd/province', async (_req, res) => {
   try {
-    // clcd_province 表结构: id, land_use_type, year, area
-    // 需要转换为宽表: [{year: 1985, cropland: 123, forest: 456, ...}, ...]
     const sql = `
       SELECT year, land_use_type, area
       FROM public.clcd_province
       ORDER BY year, land_use_type
     `;
     const { rows } = await pool.query(sql);
-
     const yearMap = {};
     rows.forEach(row => {
-      if (!yearMap[row.year]) {
-        yearMap[row.year] = { year: row.year };
-      }
-      // land_use_type 应该是字符串，如 'cropland', 'forest'
-      // 如果是数字编码，需要映射。根据截图，它是 character varying(50)，所以直接使用
+      if (!yearMap[row.year]) yearMap[row.year] = { year: row.year };
       yearMap[row.year][row.land_use_type] = Number(row.area);
     });
-
     const result = Object.values(yearMap).sort((a, b) => a.year - b.year);
     res.json(result);
+  } catch (err) { handleError(res, err); }
+});
+
+// 获取特定区域（州市或区县）的历年趋势数据
+app.get('/api/clcd/trend/:level/:name', async (req, res) => {
+  const { level, name } = req.params;
+  try {
+    console.log(`[api] Fetching trend for ${level}: ${name}`);
+    const tableName = level === 'prefecture' ? 'public.clcd_prefecture' : 'public.clcd_county';
+    const sql = `SELECT * FROM ${tableName} WHERE TRIM(region_name) = $1 ORDER BY year ASC`;
+    const { rows } = await pool.query(sql, [name.trim()]);
+
+    if (rows.length === 0) {
+      console.log(`[api] No data found for ${name}`);
+      return res.json([]);
+    }
+
+    const result = rows.map(row => ({
+      year: row.year,
+      cropland: Number(row.cropland),
+      forest: Number(row.forest),
+      shrub: Number(row.shrub),
+      grassland: Number(row.grassland),
+      water: Number(row.water),
+      snow_ice: Number(row.snow_ice),
+      barren: Number(row.barren),
+      impervious: Number(row.impervious),
+      wetland: Number(row.wetland)
+    }));
+    res.json(result);
+  } catch (err) { handleError(res, err); }
+});
+
+// 获取所有区域名称列表
+app.get('/api/regions/:level', async (req, res) => {
+  const { level } = req.params;
+  try {
+    const tableName = level === 'prefecture' ? 'public.clcd_prefecture' : 'public.clcd_county';
+    const sql = `SELECT DISTINCT region_name FROM ${tableName} ORDER BY region_name ASC`;
+    const { rows } = await pool.query(sql);
+    res.json(rows.map(r => r.region_name));
   } catch (err) { handleError(res, err); }
 });
 
 // 获取地级市数据
 app.get('/api/clcd/prefecture', async (_req, res) => {
   try {
-    // clcd_prefecture 表已经是宽表结构
     const sql = 'SELECT * FROM public.clcd_prefecture ORDER BY year, region_name';
     const { rows } = await pool.query(sql);
     res.json(rows);
@@ -225,7 +232,6 @@ app.get('/api/clcd/prefecture', async (_req, res) => {
 // 获取区县数据
 app.get('/api/clcd/county', async (_req, res) => {
   try {
-    // clcd_county 表已经是宽表结构
     const sql = 'SELECT * FROM public.clcd_county ORDER BY year, region_name';
     const { rows } = await pool.query(sql);
     res.json(rows);
@@ -245,59 +251,27 @@ app.get('/api/clcd/transfer-matrix/periods', async (_req, res) => {
 app.get('/api/clcd/transfer-matrix/:period', async (req, res) => {
   const { period } = req.params;
   try {
-    const sql = `
-      SELECT * FROM public.clcd_transfer_matrix 
-      WHERE period = $1
-    `;
+    const sql = `SELECT * FROM public.clcd_transfer_matrix WHERE period = $1`;
     const { rows } = await pool.query(sql, [period]);
-
-    // 转换字段名以匹配前端期望 (from_class -> from, to_class -> to)
-    // CLCD_CLASS_MAP 映射: 1->Cropland, etc.
-    // 数据库中 from_class 已经是字符串 'cropland' 等 (根据截图)
-    // 截图显示 from_class: 'cropland', to_class: 'cropland'
-    // 前端 generateTransferMatrix 返回 { percentageMatrix: { from: { to: percent } } }
-
-    // 我们需要将数据库的列表格式转换为矩阵格式
-    // DB: [{from_class: 'cropland', to_class: 'forest', area: 123}, ...]
-
     const matrix = {};
     const landTypes = new Set();
-
     rows.forEach(row => {
       landTypes.add(row.from_class);
       landTypes.add(row.to_class);
-
       if (!matrix[row.from_class]) matrix[row.from_class] = {};
       matrix[row.from_class][row.to_class] = Number(row.area);
     });
-
-    // 计算百分比矩阵
     const percentageMatrix = {};
     const types = Array.from(landTypes);
-
     types.forEach(from => {
       percentageMatrix[from] = {};
       let total = 0;
+      types.forEach(to => { total += (matrix[from]?.[to] || 0); });
       types.forEach(to => {
-        total += (matrix[from]?.[to] || 0);
-      });
-
-      types.forEach(to => {
-        if (total > 0) {
-          percentageMatrix[from][to] = parseFloat(((matrix[from]?.[to] || 0) / total * 100).toFixed(2));
-        } else {
-          percentageMatrix[from][to] = 0;
-        }
+        percentageMatrix[from][to] = total > 0 ? parseFloat(((matrix[from]?.[to] || 0) / total * 100).toFixed(2)) : 0;
       });
     });
-
-    res.json({
-      absoluteMatrix: matrix,
-      percentageMatrix: percentageMatrix,
-      landTypes: types,
-      period: period
-    });
-
+    res.json({ absoluteMatrix: matrix, percentageMatrix, landTypes: types, period });
   } catch (err) { handleError(res, err); }
 });
 
@@ -305,5 +279,3 @@ const port = Number(process.env.PORT || 3000);
 app.listen(port, () => {
   console.log(`[server] listening on http://localhost:${port}`);
 });
-
-
