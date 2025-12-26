@@ -1,7 +1,7 @@
 <template>
     <div class="area-measure-control">
-        <button @click="handleToggle" class="measure-btn" :class="{ active: activeTool === 'area' }" title="测面积">
-            <span class="measure-icon">📐</span>
+        <button @click="toggleMeasure" class="measure-btn" :class="{ active: isMeasuring }" title="测面积">
+            <img src="/assets/images/icons/cemianji.png" class="measure-icon" alt="测面积" />
         </button>
 
         <!-- 右侧弹出结果面板 -->
@@ -40,6 +40,7 @@
 </template>
 
 <script setup>
+import { computed } from 'vue';
 import { useMeasurement } from '../../composables/useMeasurement';
 
 const {
@@ -53,9 +54,15 @@ const {
     formatArea
 } = useMeasurement();
 
-function handleToggle() {
-    activateTool('area');
+function toggleMeasure() {
+    if (activeTool.value === 'area') {
+        activateTool(null);
+    } else {
+        activateTool('area');
+    }
 }
+
+const isMeasuring = computed(() => activeTool.value === 'area');
 </script>
 
 <style scoped>
@@ -97,7 +104,9 @@ function handleToggle() {
 }
 
 .measure-icon {
-    font-size: 24px;
+    width: 24px;
+    height: 24px;
+    object-fit: contain;
     opacity: 0.9;
     transition: all 0.3s ease;
 }

@@ -6,16 +6,11 @@
         <path d="M2 4l4 4 4-4" stroke="currentColor" stroke-width="2" fill="none" />
       </svg>
     </div>
-    
+
     <transition name="dropdown">
       <div v-if="isOpen" class="dropdown-menu">
-        <div 
-          v-for="map in baseMaps" 
-          :key="map.id"
-          class="dropdown-item"
-          :class="{ active: selectedMap === map.id }"
-          @click="selectMap(map.id)"
-        >
+        <div v-for="map in baseMaps" :key="map.id" class="dropdown-item" :class="{ active: selectedMap === map.id }"
+          @click="selectMap(map.id)">
           {{ map.name }}
         </div>
       </div>
@@ -60,19 +55,23 @@ if (typeof window !== 'undefined') {
 <style scoped>
 .basemap-selector {
   position: relative;
-  display: inline-block; /* 自适应宽度 */
+  display: inline-block;
+  /* 自适应宽度 */
   user-select: none;
 }
 
 .selector-header {
   display: flex;
   align-items: center;
-  justify-content: center; /* 居中对齐 */
+  justify-content: center;
+  /* 居中对齐 */
   gap: 8px;
-  padding: 8px 12px; /* 调整 padding 为 8px，与年份选择器一致 */
+  padding: 8px 12px;
+  /* 调整 padding 为 8px，与年份选择器一致 */
   background: rgba(42, 61, 110, 0.2);
   border: 1px solid rgba(255, 255, 255, 0.2);
-  border-radius: 6px; /* 圆角 6px */
+  border-radius: 6px;
+  /* 圆角 6px */
   backdrop-filter: blur(8px);
   cursor: pointer;
   transition: all 0.3s ease;
@@ -87,7 +86,8 @@ if (typeof window !== 'undefined') {
 
 .selected-map {
   color: #fff;
-  font-size: 13px; /* 字体 13px */
+  font-size: 13px;
+  /* 字体 13px */
   font-weight: 500;
 }
 

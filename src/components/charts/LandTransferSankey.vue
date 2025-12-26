@@ -4,44 +4,29 @@
       <div class="spinner"></div>
       <p>加载土地转移数据...</p>
     </div>
-    
+
     <div v-else-if="error" class="error-state">
       <p>{{ error }}</p>
     </div>
-    
+
     <div v-else-if="!hasData" class="no-data-state">
       <p>暂无数据</p>
     </div>
-    
+
     <div v-else ref="chartContainer" class="chart-container"></div>
-    
+
     <!-- 图表控制栏 -->
     <div v-if="!loading && hasData" class="chart-controls">
       <div class="control-group">
-        <label>起始年份：</label>
-        <select v-model="selectedStartYear" @change="loadAndRender">
-          <option v-for="year in availableYears" :key="year" :value="year">
-            {{ year }}
+        <label>时间段：</label>
+        <select v-model="selectedPeriod" @change="loadAndRender">
+          <option v-for="period in availablePeriods" :key="period" :value="period">
+            {{ formatPeriod(period) }}
           </option>
         </select>
       </div>
-      
       <div class="control-group">
-        <label>结束年份：</label>
-        <select v-model="selectedEndYear" @change="loadAndRender">
-          <option v-for="year in availableYears" :key="year" :value="year">
-            {{ year }}
-          </option>
-        </select>
-      </div>
-      
-      <div class="control-group">
-        <label>地区层级：</label>
-        <select v-model="level" @change="loadAndRender">
-          <option value="province">省级</option>
-          <option value="prefecture">地级市</option>
-          <option value="county">县级</option>
-        </select>
+        <span class="note">注：数据为全省范围</span>
       </div>
     </div>
   </div>
@@ -50,21 +35,17 @@
 <script setup>
 import { ref, onMounted, onUnmounted, computed } from 'vue'
 import * as echarts from 'echarts'
-import { loadLandUseConfig, loadProvinceData, loadPrefectureData, loadCountyData } from '@/utils/clcdDataLoader'
-import { generateTransferMatrix } from '@/utils/indicators'
+import { loadLandUseConfig, loadTransferMatrixPeriods, loadTransferMatrixData } from '@/utils/clcdDataLoader'
 
 // Props
 const props = defineProps({
+  // 保留 props 以兼容现有调用，但主要逻辑改为使用 period
   startYear: {
     type: Number,
-    default: 2000
+    default: null
   },
   endYear: {
     type: Number,
-    default: 2020
-  },
-  region: {
-    type: String,
     default: null
   }
 })
@@ -76,20 +57,22 @@ const loading = ref(true)
 const error = ref(null)
 const config = ref(null)
 const transferData = ref(null)
-const availableYears = ref([])
-const selectedStartYear = ref(props.startYear)
-const selectedEndYear = ref(props.endYear)
-const level = ref('province')
+const availablePeriods = ref([])
+const selectedPeriod = ref('')
 
 // Computed
 const hasData = computed(() => transferData.value !== null)
 
 // Methods
+const formatPeriod = (period) => {
+  return period.replace('_', ' - ')
+}
+
 const initChart = () => {
   if (!chartContainer.value) return
-  
+
   chartInstance.value = echarts.init(chartContainer.value)
-  
+
   // 监听窗口大小变化
   window.addEventListener('resize', handleResize)
 }
@@ -104,44 +87,38 @@ const loadData = async () => {
   try {
     loading.value = true
     error.value = null
-    
+
     // 加载配置
     if (!config.value) {
       config.value = await loadLandUseConfig()
     }
-    
-    // 根据层级加载数据
-    let dataArray
-    switch (level.value) {
-      case 'province':
-        dataArray = await loadProvinceData()
-        break
-      case 'prefecture':
-        dataArray = await loadPrefectureData()
-        break
-      case 'county':
-        dataArray = await loadCountyData()
-        break
-      default:
-        dataArray = await loadProvinceData()
+
+    // 加载可用时间段
+    if (availablePeriods.value.length === 0) {
+      availablePeriods.value = await loadTransferMatrixPeriods()
+
+      // 尝试根据 props 设置初始时间段
+      if (props.startYear && props.endYear) {
+        const target = `${props.startYear}_${props.endYear}`
+        if (availablePeriods.value.includes(target)) {
+          selectedPeriod.value = target
+        }
+      }
+
+      // 如果没有匹配或未设置，默认选择第一个（通常是最早的）
+      if (!selectedPeriod.value && availablePeriods.value.length > 0) {
+        selectedPeriod.value = availablePeriods.value[0]
+      }
     }
-    
-    // 提取可用年份
-    const years = [...new Set(dataArray.map(d => d.year))].sort((a, b) => a - b)
-    availableYears.value = years
-    
-    // 筛选起止年份数据
-    const t1Data = dataArray.filter(d => d.year === selectedStartYear.value)
-    const t2Data = dataArray.filter(d => d.year === selectedEndYear.value)
-    
-    if (t1Data.length === 0 || t2Data.length === 0) {
-      error.value = '所选年份数据不完整'
+
+    if (!selectedPeriod.value) {
+      error.value = '无可用时间段数据'
       return
     }
-    
-    // 生成转移矩阵
-    transferData.value = generateTransferMatrix(t1Data, t2Data)
-    
+
+    // 加载选中时间段的数据
+    transferData.value = await loadTransferMatrixData(selectedPeriod.value)
+
   } catch (err) {
     console.error('加载数据失败:', err)
     error.value = err.message || '数据加载失败'
@@ -152,20 +129,20 @@ const loadData = async () => {
 
 const renderChart = () => {
   if (!chartInstance.value || !transferData.value || !config.value) return
-  
+
   const matrix = transferData.value.percentageMatrix
   const landTypes = transferData.value.landTypes
-  
+
   // 构建桑基图数据
   const nodes = []
   const links = []
-  
+
   // 创建节点（起始和结束状态）
   landTypes.forEach(type => {
     const typeConfig = config.value.land_use_types.find(t => t.name_en === type)
     const name = typeConfig ? typeConfig.name_cn : type
     const color = typeConfig ? typeConfig.color : '#999'
-    
+
     nodes.push({
       name: `${name}(起)`,
       itemStyle: { color }
@@ -175,35 +152,39 @@ const renderChart = () => {
       itemStyle: { color }
     })
   })
-  
-  // 创建链接（只显示显著转移，>1%）
-  landTypes.forEach((fromType, i) => {
+
+  // 创建链接（只显示显著转移，>0.1% 以显示更多细节，或者根据实际数据调整）
+  // 数据库数据可能更精确，我们可以显示更细微的变化
+  landTypes.forEach((fromType) => {
     const fromConfig = config.value.land_use_types.find(t => t.name_en === fromType)
     const fromName = fromConfig ? fromConfig.name_cn : fromType
-    
-    landTypes.forEach((toType, j) => {
+
+    landTypes.forEach((toType) => {
       const value = matrix[fromType][toType]
-      
-      // 只显示显著的转移(>1%)和不同类型间的转移
-      if (value > 1 && fromType !== toType) {
+
+      // 只显示显著的转移(>0.5%)和不同类型间的转移
+      // 如果是相同类型，通常桑基图不显示或者显示为流向自己
+      // 这里我们只关注变化
+      if (value > 0.5 && fromType !== toType) {
         const toConfig = config.value.land_use_types.find(t => t.name_en === toType)
         const toName = toConfig ? toConfig.name_cn : toType
-        
+
         links.push({
           source: `${fromName}(起)`,
           target: `${toName}(末)`,
           value: value,
           lineStyle: {
-            color: 'source'
+            color: 'source',
+            opacity: 0.4
           }
         })
       }
     })
   })
-  
+
   const option = {
     title: {
-      text: `土地利用类型转移图 (${selectedStartYear.value}-${selectedEndYear.value})`,
+      text: `土地利用类型转移图 (${formatPeriod(selectedPeriod.value)})`,
       left: 'center',
       textStyle: {
         color: '#333',
@@ -238,12 +219,13 @@ const renderChart = () => {
         },
         layoutIterations: 32,
         nodeGap: 20,
-        nodeWidth: 20
+        nodeWidth: 20,
+        draggable: false
       }
     ]
   }
-  
-  chartInstance.value.setOption(option)
+
+  chartInstance.value.setOption(option, true)
 }
 
 const loadAndRender = async () => {
@@ -306,8 +288,13 @@ onUnmounted(() => {
 }
 
 @keyframes spin {
-  0% { transform: rotate(0deg); }
-  100% { transform: rotate(360deg); }
+  0% {
+    transform: rotate(0deg);
+  }
+
+  100% {
+    transform: rotate(360deg);
+  }
 }
 
 .error-state {
@@ -321,6 +308,7 @@ onUnmounted(() => {
   border-top: 1px solid #e0e0e0;
   margin-top: 16px;
   flex-wrap: wrap;
+  align-items: center;
 }
 
 .control-group {
@@ -353,5 +341,10 @@ onUnmounted(() => {
   outline: none;
   border-color: #667eea;
   box-shadow: 0 0 0 2px rgba(102, 126, 234, 0.1);
+}
+
+.note {
+  font-size: 12px;
+  color: #999;
 }
 </style>

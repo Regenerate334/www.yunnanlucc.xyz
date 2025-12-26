@@ -19,15 +19,17 @@
       <BaseMapSelector @change="handleBaseMapChange" />
     </div>
 
-    <!-- 底部控制按钮组 - 复位视图、测距、测面积、地级市饼图 -->
+    <!-- 底部控制按钮组 - 复位视图、测距、测面积、地级市饼图、变化趋势图 -->
     <div class="bottom-controls-container">
       <ViewResetControl />
       <DistanceMeasureButton />
       <AreaMeasureButton />
       <EChartsPrefecturePie :year="selectedYear" />
+      <EChartsCountyPie :year="selectedYear" />
+      <LandUseTrendControl :seriesData="cachedClcdData" />
     </div>
 
-    <!-- 测量结果面板已集成到按钮组件中 -->
+    <!-- 测量结果面板集成到按钮组件 -->
 
     <!-- 右侧图表面板区域 -->
     <div class="right-panels">
@@ -46,11 +48,6 @@
       <div class="panel-card chart-panel">
         <LandUsePieChart :year="selectedYear" :seriesData="currentYearData" :compact="true" />
       </div>
-
-      <!-- 土地利用趋势图 -->
-      <div class="panel-card chart-panel trend-panel">
-        <LandUseTrendChart :seriesData="cachedClcdData" />
-      </div>
     </div>
   </div>
 </template>
@@ -63,10 +60,11 @@ import YearRangeSelector from './controls/YearRangeSelector.vue';
 import ViewResetControl from './controls/ViewResetControl.vue';
 import BaseMapSelector from './controls/BaseMapSelector.vue';
 import LandUsePieChart from './charts/LandUsePieChart.vue';
-import LandUseTrendChart from './charts/LandUseTrendChart.vue';
 import DistanceMeasureButton from './controls/DistanceMeasureButton.vue';
 import AreaMeasureButton from './controls/AreaMeasureButton.vue';
 import EChartsPrefecturePie from './controls/EChartsPrefecturePie.vue';
+import EChartsCountyPie from './controls/EChartsCountyPie.vue';
+import LandUseTrendControl from './controls/LandUseTrendControl.vue';
 import { useMapStore } from '../stores/map.ts';
 
 const mapStore = useMapStore();
@@ -229,9 +227,10 @@ onMounted(() => {
 // 加载当年数据（用于图表）- 带缓存优化
 async function loadYearData(year) {
   try {
-    // 只在第一次加载 JSON 文件，之后使用缓存
+    // 只在第一次加载数据，之后使用缓存
     if (cachedClcdData.value.length === 0) {
-      const response = await fetch('/data/clcd_province.json');
+      // Use the new API endpoint
+      const response = await fetch('http://localhost:3000/api/clcd/province');
       if (response.ok) {
         cachedClcdData.value = await response.json();
         console.log('CLCD 数据已加载并缓存 (1985-2023)');
@@ -247,15 +246,49 @@ async function loadYearData(year) {
 
       if (yearData) {
         // 映射为前端需要的字段名（英文 → 中文）
+        // Note: The API returns lowercase keys like 'cropland', 'forest' which matches here
         currentYearData.value = {
           year: yearData.year,
           耕地: yearData.cropland,
           林地: yearData.forest,
-          灌木: yearData.shrubland,
+          灌木: yearData.shrub, // Database uses 'shrub', check if mapping needed. JSON used 'shrubland' or 'shrub'?
+          // Looking at previous JSON content, it used 'shrubland'.
+          // Looking at database schema screenshot, it uses 'shrub'.
+          // I should check what the API returns. The API returns what's in the DB.
+          // DB has 'shrub'.
+          // Wait, let me check the implementation plan or previous file content.
+          // In server/index.js pivot logic: yearMap[row.year][row.land_use_type] = Number(row.area);
+          // So the keys will be whatever is in `land_use_type` column.
+          // Screenshot shows 'shrub'.
+          // Front page expects '灌木'.
+          // So I should map 'shrub' to '灌木'.
+
+          // Let's be safe and check for both or just use 'shrub' if that's what DB has.
+          // Actually, let's look at the `CLCD_CLASS_MAP` in server/index.js (though I didn't use it in the new endpoint).
+          // The new endpoint returns raw strings from DB.
+          // DB Screenshot shows: cropland, forest, shrub, grassland, water, snow_ice, barren, impervious, wetland.
+
+          // So:
+          // cropland -> 耕地
+          // forest -> 林地
+          // shrub -> 灌木
+          // grassland -> 草地
+          // water -> 水域
+          // snow_ice -> 冰雪
+          // barren -> 裸地
+          // impervious -> 建设用地
+          // wetland -> 湿地
+
+          // Previous JSON keys might have been slightly different (e.g. shrubland vs shrub).
+          // I will use the DB keys.
+
+          耕地: yearData.cropland,
+          林地: yearData.forest,
+          灌木: yearData.shrub,
           草地: yearData.grassland,
           水域: yearData.water,
-          冰雪: yearData.tundra,
-          裸地: yearData.bareland,
+          冰雪: yearData.snow_ice, // DB uses snow_ice
+          裸地: yearData.barren,
           建设用地: yearData.impervious,
           湿地: yearData.wetland
         };
@@ -400,7 +433,7 @@ html {
   height: 104vh;
   z-index: 100;
   pointer-events: none;
-  background-image: url('/images/front_bg.png');
+  background-image: url('/assets/images/backgrounds/front_bg.png');
   background-size: 100% 100%;
   background-repeat: no-repeat;
   background-position: center center;
@@ -414,7 +447,7 @@ html {
   height: 100vh;
   z-index: 50;
   pointer-events: none;
-  background-image: url('../assets/mask.png');
+  background-image: url('/assets/images/backgrounds/mask.png');
   background-size: 100% 100%;
   background-repeat: no-repeat;
   background-position: center center;

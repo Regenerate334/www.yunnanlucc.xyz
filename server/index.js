@@ -146,25 +146,119 @@ app.get('/api/clcd/:year/prefecture-summary', async (req, res) => {
   } catch (err) { handleError(res, err); }
 });
 
-// 新增：按县统计
-app.get('/api/clcd/:year/county-summary', async (req, res) => {
-  const year = Number(req.params.year);
+// 获取省份数据（宽表格式）
+app.get('/api/clcd/province', async (_req, res) => {
+  try {
+    // clcd_province 表结构: id, land_use_type, year, area
+    // 需要转换为宽表: [{year: 1985, cropland: 123, forest: 456, ...}, ...]
+    const sql = `
+      SELECT year, land_use_type, area
+      FROM public.clcd_province
+      ORDER BY year, land_use_type
+    `;
+    const { rows } = await pool.query(sql);
+
+    const yearMap = {};
+    rows.forEach(row => {
+      if (!yearMap[row.year]) {
+        yearMap[row.year] = { year: row.year };
+      }
+      // land_use_type 应该是字符串，如 'cropland', 'forest'
+      // 如果是数字编码，需要映射。根据截图，它是 character varying(50)，所以直接使用
+      yearMap[row.year][row.land_use_type] = Number(row.area);
+    });
+
+    const result = Object.values(yearMap).sort((a, b) => a.year - b.year);
+    res.json(result);
+  } catch (err) { handleError(res, err); }
+});
+
+// 获取地级市数据
+app.get('/api/clcd/prefecture', async (_req, res) => {
+  try {
+    // clcd_prefecture 表已经是宽表结构
+    const sql = 'SELECT * FROM public.clcd_prefecture ORDER BY year, region_name';
+    const { rows } = await pool.query(sql);
+    res.json(rows);
+  } catch (err) { handleError(res, err); }
+});
+
+// 获取区县数据
+app.get('/api/clcd/county', async (_req, res) => {
+  try {
+    // clcd_county 表已经是宽表结构
+    const sql = 'SELECT * FROM public.clcd_county ORDER BY year, region_name';
+    const { rows } = await pool.query(sql);
+    res.json(rows);
+  } catch (err) { handleError(res, err); }
+});
+
+// 获取转移矩阵可用时间段
+app.get('/api/clcd/transfer-matrix/periods', async (_req, res) => {
+  try {
+    const sql = 'SELECT DISTINCT period FROM public.clcd_transfer_matrix ORDER BY period';
+    const { rows } = await pool.query(sql);
+    res.json(rows.map(r => r.period));
+  } catch (err) { handleError(res, err); }
+});
+
+// 获取指定时间段的转移矩阵
+app.get('/api/clcd/transfer-matrix/:period', async (req, res) => {
+  const { period } = req.params;
   try {
     const sql = `
-      SELECT county, landuse_type, SUM(area_sqm)/1e6 AS area_km2
-      FROM public.yunnan_clcd_merged_table
-      WHERE year = $1
-      GROUP BY county, landuse_type
-      ORDER BY county, landuse_type
+      SELECT * FROM public.clcd_transfer_matrix 
+      WHERE period = $1
     `;
-    const { rows } = await pool.query(sql, [year]);
-    const mapped = rows.map(r => ({
-      county: r.county,
-      class_code: Number(r.landuse_type),
-      class_name: CLCD_CLASS_MAP[Number(r.landuse_type)] || String(r.landuse_type),
-      area_km2: Number(r.area_km2)
-    }));
-    res.json(mapped);
+    const { rows } = await pool.query(sql, [period]);
+
+    // 转换字段名以匹配前端期望 (from_class -> from, to_class -> to)
+    // CLCD_CLASS_MAP 映射: 1->Cropland, etc.
+    // 数据库中 from_class 已经是字符串 'cropland' 等 (根据截图)
+    // 截图显示 from_class: 'cropland', to_class: 'cropland'
+    // 前端 generateTransferMatrix 返回 { percentageMatrix: { from: { to: percent } } }
+
+    // 我们需要将数据库的列表格式转换为矩阵格式
+    // DB: [{from_class: 'cropland', to_class: 'forest', area: 123}, ...]
+
+    const matrix = {};
+    const landTypes = new Set();
+
+    rows.forEach(row => {
+      landTypes.add(row.from_class);
+      landTypes.add(row.to_class);
+
+      if (!matrix[row.from_class]) matrix[row.from_class] = {};
+      matrix[row.from_class][row.to_class] = Number(row.area);
+    });
+
+    // 计算百分比矩阵
+    const percentageMatrix = {};
+    const types = Array.from(landTypes);
+
+    types.forEach(from => {
+      percentageMatrix[from] = {};
+      let total = 0;
+      types.forEach(to => {
+        total += (matrix[from]?.[to] || 0);
+      });
+
+      types.forEach(to => {
+        if (total > 0) {
+          percentageMatrix[from][to] = parseFloat(((matrix[from]?.[to] || 0) / total * 100).toFixed(2));
+        } else {
+          percentageMatrix[from][to] = 0;
+        }
+      });
+    });
+
+    res.json({
+      absoluteMatrix: matrix,
+      percentageMatrix: percentageMatrix,
+      landTypes: types,
+      period: period
+    });
+
   } catch (err) { handleError(res, err); }
 });
 

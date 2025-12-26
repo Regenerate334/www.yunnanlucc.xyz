@@ -1,7 +1,7 @@
 <template>
     <div class="distance-measure-control">
-        <button @click="handleToggle" class="measure-btn" :class="{ active: activeTool === 'distance' }" title="测距">
-            <span class="measure-icon">📏</span>
+        <button @click="toggleMeasure" class="measure-btn" :class="{ active: isMeasuring }" title="测距">
+            <img src="/assets/images/icons/ceju.png" class="measure-icon" alt="测距" />
         </button>
 
         <!-- 右侧弹出结果面板 -->
@@ -42,6 +42,7 @@
 </template>
 
 <script setup>
+import { computed } from 'vue';
 import { useMeasurement } from '../../composables/useMeasurement';
 
 const {
@@ -53,9 +54,15 @@ const {
     formatDistance
 } = useMeasurement();
 
-function handleToggle() {
-    activateTool('distance');
+function toggleMeasure() {
+    if (activeTool.value === 'distance') {
+        activateTool(null);
+    } else {
+        activateTool('distance');
+    }
 }
+
+const isMeasuring = computed(() => activeTool.value === 'distance');
 </script>
 
 <style scoped>
@@ -97,7 +104,9 @@ function handleToggle() {
 }
 
 .measure-icon {
-    font-size: 24px;
+    width: 24px;
+    height: 24px;
+    object-fit: contain;
     opacity: 0.9;
     transition: all 0.3s ease;
 }

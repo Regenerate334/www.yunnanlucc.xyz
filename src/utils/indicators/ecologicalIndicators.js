@@ -11,20 +11,20 @@
 export function calculateEcologicalSpaceIndicators(data) {
     if (!data) return null
 
-    const landTypes = ['cropland', 'forest', 'grassland', 'shrubland',
-        'wetland', 'water', 'tundra', 'impervious', 'bareland']
+    const landTypes = ['cropland', 'forest', 'grassland', 'shrub',
+        'wetland', 'water', 'snow_ice', 'impervious', 'barren']
 
     // 计算总面积
     const totalArea = landTypes.reduce((sum, type) => sum + (data[type] || 0), 0)
 
     if (totalArea === 0) return null
 
-    // 生态用地（森林+草地+湿地+水体+苔原）
+    // 生态用地（森林+草地+湿地+水体+冰雪）
     const ecologicalLand = (data.forest || 0) +
         (data.grassland || 0) +
         (data.wetland || 0) +
         (data.water || 0) +
-        (data.tundra || 0)
+        (data.snow_ice || 0)
 
     // 森林覆盖率
     const forestCoverage = (data.forest || 0) / totalArea * 100
@@ -32,7 +32,7 @@ export function calculateEcologicalSpaceIndicators(data) {
     // 植被覆盖率（森林+草地+灌木）
     const vegetationCoverage = ((data.forest || 0) +
         (data.grassland || 0) +
-        (data.shrubland || 0)) / totalArea * 100
+        (data.shrub || 0)) / totalArea * 100
 
     // 水域面积占比
     const waterRatio = ((data.water || 0) + (data.wetland || 0)) / totalArea * 100
@@ -48,7 +48,7 @@ export function calculateEcologicalSpaceIndicators(data) {
             grassland: data.grassland || 0,
             wetland: data.wetland || 0,
             water: data.water || 0,
-            tundra: data.tundra || 0
+            tundra: data.snow_ice || 0
         },
         metadata: {
             year: data.year,

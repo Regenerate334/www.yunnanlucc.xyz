@@ -1,33 +1,33 @@
 /**
  * CLCD数据加载工具
- * 用于从JSON文件加载土地利用统计数据
+ * 用于从后端API加载土地利用统计数据
  */
 
 // 缓存加载的数据
 let cachedProvinceData = null;
 let cachedPrefectureData = null;
 let cachedCountyData = null;
-let cachedConfig = null;
+
+// Inlined configuration matching database keys
+const LAND_USE_CONFIG = {
+    "land_use_types": [
+        { "code": 1, "name_en": "cropland", "name_zh": "耕地", "name_zh_short": "耕地", "color": "#FFD700", "description": "Cropland including paddy fields and dry farmland" },
+        { "code": 2, "name_en": "forest", "name_zh": "森林", "name_zh_short": "森林", "color": "#228B22", "description": "Forest including evergreen, deciduous, and mixed forests" },
+        { "code": 3, "name_en": "grassland", "name_zh": "草地", "name_zh_short": "草地", "color": "#90EE90", "description": "Grassland including meadows and sparse grassland" },
+        { "code": 4, "name_en": "shrub", "name_zh": "灌木", "name_zh_short": "灌木", "color": "#9ACD32", "description": "Shrubland including shrub-covered areas" },
+        { "code": 5, "name_en": "wetland", "name_zh": "湿地", "name_zh_short": "湿地", "color": "#87CEEB", "description": "Wetland including marshes and swamps" },
+        { "code": 6, "name_en": "water", "name_zh": "水体", "name_zh_short": "水体", "color": "#4169E1", "description": "Water bodies including rivers, lakes, and reservoirs" },
+        { "code": 7, "name_en": "snow_ice", "name_zh": "冰雪", "name_zh_short": "冰雪", "color": "#B0C4DE", "description": "Snow and Ice" },
+        { "code": 8, "name_en": "impervious", "name_zh": "不透水面", "name_zh_short": "建设用地", "color": "#DC143C", "description": "Impervious surfaces including urban and built-up areas" },
+        { "code": 9, "name_en": "barren", "name_zh": "裸地", "name_zh_short": "裸地", "color": "#D2B48C", "description": "Bareland including bare soil, sand, and rocks" }
+    ]
+};
 
 /**
  * 加载配置文件
  */
 export async function loadLandUseConfig() {
-    if (cachedConfig) {
-        return cachedConfig;
-    }
-
-    try {
-        const response = await fetch('/data/land_use_config.json');
-        if (!response.ok) {
-            throw new Error(`Failed to load config: ${response.status}`);
-        }
-        cachedConfig = await response.json();
-        return cachedConfig;
-    } catch (error) {
-        console.error('Error loading land use config:', error);
-        throw error;
-    }
+    return LAND_USE_CONFIG;
 }
 
 /**
@@ -39,7 +39,7 @@ export async function loadProvinceData() {
     }
 
     try {
-        const response = await fetch('/data/clcd_province.json');
+        const response = await fetch('http://localhost:3000/api/clcd/province');
         if (!response.ok) {
             throw new Error(`Failed to load province data: ${response.status}`);
         }
@@ -60,7 +60,7 @@ export async function loadPrefectureData() {
     }
 
     try {
-        const response = await fetch('/data/clcd_prefecture.json');
+        const response = await fetch('http://localhost:3000/api/clcd/prefecture');
         if (!response.ok) {
             throw new Error(`Failed to load prefecture data: ${response.status}`);
         }
@@ -81,7 +81,7 @@ export async function loadCountyData() {
     }
 
     try {
-        const response = await fetch('/data/clcd_county.json');
+        const response = await fetch('http://localhost:3000/api/clcd/county');
         if (!response.ok) {
             throw new Error(`Failed to load county data: ${response.status}`);
         }
@@ -243,5 +243,37 @@ export function clearCache() {
     cachedProvinceData = null;
     cachedPrefectureData = null;
     cachedCountyData = null;
-    cachedConfig = null;
+}
+
+/**
+ * 加载转移矩阵可用时间段
+ */
+export async function loadTransferMatrixPeriods() {
+    try {
+        const response = await fetch('http://localhost:3000/api/clcd/transfer-matrix/periods');
+        if (!response.ok) {
+            throw new Error(`Failed to load periods: ${response.status}`);
+        }
+        return await response.json();
+    } catch (error) {
+        console.error('Error loading transfer matrix periods:', error);
+        throw error;
+    }
+}
+
+/**
+ * 加载指定时间段的转移矩阵
+ * @param {string} period - 时间段 (e.g. "1985_1990")
+ */
+export async function loadTransferMatrixData(period) {
+    try {
+        const response = await fetch(`http://localhost:3000/api/clcd/transfer-matrix/${period}`);
+        if (!response.ok) {
+            throw new Error(`Failed to load transfer matrix for ${period}: ${response.status}`);
+        }
+        return await response.json();
+    } catch (error) {
+        console.error(`Error loading transfer matrix for ${period}:`, error);
+        throw error;
+    }
 }

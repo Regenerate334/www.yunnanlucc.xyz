@@ -45,8 +45,8 @@ export function calculateDynamicDegree(dataT1, dataT2, landType = null) {
     }
 
     // 计算所有类型的动态度
-    const landTypes = ['cropland', 'forest', 'grassland', 'shrubland',
-        'wetland', 'water', 'tundra', 'impervious', 'bareland']
+    const landTypes = ['cropland', 'forest', 'grassland', 'shrub',
+        'wetland', 'water', 'snow_ice', 'impervious', 'barren']
 
     const results = {}
 
@@ -83,8 +83,8 @@ export function calculateDynamicDegree(dataT1, dataT2, landType = null) {
 export function calculateComprehensiveDynamicDegree(dataT1, dataT2) {
     if (!dataT1 || !dataT2) return null
 
-    const landTypes = ['cropland', 'forest', 'grassland', 'shrubland',
-        'wetland', 'water', 'tundra', 'impervious', 'bareland']
+    const landTypes = ['cropland', 'forest', 'grassland', 'shrub',
+        'wetland', 'water', 'snow_ice', 'impervious', 'barren']
 
     let totalChange = 0
     let totalInitialArea = 0
@@ -124,8 +124,8 @@ export function generateTransferMatrix(t1DataArray, t2DataArray) {
         return null
     }
 
-    const landTypes = ['cropland', 'forest', 'grassland', 'shrubland',
-        'wetland', 'water', 'tundra', 'impervious', 'bareland']
+    const landTypes = ['cropland', 'forest', 'grassland', 'shrub',
+        'wetland', 'water', 'snow_ice', 'impervious', 'barren']
 
     // 初始化转移矩阵
     const matrix = {}

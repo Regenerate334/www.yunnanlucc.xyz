@@ -104,19 +104,19 @@ function categorizeLandUse(composition) {
             grassland: composition.grassland || 0,
             wetland: composition.wetland || 0,
             water: composition.water || 0,
-            tundra: composition.tundra || 0,
+            tundra: composition.snow_ice || 0,
             total: (composition.forest || 0) +
                 (composition.grassland || 0) +
                 (composition.wetland || 0) +
                 (composition.water || 0) +
-                (composition.tundra || 0)
+                (composition.snow_ice || 0)
         },
 
         // 其他空间
         otherSpace: {
-            shrubland: composition.shrubland || 0,
-            bareland: composition.bareland || 0,
-            total: (composition.shrubland || 0) + (composition.bareland || 0)
+            shrubland: composition.shrub || 0,
+            bareland: composition.barren || 0,
+            total: (composition.shrub || 0) + (composition.barren || 0)
         }
     }
 }
@@ -160,8 +160,8 @@ export function calculatePerCapitaIndicators(data, population) {
 export function calculateDevelopmentIntensity(data) {
     if (!data) return 0
 
-    const landTypes = ['cropland', 'forest', 'grassland', 'shrubland',
-        'wetland', 'water', 'tundra', 'impervious', 'bareland']
+    const landTypes = ['cropland', 'forest', 'grassland', 'shrub',
+        'wetland', 'water', 'snow_ice', 'impervious', 'barren']
     const totalArea = landTypes.reduce((sum, type) => sum + (data[type] || 0), 0)
 
     if (totalArea === 0) return 0

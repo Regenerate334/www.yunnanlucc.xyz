@@ -38,7 +38,7 @@ export const testConnection = async () => {
   }
 };
 
-// ==================== 优雅关闭 ====================
+// ==================== 关闭 ====================
 export const closePool = async () => {
   try {
     await pool.end();

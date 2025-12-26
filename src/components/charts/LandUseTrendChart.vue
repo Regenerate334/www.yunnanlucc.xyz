@@ -1,20 +1,5 @@
-<!-- 
-  ===========================================
-  土地利用变化趋势图组件
-  ===========================================
--->
 <template>
-  <div class="land-use-trend-chart" :class="{ expanded: isExpanded }">
-    <div class="chart-header">
-      <div class="chart-title">土地利用类型变化趋势</div>
-      <div class="header-controls">
-        <button class="expand-btn" @click="toggleExpand" :title="isExpanded ? '收起' : '展开'">
-          <span v-if="isExpanded">↙</span>
-          <span v-else>↗</span>
-        </button>
-      </div>
-    </div>
-
+  <div class="land-use-trend-chart">
     <div ref="chartContainer" class="chart-container"></div>
   </div>
 </template>
@@ -32,16 +17,6 @@ const props = defineProps({
 
 const chartContainer = ref(null)
 const chartInstance = ref(null)
-const isExpanded = ref(false)
-
-const toggleExpand = () => {
-  isExpanded.value = !isExpanded.value
-  nextTick(() => {
-    if (chartInstance.value) {
-      chartInstance.value.resize()
-    }
-  })
-}
 
 // 土地利用类型映射（英文 -> 中文）
 const landTypeMap = {
@@ -68,7 +43,7 @@ const rawData = computed(() => {
     Object.keys(landTypeMap).forEach(key => {
       // key 是英文名 (如 Cropland), landTypeMap[key] 是中文名 (如 耕地)
       // 数据中的 key 是小写 (如 cropland)
-      const dataKey = key.toLowerCase() === 'snow/ice' ? 'tundra' : key.toLowerCase()
+      const dataKey = key.toLowerCase() === 'snow/ice' ? 'snow_ice' : key.toLowerCase()
       const area = item[dataKey]
       if (area !== undefined) {
         result.push([year, landTypeMap[key], area])
@@ -144,9 +119,16 @@ const run = (_rawData) => {
     tooltip: {
       order: 'valueDesc',
       trigger: 'axis',
-      backgroundColor: 'rgba(42, 61, 110, 0.9)', // 保持暗色主题适配
-      borderColor: 'rgba(255, 255, 255, 0.2)',
-      textStyle: { color: '#ffffff' }
+      axisPointer: {
+        type: 'line',
+        lineStyle: {
+          color: 'rgba(255, 255, 255, 0.5)'
+        }
+      },
+      backgroundColor: 'rgba(50, 50, 50, 0.9)',
+      borderColor: '#999',
+      borderWidth: 1,
+      textStyle: { color: '#fff' }
     },
     xAxis: {
       type: 'category',
@@ -219,73 +201,14 @@ watch(() => props.seriesData, () => {
 
 <style scoped>
 .land-use-trend-chart {
-  position: relative;
   width: 100%;
   height: 100%;
-  background: rgba(42, 61, 110, 0.85);
-  border: 1px solid rgba(255, 255, 255, 0.12);
-  border-radius: 10px;
-  backdrop-filter: blur(8px);
-  overflow: hidden;
-}
-
-.chart-header {
-  padding: 10px 16px;
-  border-bottom: 1px solid rgba(255, 255, 255, 0.12);
-  background: rgba(42, 61, 110, 0.95);
-}
-
-.chart-title {
-  font-size: 16px;
-  font-weight: 600;
-  color: #9cc9ff;
+  position: relative;
 }
 
 .chart-container {
   width: 100%;
-  height: 300px;
-  /* 明确指定高度，避免 flex 布局导致高度为 0 */
-}
-
-.header-controls {
-  margin-left: auto;
-}
-
-.expand-btn {
-  background: transparent;
-  border: 1px solid rgba(255, 255, 255, 0.3);
-  color: #fff;
-  cursor: pointer;
-  padding: 2px 6px;
-  border-radius: 4px;
-  font-size: 12px;
-  transition: all 0.3s;
-}
-
-.expand-btn:hover {
-  background: rgba(255, 255, 255, 0.1);
-  border-color: #fff;
-}
-
-/* Expanded State Styles */
-.land-use-trend-chart.expanded {
-  position: fixed;
-  top: 50%;
-  left: 50%;
-  transform: translate(-50%, -50%);
-  width: 90vw;
-  height: 85vh;
-  z-index: 2000;
-  background: rgba(42, 61, 110, 0.95);
-  box-shadow: 0 0 20px rgba(0, 0, 0, 0.5);
-  display: flex;
-  flex-direction: column;
-}
-
-.land-use-trend-chart.expanded .chart-container {
-  flex: 1;
-  height: 0;
-  /* Let flex grow handle height */
-  min-height: 0;
+  height: 100%;
+  min-height: 300px;
 }
 </style>

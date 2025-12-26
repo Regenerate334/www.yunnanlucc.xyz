@@ -24,7 +24,7 @@
 import { ref, onUnmounted, watch, nextTick } from 'vue';
 import * as echarts from 'echarts';
 import { centroid } from '@turf/turf';
-import iconUrl from '../../assets/prefecture_pie_icon.png';
+const iconUrl = '/assets/images/icons/prefecture_pie.png';
 
 const props = defineProps({
   year: { type: Number, default: 1985 }
@@ -100,8 +100,16 @@ async function loadCitiesData() {
 
 async function loadLandUseData() {
   if (landUseData) return;
-  const resp = await fetch('/data/clcd_prefecture.json');
-  landUseData = await resp.json();
+  try {
+    const response = await fetch('/api/clcd/prefecture');
+    if (response.ok) {
+      landUseData = await response.json();
+    } else {
+      console.error('Failed to fetch prefecture data');
+    }
+  } catch (e) {
+    console.error('Error fetching prefecture data:', e);
+  }
 }
 
 function getCityLandUse(cityName, year) {

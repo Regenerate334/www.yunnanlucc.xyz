@@ -15,23 +15,23 @@
     "@types/turf": "^3.5.32",
     "cesium": "^1.130.0",
     "cesium-navigation-es6": "^3.0.9",
-    "vite-plugin-cesium": "^1.2.23",
-    "vue": "^3.5.13",
-    "vue-router": "^4.5.1",
-    "pinia": "^2.2.4",
-    "echarts": "^5.5.0",
     "cors": "^2.8.5",
     "dotenv": "^16.4.5",
+    "echarts": "^5.5.0",
     "express": "^4.19.2",
-    "pg": "^8.11.5"
+    "pg": "^8.11.5",
+    "pinia": "^2.2.4",
+    "vite-plugin-cesium": "^1.2.23",
+    "vue": "^3.5.13",
+    "vue-router": "^4.5.1"
   },
   "devDependencies": {
     "@tailwindcss/postcss": "^4.1.13",
     "@vitejs/plugin-vue": "^5.2.3",
     "autoprefixer": "^10.4.21",
+    "concurrently": "^8.2.2",
     "postcss": "^8.5.6",
     "tailwindcss": "^4.1.13",
-    "vite": "^6.3.5",
-    "concurrently": "^8.2.2"
+    "vite": "^6.3.5"
   }
 }
