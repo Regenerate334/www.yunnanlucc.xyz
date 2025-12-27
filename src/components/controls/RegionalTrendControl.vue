@@ -57,6 +57,7 @@
 <script setup>
 import { ref, watch, onMounted } from 'vue';
 import RegionalTrendChart from '../charts/RegionalTrendChart.vue';
+import { regionApi, clcdApi } from '../../api/index.js';
 
 const isVisible = ref(false);
 const currentLevel = ref('prefecture');
@@ -69,8 +70,8 @@ const isLoading = ref(false);
 async function fetchRegionList() {
     try {
         console.log('Fetching region list for level:', currentLevel.value);
-        const resp = await fetch(`/api/regions/${currentLevel.value}`);
-        regionList.value = await resp.json();
+        const data = await regionApi.getRegions(currentLevel.value);
+        regionList.value = data;
         console.log('Region list fetched:', regionList.value);
         if (regionList.value.length > 0 && !selectedRegion.value) {
             selectedRegion.value = regionList.value[0];
@@ -85,10 +86,9 @@ async function fetchTrendData() {
     if (!selectedRegion.value) return;
     isLoading.value = true;
     try {
-        const encodedName = encodeURIComponent(selectedRegion.value);
         console.log(`Fetching trend data for: ${currentLevel.value} -> ${selectedRegion.value}`);
-        const resp = await fetch(`/api/clcd/trend/${currentLevel.value}/${encodedName}`);
-        trendData.value = await resp.json();
+        const data = await clcdApi.getRegionalTrend(currentLevel.value, selectedRegion.value);
+        trendData.value = data;
         console.log('Trend data received:', trendData.value.length, 'records');
     } catch (e) {
         console.error('Failed to fetch trend:', e);

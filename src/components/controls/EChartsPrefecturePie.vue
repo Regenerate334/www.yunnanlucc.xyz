@@ -25,6 +25,7 @@
 import { ref, onUnmounted, watch, nextTick } from 'vue';
 import * as echarts from 'echarts';
 import { centroid, area } from '@turf/turf';
+import { clcdApi } from '../../api/index.js';
 
 const iconUrl = '/assets/images/icons/prefecture_pie.png';
 
@@ -106,10 +107,8 @@ async function loadCitiesData() {
 async function loadLandUseData() {
   if (landUseData) return;
   try {
-    const response = await fetch('/api/clcd/prefecture');
-    if (response.ok) {
-      landUseData = await response.json();
-    }
+    const data = await clcdApi.getPrefectureData();
+    landUseData = data;
   } catch (e) {
     console.error('Error fetching prefecture data:', e);
   }

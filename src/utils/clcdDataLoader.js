@@ -2,6 +2,7 @@
  * CLCD数据加载工具
  * 用于从后端API加载土地利用统计数据
  */
+import { clcdApi, analysisApi } from '../api/index.js';
 
 // 缓存加载的数据
 let cachedProvinceData = null;
@@ -39,11 +40,7 @@ export async function loadProvinceData() {
     }
 
     try {
-        const response = await fetch('http://localhost:3000/api/clcd/province');
-        if (!response.ok) {
-            throw new Error(`Failed to load province data: ${response.status}`);
-        }
-        cachedProvinceData = await response.json();
+        cachedProvinceData = await clcdApi.getProvinceTrend();
         return cachedProvinceData;
     } catch (error) {
         console.error('Error loading province data:', error);
@@ -60,11 +57,7 @@ export async function loadPrefectureData() {
     }
 
     try {
-        const response = await fetch('http://localhost:3000/api/clcd/prefecture');
-        if (!response.ok) {
-            throw new Error(`Failed to load prefecture data: ${response.status}`);
-        }
-        cachedPrefectureData = await response.json();
+        cachedPrefectureData = await clcdApi.getPrefectureData();
         return cachedPrefectureData;
     } catch (error) {
         console.error('Error loading prefecture data:', error);
@@ -81,11 +74,7 @@ export async function loadCountyData() {
     }
 
     try {
-        const response = await fetch('http://localhost:3000/api/clcd/county');
-        if (!response.ok) {
-            throw new Error(`Failed to load county data: ${response.status}`);
-        }
-        cachedCountyData = await response.json();
+        cachedCountyData = await clcdApi.getCountyData();
         return cachedCountyData;
     } catch (error) {
         console.error('Error loading county data:', error);
@@ -250,11 +239,7 @@ export function clearCache() {
  */
 export async function loadTransferMatrixPeriods() {
     try {
-        const response = await fetch('http://localhost:3000/api/clcd/transfer-matrix/periods');
-        if (!response.ok) {
-            throw new Error(`Failed to load periods: ${response.status}`);
-        }
-        return await response.json();
+        return await analysisApi.getTransferPeriods();
     } catch (error) {
         console.error('Error loading transfer matrix periods:', error);
         throw error;
@@ -267,11 +252,7 @@ export async function loadTransferMatrixPeriods() {
  */
 export async function loadTransferMatrixData(period) {
     try {
-        const response = await fetch(`http://localhost:3000/api/clcd/transfer-matrix/${period}`);
-        if (!response.ok) {
-            throw new Error(`Failed to load transfer matrix for ${period}: ${response.status}`);
-        }
-        return await response.json();
+        return await analysisApi.getTransferMatrix(period);
     } catch (error) {
         console.error(`Error loading transfer matrix for ${period}:`, error);
         throw error;

@@ -33,6 +33,7 @@
 <script setup>
 import { ref, onMounted } from 'vue';
 import LandUseTrendChart from '../charts/LandUseTrendChart.vue';
+import { clcdApi } from '../../api/index.js';
 
 const props = defineProps({
   seriesData: {
@@ -52,9 +53,8 @@ async function fetchTrendData() {
   isLoading.value = true;
   hasError.value = false;
   try {
-    const response = await fetch('/api/clcd/province');
-    if (!response.ok) throw new Error('Failed to fetch trend data');
-    localSeriesData.value = await response.json();
+    const data = await clcdApi.getProvinceTrend();
+    localSeriesData.value = data;
   } catch (error) {
     console.error('Error fetching trend data:', error);
     hasError.value = true;

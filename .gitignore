@@ -1,9 +1,53 @@
+# Dependencies
 node_modules/
-.env
-server/.env
-dist/
-.vite/
-.vscode/
-.DS_Store
-coverage
+.pnp
+.pnp.js
 
+# Build artifacts
+dist/
+dist-ssr/
+*.local
+.vite/
+.nuxt/
+.output/
+.vercel/
+.tsbuildinfo
+
+# Environment variables (Sensitive data)
+.env
+.env.*
+!.env.example
+server/.env
+
+# Logs
+logs
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+
+# Testing
+coverage/
+__snapshots__/
+
+# IDE / Editor
+.vscode/*
+!.vscode/extensions.json
+!.vscode/settings.json
+!.vscode/launch.json
+.idea/
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+*.sw?
+
+# OS
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# GIS Data (Optional: ignore large data files if they are not meant for version control)
+# src/assets/data/*.json
+# public/data/*.zip

@@ -45,6 +45,7 @@
 import { ref, watch, onMounted, onUnmounted, nextTick } from 'vue';
 import * as echarts from 'echarts';
 import { centroid, area } from '@turf/turf';
+import { clcdApi } from '../../api/index.js';
 
 const props = defineProps({
     year: {
@@ -147,10 +148,8 @@ async function loadCountyGeo() {
 async function loadCountyStats() {
     if (countyStats) return;
     try {
-        const response = await fetch('/api/clcd/county');
-        if (response.ok) {
-            countyStats = await response.json();
-        }
+        const data = await clcdApi.getCountyData();
+        countyStats = data;
     } catch (e) {
         console.error('Error fetching county data:', e);
     }

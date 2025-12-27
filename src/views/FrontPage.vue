@@ -57,17 +57,18 @@
 import { onMounted, ref, watch } from 'vue';
 import * as Cesium from 'cesium';
 import 'cesium/Build/Cesium/Widgets/widgets.css';
-import YearRangeSelector from './controls/YearRangeSelector.vue';
-import ViewResetControl from './controls/ViewResetControl.vue';
-import BaseMapSelector from './controls/BaseMapSelector.vue';
-import LandUsePieChart from './charts/LandUsePieChart.vue';
-import DistanceMeasureButton from './controls/DistanceMeasureButton.vue';
-import AreaMeasureButton from './controls/AreaMeasureButton.vue';
-import EChartsPrefecturePie from './controls/EChartsPrefecturePie.vue';
-import EChartsCountyPie from './controls/EChartsCountyPie.vue';
-import LandUseTrendControl from './controls/LandUseTrendControl.vue';
-import RegionalTrendControl from './controls/RegionalTrendControl.vue';
+import YearRangeSelector from '../components/controls/YearRangeSelector.vue';
+import ViewResetControl from '../components/controls/ViewResetControl.vue';
+import BaseMapSelector from '../components/controls/BaseMapSelector.vue';
+import LandUsePieChart from '../components/charts/LandUsePieChart.vue';
+import DistanceMeasureButton from '../components/controls/DistanceMeasureButton.vue';
+import AreaMeasureButton from '../components/controls/AreaMeasureButton.vue';
+import EChartsPrefecturePie from '../components/controls/EChartsPrefecturePie.vue';
+import EChartsCountyPie from '../components/controls/EChartsCountyPie.vue';
+import LandUseTrendControl from '../components/controls/LandUseTrendControl.vue';
+import RegionalTrendControl from '../components/controls/RegionalTrendControl.vue';
 import { useMapStore } from '../stores/map.ts';
+import { clcdApi } from '../api/index.js';
 
 const mapStore = useMapStore();
 
@@ -231,15 +232,9 @@ async function loadYearData(year) {
   try {
     // 只在第一次加载数据，之后使用缓存
     if (cachedClcdData.value.length === 0) {
-      // Use the new API endpoint
-      const response = await fetch('http://localhost:3000/api/clcd/province');
-      if (response.ok) {
-        cachedClcdData.value = await response.json();
-        console.log('CLCD 数据已加载并缓存 (1985-2023)');
-      } else {
-        console.error('加载 CLCD 数据失败');
-        return;
-      }
+      const data = await clcdApi.getProvinceTrend();
+      cachedClcdData.value = data;
+      console.log('CLCD 数据已加载并缓存 (1985-2023)');
     }
 
     // 从缓存中按需查询指定年份
@@ -289,7 +284,7 @@ async function loadYearData(year) {
           灌木: yearData.shrub,
           草地: yearData.grassland,
           水域: yearData.water,
-          冰雪: yearData.snow_ice, // DB uses snow_ice
+          冰雪: yearData.snow_ice,
           裸地: yearData.barren,
           建设用地: yearData.impervious,
           湿地: yearData.wetland
