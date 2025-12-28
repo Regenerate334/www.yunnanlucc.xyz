@@ -1,7 +1,7 @@
 <template>
     <div class="distance-measure-control">
         <button @click="toggleMeasure" class="measure-btn" :class="{ active: isMeasuring }" title="测距">
-            <img src="/assets/images/icons/ceju.png" class="measure-icon" alt="测距" />
+            <img src="../../assets/icons/ceju.png" class="measure-icon" alt="测距" />
         </button>
 
         <!-- 右侧弹出结果面板 -->

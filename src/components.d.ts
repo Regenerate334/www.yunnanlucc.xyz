@@ -13,9 +13,6 @@ declare module 'vue' {
   export interface GlobalComponents {
     BottomChartsPanel: typeof import('./components/panels/BottomChartsPanel.vue')['default']
     ChartWidget: typeof import('./components/widgets/ChartWidget.vue')['default']
-    ElButton: typeof import('element-plus/es')['ElButton']
-    ElOption: typeof import('element-plus/es')['ElOption']
-    ElSelect: typeof import('element-plus/es')['ElSelect']
     Front_page: typeof import('./components/front_page.vue')['default']
     IndicatorRadar: typeof import('./components/charts/IndicatorRadar.vue')['default']
     KPIDashboard: typeof import('./components/charts/KPIDashboard.vue')['default']

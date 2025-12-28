@@ -27,7 +27,8 @@ import * as echarts from 'echarts';
 import { centroid, area } from '@turf/turf';
 import { clcdApi } from '../../api/index.js';
 
-const iconUrl = '/assets/images/icons/prefecture_pie.png';
+import prefecturePieIcon from '../../assets/icons/prefecture_pie.png';
+const iconUrl = prefecturePieIcon;
 
 const props = defineProps({
   year: { type: Number, default: 1985 }
@@ -107,7 +108,8 @@ async function loadCitiesData() {
 async function loadLandUseData() {
   if (landUseData) return;
   try {
-    const data = await clcdApi.getPrefectureData();
+    // 加载全量地级市时间序列数据，用于平滑的时间序列监测
+    const data = await clcdApi.getAllPrefectureData();
     landUseData = data;
   } catch (e) {
     console.error('Error fetching prefecture data:', e);

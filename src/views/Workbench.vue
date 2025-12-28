@@ -1,7 +1,7 @@
 <template>
   <div id="cesiumContainerWrapper">
     <div class="background-layer"></div>
-    <div class="mask-layer"></div>
+    <!-- <div class="mask-layer"></div> -->
     <div id="cesiumContainer"></div>
 
     <!-- 年份选择器 - 左上角 -->
@@ -430,7 +430,7 @@ html {
   height: 104vh;
   z-index: 100;
   pointer-events: none;
-  background-image: url('/assets/images/backgrounds/front_bg.png');
+  background-image: url('../assets/images/front_bg.png');
   background-size: 100% 100%;
   background-repeat: no-repeat;
   background-position: center center;
@@ -444,7 +444,7 @@ html {
   height: 100vh;
   z-index: 50;
   pointer-events: none;
-  background-image: url('/assets/images/backgrounds/mask.png');
+  /* background-image: url('../assets/images/mask.png'); */
   background-size: 100% 100%;
   background-repeat: no-repeat;
   background-position: center center;

@@ -1,7 +1,7 @@
 <template>
   <div class="land-use-trend-control">
     <button @click="toggleChart" class="control-btn" :class="{ active: isVisible }" title="土地利用变化趋势">
-      <img src="/src/assets/zhexiantu_icon.png" alt="趋势图" class="icon-img" />
+      <img src="../../assets/icons/zhexiantu_icon.png" alt="趋势图" class="icon-img" />
     </button>
 
     <transition name="fade">

@@ -1,7 +1,7 @@
 <template>
     <div class="area-measure-control">
         <button @click="toggleMeasure" class="measure-btn" :class="{ active: isMeasuring }" title="测面积">
-            <img src="/assets/images/icons/cemianji.png" class="measure-icon" alt="测面积" />
+            <img src="../../assets/icons/cemianji.png" class="measure-icon" alt="测面积" />
         </button>
 
         <!-- 右侧弹出结果面板 -->

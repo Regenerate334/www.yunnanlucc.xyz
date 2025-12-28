@@ -1,13 +1,14 @@
 <template>
   <div class="view-reset-control">
     <button @click="resetView" class="reset-btn" title="复位视图">
-      <img src="../../assets/reset.svg" alt="复位" class="reset-icon" />
+      <img :src="resetIcon" alt="复位" class="reset-icon" />
     </button>
   </div>
 </template>
 
 <script setup>
 import * as Cesium from 'cesium';
+import resetIcon from '../../assets/icons/reset.svg';
 
 /**
  * 重置视图到默认位置（云南省）- 带平滑飞行动画

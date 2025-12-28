@@ -31,8 +31,7 @@
         /* Types */
         "types": [
             "cesium",
-            "node",
-            "element-plus/global"
+            "node"
         ]
     },
     "include": [

@@ -31,11 +31,26 @@ export const clcdApi = {
     // 获取区域趋势数据
     getRegionalTrend: (level, name) => request(`/api/clcd/trend/${level}/${encodeURIComponent(name)}`),
 
-    // 获取地级市原始数据
-    getPrefectureData: () => request('/api/clcd/prefecture'),
+    // 获取所有地级市全量数据
+    getAllPrefectureData: () => request('/api/clcd/prefecture'),
 
-    // 获取区县原始数据
-    getCountyData: () => request('/api/clcd/county')
+    // 获取所有区县全量数据
+    getAllCountyData: () => request('/api/clcd/county'),
+
+    // 获取特定地级市全量数据
+    getPrefectureDataByName: (name) => request(`/api/clcd/prefecture/name/${encodeURIComponent(name)}`),
+
+    // 获取特定区县全量数据
+    getCountyDataByName: (name) => request(`/api/clcd/county/name/${encodeURIComponent(name)}`),
+
+    // 获取某年所有地级市数据
+    getPrefectureDataByYear: (year) => request(`/api/clcd/prefecture/year/${year}`),
+
+    // 获取某年所有区县数据
+    getCountyDataByYear: (year) => request(`/api/clcd/county/year/${year}`),
+
+    // 获取特定地级市下所有区县的全量数据
+    getCountyDataByPrefecture: (prefecture) => request(`/api/clcd/county/prefecture/${encodeURIComponent(prefecture)}`)
 };
 
 // 行政区划相关接口

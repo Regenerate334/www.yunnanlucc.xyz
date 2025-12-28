@@ -54,7 +54,6 @@
                 <div
                     class="rounded-xl border border-white/10 bg-white/5 p-4 text-center shadow-sm backdrop-blur-md flex flex-col items-center">
                     <div class="mb-2 flex items-center gap-2 text-cyan-300">
-                        <!-- <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="20" height="20" fill="currentColor"><path d="M3 5h18v2H3V5zm0 6h18v2H3v-2zm0 6h18v2H3v-2z"/></svg> -->
                         <span class="font-semibold ">监测评估指标体系</span>
                     </div>
                     <p class="text-sm text-gray-200/90">分层分域建模，量化空间绩效</p>
@@ -62,7 +61,6 @@
                 <div
                     class="rounded-xl border border-white/10 bg-white/5 p-4 text-center shadow-sm backdrop-blur-md flex flex-col items-center">
                     <div class="mb-2 flex items-center gap-2 text-emerald-300">
-                        <!-- <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="20" height="20" fill="currentColor"><path d="M12 2l9 4.9v9.8L12 22l-9-5.3V6.9L12 2zm0 2.2L5 7v6.9l7 4.1 7-4.1V7l-7-2.8z"/></svg> -->
                         <span class="font-semibold">预警触发与阈值机制</span>
                     </div>
                     <p class="text-sm text-gray-200/90">洞悉潜在风险，触发精准预警。</p>
@@ -70,7 +68,6 @@
                 <div
                     class="rounded-xl border border-white/10 bg-white/5 p-4 text-left shadow-sm backdrop-blur-md flex flex-col items-center">
                     <div class="mb-2 flex items-center gap-2 text-amber-300">
-                        <!-- <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="20" height="20" fill="currentColor"><path d="M4 8l8-5 8 5v8l-8 5-8-5V8zm8-3.2L6 8l6 3.2L18 8 12 4.8z"/></svg> -->
                         <span class="font-semibold">情景模拟与评估方法</span>
                     </div>
                     <p class="text-sm text-gray-200/90">推演多重情景，赋能科学决策</p>
@@ -105,25 +102,24 @@
 <script setup>
 import { ref, onMounted, onBeforeUnmount } from 'vue';
 import { useRouter } from 'vue-router';
+import portalBg from '../assets/images/portal_bg.png';
 
 const router = useRouter();
 const bgScale = ref(1);
 
-// 使用新的背景图片路径
-const bgUrl = '/assets/images/backgrounds/login_bg.png';
+// 使用背景图片
+const bgUrl = portalBg;
 
 function enterPlatform() {
-    router.push('/front');
+    router.push('/login');
 }
 
 function updateBgScale() {
-    // 优先使用浏览器视觉视口缩放（Ctrl+滚轮时会改变）
     const vv = window.visualViewport;
     if (vv && typeof vv.scale === 'number') {
         bgScale.value = vv.scale || 1;
         return;
     }
-    // 回退：用 devicePixelRatio 近似
     const dpr = window.devicePixelRatio || 1;
     bgScale.value = dpr;
 }
@@ -134,10 +130,8 @@ function handleDprChange() {
 
 onMounted(() => {
     updateBgScale();
-    // 监听 DPI/缩放变化
     if (window.matchMedia) {
         try {
-            // 监听多个常见缩放级别，保证跨浏览器可用性
             const mediaQueries = [
                 '(resolution: 96dpi)',
                 '(resolution: 120dpi)',
@@ -149,7 +143,6 @@ onMounted(() => {
                 mq.addEventListener?.('change', handleDprChange);
             });
         } catch (e) {
-            // 回退：窗口尺寸变化时更新
             window.addEventListener('resize', handleDprChange);
         }
     } else {
@@ -160,17 +153,9 @@ onMounted(() => {
 onBeforeUnmount(() => {
     window.removeEventListener('resize', handleDprChange);
 });
-
-// 展示性统计数据（可后续对接真实接口）
-const stats = {
-    indicators: 36,
-    methods: 6,
-    outputs: '方案/论文'
-};
 </script>
 
 <style scoped>
-/* 文本样式,添加鼠标悬停光晕效果 */
 .text-shadow {
     text-shadow: 0 2px 4px rgba(0, 0, 0, 0.5);
 }

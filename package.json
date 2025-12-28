@@ -1,11 +1,13 @@
 {
-  "name": "my_cesium_project",
+  "name": "my_webgis_project",
   "private": true,
-  "version": "0.0.0",
+  "version": "1.0.0",
   "type": "module",
   "scripts": {
-    "dev": "vite",
+    "dev": "concurrently -n \"SERVER,CLIENT\" -c \"green,blue\" \"npm run server\" \"npm run client\"",
+    "client": "vite",
     "server": "node ./server/index.js",
+    "stop": "taskkill /F /IM node.exe",
     "build": "vite build",
     "preview": "vite preview"
   },

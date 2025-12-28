@@ -54,7 +54,8 @@ const props = defineProps({
     }
 });
 
-const iconUrl = '/assets/images/icons/prefecture_pie.png';
+import prefecturePieIcon from '../../assets/icons/prefecture_pie.png';
+const iconUrl = prefecturePieIcon;
 
 const isVisible = ref(false);
 const chartContainer = ref(null);
@@ -145,10 +146,10 @@ async function loadCountyGeo() {
     }
 }
 
-async function loadCountyStats() {
-    if (countyStats) return;
+async function loadCountyStats(prefectureName) {
     try {
-        const data = await clcdApi.getCountyData();
+        // 按地级市加载全量时间序列数据，符合时间序列监测逻辑
+        const data = await clcdApi.getCountyDataByPrefecture(prefectureName);
         countyStats = data;
     } catch (e) {
         console.error('Error fetching county data:', e);
@@ -221,7 +222,7 @@ async function initChart() {
 
     await loadPrefectureList();
     await loadCountyGeo();
-    await loadCountyStats();
+    await loadCountyStats(currentPrefectureName.value);
 
     const mapName = `map_${selectedAdcode.value}`;
     if (!echarts.getMap(mapName)) {
@@ -341,9 +342,8 @@ function getBaseChartOption(year, dataList) {
     };
 }
 
-async function updateYear(newYear) {
-    if (!chartInstance) return;
-    await loadCountyStats();
+function updateYear(newYear) {
+    if (!chartInstance || !countyStats) return;
     const baseOption = getBaseChartOption(newYear, countyData);
     chartInstance.setOption(baseOption, { notMerge: true });
     updatePiePositions();
@@ -394,7 +394,10 @@ async function loadPrefectureList() {
 
 async function handlePrefectureChange() {
     if (!chartInstance) return;
-    await loadCountyGeo();
+    await Promise.all([
+        loadCountyGeo(),
+        loadCountyStats(currentPrefectureName.value)
+    ]);
     const mapName = `map_${selectedAdcode.value}`;
     if (!echarts.getMap(mapName)) {
         echarts.registerMap(mapName, countyGeoJSON);

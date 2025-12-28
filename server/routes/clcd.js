@@ -72,7 +72,7 @@ router.get('/trend/:level/:name', async (req, res) => {
     } catch (err) { handleError(res, err); }
 });
 
-// 获取地级市/区县原始数据
+// 获取所有地级市数据
 router.get('/prefecture', async (_req, res) => {
     try {
         const { rows } = await pool.query('SELECT * FROM public.clcd_prefecture ORDER BY year, region_name');
@@ -80,9 +80,67 @@ router.get('/prefecture', async (_req, res) => {
     } catch (err) { handleError(res, err); }
 });
 
+// 获取所有区县数据
 router.get('/county', async (_req, res) => {
     try {
         const { rows } = await pool.query('SELECT * FROM public.clcd_county ORDER BY year, region_name');
+        res.json(rows);
+    } catch (err) { handleError(res, err); }
+});
+
+// 获取特定地级市的全量时间序列数据
+router.get('/prefecture/name/:name', async (req, res) => {
+    const { name } = req.params;
+    try {
+        const sql = `SELECT * FROM public.clcd_prefecture WHERE TRIM(region_name) = $1 ORDER BY year ASC`;
+        const { rows } = await pool.query(sql, [name.trim()]);
+        res.json(rows);
+    } catch (err) { handleError(res, err); }
+});
+
+// 获取特定区县的全量时间序列数据
+router.get('/county/name/:name', async (req, res) => {
+    const { name } = req.params;
+    try {
+        const sql = `SELECT * FROM public.clcd_county WHERE TRIM(region_name) = $1 ORDER BY year ASC`;
+        const { rows } = await pool.query(sql, [name.trim()]);
+        res.json(rows);
+    } catch (err) { handleError(res, err); }
+});
+
+// 获取特定地级市下所有区县的全量时间序列数据
+router.get('/county/prefecture/:prefecture', async (req, res) => {
+    const { prefecture } = req.params;
+    try {
+        // 使用关联查询，通过边界表找到该地级市下的所有区县
+        const sql = `
+            SELECT c.* 
+            FROM public.clcd_county c
+            JOIN public.yunnan_country_level_city_boundaries b ON TRIM(c.region_name) = TRIM(b.县级)
+            WHERE b.地级 = $1
+            ORDER BY c.year ASC, c.region_name ASC
+        `;
+        const { rows } = await pool.query(sql, [prefecture.trim()]);
+        res.json(rows);
+    } catch (err) { handleError(res, err); }
+});
+
+// 获取某年份所有地级市数据 (用于地图初始化展示)
+router.get('/prefecture/year/:year', async (req, res) => {
+    const { year } = req.params;
+    try {
+        const sql = `SELECT * FROM public.clcd_prefecture WHERE year = $1 ORDER BY region_name`;
+        const { rows } = await pool.query(sql, [Number(year)]);
+        res.json(rows);
+    } catch (err) { handleError(res, err); }
+});
+
+// 获取某年份所有区县数据
+router.get('/county/year/:year', async (req, res) => {
+    const { year } = req.params;
+    try {
+        const sql = `SELECT * FROM public.clcd_county WHERE year = $1 ORDER BY region_name`;
+        const { rows } = await pool.query(sql, [Number(year)]);
         res.json(rows);
     } catch (err) { handleError(res, err); }
 });
