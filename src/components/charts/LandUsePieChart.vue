@@ -10,7 +10,7 @@
     <div class="chart-title">{{ chartTitle }}</div>
 
     <!-- ECharts容器 -->
-    <div ref="chartContainer" class="chart-container"></div>
+    <div ref="chartContainer" class="chart-container" @click="updateChart" title="点击重新播放动画"></div>
 
     <!-- 加载状态 -->
     <div v-if="loading" class="loading-message">
@@ -26,7 +26,7 @@
 </template>
 
 <script setup>
-import { ref, onMounted, onUnmounted, watch, nextTick, computed } from 'vue'
+import { ref, shallowRef, onMounted, onUnmounted, watch, nextTick, computed } from 'vue'
 import * as echarts from 'echarts'
 
 // ==================== 组件属性定义 ====================
@@ -47,8 +47,8 @@ const props = defineProps({
 })
 
 // ==================== 响应式数据 ====================
-const chartContainer = ref(null)
-const chartInstance = ref(null)
+const chartContainer = shallowRef(null)
+const chartInstance = shallowRef(null)
 const loading = ref(false)
 
 // ==================== 计算属性 ====================
@@ -180,6 +180,7 @@ const initChart = () => {
 const updateChart = () => {
   if (!chartInstance.value) return
   const option = getChartOption()
+  chartInstance.value.clear()
   chartInstance.value.setOption(option, true)
 }
 
@@ -219,25 +220,35 @@ watch(() => props.year, () => {
   position: relative;
   width: 100%;
   height: 100%;
-  background: rgba(42, 61, 110, 0.2);
-  border: 1px solid rgba(255, 255, 255, 0.12);
-  border-radius: 10px;
-  backdrop-filter: blur(8px);
+  background: transparent;
+  /* 移除背景，由父容器提供 */
   overflow: hidden;
 }
 
 .chart-title {
-  padding: 8px 12px;
-  font-size: 14px;
+  padding: 10px 16px;
+  font-size: 13px;
   font-weight: 600;
-  color: #9cc9ff;
-  border-bottom: 1px solid rgba(255, 255, 255, 0.12);
-  background: rgba(42, 61, 110, 0.3);
+  color: #a5ccff;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+  background: rgba(30, 58, 138, 0.2);
+  display: flex;
+  align-items: center;
+}
+
+.chart-title::before {
+  content: '';
+  width: 3px;
+  height: 12px;
+  background: #3b82f6;
+  margin-right: 8px;
+  border-radius: 2px;
 }
 
 .chart-container {
   width: 100%;
   height: 350px;
+  cursor: pointer;
 }
 
 /* 紧凑模式 */
@@ -252,8 +263,11 @@ watch(() => props.year, () => {
 .loading-message,
 .no-data-message {
   position: absolute;
-  animation: spin 1s linear infinite;
-  margin-bottom: 12px;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  color: #a5ccff;
+  font-size: 14px;
 }
 
 @keyframes spin {

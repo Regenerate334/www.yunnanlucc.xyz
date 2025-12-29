@@ -4,7 +4,17 @@
     <!-- <div class="mask-layer"></div> -->
     <div id="cesiumContainer"></div>
 
-    <!-- 年份选择器 - 左上角 -->
+    <!-- 顶部标题栏 -->
+    <div class="header-container">
+      <div class="header-content">
+        <!-- 退出登录按钮 -->
+        <button class="logout-btn" @click="handleLogout" title="退出登录">
+          <img :src="logoutIcon" alt="退出" class="logout-icon-img" />
+        </button>
+      </div>
+    </div>
+
+    <!-- 年份选择器 - -->
     <div class="year-selector-container">
       <YearRangeSelector v-model:selectedYear="selectedYear" :width="200" />
     </div>
@@ -36,7 +46,6 @@
     <div class="right-panels">
       <!-- CLCD 图例 -->
       <div class="panel-card legend-panel">
-        <div class="panel-title">CLCD 图例</div>
         <div class="legend-grid">
           <div v-for="(color, name) in clcdColors" :key="name" class="legend-item">
             <span class="legend-color" :style="{ background: color }"></span>
@@ -54,7 +63,8 @@
 </template>
 
 <script setup>
-import { onMounted, ref, watch } from 'vue';
+import { onMounted, onUnmounted, ref, shallowRef, watch } from 'vue';
+import { useRouter } from 'vue-router';
 import * as Cesium from 'cesium';
 import 'cesium/Build/Cesium/Widgets/widgets.css';
 import YearRangeSelector from '../components/controls/YearRangeSelector.vue';
@@ -68,13 +78,15 @@ import EChartsCountyPie from '../components/controls/EChartsCountyPie.vue';
 import LandUseTrendControl from '../components/controls/LandUseTrendControl.vue';
 import RegionalTrendControl from '../components/controls/RegionalTrendControl.vue';
 import { useMapStore } from '../stores/map.ts';
-import { clcdApi } from '../api/index.js';
+import { clcdApi, authApi } from '../api/index.js';
+import logoutIcon from '../assets/icons/logout.png';
 
+const router = useRouter();
 const mapStore = useMapStore();
 
-let viewer = null;
-let clcdLayer = null; // 用于存储当前 CLCD 图层的引用
-let baseMapLayer = null; // 用于存储当前底图图层
+const viewer = shallowRef(null);
+const clcdLayer = shallowRef(null); // 用于存储当前 CLCD 图层的引用
+const baseMapLayer = shallowRef(null); // 用于存储当前底图图层
 const cachedClcdData = ref([]); // 缓存 CLCD 数据，避免重复加载
 
 const selectedYear = ref(1985); // 当前选择的年份，默认1985
@@ -106,19 +118,37 @@ const legendNames = {
   Wetland: '湿地'
 };
 
-// 测量工具切换逻辑已移动到按钮组件内部
+// 退出登录
+const handleLogout = () => {
+  localStorage.removeItem('auth_token');
+  localStorage.removeItem('user_info');
+  router.push('/login');
+};
+
+// 验证登录状态
+const checkAuth = async () => {
+  try {
+    await authApi.verify();
+  } catch (err) {
+    console.error('身份验证失败:', err);
+    handleLogout();
+  }
+};
 
 // 监听年份变化，自动更新 CLCD 图层和图表数据
 watch(selectedYear, (newYear) => {
-  if (newYear && viewer) {
+  if (newYear && viewer.value) {
     loadCLCDLayer(newYear);
     loadYearData(newYear);
   }
 });
 
-onMounted(() => {
+onMounted(async () => {
+  // 1. 验证身份
+  await checkAuth();
+
   try {
-    viewer = new Cesium.Viewer("cesiumContainer", {
+    const viewerInstance = new Cesium.Viewer("cesiumContainer", {
       imageryProvider: false,
       baseLayerPicker: false,
       geocoder: false,
@@ -144,18 +174,19 @@ onMounted(() => {
         allowTextureFilterAnisotropic: true
       }
     });
+    viewer.value = viewerInstance;
 
     // 开启抗锯齿
-    viewer.scene.postProcessStages.fxaa.enabled = true;
+    viewer.value.scene.postProcessStages.fxaa.enabled = true;
     // 开启高动态范围渲染
-    viewer.scene.highDynamicRange = true;
+    viewer.value.scene.highDynamicRange = true;
     // 设置分辨率缩放因子，提高清晰度
-    viewer.resolutionScale = window.devicePixelRatio || 1.0;
+    viewer.value.resolutionScale = window.devicePixelRatio || 1.0;
 
-    viewer.cesiumWidget.creditContainer.style.display = "none";
+    viewer.value.cesiumWidget.creditContainer.style.display = "none";
 
     // 禁用倾斜控制，保持垂直视角
-    viewer.scene.screenSpaceCameraController.enableTilt = false;
+    viewer.value.scene.screenSpaceCameraController.enableTilt = false;
     // 添加默认底图（天地图影像）
     loadBaseMap('imagery');
 
@@ -167,7 +198,7 @@ onMounted(() => {
       markerSize: 0,
       clampToGround: true
     }).then(function (dataSource) {
-      viewer.dataSources.add(dataSource);
+      viewer.value.dataSources.add(dataSource);
       const entities = dataSource.entities.values;
 
       // 遍历所有实体，只保留云南省（code: 530000 或 name: 云南）
@@ -204,7 +235,7 @@ onMounted(() => {
     });
 
     // 设置初始视角到云南省中心，垂直俯视视角
-    viewer.camera.setView({
+    viewer.value.camera.setView({
       destination: Cesium.Cartesian3.fromDegrees(101.8, 25.2, 1900000),
       orientation: {
         pitch: Cesium.Math.toRadians(-90),
@@ -213,10 +244,10 @@ onMounted(() => {
     });
 
     // 将 viewer 挂载到 window 对象上，供其他组件使用
-    window.cesiumViewer = viewer;
+    window.cesiumViewer = viewer.value;
 
     // 将 viewer 注册到 map store，以便其他组件可以使用
-    mapStore.setViewer(viewer);
+    mapStore.setViewer(viewer.value);
 
     // 加载默认年份（1985）的 CLCD 图层
     loadCLCDLayer(selectedYear.value);
@@ -243,42 +274,8 @@ async function loadYearData(year) {
 
       if (yearData) {
         // 映射为前端需要的字段名（英文 → 中文）
-        // Note: The API returns lowercase keys like 'cropland', 'forest' which matches here
         currentYearData.value = {
           year: yearData.year,
-          耕地: yearData.cropland,
-          林地: yearData.forest,
-          灌木: yearData.shrub, // Database uses 'shrub', check if mapping needed. JSON used 'shrubland' or 'shrub'?
-          // Looking at previous JSON content, it used 'shrubland'.
-          // Looking at database schema screenshot, it uses 'shrub'.
-          // I should check what the API returns. The API returns what's in the DB.
-          // DB has 'shrub'.
-          // Wait, let me check the implementation plan or previous file content.
-          // In server/index.js pivot logic: yearMap[row.year][row.land_use_type] = Number(row.area);
-          // So the keys will be whatever is in `land_use_type` column.
-          // Screenshot shows 'shrub'.
-          // Front page expects '灌木'.
-          // So I should map 'shrub' to '灌木'.
-
-          // Let's be safe and check for both or just use 'shrub' if that's what DB has.
-          // Actually, let's look at the `CLCD_CLASS_MAP` in server/index.js (though I didn't use it in the new endpoint).
-          // The new endpoint returns raw strings from DB.
-          // DB Screenshot shows: cropland, forest, shrub, grassland, water, snow_ice, barren, impervious, wetland.
-
-          // So:
-          // cropland -> 耕地
-          // forest -> 林地
-          // shrub -> 灌木
-          // grassland -> 草地
-          // water -> 水域
-          // snow_ice -> 冰雪
-          // barren -> 裸地
-          // impervious -> 建设用地
-          // wetland -> 湿地
-
-          // Previous JSON keys might have been slightly different (e.g. shrubland vs shrub).
-          // I will use the DB keys.
-
           耕地: yearData.cropland,
           林地: yearData.forest,
           灌木: yearData.shrub,
@@ -300,12 +297,12 @@ async function loadYearData(year) {
 
 // 加载底图
 function loadBaseMap(mapType) {
-  if (!viewer) return;
+  if (!viewer.value) return;
 
   // 移除现有底图
-  if (baseMapLayer) {
-    viewer.imageryLayers.remove(baseMapLayer);
-    baseMapLayer = null;
+  if (baseMapLayer.value) {
+    viewer.value.imageryLayers.remove(baseMapLayer.value);
+    baseMapLayer.value = null;
   }
 
   const token = 'ab70e90828db5b27aa040f2cb879c7f1';
@@ -342,7 +339,7 @@ function loadBaseMap(mapType) {
     });
 
     // 在索引 0 位置添加底图，确保底图在最底层
-    baseMapLayer = viewer.imageryLayers.addImageryProvider(imageryProvider, 0);
+    baseMapLayer.value = viewer.value.imageryLayers.addImageryProvider(imageryProvider, 0);
   } catch (e) {
     console.error('加载底图失败:', e);
   }
@@ -356,13 +353,13 @@ function handleBaseMapChange(mapType) {
 // 加载指定年份的 CLCD WMS 图层
 function loadCLCDLayer(year) {
   // 如果已有图层，先移除
-  if (clcdLayer && viewer) {
-    viewer.imageryLayers.remove(clcdLayer, true);
-    clcdLayer = null;
+  if (clcdLayer.value && viewer.value) {
+    viewer.value.imageryLayers.remove(clcdLayer.value, true);
+    clcdLayer.value = null;
   }
 
   try {
-    clcdLayer = viewer.imageryLayers.addImageryProvider(
+    clcdLayer.value = viewer.value.imageryLayers.addImageryProvider(
       new Cesium.WebMapServiceImageryProvider({
         url: 'http://localhost:8080/geoserver/WebGIS/wms',
         layers: `WebGIS:${year}_yunnan_CLCD_raster`,
@@ -380,6 +377,14 @@ function loadCLCDLayer(year) {
     console.error(`加载 ${year} 年 CLCD 图层失败:`, e);
   }
 }
+
+onUnmounted(() => {
+  if (viewer.value) {
+    viewer.value.dispose();
+    viewer.value = null;
+  }
+  window.cesiumViewer = null;
+});
 </script>
 
 <style>
@@ -420,6 +425,90 @@ html {
   z-index: 10;
 }
 
+/* 顶部标题栏样式 */
+.header-container {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 80px;
+  z-index: 1000;
+  pointer-events: none;
+  display: flex;
+  justify-content: center;
+  align-items: flex-start;
+}
+
+.header-content {
+  position: relative;
+  width: 100%;
+  height: 60px;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  pointer-events: auto;
+}
+
+.project-title {
+  margin: 0;
+  padding-top: 5px;
+  font-size: 32px;
+  font-weight: 700;
+  letter-spacing: 6px;
+  color: #ffffff;
+  text-shadow: 0 0 10px rgba(255, 255, 255, 0.5), 0 0 20px rgba(59, 130, 246, 0.5);
+  font-family: "Microsoft YaHei", sans-serif;
+}
+
+.logout-btn {
+  position: absolute;
+  right: 20px;
+  top: 15px;
+  width: 40px;
+  height: 40px;
+  background: rgba(13, 25, 48, 0.4);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 8px;
+  cursor: pointer;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  backdrop-filter: blur(8px);
+  padding: 0;
+  overflow: hidden;
+}
+
+.logout-btn:hover {
+  background: rgba(239, 68, 68, 0.2);
+  border-color: rgba(239, 68, 68, 0.4);
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(239, 68, 68, 0.2);
+}
+
+.logout-icon-img {
+  width: 24px;
+  height: 24px;
+  object-fit: contain;
+  opacity: 0.8;
+  transition: all 0.3s ease;
+}
+
+.logout-btn:hover .logout-icon-img {
+  opacity: 1;
+  transform: scale(1.1);
+}
+
+.logout-btn svg {
+  width: 20px;
+  height: 20px;
+}
+
+.logout-btn:hover {
+  color: #fca5a5;
+  transform: scale(1.1);
+}
+
 .background-layer {
   position: fixed;
   top: -2%;
@@ -436,57 +525,32 @@ html {
   background-position: center center;
 }
 
-.mask-layer {
-  position: fixed;
-  top: 0;
-  left: 0;
-  width: 100vw;
-  height: 100vh;
-  z-index: 50;
-  pointer-events: none;
-  /* background-image: url('../assets/images/mask.png'); */
-  background-size: 100% 100%;
-  background-repeat: no-repeat;
-  background-position: center center;
-}
-
 .year-selector-container {
   position: fixed;
   top: 40px;
-  /* 距离顶部 20px */
   left: 20px;
-  /* 距离左侧 20px */
-  z-index: 200;
+  z-index: 1100;
 }
 
-/* 复位视图、测距、测面积按钮 */
 .bottom-controls-container {
   position: fixed;
   bottom: 30px;
-  /* 距离底部的距离 */
   left: 20px;
-  /* 距离左侧的距离 */
   z-index: 200;
   display: flex;
   flex-direction: column;
-  /* 垂直排列 */
   align-items: center;
   gap: 10px;
-  /* 按钮之间的间距 */
   min-height: 160px;
-  /* 确保有足够空间显示弹出窗口 */
 }
 
 .basemap-selector-container {
   position: fixed;
   top: 40px;
-  /* 距离顶部 20px */
   left: 250px;
-  /* 距离左侧 20px */
-  z-index: 200;
+  z-index: 1100;
 }
 
-/* 右侧图表面板区域 */
 .right-panels {
   position: fixed;
   right: 20px;
@@ -500,118 +564,72 @@ html {
   z-index: 150;
 }
 
-/* 面板卡片通用样式 */
 .panel-card {
-  background: rgba(42, 61, 110, 0.2);
-  border: 1px solid rgba(255, 255, 255, 0.12);
-  border-radius: 10px;
-  backdrop-filter: blur(8px);
+  background: rgba(13, 25, 48, 0.4);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 12px;
+  backdrop-filter: blur(16px) saturate(180%);
   overflow: hidden;
+  box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.37);
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
-/* 面板标题 */
 .panel-title {
-  padding: 8px 12px;
-  font-size: 14px;
+  padding: 10px 16px;
+  font-size: 13px;
   font-weight: 600;
-  color: #9cc9ff;
-  border-bottom: 1px solid rgba(255, 255, 255, 0.12);
-  background: rgba(42, 61, 110, 0.3);
+  color: #a5ccff;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+  background: linear-gradient(90deg, rgba(30, 58, 138, 0.4) 0%, rgba(30, 58, 138, 0) 100%);
+  display: flex;
+  align-items: center;
 }
 
-/* 图例面板样式 */
-.legend-panel {
-  padding-bottom: 8px;
+.panel-title::before {
+  content: '';
+  width: 3px;
+  height: 12px;
+  background: #3b82f6;
+  margin-right: 8px;
+  border-radius: 2px;
 }
 
 .legend-grid {
   display: grid;
   grid-template-columns: 1fr 1fr;
-  gap: 4px 8px;
-  /* 间距 */
-  padding: 8px 12px;
-  /* 内边距 */
+  gap: 6px 12px;
+  padding: 12px 16px;
 }
 
 .legend-item {
   display: flex;
   align-items: center;
-  gap: 6px;
-  /* 间距 */
+  gap: 8px;
+  padding: 4px 0;
 }
 
 .legend-color {
-  width: 12px;
-  /* 减小色块 */
-  height: 12px;
-  border-radius: 3px;
-  border: 1px solid rgba(255, 255, 255, 0.3);
-  flex-shrink: 0;
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  border: 1px solid rgba(255, 255, 255, 0.2);
 }
 
 .legend-name {
   font-size: 12px;
-  /* 字体 */
-  color: #ffffff;
+  color: rgba(255, 255, 255, 0.85);
 }
 
-/* 图表面板 */
 .chart-panel {
-  min-height: 200px;
+  min-height: 220px;
 }
 
-.trend-panel {
-  min-height: 350px;
-}
-
-/* 右侧面板滚动条样式 */
 .right-panels::-webkit-scrollbar {
-  width: 6px;
-}
-
-/* 土地利用结构图按钮样式 */
-.control-btn {
-  width: 48px;
-  height: 48px;
-  border-radius: 6px;
-  border: 1px solid rgba(255, 255, 255, 0.2);
-  background: rgba(42, 61, 110, 0.2);
-  backdrop-filter: blur(8px);
-  cursor: pointer;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  transition: all 0.3s ease;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
-}
-
-.control-btn:hover {
-  background: rgba(52, 71, 130, 0.4);
-  border-color: rgba(255, 255, 255, 0.4);
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.25);
-}
-
-.control-btn.active {
-  background: rgba(156, 201, 255, 0.2);
-  border-color: #9cc9ff;
-  box-shadow: 0 0 0 3px rgba(156, 201, 255, 0.2);
-}
-
-.control-btn .icon {
-  font-size: 24px;
-}
-
-.right-panels::-webkit-scrollbar-track {
-  background: rgba(255, 255, 255, 0.1);
-  border-radius: 3px;
+  width: 4px;
 }
 
 .right-panels::-webkit-scrollbar-thumb {
-  background: rgba(255, 255, 255, 0.3);
-  border-radius: 3px;
-}
-
-.right-panels::-webkit-scrollbar-thumb:hover {
-  background: rgba(255, 255, 255, 0.5);
+  background: rgba(255, 255, 255, 0.1);
+  border-radius: 10px;
 }
 </style>

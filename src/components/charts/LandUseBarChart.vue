@@ -9,16 +9,16 @@
   <div class="land-use-bar-chart">
     <!-- 图表标题 -->
     <div class="chart-title">{{ chartTitle }}</div>
-    
+
     <!-- ECharts容器 -->
     <div ref="chartContainer" class="chart-container"></div>
-    
+
     <!-- 加载状态 -->
     <div v-if="loading" class="loading-overlay">
       <div class="loading-spinner"></div>
       <div class="loading-text">正在加载数据...</div>
     </div>
-    
+
     <!-- 错误状态 -->
     <div v-if="error" class="error-message">
       <div class="error-icon">⚠️</div>
@@ -29,7 +29,7 @@
 </template>
 
 <script setup>
-import { ref, onMounted, onUnmounted, watch, nextTick, computed } from 'vue'
+import { ref, shallowRef, onMounted, onUnmounted, watch, nextTick, computed } from 'vue'
 import * as echarts from 'echarts'
 
 // ==================== 组件属性定义 ====================
@@ -49,8 +49,8 @@ const props = defineProps({
 })
 
 // ==================== 响应式数据 ====================
-const chartContainer = ref(null)
-const chartInstance = ref(null)
+const chartContainer = shallowRef(null)
+const chartInstance = shallowRef(null)
 const loading = ref(false)
 const error = ref('')
 const chartData = ref([])
@@ -67,29 +67,29 @@ const chartTitle = computed(() => {
  */
 const fetchLandUseData = async (year) => {
   if (!year) return
-  
+
   loading.value = true
   error.value = ''
-  
+
   try {
     const response = await fetch(`/api/clcd/${year}/summary`)
     if (!response.ok) {
       throw new Error(`HTTP ${response.status}: ${response.statusText}`)
     }
-    
+
     const data = await response.json()
     console.log(`获取${year}年数据:`, data)
-    
+
     // 处理数据格式
     chartData.value = data.map(item => ({
       name: item.class_name,
       value: item.area_km2,
       code: item.class_code
     }))
-    
+
     // 更新图表
     updateChart()
-    
+
   } catch (err) {
     console.error('获取土地利用数据失败:', err)
     error.value = `数据加载失败: ${err.message}`
@@ -106,7 +106,7 @@ const getChartOption = () => {
   const dataAxis = chartData.value.map(item => item.name)
   const data = chartData.value.map(item => item.value)
   const yMax = Math.max(...data) * 1.1 // 留10%的顶部空间
-  
+
   return {
     title: {
       text: chartTitle.value,
@@ -127,7 +127,7 @@ const getChartOption = () => {
       textStyle: {
         color: '#ffffff'
       },
-      formatter: function(params) {
+      formatter: function (params) {
         const data = params[0]
         return `${data.name}<br/>面积: ${data.value.toFixed(2)} km²`
       }
@@ -164,7 +164,7 @@ const getChartOption = () => {
       },
       axisLabel: {
         color: '#ffffff',
-        formatter: function(value) {
+        formatter: function (value) {
           return value.toFixed(0)
         }
       },
@@ -225,17 +225,17 @@ const getChartOption = () => {
  */
 const initChart = () => {
   if (!chartContainer.value) return
-  
+
   chartInstance.value = echarts.init(chartContainer.value)
-  
+
   // 添加点击缩放功能
   const zoomSize = 3
-  chartInstance.value.on('click', function(params) {
+  chartInstance.value.on('click', function (params) {
     if (params.componentType === 'series') {
       const dataIndex = params.dataIndex
       const startIndex = Math.max(dataIndex - zoomSize, 0)
       const endIndex = Math.min(dataIndex + zoomSize, chartData.value.length - 1)
-      
+
       chartInstance.value.dispatchAction({
         type: 'dataZoom',
         startValue: startIndex,
@@ -243,7 +243,7 @@ const initChart = () => {
       })
     }
   })
-  
+
   // 监听窗口大小变化
   window.addEventListener('resize', handleResize)
 }
@@ -253,7 +253,7 @@ const initChart = () => {
  */
 const updateChart = () => {
   if (!chartInstance.value) return
-  
+
   const option = getChartOption()
   chartInstance.value.setOption(option, true)
 }
@@ -357,8 +357,13 @@ watch(() => props.selectedYear, (newYear) => {
 }
 
 @keyframes spin {
-  0% { transform: rotate(0deg); }
-  100% { transform: rotate(360deg); }
+  0% {
+    transform: rotate(0deg);
+  }
+
+  100% {
+    transform: rotate(360deg);
+  }
 }
 
 /* ==================== 错误状态样式 ==================== */

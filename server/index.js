@@ -4,9 +4,11 @@ import pool from './config/db.js';
 import { requestLogger, handleError } from './middleware/logger.js';
 
 // 导入路由
+import authRoutes from './routes/auth.js';
 import clcdRoutes from './routes/clcd.js';
 import regionRoutes from './routes/regions.js';
 import analysisRoutes from './routes/analysis.js';
+import { authMiddleware } from './middleware/auth.js';
 
 const app = express();
 app.use(cors());
@@ -22,9 +24,10 @@ app.get('/health', async (_req, res) => {
 });
 
 // 挂载路由
-app.use('/api/clcd', clcdRoutes);
-app.use('/api/regions', regionRoutes);
-app.use('/api/analysis', analysisRoutes);
+app.use('/api/auth', authRoutes);
+app.use('/api/clcd', authMiddleware, clcdRoutes);
+app.use('/api/regions', authMiddleware, regionRoutes);
+app.use('/api/analysis', authMiddleware, analysisRoutes);
 
 const port = Number(process.env.PORT || 3000);
 app.listen(port, () => {

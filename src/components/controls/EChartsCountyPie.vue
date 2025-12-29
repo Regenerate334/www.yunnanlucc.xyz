@@ -42,7 +42,7 @@
 </template>
 
 <script setup>
-import { ref, watch, onMounted, onUnmounted, nextTick } from 'vue';
+import { ref, shallowRef, watch, onMounted, onUnmounted, nextTick } from 'vue';
 import * as echarts from 'echarts';
 import { centroid, area } from '@turf/turf';
 import { clcdApi } from '../../api/index.js';
@@ -58,8 +58,8 @@ import prefecturePieIcon from '../../assets/icons/prefecture_pie.png';
 const iconUrl = prefecturePieIcon;
 
 const isVisible = ref(false);
-const chartContainer = ref(null);
-let chartInstance = null;
+const chartContainer = shallowRef(null);
+const chartInstance = shallowRef(null);
 let countyGeoJSON = null;
 let countyData = null;
 let countyStats = null;
@@ -92,10 +92,10 @@ onMounted(() => {
 
 onUnmounted(() => {
     document.removeEventListener('click', handleClickOutside);
-    if (chartInstance) {
+    if (chartInstance.value) {
         window.removeEventListener('resize', handleResize);
-        chartInstance.dispose();
-        chartInstance = null;
+        chartInstance.value.dispose();
+        chartInstance.value = null;
     }
 });
 
@@ -187,9 +187,9 @@ function getLandUseSeriesData(regionName, year) {
 }
 
 function updatePiePositions() {
-    if (!chartInstance || !countyData) return;
+    if (!chartInstance.value || !countyData) return;
 
-    const geoCoordSys = chartInstance.getModel().getComponent('geo', 0).coordinateSystem;
+    const geoCoordSys = chartInstance.value.getModel().getComponent('geo', 0).coordinateSystem;
     const zoom = geoCoordSys.getZoom();
 
     const maxArea = Math.max(...countyData.map(c => c.area || 0));
@@ -209,7 +209,7 @@ function updatePiePositions() {
         };
     });
 
-    chartInstance.setOption({
+    chartInstance.value.setOption({
         series: seriesUpdates,
         geo: {
             regions: [] // Clear dynamic regions to avoid redundant labels
@@ -229,16 +229,16 @@ async function initChart() {
         echarts.registerMap(mapName, countyGeoJSON);
     }
 
-    chartInstance = echarts.init(chartContainer.value, null, {
+    chartInstance.value = echarts.init(chartContainer.value, null, {
         devicePixelRatio: window.devicePixelRatio,
         renderer: 'canvas'
     });
     const option = getBaseChartOption(props.year, countyData);
-    chartInstance.setOption(option);
+    chartInstance.value.setOption(option);
 
     updatePiePositions();
 
-    chartInstance.on('georoam', () => {
+    chartInstance.value.on('georoam', () => {
         updatePiePositions();
     });
 
@@ -343,15 +343,15 @@ function getBaseChartOption(year, dataList) {
 }
 
 function updateYear(newYear) {
-    if (!chartInstance || !countyStats) return;
+    if (!chartInstance.value || !countyStats) return;
     const baseOption = getBaseChartOption(newYear, countyData);
-    chartInstance.setOption(baseOption, { notMerge: true });
+    chartInstance.value.setOption(baseOption, { notMerge: true });
     updatePiePositions();
 }
 
 function handleResize() {
-    if (chartInstance) {
-        chartInstance.resize();
+    if (chartInstance.value) {
+        chartInstance.value.resize();
         updatePiePositions();
     }
 }
@@ -360,15 +360,15 @@ async function toggleChart() {
     isVisible.value = !isVisible.value;
     if (isVisible.value) {
         await nextTick();
-        if (chartInstance) {
-            chartInstance.dispose();
-            chartInstance = null;
+        if (chartInstance.value) {
+            chartInstance.value.dispose();
+            chartInstance.value = null;
         }
         await initChart();
     } else {
-        if (chartInstance) {
-            chartInstance.dispose();
-            chartInstance = null;
+        if (chartInstance.value) {
+            chartInstance.value.dispose();
+            chartInstance.value = null;
         }
     }
 }
@@ -393,7 +393,7 @@ async function loadPrefectureList() {
 }
 
 async function handlePrefectureChange() {
-    if (!chartInstance) return;
+    if (!chartInstance.value) return;
     await Promise.all([
         loadCountyGeo(),
         loadCountyStats(currentPrefectureName.value)
@@ -403,67 +403,74 @@ async function handlePrefectureChange() {
         echarts.registerMap(mapName, countyGeoJSON);
     }
     const option = getBaseChartOption(props.year, countyData);
-    chartInstance.setOption(option, { notMerge: true });
+    chartInstance.value.setOption(option, { notMerge: true });
     updatePiePositions();
 }
 
 watch(() => props.year, (newYear) => {
-    if (isVisible.value && chartInstance) {
+    if (isVisible.value && chartInstance.value) {
         updateYear(newYear);
     }
 });
 </script>
 
 <style scoped>
-.echarts-county-pie {
-    position: relative;
-}
-
 .control-btn {
-    width: 48px;
-    height: 48px;
-    border-radius: 6px;
-    border: 1px solid rgba(255, 255, 255, 0.2);
-    background: rgba(42, 61, 110, 0.2);
-    backdrop-filter: blur(8px);
+    width: 64px;
+    height: 64px;
+    border-radius: 14px;
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    background: rgba(13, 25, 48, 0.4);
+    backdrop-filter: blur(12px);
     cursor: pointer;
     display: flex;
     align-items: center;
     justify-content: center;
-    transition: all 0.3s ease;
-    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
     z-index: 2;
     padding: 0;
     overflow: hidden;
+    color: #a5ccff;
 }
 
 .control-btn:hover {
-    background: rgba(52, 71, 130, 0.4);
-    border-color: rgba(255, 255, 255, 0.4);
-    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.25);
+    background: rgba(30, 58, 138, 0.6);
+    border-color: rgba(59, 130, 246, 0.5);
+    transform: translateY(-2px);
+    color: #ffffff;
+    box-shadow: 0 6px 16px rgba(0, 0, 0, 0.3);
 }
 
 .control-btn.active {
-    background: rgba(156, 201, 255, 0.2);
-    border-color: #9cc9ff;
-    box-shadow: 0 0 3px rgba(156, 201, 255, 0.2);
+    background: #3b82f6;
+    border-color: #60a5fa;
+    color: #ffffff;
+    box-shadow: 0 0 15px rgba(59, 130, 246, 0.5);
+}
+
+.icon-img {
+    width: 60px;
+    height: 60px;
+    object-fit: contain;
+    opacity: 0.8;
+    transition: all 0.3s ease;
+}
+
+.control-btn:hover .icon-img {
+    opacity: 1;
+    transform: scale(1.05);
 }
 
 .btn-label {
     position: absolute;
-    bottom: 2px;
-    right: 4px;
-    font-size: 10px;
-    color: rgba(255, 255, 255, 0.8);
-    font-weight: bold;
-    text-shadow: 0 1px 2px rgba(0, 0, 0, 0.5);
+    bottom: 4px;
+    right: 6px;
+    font-size: 12px;
+    color: rgba(255, 255, 255, 0.9);
+    font-weight: 800;
     pointer-events: none;
-}
-
-.icon-img {
-    width: 100%;
-    height: 100%;
-    object-fit: cover;
+    letter-spacing: 0.5px;
 }
 
 .modal-backdrop {
@@ -472,7 +479,8 @@ watch(() => props.year, (newYear) => {
     left: 0;
     width: 100vw;
     height: 100vh;
-    background: rgba(0, 0, 0, 0.6);
+    background: rgba(0, 0, 0, 0.4);
+    backdrop-filter: blur(4px);
     z-index: 999;
 }
 
@@ -481,14 +489,14 @@ watch(() => props.year, (newYear) => {
     top: 50%;
     left: 50%;
     transform: translate(-50%, -50%);
-    width: 50vw;
-    height: 90vh;
-    background: rgba(42, 61, 110, 0.2);
-    border: 1px solid rgba(255, 255, 255, 0.12);
-    border-radius: 8px;
-    box-shadow: 0 10px 25px rgba(0, 0, 0, 0.1);
-    backdrop-filter: blur(8px);
-    -webkit-backdrop-filter: blur(8px);
+    width: 60vw;
+    height: 85vh;
+    background: rgba(13, 25, 48, 0.6);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    border-radius: 16px;
+    box-shadow: 0 24px 64px rgba(0, 0, 0, 0.5);
+    backdrop-filter: blur(24px);
+    -webkit-backdrop-filter: blur(24px);
     z-index: 1000;
     display: flex;
     flex-direction: column;
@@ -496,45 +504,41 @@ watch(() => props.year, (newYear) => {
 }
 
 .modal-header {
-    padding: 12px 16px;
-    background: rgba(255, 255, 255, 0.05);
+    padding: 16px 24px;
+    background: rgba(30, 58, 138, 0.3);
     color: white;
     display: flex;
-    justify-content: flex-end;
+    justify-content: space-between;
     align-items: center;
-    border-bottom: 1px solid rgba(255, 255, 255, 0.12);
-    position: relative;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.08);
 }
 
 .modal-title {
     font-size: 16px;
     font-weight: 600;
-    color: #fff;
-    position: absolute;
-    left: 50%;
-    transform: translateX(-50%);
-    width: 100%;
-    text-align: center;
-    pointer-events: none;
+    color: #a5ccff;
+    letter-spacing: 0.02em;
 }
 
 .close-btn {
     width: 32px;
     height: 32px;
-    border: none;
-    background: rgba(255, 255, 255, 0.2);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    background: rgba(255, 255, 255, 0.05);
     color: white;
-    font-size: 20px;
-    border-radius: 6px;
+    font-size: 16px;
+    border-radius: 8px;
     cursor: pointer;
     display: flex;
     align-items: center;
     justify-content: center;
-    transition: all 0.3s ease;
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
 .close-btn:hover {
-    background: rgba(255, 255, 255, 0.3);
+    background: rgba(239, 68, 68, 0.2);
+    border-color: rgba(239, 68, 68, 0.4);
+    color: #fca5a5;
     transform: rotate(90deg);
 }
 
@@ -550,23 +554,25 @@ watch(() => props.year, (newYear) => {
     align-items: center;
     justify-content: space-between;
     gap: 8px;
-    padding: 6px 12px;
-    background: rgba(42, 61, 110, 0.2);
-    border: 1px solid rgba(255, 255, 255, 0.12);
-    border-radius: 4px;
+    padding: 6px 16px;
+    background: rgba(255, 255, 255, 0.05);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: 8px;
     color: white;
     cursor: pointer;
-    width: 140px;
-    transition: all 0.3s ease;
-    backdrop-filter: blur(8px);
+    width: 160px;
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    backdrop-filter: blur(12px);
 }
 
 .select-trigger:hover {
-    background: rgba(42, 61, 110, 0.4);
+    background: rgba(255, 255, 255, 0.1);
+    border-color: rgba(255, 255, 255, 0.2);
 }
 
 .arrow {
     font-size: 10px;
+    color: #a5ccff;
     transition: transform 0.3s;
 }
 
@@ -581,14 +587,14 @@ watch(() => props.year, (newYear) => {
     width: 100%;
     max-height: 350px;
     overflow-y: auto;
-    background: rgba(42, 61, 110, 0.2);
-    border: 1px solid rgba(255, 255, 255, 0.12);
-    border-radius: 4px;
-    margin-top: 4px;
-    padding: 4px;
+    background: rgba(13, 25, 48, 0.6);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    border-radius: 12px;
+    margin-top: 8px;
+    padding: 6px;
     z-index: 1001;
-    backdrop-filter: blur(8px);
-    box-shadow: 0 10px 25px rgba(0, 0, 0, 0.1);
+    backdrop-filter: blur(24px);
+    box-shadow: 0 12px 40px rgba(0, 0, 0, 0.4);
 }
 
 .options-panel::-webkit-scrollbar {
@@ -600,8 +606,8 @@ watch(() => props.year, (newYear) => {
 }
 
 .options-panel::-webkit-scrollbar-thumb {
-    background: rgba(255, 255, 255, 0.2);
-    border-radius: 2px;
+    background: rgba(255, 255, 255, 0.1);
+    border-radius: 10px;
 }
 
 .options-list {
@@ -611,36 +617,36 @@ watch(() => props.year, (newYear) => {
 }
 
 .option-item {
-    padding: 10px 12px;
+    padding: 10px 16px;
     text-align: left;
     cursor: pointer;
-    border-radius: 6px;
-    color: rgba(255, 255, 255, 0.7);
+    border-radius: 8px;
+    color: rgba(255, 255, 255, 0.8);
     transition: all 0.2s ease;
-    font-size: 14px;
+    font-size: 13px;
     display: flex;
     align-items: center;
-    gap: 8px;
+    gap: 10px;
 }
 
 .option-item:hover {
-    background: rgba(255, 255, 255, 0.08);
-    color: #fff;
-    padding-left: 16px;
+    background: rgba(59, 130, 246, 0.1);
+    color: #ffffff;
+    padding-left: 20px;
 }
 
 .option-item.selected {
     background: rgba(59, 130, 246, 0.2);
-    color: #60a5fa;
+    color: #3b82f6;
     font-weight: 600;
 }
 
 .dot {
     width: 6px;
     height: 6px;
-    background: #60a5fa;
+    background: #3b82f6;
     border-radius: 50%;
-    box-shadow: 0 0 8px rgba(96, 165, 250, 0.6);
+    box-shadow: 0 0 10px rgba(59, 130, 246, 0.6);
 }
 
 .chart-container {

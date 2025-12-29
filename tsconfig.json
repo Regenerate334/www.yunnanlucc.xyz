@@ -21,6 +21,7 @@
         "noUnusedLocals": true,
         "noUnusedParameters": true,
         "noFallthroughCasesInSwitch": true,
+        "allowJs": true,
         /* Path mapping */
         "baseUrl": ".",
         "paths": {
@@ -38,7 +39,8 @@
         "src/**/*.ts",
         "src/**/*.d.ts",
         "src/**/*.tsx",
-        "src/**/*.vue"
+        "src/**/*.vue",
+        "src/**/*.js"
     ],
     "references": [
         {

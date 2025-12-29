@@ -9,17 +9,20 @@
             <div v-if="activeTool === 'area'" class="result-popover">
                 <div class="popover-header">
                     <span class="popover-title">测面结果</span>
-                    <select class="unit-select" v-model="areaUnit">
-                        <option value="sq_meter">平方米</option>
-                        <option value="sq_kilometer">平方千米</option>
-                        <option value="sq_inch">平方英寸</option>
-                        <option value="sq_foot">平方英尺</option>
-                        <option value="sq_yard">平方码</option>
-                        <option value="sq_mile">平方英里</option>
-                        <option value="acre">英亩</option>
-                        <option value="are">公亩</option>
-                        <option value="hectare">公顷</option>
-                    </select>
+                    <div class="custom-unit-dropdown" ref="unitDropdownRef">
+                        <div class="unit-trigger" @click="toggleUnitDropdown">
+                            <span>{{ unitLabels[areaUnit] }}</span>
+                            <span class="arrow" :class="{ open: isUnitDropdownOpen }">▼</span>
+                        </div>
+                        <transition name="dropdown-fade">
+                            <div v-if="isUnitDropdownOpen" class="unit-options">
+                                <div v-for="(label, value) in unitLabels" :key="value" class="unit-option"
+                                    :class="{ active: areaUnit === value }" @click="selectUnit(value)">
+                                    {{ label }}
+                                </div>
+                            </div>
+                        </transition>
+                    </div>
                 </div>
                 <div class="popover-content">
                     <div class="result-item">
@@ -40,7 +43,7 @@
 </template>
 
 <script setup>
-import { computed } from 'vue';
+import { computed, ref, onMounted, onUnmounted } from 'vue';
 import { useMeasurement } from '../../composables/useMeasurement';
 
 const {
@@ -62,6 +65,44 @@ function toggleMeasure() {
     }
 }
 
+const isUnitDropdownOpen = ref(false);
+const unitDropdownRef = ref(null);
+
+const unitLabels = {
+    sq_meter: '平方米',
+    sq_kilometer: '平方千米',
+    sq_inch: '平方英寸',
+    sq_foot: '平方英尺',
+    sq_yard: '平方码',
+    sq_mile: '平方英里',
+    acre: '英亩',
+    are: '公亩',
+    hectare: '公顷'
+};
+
+function toggleUnitDropdown() {
+    isUnitDropdownOpen.value = !isUnitDropdownOpen.value;
+}
+
+function selectUnit(value) {
+    areaUnit.value = value;
+    isUnitDropdownOpen.value = false;
+}
+
+function handleClickOutside(event) {
+    if (unitDropdownRef.value && !unitDropdownRef.value.contains(event.target)) {
+        isUnitDropdownOpen.value = false;
+    }
+}
+
+onMounted(() => {
+    document.addEventListener('click', handleClickOutside);
+});
+
+onUnmounted(() => {
+    document.removeEventListener('click', handleClickOutside);
+});
+
 const isMeasuring = computed(() => activeTool.value === 'area');
 </script>
 
@@ -71,43 +112,46 @@ const isMeasuring = computed(() => activeTool.value === 'area');
 }
 
 .measure-btn {
-    width: 48px;
-    height: 48px;
-    border-radius: 6px;
-    border: 1px solid rgba(255, 255, 255, 0.2);
-    background: rgba(42, 61, 110, 0.2);
-    backdrop-filter: blur(8px);
+    width: 64px;
+    height: 64px;
+    border-radius: 14px;
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    background: rgba(13, 25, 48, 0.4);
+    backdrop-filter: blur(12px);
     cursor: pointer;
     display: flex;
     align-items: center;
     justify-content: center;
-    transition: all 0.3s ease;
-    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
     z-index: 2;
+    color: #a5ccff;
 }
 
 .measure-btn:hover {
-    background: rgba(52, 71, 130, 0.4);
-    border-color: rgba(255, 255, 255, 0.4);
-    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.25);
+    background: rgba(30, 58, 138, 0.6);
+    border-color: rgba(59, 130, 246, 0.5);
+    transform: translateY(-2px);
+    color: #ffffff;
+    box-shadow: 0 6px 16px rgba(0, 0, 0, 0.3);
 }
 
 .measure-btn.active {
-    background: rgba(156, 201, 255, 0.2);
-    border-color: #9cc9ff;
-    box-shadow: 0 0 0 3px rgba(156, 201, 255, 0.2);
+    background: #3b82f6;
+    border-color: #60a5fa;
+    color: #ffffff;
+    box-shadow: 0 0 15px rgba(59, 130, 246, 0.5);
 }
 
 .measure-btn:active {
     transform: translateY(0);
-    box-shadow: 0 2px 6px rgba(0, 0, 0, 0.2);
 }
 
 .measure-icon {
-    width: 24px;
-    height: 24px;
+    width: 28px;
+    height: 28px;
     object-fit: contain;
-    opacity: 0.9;
+    opacity: 0.8;
     transition: all 0.3s ease;
 }
 
@@ -122,17 +166,16 @@ const isMeasuring = computed(() => activeTool.value === 'area');
 /* 弹出面板样式 */
 .result-popover {
     position: absolute;
-    left: 60px;
+    left: 80px;
     bottom: 0;
     width: 220px;
-    background: rgba(42, 61, 110, 0.2);
-    border: 1px solid rgba(255, 255, 255, 0.12);
-    border-radius: 8px;
-    backdrop-filter: blur(8px);
-    box-shadow: 0 10px 25px rgba(0, 0, 0, 0.1);
+    background: rgba(13, 25, 48, 0.6);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    border-radius: 12px;
+    backdrop-filter: blur(20px);
+    box-shadow: 0 12px 40px rgba(0, 0, 0, 0.4);
     color: #fff;
     z-index: 1000;
-    overflow: hidden;
 }
 
 .popover-header {
@@ -140,37 +183,130 @@ const isMeasuring = computed(() => activeTool.value === 'area');
     justify-content: space-between;
     align-items: center;
     padding: 12px 16px;
-    background: rgba(42, 61, 110, 0.3);
-    border-bottom: 1px solid rgba(255, 255, 255, 0.12);
+    background: rgba(30, 58, 138, 0.3);
+    border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+    border-radius: 12px 12px 0 0;
 }
 
 .popover-title {
-    font-size: 14px;
+    font-size: 13px;
     font-weight: 600;
-    color: #ffffff;
+    color: #a5ccff;
 }
 
-.unit-select {
-    background: rgba(255, 255, 255, 0.1);
-    border: 1px solid rgba(255, 255, 255, 0.2);
-    border-radius: 4px;
+.custom-unit-dropdown {
+    position: relative;
+    pointer-events: auto;
+}
+
+.unit-trigger {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 4px 12px;
+    background: rgba(255, 255, 255, 0.05);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: 6px;
     color: #fff;
     font-size: 12px;
-    padding: 4px 8px;
     cursor: pointer;
-    outline: none;
+    transition: all 0.2s;
+    min-width: 90px;
+    justify-content: space-between;
 }
 
-.unit-select option {
-    background: #1a264e;
-    color: #fff;
+.unit-trigger span {
+    pointer-events: none;
+}
+
+.unit-trigger:hover {
+    background: rgba(255, 255, 255, 0.1);
+    border-color: rgba(255, 255, 255, 0.2);
+}
+
+.arrow {
+    font-size: 8px;
+    color: #a5ccff;
+    transition: transform 0.3s;
+}
+
+.arrow.open {
+    transform: rotate(180deg);
+}
+
+.unit-options {
+    position: absolute;
+    top: 100%;
+    left: 0;
+    min-width: 140px;
+    background: linear-gradient(135deg, rgba(13, 25, 48, 0.8) 0%, rgba(13, 25, 48, 0.5) 100%);
+    border: 1px solid rgba(255, 255, 255, 0.12);
+    border-radius: 12px;
+    margin-top: 8px;
+    padding: 6px;
+    z-index: 1001;
+    backdrop-filter: blur(24px);
+    box-shadow: 0 12px 40px rgba(0, 0, 0, 0.5), inset 0 0 0 1px rgba(255, 255, 255, 0.05);
+    max-height: 250px;
+    overflow-y: auto;
+}
+
+.unit-options::-webkit-scrollbar {
+    width: 4px;
+}
+
+.unit-options::-webkit-scrollbar-thumb {
+    background: rgba(255, 255, 255, 0.1);
+    border-radius: 10px;
+}
+
+.unit-option {
+    padding: 10px 16px;
+    color: rgba(255, 255, 255, 0.7);
+    font-size: 13px;
+    cursor: pointer;
+    transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+    border-radius: 8px;
+    text-align: left;
+    white-space: nowrap;
+    position: relative;
+    display: flex;
+    align-items: center;
+}
+
+.unit-option:hover {
+    background: rgba(59, 130, 246, 0.12);
+    color: #ffffff;
+    padding-left: 20px;
+}
+
+.unit-option.active {
+    background: rgba(59, 130, 246, 0.2);
+    color: #3b82f6;
+    font-weight: 600;
+}
+
+.unit-option.active::before {
+    content: '';
+    position: absolute;
+    left: 8px;
+    width: 3px;
+    height: 14px;
+    background: #3b82f6;
+    border-radius: 2px;
+    box-shadow: 0 0 8px rgba(59, 130, 246, 0.6);
+}
+
+.dropdown-fade-enter-active,
+.dropdown-fade-leave-active {
+    transition: all 0.2s ease;
 }
 
 .popover-content {
-    padding: 12px 16px;
+    padding: 16px;
     display: flex;
     flex-direction: column;
-    gap: 10px;
+    gap: 12px;
 }
 
 .result-item {
@@ -180,50 +316,56 @@ const isMeasuring = computed(() => activeTool.value === 'area');
 }
 
 .result-item .label {
-    font-size: 12px;
-    color: rgba(255, 255, 255, 0.7);
+    font-size: 11px;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    color: rgba(255, 255, 255, 0.5);
 }
 
 .result-item .value {
-    font-size: 15px;
+    font-size: 16px;
     font-weight: 600;
-    color: #fff;
+    color: #ffffff;
+    font-family: 'JetBrains Mono', monospace;
 }
 
 .popover-footer {
     padding: 12px 16px;
-    border-top: 1px solid rgba(255, 255, 255, 0.12);
+    border-top: 1px solid rgba(255, 255, 255, 0.08);
     text-align: right;
+    background: rgba(0, 0, 0, 0.1);
+    border-radius: 0 0 12px 12px;
 }
 
 .clear-btn {
-    background: rgba(255, 255, 255, 0.1);
-    border: 1px solid rgba(255, 255, 255, 0.2);
-    border-radius: 4px;
-    color: #fff;
+    background: rgba(255, 255, 255, 0.05);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: 6px;
+    color: #a5ccff;
     font-size: 12px;
-    padding: 6px 12px;
+    padding: 6px 16px;
     cursor: pointer;
     transition: all 0.2s;
 }
 
 .clear-btn:hover {
-    background: rgba(255, 255, 255, 0.2);
-    border-color: rgba(255, 255, 255, 0.4);
+    background: rgba(239, 68, 68, 0.2);
+    border-color: rgba(239, 68, 68, 0.4);
+    color: #fca5a5;
 }
 
 /* 动画 */
 .slide-fade-enter-active {
-    transition: all 0.3s ease-out;
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
 .slide-fade-leave-active {
-    transition: all 0.2s cubic-bezier(1, 0.5, 0.8, 1);
+    transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
 .slide-fade-enter-from,
 .slide-fade-leave-to {
-    transform: translateX(-10px);
+    transform: translateX(-15px);
     opacity: 0;
 }
 </style>

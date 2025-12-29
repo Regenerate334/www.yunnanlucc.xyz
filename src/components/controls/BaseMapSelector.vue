@@ -19,7 +19,7 @@
 </template>
 
 <script setup>
-import { ref, computed } from 'vue';
+import { ref, computed, onMounted, onUnmounted } from 'vue';
 
 const emit = defineEmits(['change']);
 
@@ -42,21 +42,25 @@ function selectMap(mapId) {
   emit('change', mapId);
 }
 
-// 点击外部关闭下拉菜单
-if (typeof window !== 'undefined') {
-  window.addEventListener('click', (e) => {
-    if (!e.target.closest('.basemap-selector')) {
-      isOpen.value = false;
-    }
-  });
-}
+const handleClickOutside = (e) => {
+  if (!e.target.closest('.basemap-selector')) {
+    isOpen.value = false;
+  }
+};
+
+onMounted(() => {
+  window.addEventListener('click', handleClickOutside);
+});
+
+onUnmounted(() => {
+  window.removeEventListener('click', handleClickOutside);
+});
 </script>
 
 <style scoped>
 .basemap-selector {
   position: relative;
   display: inline-block;
-  /* 自适应宽度 */
   user-select: none;
 }
 
@@ -64,35 +68,31 @@ if (typeof window !== 'undefined') {
   display: flex;
   align-items: center;
   justify-content: center;
-  /* 居中对齐 */
   gap: 8px;
-  padding: 8px 12px;
-  /* 调整 padding 为 8px，与年份选择器一致 */
-  background: rgba(42, 61, 110, 0.2);
-  border: 1px solid rgba(255, 255, 255, 0.2);
-  border-radius: 6px;
-  /* 圆角 6px */
-  backdrop-filter: blur(8px);
+  padding: 8px 16px;
+  background: rgba(13, 25, 48, 0.4);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 10px;
+  backdrop-filter: blur(16px);
   cursor: pointer;
-  transition: all 0.3s ease;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
 }
 
 .selector-header:hover {
-  background: rgba(52, 71, 130, 0.4);
-  border-color: rgba(255, 255, 255, 0.4);
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.25);
+  background: rgba(30, 58, 138, 0.4);
+  border-color: rgba(255, 255, 255, 0.15);
+  transform: translateY(-1px);
 }
 
 .selected-map {
   color: #fff;
   font-size: 13px;
-  /* 字体 13px */
   font-weight: 500;
 }
 
 .dropdown-icon {
-  color: rgba(255, 255, 255, 0.7);
+  color: #a5ccff;
   transition: transform 0.3s ease;
 }
 
@@ -105,22 +105,23 @@ if (typeof window !== 'undefined') {
   top: calc(100% + 8px);
   left: 0;
   right: 0;
-  background: rgba(42, 61, 110, 0.2);
-  border: 1px solid rgba(255, 255, 255, 0.2);
-  border-radius: 8px;
-  backdrop-filter: blur(8px);
+  min-width: 140px;
+  background: rgba(13, 25, 48, 0.6);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 12px;
+  backdrop-filter: blur(20px);
   overflow: hidden;
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+  box-shadow: 0 12px 40px rgba(0, 0, 0, 0.4);
   z-index: 1000;
 }
 
 .dropdown-item {
-  padding: 10px 12px;
-  color: #fff;
-  font-size: 14px;
+  padding: 12px 16px;
+  color: rgba(255, 255, 255, 0.8);
+  font-size: 13px;
   cursor: pointer;
-  transition: background 0.2s ease;
-  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+  transition: all 0.2s ease;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.05);
 }
 
 .dropdown-item:last-child {
@@ -128,11 +129,13 @@ if (typeof window !== 'undefined') {
 }
 
 .dropdown-item:hover {
-  background: rgba(72, 91, 150, 0.8);
+  background: rgba(59, 130, 246, 0.1);
+  color: #ffffff;
 }
 
 .dropdown-item.active {
-  background: rgba(82, 101, 160, 0.6);
+  background: rgba(59, 130, 246, 0.2);
+  color: #3b82f6;
   font-weight: 600;
 }
 

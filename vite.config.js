@@ -29,5 +29,16 @@ export default defineConfig({
         changeOrigin: true
       }
     }
+  },
+  build: {
+    sourcemap: false, // 生产环境禁用 Source Map，防止源代码泄露
+    chunkSizeWarningLimit: 2000, // 增加 chunk 大小警告限制，Cesium 较大
+    rollupOptions: {
+      output: {
+        manualChunks: {
+          cesium: ['cesium'] // 将 Cesium 拆分为独立 chunk
+        }
+      }
+    }
   }
 });

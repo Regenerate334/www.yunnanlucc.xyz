@@ -80,37 +80,46 @@ function toggleChart() {
 }
 
 .control-btn {
-  width: 48px;
-  height: 48px;
-  border-radius: 6px;
-  border: 1px solid rgba(255, 255, 255, 0.2);
-  background: rgba(42, 61, 110, 0.2);
-  backdrop-filter: blur(8px);
+  width: 64px;
+  height: 64px;
+  border-radius: 14px;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  background: rgba(13, 25, 48, 0.4);
+  backdrop-filter: blur(12px);
   cursor: pointer;
   display: flex;
   align-items: center;
   justify-content: center;
-  transition: all 0.3s ease;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
-  color: white;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+  color: #a5ccff;
 }
 
 .control-btn:hover {
-  background: rgba(52, 71, 130, 0.4);
-  border-color: rgba(255, 255, 255, 0.4);
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.25);
+  background: rgba(30, 58, 138, 0.6);
+  border-color: rgba(59, 130, 246, 0.5);
+  transform: translateY(-2px);
+  color: #ffffff;
+  box-shadow: 0 6px 16px rgba(0, 0, 0, 0.3);
 }
 
 .control-btn.active {
-  background: rgba(156, 201, 255, 0.2);
-  border-color: #9cc9ff;
-  box-shadow: 0 0 3px rgba(156, 201, 255, 0.2);
+  background: #3b82f6;
+  border-color: #60a5fa;
+  color: #ffffff;
+  box-shadow: 0 0 15px rgba(59, 130, 246, 0.5);
 }
 
 .icon-img {
-  width: 100%;
-  height: 100%;
+  width: 40px;
+  height: 40px;
   object-fit: cover;
+  opacity: 0.8;
+  transition: opacity 0.3s ease;
+}
+
+.control-btn:hover .icon-img {
+  opacity: 1;
 }
 
 .modal-backdrop {
@@ -119,7 +128,8 @@ function toggleChart() {
   left: 0;
   width: 100vw;
   height: 100vh;
-  background: rgba(0, 0, 0, 0.6);
+  background: rgba(0, 0, 0, 0.4);
+  backdrop-filter: blur(4px);
   z-index: 999;
 }
 
@@ -130,12 +140,12 @@ function toggleChart() {
   transform: translate(-50%, -50%);
   width: 90vw;
   height: 85vh;
-  background: rgba(42, 61, 110, 0.2);
-  border: 1px solid rgba(255, 255, 255, 0.12);
-  border-radius: 8px;
-  box-shadow: 0 10px 25px rgba(0, 0, 0, 0.1);
-  backdrop-filter: blur(8px);
-  -webkit-backdrop-filter: blur(8px);
+  background: rgba(13, 25, 48, 0.6);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 16px;
+  box-shadow: 0 24px 64px rgba(0, 0, 0, 0.5);
+  backdrop-filter: blur(24px);
+  -webkit-backdrop-filter: blur(24px);
   z-index: 1000;
   display: flex;
   flex-direction: column;
@@ -143,45 +153,41 @@ function toggleChart() {
 }
 
 .modal-header {
-  padding: 12px 16px;
-  background: rgba(255, 255, 255, 0.05);
+  padding: 16px 24px;
+  background: rgba(30, 58, 138, 0.3);
   color: white;
   display: flex;
-  justify-content: flex-end;
+  justify-content: space-between;
   align-items: center;
-  border-bottom: 1px solid rgba(255, 255, 255, 0.12);
-  position: relative;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
 }
 
 .modal-title {
   font-size: 16px;
   font-weight: 600;
-  color: #fff;
-  position: absolute;
-  left: 50%;
-  transform: translateX(-50%);
-  width: 100%;
-  text-align: center;
-  pointer-events: none;
+  color: #a5ccff;
+  letter-spacing: 0.02em;
 }
 
 .close-btn {
   width: 32px;
   height: 32px;
-  border: none;
-  background: rgba(255, 255, 255, 0.2);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  background: rgba(255, 255, 255, 0.05);
   color: white;
-  font-size: 20px;
-  border-radius: 6px;
+  font-size: 16px;
+  border-radius: 8px;
   cursor: pointer;
   display: flex;
   align-items: center;
   justify-content: center;
-  transition: all 0.3s ease;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
 .close-btn:hover {
-  background: rgba(255, 255, 255, 0.3);
+  background: rgba(239, 68, 68, 0.2);
+  border-color: rgba(239, 68, 68, 0.4);
+  color: #fca5a5;
   transform: rotate(90deg);
 }
 
@@ -189,9 +195,10 @@ function toggleChart() {
   flex: 1;
   width: 100%;
   height: 100%;
-  padding: 16px;
+  padding: 24px;
   overflow: hidden;
   position: relative;
+  background: rgba(0, 0, 0, 0.1);
 }
 
 .loading-container,
@@ -204,17 +211,17 @@ function toggleChart() {
   flex-direction: column;
   align-items: center;
   gap: 15px;
-  color: #9cc9ff;
-  font-size: 16px;
+  color: #a5ccff;
+  font-size: 15px;
 }
 
 .spinner {
   width: 40px;
   height: 40px;
-  border: 4px solid rgba(156, 201, 255, 0.1);
-  border-left-color: #00E5FF;
+  border: 3px solid rgba(59, 130, 246, 0.1);
+  border-left-color: #3b82f6;
   border-radius: 50%;
-  animation: spin 1s linear infinite;
+  animation: spin 1s cubic-bezier(0.4, 0, 0.2, 1) infinite;
 }
 
 @keyframes spin {
@@ -224,17 +231,20 @@ function toggleChart() {
 }
 
 .retry-btn {
-  padding: 8px 20px;
-  background: rgba(0, 229, 255, 0.2);
-  border: 1px solid #00E5FF;
-  color: #fff;
-  border-radius: 4px;
+  padding: 8px 24px;
+  background: rgba(59, 130, 246, 0.1);
+  border: 1px solid rgba(59, 130, 246, 0.3);
+  color: #a5ccff;
+  border-radius: 8px;
   cursor: pointer;
   transition: all 0.3s;
+  font-size: 14px;
 }
 
 .retry-btn:hover {
-  background: rgba(0, 229, 255, 0.4);
+  background: rgba(59, 130, 246, 0.2);
+  border-color: #3b82f6;
+  color: #ffffff;
 }
 
 .fade-enter-active,

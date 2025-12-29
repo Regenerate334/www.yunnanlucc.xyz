@@ -4,7 +4,7 @@
  */
 
 import { defineStore } from 'pinia'
-import { ref } from 'vue'
+import { ref, shallowRef } from 'vue'
 import type * as Cesium from 'cesium'
 
 export const useMapStore = defineStore('map', () => {
@@ -12,11 +12,11 @@ export const useMapStore = defineStore('map', () => {
     // 状态 (State)
     // ============================================
 
-    // Cesium Viewer 实例
-    const viewer = ref<Cesium.Viewer | null>(null)
+    // Cesium Viewer 实例 - 使用 shallowRef 避免深层响应式开销
+    const viewer = shallowRef<Cesium.Viewer | null>(null)
 
-    // 数据源
-    const dataSources = ref<{
+    // 数据源 - 使用 shallowRef 避免深层响应式开销
+    const dataSources = shallowRef<{
         province: Cesium.DataSource | null
         cities: Cesium.DataSource | null
         counties: Cesium.DataSource | null

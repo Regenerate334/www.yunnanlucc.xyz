@@ -5,10 +5,33 @@
 
 // 基础请求函数
 async function request(url, options = {}) {
+    // 从 localStorage 获取 Token
+    const token = localStorage.getItem('auth_token');
+
+    // 设置默认 Headers
+    const headers = {
+        'Content-Type': 'application/json',
+        ...options.headers
+    };
+
+    // 如果有 Token，添加到 Authorization Header
+    if (token) {
+        headers['Authorization'] = `Bearer ${token}`;
+    }
+
     try {
-        const response = await fetch(url, options);
+        const response = await fetch(url, { ...options, headers });
+
+        // 如果返回 401，说明 Token 失效，跳转到登录页
+        if (response.status === 401 && !url.includes('/api/auth/login')) {
+            localStorage.removeItem('auth_token');
+            window.location.href = '/login';
+            return;
+        }
+
         if (!response.ok) {
-            throw new Error(`HTTP error! status: ${response.status}`);
+            const errorData = await response.json().catch(() => ({}));
+            throw new Error(errorData.message || `HTTP error! status: ${response.status}`);
         }
         return await response.json();
     } catch (error) {
@@ -16,6 +39,15 @@ async function request(url, options = {}) {
         throw error;
     }
 }
+
+// 用户认证相关接口
+export const authApi = {
+    login: (username, password) => request('/api/auth/login', {
+        method: 'POST',
+        body: JSON.stringify({ username, password })
+    }),
+    verify: () => request('/api/auth/verify')
+};
 
 // CLCD 数据相关接口
 export const clcdApi = {

@@ -39,36 +39,38 @@ function resetView() {
 }
 
 .reset-btn {
-  width: 48px;
-  height: 48px;
-  border-radius: 6px;
-  border: 1px solid rgba(255, 255, 255, 0.2);
-  background: rgba(42, 61, 110, 0.2);
-  backdrop-filter: blur(8px);
+  width: 64px;
+  height: 64px;
+  border-radius: 14px;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  background: rgba(13, 25, 48, 0.4);
+  backdrop-filter: blur(12px);
   cursor: pointer;
   display: flex;
   align-items: center;
   justify-content: center;
-  transition: all 0.3s ease;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+  color: #a5ccff;
 }
 
 .reset-btn:hover {
-  background: rgba(52, 71, 130, 0.4);
-  border-color: rgba(255, 255, 255, 0.4);
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.25);
+  background: rgba(30, 58, 138, 0.6);
+  border-color: rgba(59, 130, 246, 0.5);
+  transform: translateY(-2px);
+  color: #ffffff;
+  box-shadow: 0 6px 16px rgba(0, 0, 0, 0.3);
 }
 
 .reset-btn:active {
   transform: translateY(0);
-  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.2);
 }
 
 .reset-icon {
-  width: 24px;
-  height: 24px;
+  width: 28px;
+  height: 28px;
   filter: brightness(0) invert(1);
-  opacity: 0.9;
+  opacity: 0.8;
   transition: all 0.3s ease;
 }
 

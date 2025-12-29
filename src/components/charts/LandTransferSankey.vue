@@ -19,11 +19,20 @@
     <div v-if="!loading && hasData" class="chart-controls">
       <div class="control-group">
         <label>时间段：</label>
-        <select v-model="selectedPeriod" @change="loadAndRender">
-          <option v-for="period in availablePeriods" :key="period" :value="period">
-            {{ formatPeriod(period) }}
-          </option>
-        </select>
+        <div class="custom-dropdown" ref="dropdownRef">
+          <div class="dropdown-trigger" @click="toggleDropdown">
+            <span>{{ formatPeriod(selectedPeriod) }}</span>
+            <span class="arrow" :class="{ open: isDropdownOpen }">▼</span>
+          </div>
+          <transition name="dropdown-fade">
+            <div v-if="isDropdownOpen" class="dropdown-options">
+              <div v-for="period in availablePeriods" :key="period" class="dropdown-option"
+                :class="{ active: selectedPeriod === period }" @click="selectPeriod(period)">
+                {{ formatPeriod(period) }}
+              </div>
+            </div>
+          </transition>
+        </div>
       </div>
       <div class="control-group">
         <span class="note">注：数据为全省范围</span>
@@ -33,7 +42,7 @@
 </template>
 
 <script setup>
-import { ref, onMounted, onUnmounted, computed } from 'vue'
+import { ref, shallowRef, onMounted, onUnmounted, computed } from 'vue'
 import * as echarts from 'echarts'
 import { loadLandUseConfig, loadTransferMatrixPeriods, loadTransferMatrixData } from '@/utils/clcdDataLoader'
 
@@ -51,14 +60,32 @@ const props = defineProps({
 })
 
 // Refs
-const chartContainer = ref(null)
-const chartInstance = ref(null)
+const chartContainer = shallowRef(null)
+const chartInstance = shallowRef(null)
 const loading = ref(true)
 const error = ref(null)
 const config = ref(null)
 const transferData = ref(null)
 const availablePeriods = ref([])
 const selectedPeriod = ref('')
+const isDropdownOpen = ref(false)
+const dropdownRef = ref(null)
+
+const toggleDropdown = () => {
+  isDropdownOpen.value = !isDropdownOpen.value
+}
+
+const selectPeriod = (period) => {
+  selectedPeriod.value = period
+  isDropdownOpen.value = false
+  loadAndRender()
+}
+
+const handleClickOutside = (event) => {
+  if (dropdownRef.value && !dropdownRef.value.contains(event.target)) {
+    isDropdownOpen.value = false
+  }
+}
 
 // Computed
 const hasData = computed(() => transferData.value !== null)
@@ -181,24 +208,29 @@ const renderChart = () => {
       }
     })
   })
-
   const option = {
     title: {
       text: `土地利用类型转移图 (${formatPeriod(selectedPeriod.value)})`,
       left: 'center',
       textStyle: {
-        color: '#333',
+        color: '#a5ccff',
         fontSize: 18,
         fontWeight: 'bold'
       }
     },
     tooltip: {
       trigger: 'item',
+      backgroundColor: 'rgba(13, 25, 48, 0.9)',
+      borderColor: 'rgba(255, 255, 255, 0.1)',
+      borderWidth: 1,
+      textStyle: { color: '#fff' },
       formatter: (params) => {
         if (params.dataType === 'edge') {
-          return `${params.data.source} → ${params.data.target}<br/>转移比例: ${params.value.toFixed(2)}%`
+          return `<div style="font-weight:600; margin-bottom:4px; color:#a5ccff;">转移路径</div>
+                  ${params.data.source} → ${params.data.target}<br/>
+                  转移比例: <span style="font-weight:600; color:#3b82f6;">${params.value.toFixed(2)}%</span>`
         }
-        return params.name
+        return `<div style="font-weight:600; color:#a5ccff;">${params.name}</div>`
       }
     },
     series: [
@@ -211,11 +243,12 @@ const renderChart = () => {
         },
         lineStyle: {
           color: 'gradient',
-          curveness: 0.5
+          curveness: 0.5,
+          opacity: 0.4
         },
         label: {
           fontSize: 12,
-          color: '#333'
+          color: '#fff'
         },
         layoutIterations: 32,
         nodeGap: 20,
@@ -237,11 +270,13 @@ const loadAndRender = async () => {
 
 // Lifecycle
 onMounted(async () => {
+  document.addEventListener('click', handleClickOutside)
   initChart()
   await loadAndRender()
 })
 
 onUnmounted(() => {
+  document.removeEventListener('click', handleClickOutside)
   if (chartInstance.value) {
     chartInstance.value.dispose()
   }
@@ -255,10 +290,12 @@ onUnmounted(() => {
   height: 100%;
   display: flex;
   flex-direction: column;
-  background: #fff;
-  border-radius: 8px;
-  padding: 20px;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+  background: rgba(13, 25, 48, 0.4);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 12px;
+  padding: 24px;
+  backdrop-filter: blur(20px);
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
 }
 
 .chart-container {
@@ -274,7 +311,7 @@ onUnmounted(() => {
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  color: #666;
+  color: #a5ccff;
 }
 
 .spinner {
@@ -303,10 +340,10 @@ onUnmounted(() => {
 
 .chart-controls {
   display: flex;
-  gap: 20px;
-  padding-top: 16px;
-  border-top: 1px solid #e0e0e0;
-  margin-top: 16px;
+  gap: 30px;
+  padding-top: 20px;
+  border-top: 1px solid rgba(255, 255, 255, 0.08);
+  margin-top: 20px;
   flex-wrap: wrap;
   align-items: center;
 }
@@ -319,28 +356,101 @@ onUnmounted(() => {
 
 .control-group label {
   font-size: 14px;
-  color: #666;
+  color: rgba(255, 255, 255, 0.6);
   white-space: nowrap;
 }
 
-.control-group select {
-  padding: 6px 12px;
-  border: 1px solid #ddd;
-  border-radius: 4px;
-  font-size: 14px;
-  background: #fff;
+.custom-dropdown {
+  position: relative;
+  min-width: 160px;
+}
+
+.dropdown-trigger {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 6px 16px;
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 8px;
+  color: white;
   cursor: pointer;
-  transition: border-color 0.2s;
+  font-size: 14px;
+  transition: all 0.2s;
 }
 
-.control-group select:hover {
-  border-color: #667eea;
+.dropdown-trigger:hover {
+  background: rgba(255, 255, 255, 0.1);
+  border-color: rgba(255, 255, 255, 0.2);
 }
 
-.control-group select:focus {
-  outline: none;
-  border-color: #667eea;
-  box-shadow: 0 0 0 2px rgba(102, 126, 234, 0.1);
+.arrow {
+  font-size: 10px;
+  color: #a5ccff;
+  transition: transform 0.3s;
+}
+
+.arrow.open {
+  transform: rotate(180deg);
+}
+
+.dropdown-options {
+  position: absolute;
+  bottom: 100%;
+  left: 0;
+  margin-bottom: 8px;
+  background: rgba(13, 25, 48, 0.6);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 12px;
+  padding: 6px;
+  z-index: 1001;
+  backdrop-filter: blur(24px);
+  box-shadow: 0 12px 40px rgba(0, 0, 0, 0.4);
+  min-width: 100%;
+  max-height: 200px;
+  overflow-y: auto;
+}
+
+.dropdown-options::-webkit-scrollbar {
+  width: 4px;
+}
+
+.dropdown-options::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.1);
+  border-radius: 10px;
+}
+
+.dropdown-option {
+  padding: 10px 16px;
+  color: rgba(255, 255, 255, 0.8);
+  font-size: 13px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  border-radius: 8px;
+  text-align: left;
+}
+
+.dropdown-option:hover {
+  background: rgba(59, 130, 246, 0.1);
+  color: #ffffff;
+}
+
+.dropdown-option.active {
+  background: rgba(59, 130, 246, 0.2);
+  color: #3b82f6;
+  font-weight: 600;
+}
+
+.dropdown-fade-enter-active,
+.dropdown-fade-leave-active {
+  transition: all 0.2s ease;
+}
+
+.dropdown-fade-enter-from,
+.dropdown-fade-leave-to {
+  opacity: 0;
+  transform: translateY(5px);
 }
 
 .note {

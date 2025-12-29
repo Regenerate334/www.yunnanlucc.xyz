@@ -4,7 +4,8 @@
     <!-- 主按钮：显示当前选中年份或默认提示文本，点击切换弹出面板 -->
     <div class="display-button" ref="buttonRef" :class="{ active: showPopover }" @click="togglePopover">
       <!-- 日历图标 -->
-      <svg class="icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+      <svg class="icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+        stroke-linecap="round" stroke-linejoin="round">
         <rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect>
         <line x1="16" y1="2" x2="16" y2="6"></line>
         <line x1="8" y1="2" x2="8" y2="6"></line>
@@ -24,10 +25,10 @@
             <polyline points="15,18 9,12 15,6"></polyline>
           </svg>
         </button>
-        
+
         <!-- 当前页面年份范围显示 -->
         <span class="decade-range">{{ pageRangeText }}</span>
-        
+
         <!-- 右箭头按钮：切换到下一页 -->
         <button class="nav-button" @click="navigatePage(1)" :disabled="currentPage >= totalPages - 1">
           <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
@@ -38,13 +39,8 @@
 
       <!-- 年份网格：4列布局显示当前页面的年份 -->
       <div class="year-grid">
-        <div 
-          v-for="year in paginatedYears" 
-          :key="year"
-          class="year-item"
-          :class="{ selected: isYearSelected(year) }"
-          @click="selectYear(year)"
-        >
+        <div v-for="year in paginatedYears" :key="year" class="year-item" :class="{ selected: isYearSelected(year) }"
+          @click="selectYear(year)">
           {{ year }}
         </div>
       </div>
@@ -154,15 +150,15 @@ const navigatePage = (direction: number) => {
 // 选择年份：核心方法 - 处理用户点击年份
 const selectYear = (year: number) => {
   console.log('YearRangeSelector: 选择年份', year);
-  
+
   // 关键：标记用户已经主动选择过年份，这将改变按钮显示逻辑
   hasUserSelected.value = true;
-  
+
   // 向父组件发送年份选择事件
   // 父组件需要使用 v-model:selectedYear="yourDataProperty" 来接收更新
   emit('update:selectedYear', year)
   console.log('YearRangeSelector: 已触发update:selectedYear事件');
-  
+
   // 选择完成后关闭面板
   closePopover()
 }
@@ -208,117 +204,142 @@ onUnmounted(() => {
   display: inline-block;
   font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
 }
+
 .display-button {
   display: flex;
   align-items: center;
   justify-content: center;
   gap: 8px;
-  background: rgba(42, 61, 110, 0.2);
-  border: 1px solid rgba(255, 255, 255, 0.12);
-  border-radius: 6px;
+  background: rgba(13, 25, 48, 0.4);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 10px;
   padding: 8px 12px;
   cursor: pointer;
-  transition: all 0.2s ease;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
   user-select: none;
-  backdrop-filter: blur(8px);
+  backdrop-filter: blur(16px);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
 }
+
 .display-button:hover {
-  border-color: rgba(255, 255, 255, 0.3);
-  background: rgba(42, 61, 110, 0.4);
+  border-color: rgba(255, 255, 255, 0.15);
+  background: rgba(30, 58, 138, 0.4);
+  transform: translateY(-1px);
 }
+
 .display-button.active {
-  border-color: #9cc9ff;
-  box-shadow: 0 0 0 3px rgba(156, 201, 255, 0.2);
+  border-color: #3b82f6;
+  background: rgba(30, 58, 138, 0.6);
+  box-shadow: 0 0 15px rgba(59, 130, 246, 0.3);
 }
+
 .icon {
-  color: #ffffff;
+  color: #a5ccff;
 }
+
 .button-text {
   font-size: 13px;
   font-weight: 500;
   color: #ffffff;
 }
+
 .popover-panel {
   position: absolute;
   top: 100%;
   left: 0;
   right: 0;
-  background: rgba(42, 61, 110, 0.2);
-  border: 1px solid rgba(255, 255, 255, 0.12);
-  border-radius: 8px;
-  box-shadow: 0 10px 25px rgba(0, 0, 0, 0.1);
+  background: rgba(13, 25, 48, 0.6);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 12px;
+  box-shadow: 0 12px 40px rgba(0, 0, 0, 0.4);
   z-index: 1000;
-  margin-top: 4px;
-  backdrop-filter: blur(8px);
+  margin-top: 8px;
+  backdrop-filter: blur(20px);
+  overflow: hidden;
 }
+
 .popover-header {
   display: flex;
   align-items: center;
   justify-content: space-between;
   padding: 12px 16px;
-  border-bottom: 1px solid rgba(255, 255, 255, 0.12);
-  background: rgba(42, 61, 110, 0.3);
-  border-radius: 6px 6px 0 0;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+  background: rgba(30, 58, 138, 0.3);
 }
+
 .nav-button {
   display: flex;
   align-items: center;
   justify-content: center;
   width: 28px;
   height: 28px;
-  border: none;
-  background: rgba(255, 255, 255, 0.1); /* 使用半透明白色背景 */
-  border-radius: 4px;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  background: rgba(255, 255, 255, 0.05);
+  border-radius: 6px;
   cursor: pointer;
   transition: all 0.2s ease;
-  color: #ffffff; /* 使用纯白色 */
+  color: #a5ccff;
 }
+
 .nav-button:hover:not(:disabled) {
-  background: rgba(255, 255, 255, 0.2); /* 悬停时背景稍微亮一些 */
-  color: #ffffff; /* 悬停时保持纯白色 */
+  background: rgba(59, 130, 246, 0.2);
+  border-color: rgba(59, 130, 246, 0.4);
+  color: #ffffff;
 }
+
 .nav-button:disabled {
-  opacity: 0.4;
+  opacity: 0.3;
   cursor: not-allowed;
 }
+
 .decade-range {
-  font-size: 14px;
+  font-size: 13px;
   font-weight: 600;
-  color: #ffffff; /* 使用纯白色 */
+  color: #a5ccff;
+  letter-spacing: 0.02em;
 }
+
 .year-grid {
   display: grid;
   grid-template-columns: repeat(4, 1fr);
-  gap: 6px;
-  padding: 12px 16px;
+  gap: 8px;
+  padding: 16px;
 }
+
 .year-item {
   display: flex;
   align-items: center;
   justify-content: center;
-  height: 32px;
-  border-radius: 4px;
+  height: 34px;
+  border-radius: 8px;
   cursor: pointer;
   font-size: 13px;
   font-weight: 500;
-  color: #ffffff; /* 使用纯白色 */
-  transition: all 0.2s ease;
+  color: rgba(255, 255, 255, 0.8);
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
   user-select: none;
-  border: 1px solid rgba(255, 255, 255, 0.1); /* 添加边框，与图例项保持一致 */
+  border: 1px solid transparent;
 }
+
 .year-item:hover {
-  background: rgba(255, 255, 255, 0.1); /* 悬停时使用半透明白色背景 */
-  border-color: rgba(255, 255, 255, 0.3); /* 悬停时边框稍微亮一些 */
+  background: rgba(59, 130, 246, 0.1);
+  color: #ffffff;
+  border-color: rgba(59, 130, 246, 0.2);
 }
+
 .year-item.selected {
-  background: rgba(156, 201, 255, 0.2); /* 使用图例标题色的透明版本作为选中背景 */
-  color: #ffffff; /* 选中时使用纯白色 */
+  background: rgba(59, 130, 246, 0.2);
+  color: #3b82f6;
   font-weight: 600;
-  border-color: #9cc9ff; /* 选中时边框使用图例标题色 */
+  border-color: rgba(59, 130, 246, 0.4);
 }
+
 .backdrop {
   position: fixed;
-  top: 0; left: 0; right: 0; bottom: 0;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
   z-index: 999;
 }
 </style>

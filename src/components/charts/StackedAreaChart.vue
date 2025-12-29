@@ -4,17 +4,17 @@
       <div class="spinner"></div>
       <p>加载时间序列数据...</p>
     </div>
-    
+
     <div v-else-if="error" class="error-state">
       <p>{{ error }}</p>
     </div>
-    
+
     <div v-else-if="!hasData" class="no-data-state">
       <p>暂无数据</p>
     </div>
-    
+
     <div v-else ref="chartContainer" class="chart-container"></div>
-    
+
     <!-- 图表控制栏 -->
     <div v-if="!loading && hasData" class="chart-controls">
       <div class="control-group">
@@ -25,7 +25,7 @@
           </option>
         </select>
       </div>
-      
+
       <div class="control-group">
         <label>结束年份：</label>
         <select v-model="selectedEndYear" @change="renderChart">
@@ -34,7 +34,7 @@
           </option>
         </select>
       </div>
-      
+
       <div class="control-group">
         <button @click="toggleLandTypes" class="toggle-btn">
           {{ showAllTypes ? '显示主要类型' : '显示全部类型' }}
@@ -45,7 +45,7 @@
 </template>
 
 <script setup>
-import { ref, onMounted, onUnmounted, computed } from 'vue'
+import { ref, shallowRef, onMounted, onUnmounted, computed } from 'vue'
 import * as echarts from 'echarts'
 import { loadLandUseConfig, loadProvinceData } from '@/utils/clcdDataLoader'
 
@@ -70,8 +70,8 @@ const props = defineProps({
 })
 
 // Refs
-const chartContainer = ref(null)
-const chartInstance = ref(null)
+const chartContainer = shallowRef(null)
+const chartInstance = shallowRef(null)
 const loading = ref(true)
 const error = ref(null)
 const config = ref(null)
@@ -97,9 +97,9 @@ const displayLandTypes = computed(() => {
 // Methods
 const initChart = () => {
   if (!chartContainer.value) return
-  
+
   chartInstance.value = echarts.init(chartContainer.value)
-  
+
   window.addEventListener('resize', handleResize)
 }
 
@@ -113,21 +113,21 @@ const loadData = async () => {
   try {
     loading.value = true
     error.value = null
-    
+
     // 加载配置
     if (!config.value) {
       config.value = await loadLandUseConfig()
     }
-    
+
     // 加载省级时间序列数据（可扩展为其他层级）
     const data = await loadProvinceData()
-    
+
     // 按年份排序
     timeSeriesData.value = data.sort((a, b) => a.year - b.year)
-    
+
     // 提取可用年份
     availableYears.value = [...new Set(data.map(d => d.year))].sort((a, b) => a - b)
-    
+
   } catch (err) {
     console.error('加载数据失败:', err)
     error.value = err.message || '数据加载失败'
@@ -138,148 +138,187 @@ const loadData = async () => {
 
 const renderChart = () => {
   if (!chartInstance.value || !hasData.value || !config.value) return
-  
+
   // 筛选时间范围
   const filteredData = timeSeriesData.value.filter(
     d => d.year >= selectedStartYear.value && d.year <= selectedEndYear.value
   )
-  
+
   if (filteredData.length === 0) {
     error.value = '所选时间范围无数据'
     return
   }
-  
-  // 准备数据
-  const years = filteredData.map(d => d.year)
-  const series = []
-  
-  displayLandTypes.value.forEach(type => {
-    const typeConfig = config.value.land_use_types.find(t => t.name_en === type)
-    if (!typeConfig) return
-    
-    const data = filteredData.map(d => d[type] || 0)
-    
-    series.push({
-      name: typeConfig.name_cn,
-      type: 'line',
-      stack: 'total',
-      smooth: true,
-      areaStyle: {
-        opacity: 0.7
-      },
-      emphasis: {
-        focus: 'series'
-      },
-      data: data,
-      itemStyle: {
-        color: typeConfig.color
-      },
-      lineStyle: {
-        width: 2
-      }
+
+  // 清除之前的定时器
+  if (chartInstance.value._animationTimer) {
+    clearTimeout(chartInstance.value._animationTimer);
+  }
+
+  chartInstance.value.clear();
+
+  let currentStep = 0;
+  const totalSteps = filteredData.length;
+  const allYears = filteredData.map(d => d.year);
+
+  // 预计算最大总面积以固定 Y 轴
+  let maxTotalArea = 0;
+  filteredData.forEach(d => {
+    let yearTotal = 0;
+    displayLandTypes.value.forEach(type => {
+      yearTotal += (d[type] || 0);
+    });
+    if (yearTotal > maxTotalArea) maxTotalArea = yearTotal;
+  });
+  maxTotalArea = Math.ceil(maxTotalArea * 1.1); // 增加 10% 的缓冲空间
+
+  const renderStep = () => {
+    currentStep++;
+    const visibleData = filteredData.slice(0, currentStep);
+    const years = allYears; // 保持全量年份以固定坐标轴
+
+    const series = []
+
+    displayLandTypes.value.forEach(type => {
+      const typeConfig = config.value.land_use_types.find(t => t.name_en === type)
+      if (!typeConfig) return
+
+      const data = visibleData.map(d => d[type] || 0)
+
+      series.push({
+        name: typeConfig.name_cn,
+        type: 'line',
+        stack: 'total',
+        smooth: true,
+        areaStyle: {
+          opacity: 0.7
+        },
+        emphasis: {
+          focus: 'series'
+        },
+        data: data,
+        itemStyle: {
+          color: typeConfig.color
+        },
+        lineStyle: {
+          width: 2
+        },
+        showSymbol: true,
+        symbolSize: 4,
+        animation: false
+      })
     })
-  })
-  
-  const option = {
-    title: {
-      text: `土地利用类型面积变化 (${selectedStartYear.value}-${selectedEndYear.value})`,
-      left: 'center',
-      textStyle: {
-        color: '#333',
-        fontSize: 18,
-        fontWeight: 'bold'
-      }
-    },
-    tooltip: {
-      trigger: 'axis',
-      axisPointer: {
-        type: 'cross',
-        label: {
-          backgroundColor: '#6a7985'
+
+    const option = {
+      animationDuration: 2000,
+      animationEasing: 'quadraticOut',
+      title: {
+        text: `土地利用类型面积变化 (${selectedStartYear.value}-${selectedEndYear.value})`,
+        left: 'center',
+        textStyle: {
+          color: '#333',
+          fontSize: 18,
+          fontWeight: 'bold'
         }
       },
-      formatter: (params) => {
-        let result = `<strong>${params[0].axisValue}年</strong><br/>`
-        let total = 0
-        params.forEach(param => {
-          total += param.value
-          result += `${param.marker} ${param.seriesName}: ${param.value.toFixed(2)} km²<br/>`
-        })
-        result += `<br/><strong>总计: ${total.toFixed(2)} km²</strong>`
-        return result
-      }
-    },
-    legend: {
-      data: series.map(s => s.name),
-      top: 40,
-      type: 'scroll',
-      textStyle: {
-        fontSize: 12
-      }
-    },
-    grid: {
-      left: '3%',
-      right: '4%',
-      bottom: '60px',
-      top: '100px',
-      containLabel: true
-    },
-    toolbox: {
-      feature: {
-        saveAsImage: {
-          title: '保存为图片'
-        },
-        dataZoom: {
-          yAxisIndex: 'none',
-          title: {
-            zoom: '区域缩放',
-            back: '还原缩放'
+      tooltip: {
+        trigger: 'axis',
+        axisPointer: {
+          type: 'cross',
+          label: {
+            backgroundColor: '#6a7985'
           }
         },
-        restore: {
-          title: '还原'
+        formatter: (params) => {
+          let result = `<strong>${params[0].axisValue}年</strong><br/>`
+          let total = 0
+          params.forEach(param => {
+            total += param.value
+            result += `${param.marker} ${param.seriesName}: ${param.value.toFixed(2)} km²<br/>`
+          })
+          result += `<br/><strong>总计: ${total.toFixed(2)} km²</strong>`
+          return result
         }
-      }
-    },
-    dataZoom: [
-      {
-        type: 'slider',
-        show: true,
-        start: 0,
-        end: 100,
-        bottom: 10
       },
-      {
-        type: 'inside',
-        start: 0,
-        end: 100
-      }
-    ],
-    xAxis: {
-      type: 'category',
-      boundaryGap: false,
-      data: years,
-      name: '年份',
-      nameLocation: 'middle',
-      nameGap: 30,
-      axisLabel: {
-        fontSize: 12,
-        rotate: 45
-      }
-    },
-    yAxis: {
-      type: 'value',
-      name: '面积 (km²)',
-      nameLocation: 'middle',
-      nameGap: 50,
-      axisLabel: {
-        formatter: '{value}'
-      }
-    },
-    series: series
-  }
-  
-  chartInstance.value.setOption(option, true)
+      legend: {
+        data: series.map(s => s.name),
+        top: 40,
+        type: 'scroll',
+        textStyle: {
+          fontSize: 12
+        }
+      },
+      grid: {
+        left: '3%',
+        right: '4%',
+        bottom: '60px',
+        top: '100px',
+        containLabel: true
+      },
+      toolbox: {
+        feature: {
+          saveAsImage: {
+            title: '保存为图片'
+          },
+          dataZoom: {
+            yAxisIndex: 'none',
+            title: {
+              zoom: '区域缩放',
+              back: '还原缩放'
+            }
+          },
+          restore: {
+            title: '还原'
+          }
+        }
+      },
+      dataZoom: [
+        {
+          type: 'slider',
+          show: true,
+          start: 0,
+          end: 100,
+          bottom: 10
+        },
+        {
+          type: 'inside',
+          start: 0,
+          end: 100
+        }
+      ],
+      xAxis: {
+        type: 'category',
+        boundaryGap: false,
+        data: years,
+        name: '年份',
+        nameLocation: 'middle',
+        nameGap: 30,
+        axisLabel: {
+          fontSize: 12,
+          rotate: 45
+        }
+      },
+      yAxis: {
+        type: 'value',
+        min: 0,
+        max: maxTotalArea,
+        name: '面积 (km²)',
+        nameLocation: 'middle',
+        nameGap: 50,
+        axisLabel: {
+          formatter: '{value}'
+        }
+      },
+      series: series
+    }
+
+    chartInstance.value.setOption(option, false);
+
+    if (currentStep < totalSteps) {
+      chartInstance.value._animationTimer = setTimeout(renderStep, 80);
+    }
+  };
+
+  renderStep();
 }
 
 const toggleLandTypes = () => {
@@ -298,6 +337,7 @@ onMounted(async () => {
 
 onUnmounted(() => {
   if (chartInstance.value) {
+    if (chartInstance.value._animationTimer) clearTimeout(chartInstance.value._animationTimer)
     chartInstance.value.dispose()
   }
   window.removeEventListener('resize', handleResize)
@@ -343,8 +383,13 @@ onUnmounted(() => {
 }
 
 @keyframes spin {
-  0% { transform: rotate(0deg); }
-  100% { transform: rotate(360deg); }
+  0% {
+    transform: rotate(0deg);
+  }
+
+  100% {
+    transform: rotate(360deg);
+  }
 }
 
 .error-state {

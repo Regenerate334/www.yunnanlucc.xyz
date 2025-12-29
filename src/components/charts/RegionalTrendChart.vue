@@ -26,7 +26,7 @@
 </template>
 
 <script setup>
-import { ref, onMounted, onUnmounted, watch, nextTick, computed } from 'vue'
+import { ref, shallowRef, onMounted, onUnmounted, watch, nextTick, computed } from 'vue'
 import * as echarts from 'echarts'
 
 const props = defineProps({
@@ -38,8 +38,8 @@ const props = defineProps({
     }
 })
 
-const chartContainer = ref(null)
-const chartInstance = ref(null)
+const chartContainer = shallowRef(null)
+const chartInstance = shallowRef(null)
 
 const landTypeMap = {
     'cropland': '耕地',
@@ -123,151 +123,187 @@ const updateChart = () => {
     const years = props.seriesData.map(d => d.year).sort((a, b) => a - b);
     const keys = Object.keys(landTypeMap);
 
-    const grids = [];
-    const xAxes = [];
-    const yAxes = [];
-    const series = [];
-    const titles = [];
+    // 清除之前的定时器
+    if (chartInstance.value._animationTimer) {
+        clearTimeout(chartInstance.value._animationTimer);
+    }
 
-    const cols = 3;
-    const rows = 3;
-    const leftMargin = 5;
-    const rightMargin = 5;
-    const topMargin = 5;
-    const bottomMargin = 12;
-    const hGap = 6;
-    const vGap = 10;
+    chartInstance.value.clear();
 
-    const gridWidth = (100 - leftMargin - rightMargin - hGap * (cols - 1)) / cols;
-    const gridHeight = (100 - topMargin - bottomMargin - vGap * (rows - 1)) / rows;
+    let currentStep = 0;
+    const totalSteps = years.length;
 
-    keys.forEach((key, index) => {
-        const r = Math.floor(index / cols);
-        const c = index % cols;
-        const left = leftMargin + c * (gridWidth + hGap);
-        const top = topMargin + r * (gridHeight + vGap);
-
-        grids.push({
-            left: left + '%',
-            top: top + '%',
-            width: gridWidth + '%',
-            height: gridHeight + '%',
-            containLabel: false
-        });
-
-        titles.push({
-            text: landTypeMap[key],
-            left: (left + gridWidth / 2) + '%',
-            top: (top - 4) + '%',
-            textAlign: 'center',
-            textStyle: { color: '#00E5FF', fontSize: 13, fontWeight: 'bold' }
-        });
-
-        xAxes.push({
-            gridIndex: index,
-            type: 'category',
-            boundaryGap: false,
-            data: years,
-            axisLabel: {
-                show: r === rows - 1,
-                color: '#fff',
-                fontSize: 10,
-                margin: 12,
-                interval: 2,
-                rotate: 45
-            },
-            axisLine: { lineStyle: { color: 'rgba(255,255,255,0.2)' } }
-        });
-
-        yAxes.push({
-            gridIndex: index,
-            type: 'value',
-            scale: true,
-            name: 'km²',
-            nameTextStyle: { color: '#888', fontSize: 10 },
-            axisLabel: {
-                color: '#fff',
-                fontSize: 9,
-                formatter: (value) => value >= 10000 ? (value / 10000).toFixed(1) + '万' : value.toFixed(0)
-            },
-            splitLine: { lineStyle: { color: 'rgba(255,255,255,0.05)' } }
-        });
-
-        const data = years.map(year => {
+    // 预计算每个指标的全量数据范围，以固定 Y 轴
+    const yAxisBounds = {};
+    keys.forEach(key => {
+        const allData = years.map(year => {
             const record = props.seriesData.find(d => d.year === year);
             return (record ? record[key] : 0) / 1000000;
         });
-
-        series.push({
-            name: landTypeMap[key],
-            type: 'line',
-            xAxisIndex: index,
-            yAxisIndex: index,
-            data: data,
-            showSymbol: true,
-            symbolSize: 3,
-            smooth: false,
-            itemStyle: { color: landUseColors[key] },
-            lineStyle: { width: 2, shadowBlur: 5, shadowColor: 'rgba(0,0,0,0.5)' },
-            areaStyle: {
-                color: new echarts.graphic.LinearGradient(0, 0, 0, 1, [
-                    { offset: 0, color: landUseColors[key] + '44' },
-                    { offset: 1, color: landUseColors[key] + '00' }
-                ])
-            },
-            // 标记政策节点
-            markLine: {
-                silent: true,
-                symbol: ['none', 'none'],
-                label: { show: false },
-                data: policyMarkers.map(p => ({
-                    xAxis: p.year,
-                    lineStyle: { color: p.color, type: 'dashed', opacity: 0.5 }
-                }))
-            },
-            animationDelay: (idx) => idx * 30
-        });
+        const min = Math.min(...allData);
+        const max = Math.max(...allData);
+        const padding = (max - min) * 0.1 || 1;
+        yAxisBounds[key] = {
+            min: Math.floor(min - padding),
+            max: Math.ceil(max + padding)
+        };
     });
 
-    const option = {
-        backgroundColor: 'transparent',
-        animationDuration: 2000,
-        tooltip: {
-            trigger: 'axis',
-            confine: true,
-            appendToBody: true,
-            backgroundColor: 'rgba(20, 30, 60, 0.95)',
-            borderColor: '#345',
-            borderWidth: 1,
-            textStyle: { color: '#fff', fontSize: 12 },
-            formatter: function (params) {
-                const year = params[0].axisValue;
-                const policy = policyMarkers.find(p => p.year === year);
-                let html = `<div style="font-weight:bold; margin-bottom:8px; border-bottom:1px solid #456; padding-bottom:5px;">`;
-                html += `${year}年 ${policy ? `<span style="color:${policy.color}; font-size:11px;">[${policy.name}]</span>` : ''}`;
-                html += `</div>`;
+    const renderStep = () => {
+        currentStep++;
+        const visibleYears = years.slice(0, currentStep);
 
-                params.sort((a, b) => b.value - a.value).forEach(item => {
-                    const val = item.value;
-                    const areaStr = val >= 10000 ? (val / 10000).toFixed(2) + ' 万km²' : val.toFixed(2) + ' km²';
-                    html += `<div style="display:flex; justify-content:space-between; align-items:center; margin:3px 0; min-width:180px;">
-            <span style="display:flex; align-items:center;">
-              <span style="display:inline-block; width:8px; height:8px; border-radius:50%; background:${item.color}; margin-right:8px;"></span>
-              ${item.seriesName}
-            </span>
-            <span style="font-weight:bold; margin-left:15px; font-family:monospace;">${areaStr}</span>
-          </div>`;
-                });
-                return html;
-            }
-        },
-        grid: grids,
-        xAxis: xAxes,
-        yAxis: yAxes,
-        series: series
+        const grids = [];
+        const xAxes = [];
+        const yAxes = [];
+        const series = [];
+        const titles = [];
+
+        const cols = 3;
+        const rows = 3;
+        const leftMargin = 5;
+        const rightMargin = 5;
+        const topMargin = 5;
+        const bottomMargin = 12;
+        const hGap = 6;
+        const vGap = 10;
+
+        const gridWidth = (100 - leftMargin - rightMargin - hGap * (cols - 1)) / cols;
+        const gridHeight = (100 - topMargin - bottomMargin - vGap * (rows - 1)) / rows;
+
+        keys.forEach((key, index) => {
+            const r = Math.floor(index / cols);
+            const c = index % cols;
+            const left = leftMargin + c * (gridWidth + hGap);
+            const top = topMargin + r * (gridHeight + vGap);
+
+            grids.push({
+                left: left + '%',
+                top: top + '%',
+                width: gridWidth + '%',
+                height: gridHeight + '%',
+                containLabel: false
+            });
+
+            titles.push({
+                text: landTypeMap[key],
+                left: (left + gridWidth / 2) + '%',
+                top: (top - 4) + '%',
+                textAlign: 'center',
+                textStyle: { color: '#a5ccff', fontSize: 13, fontWeight: '600' }
+            });
+
+            xAxes.push({
+                gridIndex: index,
+                type: 'category',
+                boundaryGap: false,
+                data: years,
+                axisLabel: {
+                    show: r === rows - 1,
+                    color: 'rgba(255, 255, 255, 0.6)',
+                    fontSize: 10,
+                    margin: 12,
+                    interval: 2,
+                    rotate: 45
+                },
+                axisLine: { lineStyle: { color: 'rgba(255,255,255,0.1)' } }
+            });
+
+            yAxes.push({
+                gridIndex: index,
+                type: 'value',
+                min: yAxisBounds[key].min,
+                max: yAxisBounds[key].max,
+                name: 'km²',
+                nameTextStyle: { color: 'rgba(255, 255, 255, 0.4)', fontSize: 10 },
+                axisLabel: {
+                    color: 'rgba(255, 255, 255, 0.6)',
+                    fontSize: 9,
+                    formatter: (value) => value >= 10000 ? (value / 10000).toFixed(1) + '万' : value.toFixed(0)
+                },
+                splitLine: { lineStyle: { color: 'rgba(255,255,255,0.05)' } }
+            });
+
+            const data = visibleYears.map(year => {
+                const record = props.seriesData.find(d => d.year === year);
+                return (record ? record[key] : 0) / 1000000;
+            });
+
+            series.push({
+                name: landTypeMap[key],
+                type: 'line',
+                xAxisIndex: index,
+                yAxisIndex: index,
+                data: data,
+                showSymbol: true,
+                symbolSize: 3,
+                smooth: true,
+                itemStyle: { color: landUseColors[key] },
+                lineStyle: { width: 2, shadowBlur: 10, shadowColor: 'rgba(0,0,0,0.3)' },
+                areaStyle: {
+                    color: new echarts.graphic.LinearGradient(0, 0, 0, 1, [
+                        { offset: 0, color: landUseColors[key] + '33' },
+                        { offset: 1, color: landUseColors[key] + '00' }
+                    ])
+                },
+                markLine: {
+                    silent: true,
+                    symbol: ['none', 'none'],
+                    label: { show: false },
+                    data: policyMarkers.map(p => ({
+                        xAxis: p.year,
+                        lineStyle: { color: p.color, type: 'dashed', opacity: 0.4 }
+                    }))
+                },
+                animation: false
+            });
+        });
+
+        const option = {
+            backgroundColor: 'transparent',
+            tooltip: {
+                trigger: 'axis',
+                confine: true,
+                appendToBody: true,
+                backgroundColor: 'rgba(13, 25, 48, 0.9)',
+                borderColor: 'rgba(255, 255, 255, 0.1)',
+                borderWidth: 1,
+                textStyle: { color: '#fff', fontSize: 12 },
+                formatter: function (params) {
+                    const year = params[0].axisValue;
+                    const policy = policyMarkers.find(p => p.year === year);
+                    let html = `<div style="font-weight:600; margin-bottom:10px; border-bottom:1px solid rgba(255,255,255,0.1); padding-bottom:6px; color:#a5ccff;">`;
+                    html += `${year}年 ${policy ? `<span style="color:${policy.color}; font-size:11px; margin-left:8px;">[${policy.name}]</span>` : ''}`;
+                    html += `</div>`;
+
+                    params.sort((a, b) => b.value - a.value).forEach(item => {
+                        const val = item.value;
+                        const areaStr = val >= 10000 ? (val / 10000).toFixed(2) + ' 万km²' : val.toFixed(2) + ' km²';
+                        html += `<div style="display:flex; justify-content:space-between; align-items:center; margin:4px 0; min-width:200px;">
+                            <span style="display:flex; align-items:center; color:rgba(255,255,255,0.8);">
+                                <span style="display:inline-block; width:8px; height:8px; border-radius:50%; background:${item.color}; margin-right:10px; box-shadow:0 0 8px ${item.color}66;"></span>
+                                ${item.seriesName}
+                            </span>
+                            <span style="font-weight:600; margin-left:20px; font-family:'JetBrains Mono', monospace;">${areaStr}</span>
+                        </div>`;
+                    });
+                    return html;
+                }
+            },
+            grid: grids,
+            xAxis: xAxes,
+            yAxis: yAxes,
+            series: series
+        };
+
+        chartInstance.value.setOption(option, false);
+
+        if (currentStep < totalSteps) {
+            chartInstance.value._animationTimer = setTimeout(renderStep, 80);
+        }
     };
 
-    chartInstance.value.setOption(option, true);
+    renderStep();
 }
 
 onMounted(() => {
@@ -279,6 +315,7 @@ onMounted(() => {
 
 onUnmounted(() => {
     if (chartInstance.value) {
+        if (chartInstance.value._animationTimer) clearTimeout(chartInstance.value._animationTimer)
         if (chartInstance.value._resizeObserver) chartInstance.value._resizeObserver.disconnect()
         chartInstance.value.dispose()
     }
@@ -295,32 +332,39 @@ watch(() => props.seriesData, () => {
     height: 100%;
     display: flex;
     flex-direction: column;
-    gap: 20px;
+    gap: 24px;
 }
 
 .insight-panel {
     display: flex;
-    gap: 15px;
+    gap: 20px;
     padding: 0 10px;
 }
 
 .insight-card {
+    background: rgba(255, 255, 255, 0.03);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    border-radius: 12px;
+    padding: 16px 20px;
+    backdrop-filter: blur(10px);
+    transition: all 0.3s ease;
+}
+
+.insight-card:hover {
     background: rgba(255, 255, 255, 0.05);
-    border: 1px solid rgba(255, 255, 255, 0.1);
-    border-radius: 8px;
-    padding: 12px 16px;
+    border-color: rgba(255, 255, 255, 0.15);
 }
 
 .insight-card.main {
     flex: 2;
-    border-left: 4px solid #00E5FF;
+    border-left: 4px solid #3b82f6;
 }
 
 .insight-grid {
     flex: 1;
     display: grid;
     grid-template-columns: 1fr 1fr;
-    gap: 10px;
+    gap: 15px;
 }
 
 .insight-card.mini {
@@ -332,36 +376,40 @@ watch(() => props.seriesData, () => {
 }
 
 .insight-title {
-    color: #00E5FF;
-    font-weight: bold;
-    margin-bottom: 8px;
+    color: #a5ccff;
+    font-weight: 600;
+    margin-bottom: 10px;
     font-size: 14px;
+    letter-spacing: 0.02em;
 }
 
 .insight-content {
-    color: #ccc;
+    color: rgba(255, 255, 255, 0.7);
     font-size: 13px;
-    line-height: 1.5;
+    line-height: 1.6;
 }
 
 .label {
-    color: #888;
+    color: rgba(255, 255, 255, 0.4);
     font-size: 11px;
-    margin-bottom: 4px;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    margin-bottom: 6px;
 }
 
 .value {
     color: #fff;
-    font-weight: bold;
-    font-size: 16px;
+    font-weight: 700;
+    font-size: 18px;
+    font-family: 'JetBrains Mono', monospace;
 }
 
 .value.up {
-    color: #ff4d4f;
+    color: #fca5a5;
 }
 
 .value.down {
-    color: #52c41a;
+    color: #86efac;
 }
 
 .chart-container {
