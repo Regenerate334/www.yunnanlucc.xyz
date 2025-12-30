@@ -1,36 +1,35 @@
 <template>
   <div id="cesiumContainerWrapper">
-    <div class="background-layer"></div>
-    <!-- <div class="mask-layer"></div> -->
+    <!-- 背景遮罩层：Dashboard模式下隐藏 -->
+    <div v-if="!isDashboardMode" class="background-layer"></div>
     <div id="cesiumContainer"></div>
 
-    <!-- 顶部标题栏 -->
-    <div class="header-container">
+    <!-- 顶部标题栏（Dashboard模式下隐藏） -->
+    <div v-if="!isDashboardMode" class="header-container">
       <div class="header-content">
-        <!-- 退出登录按钮 -->
         <button class="logout-btn" @click="handleLogout" title="退出登录">
           <img :src="logoutIcon" alt="退出" class="logout-icon-img" />
         </button>
       </div>
     </div>
 
-    <!-- 年份选择器 - -->
-    <div class="year-selector-container">
+    <!-- 年份选择器（Dashboard模式下隐藏） -->
+    <div v-if="!isDashboardMode" class="year-selector-container">
       <YearRangeSelector v-model:selectedYear="selectedYear" :width="200" />
     </div>
 
-    <!-- 复位视图控制按钮 - 左上角 -->
-    <div class="reset-control-container">
+    <!-- 复位视图控制按钮 -->
+    <div v-if="!isDashboardMode" class="reset-control-container">
       <ViewResetControl />
     </div>
 
-    <!-- 底图选择器 - 左上角 -->
-    <div class="basemap-selector-container">
+    <!-- 底图选择器（Dashboard模式下隐藏） -->
+    <div v-if="!isDashboardMode" class="basemap-selector-container">
       <BaseMapSelector @change="handleBaseMapChange" />
     </div>
 
-    <!-- 底部控制按钮组 - 复位视图、测距、测面积、地级市饼图、变化趋势图 -->
-    <div class="bottom-controls-container">
+    <!-- 底部控制按钮组（Dashboard模式下隐藏） -->
+    <div v-if="!isDashboardMode" class="bottom-controls-container">
       <ViewResetControl />
       <DistanceMeasureButton />
       <AreaMeasureButton />
@@ -38,13 +37,18 @@
       <EChartsCountyPie :year="selectedYear" />
       <LandUseTrendControl :seriesData="cachedClcdData" />
       <RegionalTrendControl />
+      <SciMonitoringPanel />
     </div>
 
-    <!-- 测量结果面板集成到按钮组件 -->
+    <!-- 大屏指挥中心入口按钮（切换模式） -->
+    <div v-if="!isDashboardMode" class="dashboard-entry-container">
+      <button @click="isDashboardMode = true" class="dashboard-toggle-btn" title="进入大屏指挥中心">
+        <img :src="dashboardIcon" class="toggle-icon-img" alt="大屏" />
+      </button>
+    </div>
 
-    <!-- 右侧图表面板区域 -->
-    <div class="right-panels">
-      <!-- CLCD 图例 -->
+    <!-- 右侧图表面板区域（Dashboard模式下隐藏） -->
+    <div v-if="!isDashboardMode" class="right-panels">
       <div class="panel-card legend-panel">
         <div class="legend-grid">
           <div v-for="(color, name) in clcdColors" :key="name" class="legend-item">
@@ -53,12 +57,19 @@
           </div>
         </div>
       </div>
-
-      <!-- 当年土地利用结构饼图 -->
       <div class="panel-card chart-panel">
         <LandUsePieChart :year="selectedYear" :seriesData="currentYearData" :compact="true" />
       </div>
     </div>
+
+    <!-- 大屏指挥中心覆盖层 -->
+    <transition name="fade">
+      <DashboardOverlay 
+        v-if="isDashboardMode" 
+        :year="selectedYear" 
+        @close="isDashboardMode = false" 
+      />
+    </transition>
   </div>
 </template>
 
@@ -77,20 +88,24 @@ import EChartsPrefecturePie from '../components/controls/EChartsPrefecturePie.vu
 import EChartsCountyPie from '../components/controls/EChartsCountyPie.vue';
 import LandUseTrendControl from '../components/controls/LandUseTrendControl.vue';
 import RegionalTrendControl from '../components/controls/RegionalTrendControl.vue';
+import SciMonitoringPanel from '../components/controls/SciMonitoringPanel.vue';
+import DashboardOverlay from './DashboardOverlay.vue';
 import { useMapStore } from '../stores/map.ts';
 import { clcdApi, authApi } from '../api/index.js';
 import logoutIcon from '../assets/icons/logout.png';
+import dashboardIcon from '../assets/icons/dashboard.png';
 
 const router = useRouter();
 const mapStore = useMapStore();
 
 const viewer = shallowRef(null);
-const clcdLayer = shallowRef(null); // 用于存储当前 CLCD 图层的引用
-const baseMapLayer = shallowRef(null); // 用于存储当前底图图层
-const cachedClcdData = ref([]); // 缓存 CLCD 数据，避免重复加载
+const clcdLayer = shallowRef(null);
+const baseMapLayer = shallowRef(null);
+const cachedClcdData = ref([]);
 
-const selectedYear = ref(1985); // 当前选择的年份，默认1985
-const currentYearData = ref({}); // 当前年份的数据
+const selectedYear = ref(1985);
+const currentYearData = ref({});
+const isDashboardMode = ref(false);
 
 // CLCD 颜色映射
 const clcdColors = {
@@ -135,7 +150,7 @@ const checkAuth = async () => {
   }
 };
 
-// 监听年份变化，自动更新 CLCD 图层和图表数据
+// 监听年份变化
 watch(selectedYear, (newYear) => {
   if (newYear && viewer.value) {
     loadCLCDLayer(newYear);
@@ -144,7 +159,6 @@ watch(selectedYear, (newYear) => {
 });
 
 onMounted(async () => {
-  // 1. 验证身份
   await checkAuth();
 
   try {
@@ -176,46 +190,36 @@ onMounted(async () => {
     });
     viewer.value = viewerInstance;
 
-    // 开启抗锯齿
     viewer.value.scene.postProcessStages.fxaa.enabled = true;
-    // 开启高动态范围渲染
     viewer.value.scene.highDynamicRange = true;
-    // 设置分辨率缩放因子，提高清晰度
     viewer.value.resolutionScale = window.devicePixelRatio || 1.0;
-
     viewer.value.cesiumWidget.creditContainer.style.display = "none";
-
-    // 禁用倾斜控制，保持垂直视角
     viewer.value.scene.screenSpaceCameraController.enableTilt = false;
-    // 添加默认底图（天地图影像）
+    
     loadBaseMap('imagery');
 
     // 加载云南省边界
     Cesium.GeoJsonDataSource.load('/data/yunnan_boundary.geo.json', {
-      stroke: Cesium.Color.fromCssColorString('#00E5FF'), // 青色
+      stroke: Cesium.Color.fromCssColorString('#00E5FF'),
       fill: Cesium.Color.TRANSPARENT,
-      strokeWidth: 10, // 加粗
+      strokeWidth: 10,
       markerSize: 0,
       clampToGround: true
     }).then(function (dataSource) {
       viewer.value.dataSources.add(dataSource);
       const entities = dataSource.entities.values;
-
-      // 遍历所有实体，只保留云南省（code: 530000 或 name: 云南）
       for (let i = entities.length - 1; i >= 0; i--) {
         const entity = entities[i];
         const name = entity.properties.name ? entity.properties.name.getValue() : '';
         const code = entity.properties.code ? entity.properties.code.getValue() : '';
 
         if (name.includes('云南') || code == '530000') {
-          // 云南省，设置样式
           if (entity.polyline) {
-            entity.polyline.width = 10; // 加粗
-            // 使用轮廓材质效果
+            entity.polyline.width = 10;
             entity.polyline.material = new Cesium.PolylineOutlineMaterialProperty({
-              color: Cesium.Color.fromCssColorString('#00E5FF'), // 内部青色
-              outlineColor: Cesium.Color.fromCssColorString('#00838F'), // 外部深青色描边
-              outlineWidth: 6 // 加粗描边
+              color: Cesium.Color.fromCssColorString('#00E5FF'),
+              outlineColor: Cesium.Color.fromCssColorString('#00838F'),
+              outlineWidth: 6
             });
             entity.polyline.clampToGround = true;
           }
@@ -223,10 +227,9 @@ onMounted(async () => {
             entity.polygon.fill = false;
             entity.polygon.outline = true;
             entity.polygon.outlineColor = Cesium.Color.fromCssColorString('#00E5FF');
-            entity.polygon.outlineWidth = 6; // 加粗
+            entity.polygon.outlineWidth = 6;
           }
         } else {
-          // 移除不是云南省区域
           dataSource.entities.remove(entity);
         }
       }
@@ -234,7 +237,6 @@ onMounted(async () => {
       console.error('加载云南边界数据失败:', error);
     });
 
-    // 设置初始视角到云南省中心，垂直俯视视角
     viewer.value.camera.setView({
       destination: Cesium.Cartesian3.fromDegrees(101.8, 25.2, 1900000),
       orientation: {
@@ -243,13 +245,9 @@ onMounted(async () => {
       }
     });
 
-    // 将 viewer 挂载到 window 对象上，供其他组件使用
     window.cesiumViewer = viewer.value;
-
-    // 将 viewer 注册到 map store，以便其他组件可以使用
     mapStore.setViewer(viewer.value);
 
-    // 加载默认年份（1985）的 CLCD 图层
     loadCLCDLayer(selectedYear.value);
     loadYearData(selectedYear.value);
 
@@ -258,22 +256,16 @@ onMounted(async () => {
   }
 });
 
-// 加载当年数据（用于图表）- 带缓存优化
 async function loadYearData(year) {
   try {
-    // 只在第一次加载数据，之后使用缓存
     if (cachedClcdData.value.length === 0) {
       const data = await clcdApi.getProvinceTrend();
       cachedClcdData.value = data;
-      console.log('CLCD 数据已加载并缓存 (1985-2023)');
     }
 
-    // 从缓存中按需查询指定年份
     if (cachedClcdData.value.length > 0) {
       const yearData = cachedClcdData.value.find(item => item.year === year);
-
       if (yearData) {
-        // 映射为前端需要的字段名（英文 → 中文）
         currentYearData.value = {
           year: yearData.year,
           耕地: yearData.cropland,
@@ -286,8 +278,6 @@ async function loadYearData(year) {
           建设用地: yearData.impervious,
           湿地: yearData.wetland
         };
-      } else {
-        console.warn(`未找到 ${year} 年的数据`);
       }
     }
   } catch (e) {
@@ -295,11 +285,8 @@ async function loadYearData(year) {
   }
 }
 
-// 加载底图
 function loadBaseMap(mapType) {
   if (!viewer.value) return;
-
-  // 移除现有底图
   if (baseMapLayer.value) {
     viewer.value.imageryLayers.remove(baseMapLayer.value);
     baseMapLayer.value = null;
@@ -310,17 +297,14 @@ function loadBaseMap(mapType) {
 
   switch (mapType) {
     case 'imagery':
-      // 天地图影像
       layerName = 'img';
       url = `http://t0.tianditu.gov.cn/img_w/wmts?service=wmts&request=GetTile&version=1.0.0&LAYER=${layerName}&tileMatrixSet=w&TileMatrix={TileMatrix}&TileRow={TileRow}&TileCol={TileCol}&style=default&format=tiles&tk=${token}`;
       break;
     case 'vector':
-      // 天地图矢量
       layerName = 'vec';
       url = `http://t0.tianditu.gov.cn/vec_w/wmts?service=wmts&request=GetTile&version=1.0.0&LAYER=${layerName}&tileMatrixSet=w&TileMatrix={TileMatrix}&TileRow={TileRow}&TileCol={TileCol}&style=default&format=tiles&tk=${token}`;
       break;
     case 'terrain':
-      // 天地图地形
       layerName = 'ter';
       url = `http://t0.tianditu.gov.cn/ter_w/wmts?service=wmts&request=GetTile&version=1.0.0&LAYER=${layerName}&tileMatrixSet=w&TileMatrix={TileMatrix}&TileRow={TileRow}&TileCol={TileCol}&style=default&format=tiles&tk=${token}`;
       break;
@@ -337,22 +321,17 @@ function loadBaseMap(mapType) {
       tileMatrixSetID: 'w',
       maximumLevel: 18
     });
-
-    // 在索引 0 位置添加底图，确保底图在最底层
     baseMapLayer.value = viewer.value.imageryLayers.addImageryProvider(imageryProvider, 0);
   } catch (e) {
     console.error('加载底图失败:', e);
   }
 }
 
-// 处理底图切换
 function handleBaseMapChange(mapType) {
   loadBaseMap(mapType);
 }
 
-// 加载指定年份的 CLCD WMS 图层
 function loadCLCDLayer(year) {
-  // 如果已有图层，先移除
   if (clcdLayer.value && viewer.value) {
     viewer.value.imageryLayers.remove(clcdLayer.value, true);
     clcdLayer.value = null;
@@ -372,7 +351,6 @@ function loadCLCDLayer(year) {
         }
       })
     );
-    console.log(`已加载 ${year} 年 CLCD 图层`);
   } catch (e) {
     console.error(`加载 ${year} 年 CLCD 图层失败:`, e);
   }
@@ -388,16 +366,13 @@ onUnmounted(() => {
 </script>
 
 <style>
-/* 全局样式：移除浏览器默认边距 */
-body,
-html {
+body, html {
   margin: 0 !important;
   padding: 0 !important;
   overflow: hidden;
   width: 100%;
   height: 100%;
 }
-
 #app {
   margin: 0;
   padding: 0;
@@ -425,7 +400,6 @@ html {
   z-index: 10;
 }
 
-/* 顶部标题栏样式 */
 .header-container {
   position: fixed;
   top: 0;
@@ -447,17 +421,6 @@ html {
   justify-content: center;
   align-items: center;
   pointer-events: auto;
-}
-
-.project-title {
-  margin: 0;
-  padding-top: 5px;
-  font-size: 32px;
-  font-weight: 700;
-  letter-spacing: 6px;
-  color: #ffffff;
-  text-shadow: 0 0 10px rgba(255, 255, 255, 0.5), 0 0 20px rgba(59, 130, 246, 0.5);
-  font-family: "Microsoft YaHei", sans-serif;
 }
 
 .logout-btn {
@@ -499,16 +462,6 @@ html {
   transform: scale(1.1);
 }
 
-.logout-btn svg {
-  width: 20px;
-  height: 20px;
-}
-
-.logout-btn:hover {
-  color: #fca5a5;
-  transform: scale(1.1);
-}
-
 .background-layer {
   position: fixed;
   top: -2%;
@@ -544,6 +497,13 @@ html {
   min-height: 160px;
 }
 
+.dashboard-entry-container {
+  position: fixed;
+  bottom: 30px;
+  left: 100px; /* Offset from bottom-controls-container */
+  z-index: 1100;
+}
+
 .basemap-selector-container {
   position: fixed;
   top: 40px;
@@ -555,7 +515,7 @@ html {
   position: fixed;
   right: 20px;
   top: 20px;
-  width: 450px;
+  width: 300px;
   max-height: calc(100vh - 40px);
   overflow-y: auto;
   display: flex;
@@ -574,31 +534,11 @@ html {
   transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
-.panel-title {
-  padding: 10px 16px;
-  font-size: 13px;
-  font-weight: 600;
-  color: #a5ccff;
-  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
-  background: linear-gradient(90deg, rgba(30, 58, 138, 0.4) 0%, rgba(30, 58, 138, 0) 100%);
-  display: flex;
-  align-items: center;
-}
-
-.panel-title::before {
-  content: '';
-  width: 3px;
-  height: 12px;
-  background: #3b82f6;
-  margin-right: 8px;
-  border-radius: 2px;
-}
-
 .legend-grid {
   display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 6px 12px;
-  padding: 12px 16px;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 4px 8px;
+  padding: 10px 12px;
 }
 
 .legend-item {
@@ -632,4 +572,38 @@ html {
   background: rgba(255, 255, 255, 0.1);
   border-radius: 10px;
 }
+
+.dashboard-toggle-btn {
+  width: 64px;
+  height: 64px;
+  border-radius: 14px;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  background: rgba(13, 25, 48, 0.4);
+  backdrop-filter: blur(12px);
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  pointer-events: auto;
+}
+
+.dashboard-toggle-btn:hover {
+  background: rgba(30, 58, 138, 0.6);
+  border-color: rgba(59, 130, 246, 0.5);
+  transform: translateY(-2px);
+  box-shadow: 0 6px 16px rgba(0, 0, 0, 0.3);
+}
+
+.dashboard-toggle-btn .toggle-icon-img {
+  width: 36px;
+  height: 36px;
+  object-fit: contain;
+  filter: drop-shadow(0 0 8px rgba(255, 255, 255, 0.3));
+}
+
+/* Transitions */
+.fade-enter-active, .fade-leave-active { transition: opacity 0.5s ease; }
+.fade-enter-from, .fade-leave-to { opacity: 0; }
 </style>

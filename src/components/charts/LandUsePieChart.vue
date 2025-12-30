@@ -138,7 +138,7 @@ const getChartOption = () => {
       {
         name: '土地利用结构',
         type: 'pie',
-        radius: ['0%', '60%'],  // 实心饼图
+        radius: ['0%', '50%'],  // 稍微缩小半径，为标签留出更多空间
         center: ['50%', '55%'],  // 居中显示
         data: chartData.value,
         emphasis: {

@@ -43,9 +43,9 @@
                         class="absolute -inset-full top-0 block -translate-x-full transform bg-gradient-to-r from-transparent via-white/30 to-transparent transition-transform duration-500 ease-in-out group-hover:translate-x-full"></span>
                     进入平台
                 </button>
-                <a href="https://cesium.com/learn/cesiumjs-learn/" target="_blank" rel="noreferrer"
+                <a href="https://github.com/Regenerate334/my_webgis_project" target="_blank" rel="noreferrer"
                     class="inline-flex items-center justify-center rounded-full border border-white/40 bg-white/10 px-8 py-4 text-lg font-medium text-white backdrop-blur-sm transition-colors hover:bg-white/20 focus:outline-none focus:ring-4 focus:ring-white/30">
-                    了解Cesium
+                    了解详情
                 </a>
             </div>
 

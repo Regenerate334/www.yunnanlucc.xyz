@@ -97,5 +97,8 @@ export const analysisApi = {
     getTransferPeriods: () => request('/api/analysis/transfer-matrix/periods'),
 
     // 获取指定时间段的转移矩阵数据
-    getTransferMatrix: (period) => request(`/api/analysis/transfer-matrix/${period}`)
+    getTransferMatrix: (period) => request(`/api/analysis/transfer-matrix/${period}`),
+
+    // 获取大屏指挥中心综合数据
+    getDashboardData: (year) => request(`/api/analysis/dashboard/${year}`)
 };
