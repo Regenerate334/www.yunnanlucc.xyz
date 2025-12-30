@@ -3,10 +3,19 @@
         <div class="login-card">
             <div class="login-header">
                 <h1 class="login-title">云南国土空间规划监测预警平台</h1>
-                <p class="login-subtitle">WELCOME!</p>
+                <p class="login-subtitle">{{ isLoginMode ? 'WELCOME!' : 'CREATE ACCOUNT' }}</p>
             </div>
 
-            <form @submit.prevent="handleLogin" class="login-form">
+            <!-- 已登录状态提示 -->
+            <div v-if="isLoggedIn" class="logged-in-state">
+                <p class="logged-in-msg">您当前已登录</p>
+                <div class="logged-in-actions">
+                    <button @click="goToWorkbench" class="action-btn primary">进入工作台</button>
+                    <button @click="handleLogout" class="action-btn secondary">退出当前账号</button>
+                </div>
+            </div>
+
+            <form v-else @submit.prevent="handleSubmit" class="login-form">
                 <div class="input-group">
                     <div class="input-icon">
                         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
@@ -27,45 +36,76 @@
                     <input type="password" v-model="password" placeholder="请输入密码" required />
                 </div>
 
-                <div class="form-actions">
+                <div class="form-actions" v-if="isLoginMode">
                     <label class="remember-me">
                         <input type="checkbox" v-model="rememberMe" />
                         <span>记住密码</span>
                     </label>
-                    <a href="#" class="forgot-link">忘记密码</a>
                 </div>
 
                 <button type="submit" class="login-btn" :disabled="isLoading">
-                    <span v-if="!isLoading">立即登录</span>
+                    <span v-if="!isLoading">{{ isLoginMode ? '立即登录' : '立即注册' }}</span>
                     <div v-else class="spinner"></div>
                 </button>
+
+                <div class="mode-toggle">
+                    <a href="#" @click.prevent="isLoginMode = !isLoginMode">
+                        {{ isLoginMode ? '没有账号？去注册' : '已有账号？去登录' }}
+                    </a>
+                </div>
             </form>
         </div>
     </div>
 </template>
 
 <script setup>
-import { ref } from 'vue';
+import { ref, onMounted } from 'vue';
 import { useRouter } from 'vue-router';
 import { authApi } from '../api/index.js';
 
 const router = useRouter();
-const username = ref('admin');
-const password = ref('123456');
+const isLoginMode = ref(true);
+const isLoggedIn = ref(false);
+const username = ref('');
+const password = ref('');
 const rememberMe = ref(false);
 const isLoading = ref(false);
+
+const checkLoginStatus = () => {
+    const token = localStorage.getItem('auth_token');
+    if (token) {
+        isLoggedIn.value = true;
+    }
+};
+
+const goToWorkbench = () => {
+    router.replace('/workbench');
+};
+
+const handleLogout = () => {
+    localStorage.removeItem('auth_token');
+    localStorage.removeItem('user_info');
+    isLoggedIn.value = false;
+};
+
+const handleSubmit = async () => {
+    if (isLoginMode.value) {
+        await handleLogin();
+    } else {
+        await handleRegister();
+    }
+};
 
 const handleLogin = async () => {
     isLoading.value = true;
     try {
         const res = await authApi.login(username.value, password.value);
         if (res.success) {
-            // 存储 Token
             localStorage.setItem('auth_token', res.token);
-            // 存储用户信息
             localStorage.setItem('user_info', JSON.stringify(res.user));
 
-            router.push('/workbench');
+            // 强制刷新跳转，确保 Cesium 实例重新初始化
+            window.location.href = '/workbench';
         }
     } catch (err) {
         alert(err.message || '登录失败，请检查账号密码');
@@ -73,6 +113,26 @@ const handleLogin = async () => {
         isLoading.value = false;
     }
 };
+
+const handleRegister = async () => {
+    isLoading.value = true;
+    try {
+        const res = await authApi.register(username.value, password.value);
+        if (res.success) {
+            alert('注册成功，请登录');
+            isLoginMode.value = true;
+            password.value = '';
+        }
+    } catch (err) {
+        alert(err.message || '注册失败');
+    } finally {
+        isLoading.value = false;
+    }
+};
+
+onMounted(() => {
+    checkLoginStatus();
+});
 </script>
 
 <style scoped>
@@ -114,6 +174,56 @@ const handleLogin = async () => {
     color: #999999;
     letter-spacing: 2px;
     text-transform: uppercase;
+}
+
+.logged-in-state {
+    display: flex;
+    flex-direction: column;
+    gap: 30px;
+    padding: 20px 0;
+}
+
+.logged-in-msg {
+    font-size: 18px;
+    color: #606266;
+}
+
+.logged-in-actions {
+    display: flex;
+    flex-direction: column;
+    gap: 15px;
+}
+
+.action-btn {
+    height: 50px;
+    border-radius: 8px;
+    font-size: 16px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.3s;
+    border: none;
+}
+
+.action-btn.primary {
+    background: #1890ff;
+    color: #ffffff;
+}
+
+.action-btn.primary:hover {
+    background: #40a9ff;
+    transform: translateY(-1px);
+    box-shadow: 0 4px 12px rgba(24, 144, 255, 0.3);
+}
+
+.action-btn.secondary {
+    background: #f5f7fa;
+    color: #606266;
+    border: 1px solid #e4e7ed;
+}
+
+.action-btn.secondary:hover {
+    background: #e6e8eb;
+    color: #303133;
 }
 
 .login-form {
@@ -178,17 +288,6 @@ const handleLogin = async () => {
     cursor: pointer;
 }
 
-.forgot-link {
-    font-size: 14px;
-    color: #409eff;
-    text-decoration: none;
-    transition: color 0.3s;
-}
-
-.forgot-link:hover {
-    color: #66b1ff;
-}
-
 .login-btn {
     margin-top: 20px;
     height: 50px;
@@ -233,5 +332,20 @@ const handleLogin = async () => {
     to {
         transform: rotate(360deg);
     }
+}
+
+.mode-toggle {
+    margin-top: 15px;
+    font-size: 14px;
+}
+
+.mode-toggle a {
+    color: #409eff;
+    text-decoration: none;
+    transition: color 0.3s;
+}
+
+.mode-toggle a:hover {
+    color: #66b1ff;
 }
 </style>

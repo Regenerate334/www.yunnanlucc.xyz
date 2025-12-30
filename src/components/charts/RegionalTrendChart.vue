@@ -188,9 +188,9 @@ const updateChart = () => {
             titles.push({
                 text: landTypeMap[key],
                 left: (left + gridWidth / 2) + '%',
-                top: (top - 4) + '%',
+                top: (top - 5) + '%', // Slightly adjust top position
                 textAlign: 'center',
-                textStyle: { color: '#a5ccff', fontSize: 13, fontWeight: '600' }
+                textStyle: { color: '#a5ccff', fontSize: 14, fontWeight: 'bold' }
             });
 
             xAxes.push({
@@ -261,6 +261,7 @@ const updateChart = () => {
 
         const option = {
             backgroundColor: 'transparent',
+            title: titles, // Add titles to the option
             tooltip: {
                 trigger: 'axis',
                 confine: true,

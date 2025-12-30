@@ -19,11 +19,12 @@ const chartInstance = shallowRef(null);
 
 async function fetchDataAndRender() {
   if (props.value !== null) {
-      const baseVal = props.baseValue || props.value * 1.1; // 兜底逻辑
-      const redLine = baseVal * 0.9;
-      const maxVal = baseVal * 1.2;
-      renderChart(props.value, redLine, maxVal);
-      return;
+    const val = props.value / 1000000;
+    const baseVal = (props.baseValue / 1000000) || val * 1.1;
+    const redLine = baseVal * 0.9;
+    const maxVal = baseVal * 1.2;
+    renderChart(val, redLine, maxVal);
+    return;
   }
   try {
     // 获取当年数据
@@ -36,12 +37,12 @@ async function fetchDataAndRender() {
     const current = transformDataForCalculation(currentYearData);
     const base = transformDataForCalculation(baseYearData);
 
-    const currentCropland = current['Cropland'] || 0;
-    const baseCropland = base['Cropland'] || 0;
-    
+    const currentCropland = (current['Cropland'] || 0) / 1000000;
+    const baseCropland = (base['Cropland'] || 0) / 1000000;
+
     // 假设耕地红线为 1985 年面积的 90%
     const redLine = baseCropland * 0.9;
-    
+
     // 仪表盘最大值设为基准值的 1.2 倍
     const maxVal = baseCropland * 1.2;
 

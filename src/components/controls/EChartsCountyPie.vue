@@ -5,39 +5,41 @@
             <span class="btn-label">县</span>
         </button>
 
-        <transition name="fade">
-            <div v-if="isVisible" class="modal-backdrop" @click="toggleChart"></div>
-        </transition>
+        <Teleport to="body">
+            <transition name="fade">
+                <div v-if="isVisible" class="modal-backdrop" @click="toggleChart"></div>
+            </transition>
 
-        <transition name="slide-fade">
-            <div v-if="isVisible" class="modal-window" @click.stop>
-                <div class="modal-header">
-                    <span class="modal-title">
-                        {{ props.year }}年 {{ currentPrefectureName }} 土地利用结构
-                    </span>
-                    <div class="custom-select" ref="dropdownRef">
-                        <div class="select-trigger" @click="toggleDropdown">
-                            <span>{{ currentPrefectureName }}</span>
-                            <span class="arrow" :class="{ open: isDropdownOpen }">▼</span>
-                        </div>
-                        <transition name="dropdown-fade">
-                            <div v-if="isDropdownOpen" class="options-panel">
-                                <div class="options-list">
-                                    <div v-for="city in prefectureList" :key="city.code" class="option-item"
-                                        :class="{ selected: city.code === selectedAdcode }"
-                                        @click="selectPrefecture(city)">
-                                        <span class="dot" v-if="city.code === selectedAdcode"></span>
-                                        {{ city.name }}
+            <transition name="slide-fade">
+                <div v-if="isVisible" class="modal-window" @click.stop>
+                    <div class="modal-header">
+                        <span class="modal-title">
+                            {{ props.year }}年 {{ currentPrefectureName }} 土地利用结构
+                        </span>
+                        <div class="custom-select" ref="dropdownRef">
+                            <div class="select-trigger" @click="toggleDropdown">
+                                <span>{{ currentPrefectureName }}</span>
+                                <span class="arrow" :class="{ open: isDropdownOpen }">▼</span>
+                            </div>
+                            <transition name="dropdown-fade">
+                                <div v-if="isDropdownOpen" class="options-panel">
+                                    <div class="options-list">
+                                        <div v-for="city in prefectureList" :key="city.code" class="option-item"
+                                            :class="{ selected: city.code === selectedAdcode }"
+                                            @click="selectPrefecture(city)">
+                                            <span class="dot" v-if="city.code === selectedAdcode"></span>
+                                            {{ city.name }}
+                                        </div>
                                     </div>
                                 </div>
-                            </div>
-                        </transition>
+                            </transition>
+                        </div>
+                        <button class="close-btn" @click.stop="toggleChart">✕</button>
                     </div>
-                    <button class="close-btn" @click.stop="toggleChart">✕</button>
+                    <div ref="chartContainer" class="chart-container"></div>
                 </div>
-                <div ref="chartContainer" class="chart-container"></div>
-            </div>
-        </transition>
+            </transition>
+        </Teleport>
     </div>
 </template>
 

@@ -2,6 +2,8 @@
   <div id="cesiumContainerWrapper">
     <!-- 背景遮罩层：Dashboard模式下隐藏 -->
     <div v-if="!isDashboardMode" class="background-layer"></div>
+    <!-- 地图掩膜层：Dashboard模式下隐藏 -->
+    <div v-if="!isDashboardMode" class="mask-layer"></div>
     <div id="cesiumContainer"></div>
 
     <!-- 顶部标题栏（Dashboard模式下隐藏） -->
@@ -18,11 +20,6 @@
       <YearRangeSelector v-model:selectedYear="selectedYear" :width="200" />
     </div>
 
-    <!-- 复位视图控制按钮 -->
-    <div v-if="!isDashboardMode" class="reset-control-container">
-      <ViewResetControl />
-    </div>
-
     <!-- 底图选择器（Dashboard模式下隐藏） -->
     <div v-if="!isDashboardMode" class="basemap-selector-container">
       <BaseMapSelector @change="handleBaseMapChange" />
@@ -37,7 +34,6 @@
       <EChartsCountyPie :year="selectedYear" />
       <LandUseTrendControl :seriesData="cachedClcdData" />
       <RegionalTrendControl />
-      <SciMonitoringPanel />
     </div>
 
     <!-- 大屏指挥中心入口按钮（切换模式） -->
@@ -64,11 +60,7 @@
 
     <!-- 大屏指挥中心覆盖层 -->
     <transition name="fade">
-      <DashboardOverlay 
-        v-if="isDashboardMode" 
-        :year="selectedYear" 
-        @close="isDashboardMode = false" 
-      />
+      <DashboardOverlay v-if="isDashboardMode" :year="selectedYear" @close="isDashboardMode = false" />
     </transition>
   </div>
 </template>
@@ -88,7 +80,6 @@ import EChartsPrefecturePie from '../components/controls/EChartsPrefecturePie.vu
 import EChartsCountyPie from '../components/controls/EChartsCountyPie.vue';
 import LandUseTrendControl from '../components/controls/LandUseTrendControl.vue';
 import RegionalTrendControl from '../components/controls/RegionalTrendControl.vue';
-import SciMonitoringPanel from '../components/controls/SciMonitoringPanel.vue';
 import DashboardOverlay from './DashboardOverlay.vue';
 import { useMapStore } from '../stores/map.ts';
 import { clcdApi, authApi } from '../api/index.js';
@@ -195,7 +186,7 @@ onMounted(async () => {
     viewer.value.resolutionScale = window.devicePixelRatio || 1.0;
     viewer.value.cesiumWidget.creditContainer.style.display = "none";
     viewer.value.scene.screenSpaceCameraController.enableTilt = false;
-    
+
     loadBaseMap('imagery');
 
     // 加载云南省边界
@@ -357,7 +348,7 @@ function loadCLCDLayer(year) {
 }
 
 onUnmounted(() => {
-  if (viewer.value) {
+  if (viewer.value && typeof viewer.value.dispose === 'function') {
     viewer.value.dispose();
     viewer.value = null;
   }
@@ -366,13 +357,15 @@ onUnmounted(() => {
 </script>
 
 <style>
-body, html {
+body,
+html {
   margin: 0 !important;
   padding: 0 !important;
   overflow: hidden;
   width: 100%;
   height: 100%;
 }
+
 #app {
   margin: 0;
   padding: 0;
@@ -386,8 +379,6 @@ body, html {
   position: fixed;
   top: 0;
   left: 0;
-  margin: 0;
-  padding: 0;
   width: 100vw;
   height: 100vh;
   overflow: hidden;
@@ -408,13 +399,9 @@ body, html {
   height: 80px;
   z-index: 1000;
   pointer-events: none;
-  display: flex;
-  justify-content: center;
-  align-items: flex-start;
 }
 
 .header-content {
-  position: relative;
   width: 100%;
   height: 60px;
   display: flex;
@@ -433,74 +420,59 @@ body, html {
   border: 1px solid rgba(255, 255, 255, 0.1);
   border-radius: 8px;
   cursor: pointer;
-  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  transition: all 0.3s ease;
   display: flex;
   align-items: center;
   justify-content: center;
   backdrop-filter: blur(8px);
-  padding: 0;
-  overflow: hidden;
 }
 
 .logout-btn:hover {
   background: rgba(239, 68, 68, 0.2);
   border-color: rgba(239, 68, 68, 0.4);
   transform: translateY(-2px);
-  box-shadow: 0 4px 12px rgba(239, 68, 68, 0.2);
 }
 
 .logout-icon-img {
   width: 24px;
   height: 24px;
-  object-fit: contain;
   opacity: 0.8;
-  transition: all 0.3s ease;
-}
-
-.logout-btn:hover .logout-icon-img {
-  opacity: 1;
-  transform: scale(1.1);
 }
 
 .background-layer {
   position: fixed;
-  top: -2%;
-  left: -2%;
-  right: -2%;
-  bottom: -2%;
-  width: 104vw;
-  height: 104vh;
+  top: 0;
+  left: 0;
+  width: 100vw;
+  height: 100vh;
   z-index: 100;
   pointer-events: none;
   background-image: url('../assets/images/front_bg.png');
-  background-size: 100% 100%;
+  background-size: 106% 103%;
+  /* 水平放大8%，垂直放大4% */
+  background-position: center;
   background-repeat: no-repeat;
-  background-position: center center;
+}
+
+.mask-layer {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100vw;
+  height: 100vh;
+  z-index: 105;
+  pointer-events: none;
+  background-image: url('../assets/images/mask.png');
+  background-size: 108% 104%;
+  /* 同步调整掩膜层 */
+  background-position: center;
+  background-repeat: no-repeat;
 }
 
 .year-selector-container {
   position: fixed;
   top: 40px;
   left: 20px;
-  z-index: 1100;
-}
-
-.bottom-controls-container {
-  position: fixed;
-  bottom: 30px;
-  left: 20px;
-  z-index: 200;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 10px;
-  min-height: 160px;
-}
-
-.dashboard-entry-container {
-  position: fixed;
-  bottom: 30px;
-  left: 100px; /* Offset from bottom-controls-container */
   z-index: 1100;
 }
 
@@ -511,12 +483,35 @@ body, html {
   z-index: 1100;
 }
 
+.bottom-controls-container {
+  position: fixed;
+  bottom: 30px;
+  left: 20px;
+  z-index: 1100;
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  gap: 12px;
+  padding: 8px 12px;
+  background: rgba(13, 25, 48, 0.4);
+  backdrop-filter: blur(12px);
+  border-radius: 16px;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.dashboard-entry-container {
+  position: fixed;
+  bottom: 30px;
+  right: 20px;
+  z-index: 1100;
+}
+
 .right-panels {
   position: fixed;
   right: 20px;
   top: 20px;
   width: 300px;
-  max-height: calc(100vh - 40px);
+  max-height: calc(100vh - 120px);
   overflow-y: auto;
   display: flex;
   flex-direction: column;
@@ -528,10 +523,9 @@ body, html {
   background: rgba(13, 25, 48, 0.4);
   border: 1px solid rgba(255, 255, 255, 0.08);
   border-radius: 12px;
-  backdrop-filter: blur(16px) saturate(180%);
+  backdrop-filter: blur(16px);
   overflow: hidden;
-  box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.37);
-  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
 }
 
 .legend-grid {
@@ -545,65 +539,56 @@ body, html {
   display: flex;
   align-items: center;
   gap: 8px;
-  padding: 4px 0;
 }
 
 .legend-color {
   width: 10px;
   height: 10px;
   border-radius: 50%;
-  border: 1px solid rgba(255, 255, 255, 0.2);
 }
 
 .legend-name {
   font-size: 12px;
-  color: rgba(255, 255, 255, 0.85);
+  color: rgba(255, 255, 255, 0.8);
 }
 
 .chart-panel {
   min-height: 220px;
 }
 
-.right-panels::-webkit-scrollbar {
-  width: 4px;
-}
-
-.right-panels::-webkit-scrollbar-thumb {
-  background: rgba(255, 255, 255, 0.1);
-  border-radius: 10px;
-}
-
 .dashboard-toggle-btn {
   width: 64px;
   height: 64px;
   border-radius: 14px;
-  border: 1px solid rgba(255, 255, 255, 0.08);
+  border: 1px solid rgba(255, 255, 255, 0.1);
   background: rgba(13, 25, 48, 0.4);
   backdrop-filter: blur(12px);
   cursor: pointer;
   display: flex;
   align-items: center;
   justify-content: center;
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
-  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-  pointer-events: auto;
+  transition: all 0.3s ease;
 }
 
 .dashboard-toggle-btn:hover {
   background: rgba(30, 58, 138, 0.6);
   border-color: rgba(59, 130, 246, 0.5);
   transform: translateY(-2px);
-  box-shadow: 0 6px 16px rgba(0, 0, 0, 0.3);
 }
 
-.dashboard-toggle-btn .toggle-icon-img {
+.toggle-icon-img {
   width: 36px;
   height: 36px;
-  object-fit: contain;
-  filter: drop-shadow(0 0 8px rgba(255, 255, 255, 0.3));
 }
 
 /* Transitions */
-.fade-enter-active, .fade-leave-active { transition: opacity 0.5s ease; }
-.fade-enter-from, .fade-leave-to { opacity: 0; }
+.fade-enter-active,
+.fade-leave-active {
+  transition: opacity 0.5s ease;
+}
+
+.fade-enter-from,
+.fade-leave-to {
+  opacity: 0;
+}
 </style>

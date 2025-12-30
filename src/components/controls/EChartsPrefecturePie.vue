@@ -5,19 +5,21 @@
       <span class="btn-label">市</span>
     </button>
 
-    <transition name="fade">
-      <div v-if="isVisible" class="modal-backdrop" @click="toggleChart"></div>
-    </transition>
+    <Teleport to="body">
+      <transition name="fade">
+        <div v-if="isVisible" class="modal-backdrop" @click="toggleChart"></div>
+      </transition>
 
-    <transition name="slide-fade">
-      <div v-if="isVisible" class="modal-window" @click.stop>
-        <div class="modal-header">
-          <span class="modal-title">{{ props.year }}年云南省地级市土地利用结构</span>
-          <button class="close-btn" @click.stop="toggleChart">✕</button>
+      <transition name="slide-fade">
+        <div v-if="isVisible" class="modal-window" @click.stop>
+          <div class="modal-header">
+            <span class="modal-title">{{ props.year }}年云南省地级市土地利用结构</span>
+            <button class="close-btn" @click.stop="toggleChart">✕</button>
+          </div>
+          <div ref="chartContainer" class="chart-container"></div>
         </div>
-        <div ref="chartContainer" class="chart-container"></div>
-      </div>
-    </transition>
+      </transition>
+    </Teleport>
   </div>
 </template>
 

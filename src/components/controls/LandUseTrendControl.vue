@@ -4,29 +4,31 @@
       <img src="../../assets/icons/zhexiantu_icon.png" alt="趋势图" class="icon-img" />
     </button>
 
-    <transition name="fade">
-      <div v-if="isVisible" class="modal-backdrop" @click="toggleChart"></div>
-    </transition>
+    <Teleport to="body">
+      <transition name="fade">
+        <div v-if="isVisible" class="modal-backdrop" @click="toggleChart"></div>
+      </transition>
 
-    <transition name="slide-fade">
-      <div v-if="isVisible" class="modal-window" @click.stop>
-        <div class="modal-header">
-          <span class="modal-title">土地利用类型变化趋势</span>
-          <button class="close-btn" @click.stop="toggleChart">✕</button>
-        </div>
-        <div class="chart-wrapper">
-          <div v-if="isLoading" class="loading-container">
-            <div class="spinner"></div>
-            <span>正在从数据库加载趋势数据...</span>
+      <transition name="slide-fade">
+        <div v-if="isVisible" class="modal-window" @click.stop>
+          <div class="modal-header">
+            <span class="modal-title">土地利用类型变化趋势</span>
+            <button class="close-btn" @click.stop="toggleChart">✕</button>
           </div>
-          <div v-else-if="hasError && localSeriesData.length === 0" class="error-container">
-            <span>数据加载失败，请检查后端服务。</span>
-            <button @click="fetchTrendData" class="retry-btn">重试</button>
+          <div class="chart-wrapper">
+            <div v-if="isLoading" class="loading-container">
+              <div class="spinner"></div>
+              <span>正在从数据库加载趋势数据...</span>
+            </div>
+            <div v-else-if="hasError && localSeriesData.length === 0" class="error-container">
+              <span>数据加载失败，请检查后端服务。</span>
+              <button @click="fetchTrendData" class="retry-btn">重试</button>
+            </div>
+            <LandUseTrendChart v-else :seriesData="localSeriesData" />
           </div>
-          <LandUseTrendChart v-else :seriesData="localSeriesData" />
         </div>
-      </div>
-    </transition>
+      </transition>
+    </Teleport>
   </div>
 </template>
 

@@ -8,13 +8,13 @@
         <div v-else class="metrics-grid">
           <div class="metric-card">
             <div class="metric-label">耕地保有量</div>
-            <div class="metric-value text-green">{{ (currentData.Cropland / 10000).toFixed(2) }}</div>
-            <div class="metric-unit">万 km²</div>
+            <div class="metric-value text-green">{{ (currentData.Cropland / 1000000).toFixed(2) }}</div>
+            <div class="metric-unit">km²</div>
           </div>
           <div class="metric-card">
             <div class="metric-label">建设用地</div>
-            <div class="metric-value text-red">{{ (currentData.Impervious / 10000).toFixed(2) }}</div>
-            <div class="metric-unit">万 km²</div>
+            <div class="metric-value text-red">{{ (currentData.Impervious / 1000000).toFixed(2) }}</div>
+            <div class="metric-unit">km²</div>
           </div>
           <div class="metric-card">
             <div class="metric-label">森林覆盖率</div>
@@ -158,9 +158,17 @@ watch(() => props.year, fetchData);
   color: #64748b;
 }
 
-.text-green { color: #22c55e; }
-.text-red { color: #ef4444; }
-.text-blue { color: #3b82f6; }
+.text-green {
+  color: #22c55e;
+}
+
+.text-red {
+  color: #ef4444;
+}
+
+.text-blue {
+  color: #3b82f6;
+}
 
 .chart-wrapper {
   width: 100%;

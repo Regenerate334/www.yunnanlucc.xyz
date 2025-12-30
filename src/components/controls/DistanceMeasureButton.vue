@@ -166,11 +166,13 @@ const isMeasuring = computed(() => activeTool.value === 'distance');
 /* 弹出面板样式 */
 .result-popover {
     position: absolute;
-    left: 80px;
-    bottom: 0;
+    bottom: 80px;
+    /* 调整为上方弹出 */
+    left: 50%;
+    transform: translateX(-50%);
     width: 220px;
-    background: rgba(13, 25, 48, 0.6);
-    border: 1px solid rgba(255, 255, 255, 0.08);
+    background: rgba(13, 25, 48, 0.85);
+    border: 1px solid rgba(255, 255, 255, 0.1);
     border-radius: 12px;
     backdrop-filter: blur(20px);
     box-shadow: 0 12px 40px rgba(0, 0, 0, 0.4);
@@ -353,7 +355,7 @@ const isMeasuring = computed(() => activeTool.value === 'distance');
 
 .slide-fade-enter-from,
 .slide-fade-leave-to {
-    transform: translateX(-15px);
+    transform: translate(-50%, 15px);
     opacity: 0;
 }
 </style>

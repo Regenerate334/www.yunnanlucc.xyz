@@ -46,6 +46,10 @@ export const authApi = {
         method: 'POST',
         body: JSON.stringify({ username, password })
     }),
+    register: (username, password) => request('/api/auth/register', {
+        method: 'POST',
+        body: JSON.stringify({ username, password })
+    }),
     verify: () => request('/api/auth/verify')
 };
 
@@ -88,7 +92,10 @@ export const clcdApi = {
 // 行政区划相关接口
 export const regionApi = {
     // 获取某级别的区域列表
-    getRegions: (level) => request(`/api/regions/${level}`)
+    getRegions: (level) => request(`/api/regions/${level}`),
+
+    // 获取区域层级结构 (地级市 -> 县级市)
+    getRegionHierarchy: () => request('/api/regions/hierarchy')
 };
 
 // 空间分析相关接口

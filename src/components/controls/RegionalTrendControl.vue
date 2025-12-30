@@ -2,90 +2,191 @@
     <div class="regional-trend-control">
         <!-- 入口按钮 -->
         <button @click="openModal" class="control-btn" title="区域趋势深度监测">
-            <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                <path d="M3 3v18h18" />
-                <path d="M18 9l-5 5-2-2-4 4" />
-            </svg>
-            <span class="btn-label">区域</span>
+            <img src="../../assets/icons/zhexiantu_icon.png" class="icon" alt="区域监测" />
+            <span class="btn-label">区域监测</span>
         </button>
 
-        <!-- 监测大窗 -->
-        <transition name="slide-fade">
-            <div v-if="isVisible" class="monitoring-modal" @click.stop>
-                <div class="modal-header">
-                    <div class="header-left">
+        <Teleport to="body">
+            <!-- 监测大窗 -->
+            <transition name="slide-fade">
+                <div v-if="isVisible" class="monitoring-modal" @click.stop>
+                    <div class="modal-header">
+                        <div class="header-placeholder"></div> <!-- 占位符用于平衡布局 -->
+
                         <div class="modal-title">区域土地利用动态监测中心</div>
-                        <div class="selectors">
-                            <!-- 级别切换 -->
-                            <div class="segmented-control">
-                                <button :class="{ active: currentLevel === 'prefecture' }"
-                                    @click="setLevel('prefecture')">地级市</button>
-                                <button :class="{ active: currentLevel === 'county' }"
-                                    @click="setLevel('county')">县级市</button>
-                            </div>
-                            <!-- 区域选择 -->
+
+                        <div class="header-right">
+                            <!-- 区域选择器 -->
                             <div class="custom-region-dropdown" ref="regionDropdownRef">
                                 <div class="region-trigger" @click="toggleRegionDropdown"
-                                    :class="{ disabled: regionList.length === 0 }">
-                                    <span>{{ selectedRegion || (regionList.length === 0 ? '正在加载...' : '请选择区域') }}</span>
-                                    <span class="arrow" :class="{ open: isRegionDropdownOpen }">▼</span>
+                                    :class="{ disabled: hierarchy.length === 0 }">
+                                    <span class="selected-text">
+                                        {{ selectedRegion.name || (hierarchy.length === 0 ? '正在加载...' : '请选择区域') }}
+                                        <span v-if="selectedRegion.name" class="level-badge">{{ selectedRegion.level ===
+                                            'prefecture' ? '地级' : '县级' }}</span>
+                                    </span>
+                                    <span class="arrow" :class="{ open: isRegionDropdownOpen }">▲</span>
                                 </div>
+
                                 <transition name="dropdown-fade">
-                                    <div v-if="isRegionDropdownOpen" class="region-options">
-                                        <div v-for="name in regionList" :key="name" class="region-option"
-                                            :class="{ active: selectedRegion === name }" @click="selectRegion(name)">
-                                            {{ name }}
+                                    <div v-if="isRegionDropdownOpen" class="region-options-panel">
+                                        <!-- 搜索框 -->
+                                        <div class="search-box">
+                                            <input v-model="searchQuery" type="text" placeholder="搜索地州或区县..."
+                                                @click.stop />
+                                            <img src="../../assets/icons/search.png" class="search-icon-img" alt="搜索" />
+                                        </div>
+
+                                        <!-- 三级选择区域 -->
+                                        <div class="selection-columns">
+                                            <!-- 第一列：省直辖市 (固定为云南省) -->
+                                            <div class="selection-column">
+                                                <div class="column-header">省直辖市</div>
+                                                <div class="column-list">
+                                                    <div class="column-item active">云南省</div>
+                                                </div>
+                                            </div>
+
+                                            <!-- 第二列：地级市州 -->
+                                            <div class="selection-column">
+                                                <div class="column-header">地级市州</div>
+                                                <div class="column-list">
+                                                    <div v-for="pref in filteredHierarchy" :key="pref.name"
+                                                        class="column-item"
+                                                        :class="{ active: activePrefecture === pref.name || isSelected(pref.name, 'prefecture') }"
+                                                        @mouseenter="activePrefecture = pref.name"
+                                                        @click="selectRegion(pref.name, 'prefecture')">
+                                                        {{ pref.name }}
+                                                        <span class="sub-arrow">▶</span>
+                                                    </div>
+                                                </div>
+                                            </div>
+
+                                            <!-- 第三列：区县旗 -->
+                                            <div class="selection-column">
+                                                <div class="column-header">区县旗</div>
+                                                <div class="column-list">
+                                                    <template v-if="currentCounties.length > 0">
+                                                        <div v-for="county in currentCounties" :key="county"
+                                                            class="column-item"
+                                                            :class="{ active: isSelected(county, 'county') }"
+                                                            @click="selectRegion(county, 'county')">
+                                                            {{ county }}
+                                                        </div>
+                                                    </template>
+                                                    <div v-else class="empty-column-msg">
+                                                        请先选择地州市
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </div>
+
+                                        <div v-if="filteredHierarchy.length === 0 && searchQuery" class="no-results">
+                                            未找到相关区域
                                         </div>
                                     </div>
                                 </transition>
                             </div>
+                            <button class="close-btn" @click="closeModal">✕</button>
                         </div>
                     </div>
-                    <button class="close-btn" @click="closeModal">✕</button>
-                </div>
 
-                <div class="modal-body">
-                    <div v-if="isLoading" class="loading-state">
-                        <div class="spinner"></div>
-                        <span>正在调取 {{ selectedRegion }} 历史监测数据...</span>
-                    </div>
-                    <RegionalTrendChart v-else-if="trendData.length > 0" :regionName="selectedRegion"
-                        :level="currentLevel" :seriesData="trendData" />
-                    <div v-else class="empty-state">
-                        <div class="empty-icon">📊</div>
-                        <span>暂无该区域监测数据</span>
+                    <div class="modal-body">
+                        <div v-if="isLoading" class="loading-state">
+                            <div class="spinner"></div>
+                            <span>正在调取 {{ selectedRegion.name }} 历史监测数据...</span>
+                        </div>
+                        <RegionalTrendChart v-else-if="trendData.length > 0" :regionName="selectedRegion.name"
+                            :level="selectedRegion.level" :seriesData="trendData" />
+                        <div v-else class="empty-state">
+                            <div class="empty-icon">📊</div>
+                            <span>请选择左上角区域查看数据</span>
+                        </div>
                     </div>
                 </div>
-            </div>
-        </transition>
+            </transition>
 
-        <transition name="fade">
-            <div v-if="isVisible" class="modal-backdrop" @click="closeModal"></div>
-        </transition>
+            <transition name="fade">
+                <div v-if="isVisible" class="modal-backdrop" @click="closeModal"></div>
+            </transition>
+        </Teleport>
     </div>
 </template>
 
 <script setup>
-import { ref, watch, onMounted, onUnmounted } from 'vue';
+import { ref, computed, watch, onMounted, onUnmounted } from 'vue';
 import RegionalTrendChart from '../charts/RegionalTrendChart.vue';
 import { regionApi, clcdApi } from '../../api/index.js';
 
 const isVisible = ref(false);
-const currentLevel = ref('prefecture');
-const selectedRegion = ref('');
-const regionList = ref([]);
+const selectedRegion = ref({ name: '', level: '' });
+const hierarchy = ref([]); // 完整的层级数据
 const trendData = ref([]);
 const isLoading = ref(false);
 const isRegionDropdownOpen = ref(false);
 const regionDropdownRef = ref(null);
 
+// 搜索和状态
+const searchQuery = ref('');
+const activePrefecture = ref(''); // 当前悬停或选中的地级市，用于显示第三列
+const expandedPrefectures = ref(new Set());
+
+// 过滤后的层级数据
+const filteredHierarchy = computed(() => {
+    if (!hierarchy.value) return [];
+    if (!searchQuery.value || !searchQuery.value.trim()) return hierarchy.value;
+
+    const query = searchQuery.value.trim().toLowerCase();
+    const result = [];
+
+    hierarchy.value.forEach(pref => {
+        const prefMatch = pref.name.toLowerCase().includes(query);
+        const matchingChildren = pref.children ? pref.children.filter(c => c.toLowerCase().includes(query)) : [];
+
+        if (prefMatch || matchingChildren.length > 0) {
+            result.push({
+                name: pref.name,
+                children: matchingChildren.length > 0 ? matchingChildren : pref.children
+            });
+        }
+    });
+    return result;
+});
+
+// 当前显示的县级列表
+const currentCounties = computed(() => {
+    if (!activePrefecture.value) return [];
+    const pref = hierarchy.value.find(p => p.name === activePrefecture.value);
+    return pref ? pref.children : [];
+});
+
 function toggleRegionDropdown() {
-    if (regionList.value.length === 0) return;
+    if (hierarchy.value.length === 0) return;
     isRegionDropdownOpen.value = !isRegionDropdownOpen.value;
+    // 重置搜索
+    if (!isRegionDropdownOpen.value) {
+        searchQuery.value = '';
+    }
 }
 
-function selectRegion(name) {
-    selectedRegion.value = name;
+function toggleExpand(prefName) {
+    if (expandedPrefectures.value.has(prefName)) {
+        expandedPrefectures.value.delete(prefName);
+    } else {
+        expandedPrefectures.value.add(prefName);
+    }
+}
+
+function isExpanded(prefName) {
+    return expandedPrefectures.value.has(prefName);
+}
+
+function isSelected(name, level) {
+    return selectedRegion.value.name === name && selectedRegion.value.level === level;
+}
+
+function selectRegion(name, level) {
+    selectedRegion.value = { name, level };
     isRegionDropdownOpen.value = false;
 }
 
@@ -103,47 +204,49 @@ onUnmounted(() => {
     document.removeEventListener('click', handleClickOutside);
 });
 
-// 获取区域列表
-async function fetchRegionList() {
+// 获取层级数据
+async function fetchHierarchy() {
     try {
-        console.log('Fetching region list for level:', currentLevel.value);
-        const data = await regionApi.getRegions(currentLevel.value);
-        regionList.value = data;
-        console.log('Region list fetched:', regionList.value);
-        if (regionList.value.length > 0 && !selectedRegion.value) {
-            selectedRegion.value = regionList.value[0];
+        const data = await regionApi.getRegionHierarchy();
+        hierarchy.value = data;
+
+        // 默认选中第一个地级市
+        if (hierarchy.value.length > 0 && !selectedRegion.value.name) {
+            selectRegion(hierarchy.value[0].name, 'prefecture');
+            activePrefecture.value = hierarchy.value[0].name;
+        } else if (selectedRegion.value.name) {
+            // 如果已有选中，设置 activePrefecture
+            const pref = hierarchy.value.find(p =>
+                p.name === selectedRegion.value.name ||
+                (p.children && p.children.includes(selectedRegion.value.name))
+            );
+            if (pref) activePrefecture.value = pref.name;
         }
     } catch (e) {
-        console.error('Failed to fetch regions:', e);
+        console.error('Failed to fetch region hierarchy:', e);
     }
 }
 
 // 获取趋势数据
 async function fetchTrendData() {
-    if (!selectedRegion.value) return;
+    if (!selectedRegion.value.name) return;
     isLoading.value = true;
     try {
-        console.log(`Fetching trend data for: ${currentLevel.value} -> ${selectedRegion.value}`);
-        const data = await clcdApi.getRegionalTrend(currentLevel.value, selectedRegion.value);
+        console.log(`Fetching trend data for: ${selectedRegion.value.level} -> ${selectedRegion.value.name}`);
+        const data = await clcdApi.getRegionalTrend(selectedRegion.value.level, selectedRegion.value.name);
         trendData.value = data;
-        console.log('Trend data received:', trendData.value.length, 'records');
     } catch (e) {
         console.error('Failed to fetch trend:', e);
+        trendData.value = [];
     } finally {
         isLoading.value = false;
     }
 }
 
-function setLevel(level) {
-    currentLevel.value = level;
-    selectedRegion.value = ''; // 重置选择
-    fetchRegionList();
-}
-
 function openModal() {
     isVisible.value = true;
-    if (regionList.value.length === 0) {
-        fetchRegionList();
+    if (hierarchy.value.length === 0) {
+        fetchHierarchy();
     }
 }
 
@@ -151,14 +254,14 @@ function closeModal() {
     isVisible.value = false;
 }
 
-watch(selectedRegion, () => {
-    if (selectedRegion.value) {
+watch(selectedRegion, (newVal) => {
+    if (newVal.name) {
         fetchTrendData();
     }
-});
+}, { deep: true });
 
 onMounted(() => {
-    fetchRegionList();
+    fetchHierarchy();
 });
 </script>
 
@@ -184,6 +287,8 @@ onMounted(() => {
     position: relative;
     padding: 0;
     overflow: hidden;
+    flex-direction: column;
+    gap: 2px;
 }
 
 .control-btn:hover {
@@ -195,24 +300,22 @@ onMounted(() => {
 }
 
 .icon {
-    width: 38px;
-    height: 38px;
-    opacity: 0.8;
+    width: 28px;
+    height: 28px;
+    object-fit: contain;
+    opacity: 0.9;
     transition: all 0.3s ease;
 }
 
 .control-btn:hover .icon {
     opacity: 1;
-    transform: scale(1.05);
+    transform: scale(1.1);
 }
 
 .btn-label {
-    position: absolute;
-    bottom: 4px;
-    right: 6px;
-    font-size: 12px;
+    font-size: 10px;
     color: rgba(255, 255, 255, 0.9);
-    font-weight: 800;
+    font-weight: 600;
     pointer-events: none;
     letter-spacing: 0.5px;
 }
@@ -236,85 +339,56 @@ onMounted(() => {
 }
 
 .modal-header {
-    padding: 20px 30px;
+    padding: 15px 30px;
     background: rgba(30, 58, 138, 0.3);
     border-bottom: 1px solid rgba(255, 255, 255, 0.08);
     display: flex;
     justify-content: space-between;
     align-items: center;
+    position: relative;
 }
 
-.header-left {
+.header-placeholder {
+    width: 300px;
+    /* 与 header-right 保持宽度一致以实现标题居中 */
+}
+
+.header-right {
     display: flex;
     align-items: center;
-    gap: 40px;
+    gap: 20px;
+    width: 300px;
+    justify-content: flex-end;
 }
 
 .modal-title {
-    font-size: 18px;
-    font-weight: 600;
-    color: #a5ccff;
-    letter-spacing: 0.05em;
-    text-transform: uppercase;
-}
-
-.selectors {
-    display: flex;
-    gap: 15px;
-    align-items: center;
-}
-
-.segmented-control {
-    background: rgba(255, 255, 255, 0.05);
-    padding: 4px;
-    border-radius: 8px;
-    display: flex;
-    gap: 4px;
-    border: 1px solid rgba(255, 255, 255, 0.05);
-}
-
-.segmented-control button {
-    padding: 6px 16px;
-    border: none;
-    background: transparent;
-    color: rgba(255, 255, 255, 0.5);
-    font-size: 13px;
-    cursor: pointer;
-    border-radius: 6px;
-    transition: all 0.2s;
-}
-
-.segmented-control button.active {
-    background: #3b82f6;
+    position: absolute;
+    left: 50%;
+    transform: translateX(-50%);
+    font-size: 24px;
+    font-weight: 700;
     color: #ffffff;
-    font-weight: 600;
-    box-shadow: 0 2px 8px rgba(59, 130, 246, 0.3);
+    letter-spacing: 2px;
+    text-shadow: 0 0 20px rgba(59, 130, 246, 0.5);
+    white-space: nowrap;
 }
 
 .custom-region-dropdown {
     position: relative;
-    pointer-events: auto;
+    width: 240px;
 }
 
 .region-trigger {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    gap: 12px;
-    padding: 6px 16px;
     background: rgba(255, 255, 255, 0.05);
     border: 1px solid rgba(255, 255, 255, 0.1);
     border-radius: 8px;
-    color: white;
+    padding: 8px 16px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
     cursor: pointer;
-    min-width: 180px;
-    font-size: 13px;
     transition: all 0.2s;
-    backdrop-filter: blur(12px);
-}
-
-.region-trigger span {
-    pointer-events: none;
+    min-height: 40px;
 }
 
 .region-trigger:hover:not(.disabled) {
@@ -327,9 +401,26 @@ onMounted(() => {
     cursor: not-allowed;
 }
 
+.selected-text {
+    color: #fff;
+    font-size: 14px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.level-badge {
+    font-size: 10px;
+    background: rgba(59, 130, 246, 0.2);
+    color: #60a5fa;
+    padding: 2px 6px;
+    border-radius: 4px;
+    border: 1px solid rgba(59, 130, 246, 0.3);
+}
+
 .arrow {
     font-size: 10px;
-    color: #a5ccff;
+    color: rgba(255, 255, 255, 0.4);
     transition: transform 0.3s;
 }
 
@@ -337,52 +428,223 @@ onMounted(() => {
     transform: rotate(180deg);
 }
 
-.region-options {
+.region-options-panel {
     position: absolute;
-    top: 100%;
-    left: 0;
-    margin-top: 8px;
-    background: rgba(13, 25, 48, 0.6);
-    border: 1px solid rgba(255, 255, 255, 0.08);
+    top: calc(100% + 8px);
+    right: 0;
+    /* 改为右对齐 */
+    width: 500px;
+    background: rgba(13, 25, 48, 0.95);
+    border: 1px solid rgba(255, 255, 255, 0.1);
     border-radius: 12px;
-    padding: 6px;
-    z-index: 2001;
-    backdrop-filter: blur(24px);
-    box-shadow: 0 12px 40px rgba(0, 0, 0, 0.4);
-    min-width: 100%;
-    max-height: 300px;
-    overflow-y: auto;
+    box-shadow: 0 12px 32px rgba(0, 0, 0, 0.4);
+    backdrop-filter: blur(16px);
+    z-index: 100;
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
 }
 
-.region-options::-webkit-scrollbar {
+.search-box {
+    padding: 12px;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+    position: relative;
+}
+
+.search-box input {
+    width: 100%;
+    background: rgba(255, 255, 255, 0.05);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: 6px;
+    padding: 8px 32px 8px 12px;
+    color: #fff;
+    font-size: 13px;
+    outline: none;
+}
+
+.search-box input:focus {
+    border-color: #3b82f6;
+    background: rgba(255, 255, 255, 0.08);
+}
+
+.selection-columns {
+    display: flex;
+    height: 320px;
+    background: rgba(13, 25, 48, 0.4);
+}
+
+.selection-column {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    border-right: 1px solid rgba(255, 255, 255, 0.05);
+    min-width: 120px;
+}
+
+.selection-column:last-child {
+    border-right: none;
+    flex: 1.5;
+}
+
+.column-header {
+    padding: 10px 15px;
+    font-size: 12px;
+    color: rgba(255, 255, 255, 0.4);
+    background: rgba(255, 255, 255, 0.02);
+    border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+    font-weight: 600;
+}
+
+.column-list {
+    flex: 1;
+    overflow-y: auto;
+    padding: 6px 0;
+}
+
+.column-list::-webkit-scrollbar {
     width: 4px;
 }
 
-.region-options::-webkit-scrollbar-thumb {
+.column-list::-webkit-scrollbar-thumb {
     background: rgba(255, 255, 255, 0.1);
-    border-radius: 10px;
+    border-radius: 2px;
 }
 
-.region-option {
-    padding: 10px 16px;
-    color: rgba(255, 255, 255, 0.8);
+.column-item {
+    padding: 8px 15px;
+    color: rgba(255, 255, 255, 0.7);
     font-size: 13px;
     cursor: pointer;
-    transition: all 0.2s ease;
-    border-radius: 8px;
-    text-align: left;
+    transition: all 0.2s;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
 }
 
-.region-option:hover {
+.column-item:hover {
     background: rgba(59, 130, 246, 0.1);
-    color: #ffffff;
-    padding-left: 20px;
+    color: #fff;
 }
 
-.region-option.active {
+.column-item.active {
     background: rgba(59, 130, 246, 0.2);
     color: #3b82f6;
     font-weight: 600;
+}
+
+.sub-arrow {
+    font-size: 10px;
+    opacity: 0.3;
+}
+
+.empty-column-msg {
+    padding: 20px;
+    text-align: center;
+    color: rgba(255, 255, 255, 0.2);
+    font-size: 12px;
+}
+
+.search-icon-img {
+    position: absolute;
+    right: 22px;
+    top: 50%;
+    transform: translateY(-50%);
+    width: 16px;
+    height: 16px;
+    opacity: 0.6;
+}
+
+.no-results {
+    padding: 20px;
+    text-align: center;
+    color: rgba(255, 255, 255, 0.4);
+    font-size: 13px;
+}
+
+.close-btn {
+    background: none;
+    border: none;
+    color: rgba(255, 255, 255, 0.5);
+    font-size: 24px;
+    cursor: pointer;
+    padding: 10px;
+    transition: color 0.2s;
+}
+
+.close-btn:hover {
+    color: #fff;
+}
+
+.modal-body {
+    flex: 1;
+    padding: 30px;
+    overflow-y: auto;
+    display: flex;
+    flex-direction: column;
+}
+
+.loading-state,
+.empty-state {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 20px;
+    color: rgba(255, 255, 255, 0.5);
+}
+
+.spinner {
+    width: 40px;
+    height: 40px;
+    border: 3px solid rgba(59, 130, 246, 0.1);
+    border-top-color: #3b82f6;
+    border-radius: 50%;
+    animation: spin 1s linear infinite;
+}
+
+.empty-icon {
+    font-size: 64px;
+    opacity: 0.2;
+}
+
+@keyframes spin {
+    to {
+        transform: rotate(360deg);
+    }
+}
+
+/* 动画 */
+.slide-fade-enter-active,
+.slide-fade-leave-active {
+    transition: all 0.4s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.slide-fade-enter-from,
+.slide-fade-leave-to {
+    transform: translate(-50%, -45%);
+    opacity: 0;
+}
+
+.modal-backdrop {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100vw;
+    height: 100vh;
+    background: rgba(0, 0, 0, 0.6);
+    backdrop-filter: blur(4px);
+    z-index: 1999;
+}
+
+.fade-enter-active,
+.fade-leave-active {
+    transition: opacity 0.3s ease;
+}
+
+.fade-enter-from,
+.fade-leave-to {
+    opacity: 0;
 }
 
 .dropdown-fade-enter-active,
@@ -393,79 +655,6 @@ onMounted(() => {
 .dropdown-fade-enter-from,
 .dropdown-fade-leave-to {
     opacity: 0;
-    transform: translateY(-5px);
-}
-
-.close-btn {
-    width: 32px;
-    height: 32px;
-    border: 1px solid rgba(255, 255, 255, 0.1);
-    background: rgba(255, 255, 255, 0.05);
-    color: white;
-    font-size: 16px;
-    border-radius: 8px;
-    cursor: pointer;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-}
-
-.close-btn:hover {
-    background: rgba(239, 68, 68, 0.2);
-    border-color: rgba(239, 68, 68, 0.4);
-    color: #fca5a5;
-    transform: rotate(90deg);
-}
-
-.modal-body {
-    flex: 1;
-    padding: 30px;
-    overflow-y: auto;
-}
-
-.loading-state,
-.empty-state {
-    height: 100%;
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    justify-content: center;
-    gap: 20px;
-    color: #9cc9ff;
-}
-
-.spinner {
-    width: 50px;
-    height: 50px;
-    border: 4px solid rgba(0, 229, 255, 0.1);
-    border-left-color: #00E5FF;
-    border-radius: 50%;
-    animation: spin 1s linear infinite;
-}
-
-@keyframes spin {
-    to {
-        transform: rotate(360deg);
-    }
-}
-
-.modal-backdrop {
-    position: fixed;
-    top: 0;
-    left: 0;
-    right: 0;
-    bottom: 0;
-    background: rgba(0, 0, 0, 0.7);
-    z-index: 1999;
-}
-
-.slide-fade-enter-active {
-    transition: all 0.4s cubic-bezier(0.34, 1.56, 0.64, 1);
-}
-
-.slide-fade-enter-from {
-    opacity: 0;
-    transform: translate(-50%, -40%) scale(0.9);
+    transform: translateY(-10px);
 }
 </style>

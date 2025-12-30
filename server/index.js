@@ -39,7 +39,12 @@ app.use('/api/clcd', authMiddleware, clcdRoutes);
 app.use('/api/regions', authMiddleware, regionRoutes);
 app.use('/api/analysis', authMiddleware, analysisRoutes);
 
-const port = Number(process.env.PORT || 3000);
+let port = Number(process.env.PORT || 3000);
+// Prevent server from trying to bind to Vite's ports if env var leaks
+if (port === 5173 || port === 5174) {
+  console.warn(`[server] Detected Vite port ${port} in environment, forcing port 3000`);
+  port = 3000;
+}
 app.listen(port, () => {
   console.log(`\x1b[32m[server] 后端服务已启动: http://localhost:${port}\x1b[0m`);
 });

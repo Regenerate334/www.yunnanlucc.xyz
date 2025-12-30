@@ -54,6 +54,46 @@ router.post('/login', [
     }
 });
 
+// 注册接口
+router.post('/register', [
+    body('username').isLength({ min: 3 }).withMessage('用户名至少3个字符'),
+    body('password').isLength({ min: 6 }).withMessage('密码至少6个字符')
+], async (req, res) => {
+    const errors = validationResult(req);
+    if (!errors.isEmpty()) {
+        return res.status(400).json({ errors: errors.array() });
+    }
+
+    const { username, password } = req.body;
+
+    try {
+        // 检查用户是否已存在
+        const userExists = await pool.query('SELECT * FROM users WHERE username = $1', [username]);
+        if (userExists.rows.length > 0) {
+            return res.status(400).json({ message: '用户名已存在' });
+        }
+
+        // 加密密码
+        const salt = await bcrypt.genSalt(10);
+        const hashedPassword = await bcrypt.hash(password, salt);
+
+        // 插入新用户
+        const result = await pool.query(
+            'INSERT INTO users (username, password, role) VALUES ($1, $2, $3) RETURNING id, username, role',
+            [username, hashedPassword, 'admin']
+        );
+
+        res.status(201).json({
+            success: true,
+            message: '注册成功',
+            user: result.rows[0]
+        });
+    } catch (err) {
+        console.error(err);
+        res.status(500).json({ message: '服务器错误' });
+    }
+});
+
 // 验证 Token 接口
 router.get('/verify', async (req, res) => {
     const token = req.headers.authorization?.split(' ')[1];
