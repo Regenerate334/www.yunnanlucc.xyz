@@ -32,18 +32,26 @@ defineProps({
   position: relative;
   width: 100%;
   height: 100%;
-  background: rgba(15, 23, 42, 0.6);
-  backdrop-filter: blur(4px);
-  box-shadow: inset 0 0 20px rgba(0, 0, 0, 0.5);
-  border: 1px solid rgba(255, 255, 255, 0.05);
+  background: linear-gradient(135deg, rgba(15, 23, 42, 0.8) 0%, rgba(15, 23, 42, 0.4) 100%);
+  backdrop-filter: blur(12px);
+  box-shadow: inset 0 0 30px rgba(0, 0, 0, 0.6), 0 0 15px rgba(0, 0, 0, 0.3);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  overflow: hidden;
+  transition: all 0.3s ease;
+}
+
+.tech-border-box:hover {
+  border-color: rgba(255, 255, 255, 0.15);
+  box-shadow: inset 0 0 40px rgba(0, 0, 0, 0.7), 0 0 20px rgba(0, 0, 0, 0.4);
 }
 
 .corner {
   position: absolute;
-  width: 15px;
-  height: 15px;
-  border: 2px solid var(--border-color);
-  z-index: 1;
+  width: 20px;
+  height: 20px;
+  border: 3px solid var(--border-color);
+  z-index: 3;
+  filter: drop-shadow(0 0 5px var(--border-color));
 }
 
 .top-left {
@@ -79,35 +87,36 @@ defineProps({
   width: 100%;
   height: 100%;
   z-index: 2;
-  padding: 10px;
+  padding: 15px;
 }
 
 .glow-dot {
   position: absolute;
-  width: 4px;
-  height: 4px;
+  width: 6px;
+  height: 6px;
   border-radius: 50%;
-  box-shadow: 0 0 8px var(--border-color);
-  z-index: 3;
+  box-shadow: 0 0 12px var(--border-color);
+  z-index: 4;
+  opacity: 0.8;
 }
 
 .top-left-dot {
-  top: -2px;
-  left: -2px;
+  top: -3px;
+  left: -3px;
 }
 
 .top-right-dot {
-  top: -2px;
-  right: -2px;
+  top: -3px;
+  right: -3px;
 }
 
 .bottom-left-dot {
-  bottom: -2px;
-  left: -2px;
+  bottom: -3px;
+  left: -3px;
 }
 
 .bottom-right-dot {
-  bottom: -2px;
-  right: -2px;
+  bottom: -3px;
+  right: -3px;
 }
 </style>

@@ -1,9 +1,12 @@
 <template>
   <div id="cesiumContainerWrapper">
-    <!-- 背景遮罩层：Dashboard模式下隐藏 -->
-    <div v-if="!isDashboardMode" class="background-layer"></div>
-    <!-- 地图掩膜层：Dashboard模式下隐藏 -->
-    <div v-if="!isDashboardMode" class="mask-layer"></div>
+    <!-- 背景遮罩层与地图掩膜层：Dashboard模式下隐藏，增加过渡动画 -->
+    <transition name="layer-fade">
+      <div v-if="!isDashboardMode" class="background-layer"></div>
+    </transition>
+    <transition name="layer-fade">
+      <div v-if="!isDashboardMode" class="mask-layer"></div>
+    </transition>
     <div id="cesiumContainer"></div>
 
     <!-- 顶部标题栏（Dashboard模式下隐藏） -->
@@ -53,14 +56,11 @@
           </div>
         </div>
       </div>
-      <div class="panel-card chart-panel">
-        <LandUsePieChart :year="selectedYear" :seriesData="currentYearData" :compact="true" />
-      </div>
     </div>
 
     <!-- 大屏指挥中心覆盖层 -->
     <transition name="fade">
-      <DashboardOverlay v-if="isDashboardMode" :year="selectedYear" @close="isDashboardMode = false" />
+      <DashboardOverlay v-if="isDashboardMode" v-model:year="selectedYear" @close="isDashboardMode = false" />
     </transition>
   </div>
 </template>
@@ -323,13 +323,13 @@ function handleBaseMapChange(mapType) {
 }
 
 function loadCLCDLayer(year) {
-  if (clcdLayer.value && viewer.value) {
-    viewer.value.imageryLayers.remove(clcdLayer.value, true);
-    clcdLayer.value = null;
-  }
+  if (!viewer.value) return;
+
+  const oldLayer = clcdLayer.value;
 
   try {
-    clcdLayer.value = viewer.value.imageryLayers.addImageryProvider(
+    // Add new layer first
+    const newLayer = viewer.value.imageryLayers.addImageryProvider(
       new Cesium.WebMapServiceImageryProvider({
         url: 'http://localhost:8080/geoserver/WebGIS/wms',
         layers: `WebGIS:${year}_yunnan_CLCD_raster`,
@@ -342,6 +342,14 @@ function loadCLCDLayer(year) {
         }
       })
     );
+
+    clcdLayer.value = newLayer;
+
+    // Remove old layer after a short delay to allow new tiles to load (optional, but safer to just remove after add)
+    // Cesium renders layers in order, so new layer on top covers old one.
+    if (oldLayer) {
+      viewer.value.imageryLayers.remove(oldLayer, true);
+    }
   } catch (e) {
     console.error(`加载 ${year} 年 CLCD 图层失败:`, e);
   }
@@ -499,40 +507,29 @@ html {
   border: 1px solid rgba(255, 255, 255, 0.1);
 }
 
-.dashboard-entry-container {
-  position: fixed;
-  bottom: 30px;
-  right: 20px;
-  z-index: 1100;
-}
-
 .right-panels {
   position: fixed;
+  top: 100px;
   right: 20px;
-  top: 20px;
-  width: 300px;
-  max-height: calc(100vh - 120px);
-  overflow-y: auto;
+  z-index: 1100;
   display: flex;
   flex-direction: column;
-  gap: 15px;
-  z-index: 150;
+  gap: 20px;
+  width: 280px;
 }
 
 .panel-card {
   background: rgba(13, 25, 48, 0.4);
-  border: 1px solid rgba(255, 255, 255, 0.08);
-  border-radius: 12px;
-  backdrop-filter: blur(16px);
-  overflow: hidden;
-  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
+  backdrop-filter: blur(12px);
+  border-radius: 16px;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  padding: 16px;
 }
 
 .legend-grid {
   display: grid;
-  grid-template-columns: repeat(3, 1fr);
-  gap: 4px 8px;
-  padding: 10px 12px;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 12px;
 }
 
 .legend-item {
@@ -542,18 +539,25 @@ html {
 }
 
 .legend-color {
-  width: 10px;
-  height: 10px;
-  border-radius: 50%;
+  width: 12px;
+  height: 12px;
+  border-radius: 2px;
 }
 
 .legend-name {
-  font-size: 12px;
   color: rgba(255, 255, 255, 0.8);
+  font-size: 12px;
 }
 
 .chart-panel {
-  min-height: 220px;
+  height: 300px;
+}
+
+.dashboard-entry-container {
+  position: fixed;
+  bottom: 30px;
+  right: 20px;
+  z-index: 1100;
 }
 
 .dashboard-toggle-btn {
@@ -589,6 +593,16 @@ html {
 
 .fade-enter-from,
 .fade-leave-to {
+  opacity: 0;
+}
+
+.layer-fade-enter-active,
+.layer-fade-leave-active {
+  transition: opacity 0.8s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.layer-fade-enter-from,
+.layer-fade-leave-to {
   opacity: 0;
 }
 </style>

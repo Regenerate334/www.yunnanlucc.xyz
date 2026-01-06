@@ -65,7 +65,6 @@ const landUseColors = {
     'wetland': '#2899E8'
 };
 
-// 政策时间轴标记 (云南及国家重大政策)
 const policyMarkers = [
     { year: '1999', name: '退耕还林工程启动', color: '#52c41a' },
     { year: '2000', name: '西部大开发战略', color: '#ff4d4f' },
@@ -75,7 +74,6 @@ const policyMarkers = [
     { year: '2021', name: '退林还耕/耕地保护', color: '#f5222d' }
 ];
 
-// 智能诊断逻辑
 const insights = computed(() => {
     if (!props.seriesData || props.seriesData.length < 2) return null;
 
@@ -83,17 +81,14 @@ const insights = computed(() => {
     const last = props.seriesData[props.seriesData.length - 1];
     const years = last.year - first.year;
 
-    // 计算各类型变化
     const changes = Object.keys(landTypeMap).map(key => {
         const diff = last[key] - first[key];
         const rate = first[key] > 0 ? (diff / first[key]) / years : 0;
         return { key, diff, rate, name: landTypeMap[key] };
     });
 
-    // 找到变化绝对值最大的
     const mostChanged = [...changes].sort((a, b) => Math.abs(b.diff) - Math.abs(a.diff))[0];
 
-    // 生成总结
     let summary = "";
     if (changes.find(c => c.key === 'impervious').diff > 0) {
         summary = `${props.regionName}在监测期内呈现明显的城市化扩张特征，建设用地持续增长。`;
@@ -123,7 +118,6 @@ const updateChart = () => {
 
     chartInstance.value.clear();
 
-    // 预计算每个指标的全量数据范围，以固定 Y 轴
     const yAxisBounds = {};
     keys.forEach(key => {
         const allData = years.map(year => {
@@ -139,23 +133,22 @@ const updateChart = () => {
         };
     });
 
+    const rows = 3;
+    const cols = 3;
+    const leftMargin = 5;
+    const topMargin = 8;
+    const bottomMargin = 10;
+    const hGap = 5;
+    const vGap = 10;
+
+    const gridWidth = (100 - leftMargin * 2 - hGap * (cols - 1)) / cols;
+    const gridHeight = (100 - topMargin - bottomMargin - vGap * (rows - 1)) / rows;
+
     const grids = [];
     const xAxes = [];
     const yAxes = [];
     const series = [];
     const titles = [];
-
-    const cols = 3;
-    const rows = 3;
-    const leftMargin = 5;
-    const rightMargin = 5;
-    const topMargin = 8;
-    const bottomMargin = 15;
-    const hGap = 6;
-    const vGap = 12;
-
-    const gridWidth = (100 - leftMargin - rightMargin - hGap * (cols - 1)) / cols;
-    const gridHeight = (100 - topMargin - bottomMargin - vGap * (rows - 1)) / rows;
 
     keys.forEach((key, index) => {
         const r = Math.floor(index / cols);
@@ -168,15 +161,21 @@ const updateChart = () => {
             top: top + '%',
             width: gridWidth + '%',
             height: gridHeight + '%',
-            containLabel: false
+            containLabel: true
         });
 
         titles.push({
-            text: landTypeMap[key],
+            text: `${landTypeMap[key]} (km²)`,
             left: (left + gridWidth / 2) + '%',
-            top: (top - 6) + '%',
+            top: (top - 5) + '%',
             textAlign: 'center',
-            textStyle: { color: '#a5ccff', fontSize: 13, fontWeight: 'bold' }
+            textStyle: {
+                color: '#a5ccff',
+                fontSize: 12,
+                fontWeight: '600',
+                textShadowBlur: 5,
+                textShadowColor: 'rgba(0,0,0,0.5)'
+            }
         });
 
         xAxes.push({
@@ -186,14 +185,13 @@ const updateChart = () => {
             data: years,
             axisLabel: {
                 show: r === rows - 1,
-                color: 'rgba(255, 255, 255, 0.7)',
+                color: 'rgba(255,255,255,0.6)',
                 fontSize: 10,
-                margin: 15,
+                margin: 8,
                 interval: 4,
-                rotate: 0,
                 formatter: '{value}'
             },
-            axisLine: { lineStyle: { color: 'rgba(255,255,255,0.2)' } },
+            axisLine: { lineStyle: { color: 'rgba(255,255,255,0.1)' } },
             axisTick: { show: r === rows - 1 }
         });
 
@@ -202,14 +200,20 @@ const updateChart = () => {
             type: 'value',
             min: yAxisBounds[key].min,
             max: yAxisBounds[key].max,
-            name: 'km²',
-            nameTextStyle: { color: 'rgba(255, 255, 255, 0.4)', fontSize: 10 },
             axisLabel: {
-                color: 'rgba(255, 255, 255, 0.6)',
+                color: 'rgba(165, 204, 255, 0.6)',
                 fontSize: 9,
-                formatter: (value) => value >= 10000 ? (value / 10000).toFixed(1) + '万' : value.toFixed(0)
+                formatter: (value) => value >= 10000 ? (value / 10000).toFixed(0) + '万' : value.toFixed(0)
             },
-            splitLine: { lineStyle: { color: 'rgba(255,255,255,0.05)' } }
+            splitLine: { lineStyle: { color: 'rgba(255,255,255,0.03)' } },
+            axisLine: { show: false },
+            name: index % cols === 0 ? 'km²' : '',
+            nameTextStyle: {
+                color: 'rgba(165, 204, 255, 0.4)',
+                fontSize: 10,
+                align: 'left',
+                padding: [0, 0, -10, 0]
+            }
         });
 
         const data = years.map(year => {
@@ -226,18 +230,18 @@ const updateChart = () => {
             showSymbol: false,
             smooth: true,
             itemStyle: { color: landUseColors[key] },
-            lineStyle: { width: 2.5, shadowBlur: 10, shadowColor: 'rgba(0,0,0,0.3)' },
+            lineStyle: { width: 2, shadowBlur: 8, shadowColor: 'rgba(0,0,0,0.2)' },
             endLabel: {
                 show: true,
-                color: '#fff',
-                fontSize: 11,
+                color: '#ffffff',
+                fontSize: 10,
                 fontWeight: 'bold',
-                distance: 10,
+                distance: 8,
                 formatter: (params) => params.value.toFixed(0)
             },
             areaStyle: {
                 color: new echarts.graphic.LinearGradient(0, 0, 0, 1, [
-                    { offset: 0, color: landUseColors[key] + '44' },
+                    { offset: 0, color: landUseColors[key] + '33' },
                     { offset: 1, color: landUseColors[key] + '00' }
                 ])
             },
@@ -247,8 +251,7 @@ const updateChart = () => {
                 label: { show: false },
                 data: policyMarkers.map(p => ({
                     xAxis: p.year,
-                    name: p.name,
-                    lineStyle: { color: p.color, type: 'dashed', opacity: 0.3, width: 1 }
+                    lineStyle: { color: p.color, type: 'dashed', opacity: 0.2, width: 1 }
                 }))
             }
         });
@@ -256,8 +259,8 @@ const updateChart = () => {
 
     const option = {
         backgroundColor: 'transparent',
-        animationDuration: 5000,
-        animationEasing: 'linear',
+        animationDuration: 3000,
+        animationEasing: 'cubicOut',
         title: titles,
         tooltip: {
             trigger: 'axis',
@@ -279,7 +282,6 @@ const updateChart = () => {
 
                 if (!record) return html + "暂无数据";
 
-                // 提取所有地类数据并排序
                 const allTypes = Object.keys(landTypeMap).map(key => ({
                     name: landTypeMap[key],
                     value: record[key] / 1000000,
@@ -292,15 +294,28 @@ const updateChart = () => {
                     const isCurrentGrid = params.some(p => p.seriesName === item.name);
 
                     html += `<div style="display:flex; justify-content:space-between; align-items:center; margin:6px 0; min-width:240px; opacity: ${isCurrentGrid ? 1 : 0.7}; scale: ${isCurrentGrid ? 1.02 : 1};">
-                        <span style="display:flex; align-items:center; color:rgba(255,255,255,0.85);">
-                            <span style="display:inline-block; width:8px; height:8px; border-radius:50%; background:${item.color}; margin-right:10px; box-shadow:0 0 8px ${item.color}66;"></span>
-                            <span style="${isCurrentGrid ? 'color:#fff; font-weight:bold;' : ''}">${item.name}</span>
-                        </span>
-                        <span style="font-weight:600; margin-left:20px; font-family:'JetBrains Mono', monospace; ${isCurrentGrid ? 'color:#fff;' : 'color:rgba(255,255,255,0.7);'}">${areaStr}</span>
-                    </div>`;
+                            <span style="display:flex; align-items:center; color:rgba(255,255,255,0.85);">
+                                <span style="display:inline-block; width:8px; height:8px; border-radius:50%; background:${item.color}; margin-right:10px; box-shadow:0 0 8px ${item.color}66;"></span>
+                                <span style="${isCurrentGrid ? 'color:#fff; font-weight:bold;' : ''}">${item.name}</span>
+                            </span>
+                            <span style="font-weight:600; margin-left:20px; font-family:'JetBrains Mono', monospace; ${isCurrentGrid ? 'color:#fff;' : 'color:rgba(255,255,255,0.7);'}">${areaStr}</span>
+                        </div>`;
                 });
                 return html;
             }
+        },
+        legend: {
+            show: true,
+            selectedMode: false,
+            bottom: '0%',
+            left: 'center',
+            orient: 'horizontal',
+            textStyle: { color: 'rgba(255,255,255,0.7)', fontSize: 11 },
+            data: Object.values(landTypeMap),
+            icon: 'rect',
+            itemWidth: 12,
+            itemHeight: 12,
+            itemGap: 15
         },
         grid: grids,
         xAxis: xAxes,
@@ -319,7 +334,6 @@ onMounted(() => {
 
 onUnmounted(() => {
     if (chartInstance.value) {
-        if (chartInstance.value._resizeObserver) chartInstance.value._resizeObserver.disconnect()
         chartInstance.value.dispose()
     }
 })
@@ -335,7 +349,7 @@ watch(() => props.seriesData, () => {
     height: 100%;
     display: flex;
     flex-direction: column;
-    gap: 24px;
+    gap: 12px;
 }
 
 .insight-panel {
@@ -418,6 +432,6 @@ watch(() => props.seriesData, () => {
 .chart-container {
     flex: 1;
     width: 100%;
-    min-height: 500px;
+    min-height: 600px;
 }
 </style>

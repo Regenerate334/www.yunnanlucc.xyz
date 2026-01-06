@@ -107,5 +107,5 @@ export const analysisApi = {
     getTransferMatrix: (period) => request(`/api/analysis/transfer-matrix/${period}`),
 
     // 获取大屏指挥中心综合数据
-    getDashboardData: (year) => request(`/api/analysis/dashboard/${year}`)
+    getDashboardData: (year, type = 'comprehensive') => request(`/api/analysis/dashboard/${year}?type=${type}`)
 };

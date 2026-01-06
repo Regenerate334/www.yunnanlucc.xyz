@@ -1,6 +1,8 @@
 import express from 'express';
 import pool from '../config/db.js';
 import { handleError } from '../middleware/logger.js';
+import { calculateDynamicDegree, calculateSingleDynamicDegree } from '../utils/indices/dynamicDegree.js';
+import { calculateTransferMatrix } from '../utils/indices/transferMatrix.js';
 
 const router = express.Router();
 
@@ -14,31 +16,19 @@ router.get('/transfer-matrix/periods', async (_req, res) => {
 router.get('/transfer-matrix/:period', async (req, res) => {
     const { period } = req.params;
     try {
-        const { rows } = await pool.query(`SELECT * FROM public.clcd_transfer_matrix WHERE period = $1`, [period]);
-        const matrix = {};
-        const landTypes = new Set();
-        rows.forEach(row => {
-            landTypes.add(row.from_class);
-            landTypes.add(row.to_class);
-            if (!matrix[row.from_class]) matrix[row.from_class] = {};
-            matrix[row.from_class][row.to_class] = Number(row.area);
-        });
-        const percentageMatrix = {};
-        const types = Array.from(landTypes);
-        types.forEach(from => {
-            percentageMatrix[from] = {};
-            let total = 0;
-            types.forEach(to => { total += (matrix[from]?.[to] || 0); });
-            types.forEach(to => {
-                percentageMatrix[from][to] = total > 0 ? parseFloat(((matrix[from]?.[to] || 0) / total * 100).toFixed(2)) : 0;
-            });
-        });
-        res.json({ absoluteMatrix: matrix, percentageMatrix, landTypes: types, period });
+        try {
+            const { rows } = await pool.query(`SELECT * FROM public.clcd_transfer_matrix WHERE period = $1`, [period]);
+
+            const { absoluteMatrix, percentageMatrix, landTypes } = calculateTransferMatrix(rows);
+
+            res.json({ absoluteMatrix, percentageMatrix, landTypes, period });
+        } catch (err) { handleError(res, err); }
     } catch (err) { handleError(res, err); }
 });
 
 router.get('/dashboard/:year', async (req, res) => {
     const year = Number(req.params.year);
+    const type = req.query.type || 'comprehensive'; // 默认综合动态度
     const baseYear = 1985; // 基准年
     try {
         // 1. 获取当前年份省份汇总数据
@@ -56,7 +46,6 @@ router.get('/dashboard/:year', async (req, res) => {
         const baseSummary = formatProvince(baseRows);
 
         // 2. 获取地级市动态度排行 (Top 10)
-        // 简单起见，计算当前年相对于基准年的综合动态度
         const prefectureSql = `
             SELECT p1.region_name, 
                    p1.cropland as c1, p1.forest as f1, p1.shrub as s1, p1.grassland as g1, 
@@ -70,15 +59,41 @@ router.get('/dashboard/:year', async (req, res) => {
         const { rows: prefRows } = await pool.query(prefectureSql, [year, baseYear]);
 
         const ranking = prefRows.map(r => {
-            const totalStart = r.c2 + r.f2 + r.s2 + r.g2 + r.w2 + r.i2 + r.b2 + r.m2 + r.t2;
-            const totalChange = Math.abs(r.c1 - r.c2) + Math.abs(r.f1 - r.f2) + Math.abs(r.s1 - r.s2) +
-                Math.abs(r.g1 - r.g2) + Math.abs(r.w1 - r.w2) + Math.abs(r.i1 - r.i2) +
-                Math.abs(r.b1 - r.b2) + Math.abs(r.m1 - r.m2) + Math.abs(r.t1 - r.t2);
-            const dynamicDegree = totalStart > 0 ? (totalChange / (2 * totalStart)) / (year - baseYear) * 100 : 0;
-            return { name: r.region_name, value: parseFloat(dynamicDegree.toFixed(4)) };
+            const yearDiff = Math.abs(year - baseYear);
+            let dynamicDegree = 0;
+
+            if (type === 'comprehensive') {
+                const startData = {
+                    cropland: r.c2, forest: r.f2, shrub: r.s2, grassland: r.g2,
+                    water: r.w2, snow_ice: r.i2, barren: r.b2, impervious: r.m2, wetland: r.t2
+                };
+                const endData = {
+                    cropland: r.c1, forest: r.f1, shrub: r.s1, grassland: r.g1,
+                    water: r.w1, snow_ice: r.i1, barren: r.b1, impervious: r.m1, wetland: r.t1
+                };
+                dynamicDegree = calculateDynamicDegree(startData, endData, yearDiff);
+            } else {
+                // 建立 type 到别名的映射
+                const typeMap = {
+                    cropland: 'c',
+                    forest: 'f',
+                    grassland: 'g',
+                    impervious: 'm',
+                    water: 'w'
+                };
+                const alias = typeMap[type] || 'c';
+                const startArea = Number(r[alias + '2'] || 0);
+                const endArea = Number(r[alias + '1'] || 0);
+                dynamicDegree = calculateSingleDynamicDegree(startArea, endArea, yearDiff);
+            }
+
+            return {
+                name: r.region_name.replace('市', '').replace('自治州', '').replace('地区', ''),
+                value: parseFloat(Math.abs(dynamicDegree).toFixed(4))
+            };
         }).sort((a, b) => b.value - a.value).slice(0, 10);
 
-        // 3. 预警信息 (示例：耕地减少超过一定比例)
+        // 3. 预警信息
         const alerts = [];
         if (currentSummary.cropland < baseSummary.cropland * 0.95) {
             alerts.push({
@@ -89,6 +104,9 @@ router.get('/dashboard/:year', async (req, res) => {
                 time: new Date().toISOString()
             });
         }
+
+        // 调试日志：验证数据是否变化
+        console.log(`[Dashboard] Year: ${year}, Type: ${type}, Top1: ${ranking[0]?.name} (${ranking[0]?.value}%)`);
 
         res.json({
             year,

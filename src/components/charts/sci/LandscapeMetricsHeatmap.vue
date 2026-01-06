@@ -3,7 +3,7 @@
 </template>
 
 <script setup>
-import { ref, shallowRef, onMounted, onUnmounted } from 'vue';
+import { ref, shallowRef, onMounted, onUnmounted, watch } from 'vue';
 import * as echarts from 'echarts';
 import { clcdApi } from '../../../api/index.js';
 import { transformDataForCalculation, calculateSHDI } from '../../../utils/indices.ts';
@@ -17,17 +17,17 @@ async function fetchDataAndRender() {
     const data = await clcdApi.getProvinceTrend();
     // 选取关键年份，避免太密集
     const keyYears = data.filter(d => d.year % 5 === 0 || d.year === 2023).sort((a, b) => a.year - b.year);
-    
+
     const years = keyYears.map(d => d.year);
     const metrics = ['SHDI', 'SHEI', 'LSI(est)', 'AI(est)'];
-    
+
     // 准备热力图数据 [yIndex, xIndex, value]
     // y: metrics, x: years
     const heatmapData = [];
 
     keyYears.forEach((item, xIndex) => {
       const transformed = transformDataForCalculation(item);
-      
+
       // 计算各项指标
       const shdi = calculateSHDI(transformed);
       const shei = calculateSHEI(transformed);
@@ -37,7 +37,7 @@ async function fetchDataAndRender() {
       // 归一化处理 (为了在同一热力图中展示，需要将各指标映射到 0-1 或相似范围)
       // 这里我们直接展示原始值，但通过 visualMap 调节颜色
       // 或者，为了热力图效果，我们可以对每一行进行行内归一化
-      
+
       heatmapData.push([xIndex, 0, parseFloat(shdi.toFixed(2))]); // SHDI
       heatmapData.push([xIndex, 1, parseFloat(shei.toFixed(2))]); // SHEI
       heatmapData.push([xIndex, 2, parseFloat(lsi.toFixed(2))]);  // LSI
@@ -123,6 +123,26 @@ function renderChart(years, metrics, data) {
 function handleResize() {
   chartInstance.value?.resize();
 }
+
+const props = defineProps({
+  year: { type: Number, default: 2023 }
+});
+
+watch(() => props.year, (newYear) => {
+  if (!chartInstance.value) return;
+
+  const option = chartInstance.value.getOption();
+  const years = option.xAxis[0].data;
+  const index = years.indexOf(newYear);
+
+  if (index !== -1) {
+    chartInstance.value.dispatchAction({
+      type: 'showTip',
+      seriesIndex: 0,
+      dataIndex: index
+    });
+  }
+});
 
 onMounted(async () => {
   await fetchDataAndRender();

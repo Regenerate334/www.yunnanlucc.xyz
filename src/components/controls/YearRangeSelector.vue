@@ -53,7 +53,7 @@
 
 <script setup lang="ts">
 import { ref, computed, onMounted, onUnmounted } from 'vue'
-import { useGlobalStore } from '../../store/index.js'
+import { useGlobalStore } from '../../stores/index.ts'
 
 // ==================== 组件属性定义 ====================
 interface Props {

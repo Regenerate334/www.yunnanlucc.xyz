@@ -3,9 +3,9 @@
     <!-- 1. 耦合协调度 (CCDM) -->
     <div class="section-container" style="flex: 1;">
       <TechBorder color="#10b981">
-        <div class="panel-title">耦合协调度 (CCDM)</div>
+        <div class="panel-title centered-title">耦合协调度</div>
         <div class="chart-wrapper">
-          <CouplingCoordinationChart />
+          <CouplingCoordinationChart :year="year" />
         </div>
       </TechBorder>
     </div>
@@ -13,9 +13,9 @@
     <!-- 2. 土地流转 (Transition Flow) -->
     <div class="section-container" style="flex: 1;">
       <TechBorder color="#8b5cf6">
-        <div class="panel-title">土地流转 (Transition Flow)</div>
+        <div class="panel-title centered-title">土地流转</div>
         <div class="chart-wrapper">
-          <LandUseChordChart />
+          <LandUseSankeyChart :year="year" />
         </div>
       </TechBorder>
     </div>
@@ -23,9 +23,9 @@
     <!-- 3. 景观格局 (Landscape Pattern) -->
     <div class="section-container" style="flex: 1;">
       <TechBorder color="#10b981">
-        <div class="panel-title">景观格局 (Landscape Pattern)</div>
+        <div class="panel-title centered-title">景观格局</div>
         <div class="chart-wrapper">
-          <LandscapeMetricsHeatmap />
+          <LandscapeMetricsHeatmap :year="year" />
         </div>
       </TechBorder>
     </div>
@@ -35,7 +35,7 @@
 <script setup>
 import TechBorder from '../ui/TechBorder.vue';
 import CouplingCoordinationChart from '../charts/sci/CouplingCoordinationChart.vue';
-import LandUseChordChart from '../charts/sci/LandUseChordChart.vue';
+import LandUseSankeyChart from '../charts/sci/LandUseSankeyChart.vue';
 import LandscapeMetricsHeatmap from '../charts/sci/LandscapeMetricsHeatmap.vue';
 
 defineProps({
@@ -58,14 +58,47 @@ defineProps({
 }
 
 .panel-title {
-  font-size: 14px;
+  font-size: 16px;
   font-weight: bold;
-  color: #e2e8f0;
-  margin-bottom: 8px;
-  padding-left: 8px;
-  border-left: 3px solid currentColor;
+  color: #a5ccff;
+  margin-bottom: 15px;
+  padding-left: 12px;
+  border-left: 4px solid #10b981;
   display: flex;
   align-items: center;
+  text-shadow: 0 0 10px rgba(16, 185, 129, 0.5);
+  letter-spacing: 1px;
+}
+
+.panel-title::after {
+  content: '';
+  flex: 1;
+  height: 1px;
+  background: linear-gradient(to right, rgba(16, 185, 129, 0.5), transparent);
+  margin-left: 15px;
+}
+
+.centered-title {
+  justify-content: center;
+  padding-left: 0;
+  border-left: none;
+}
+
+.centered-title::after {
+  display: block;
+  content: '';
+  flex: 1;
+  height: 1px;
+  background: linear-gradient(to right, rgba(16, 185, 129, 0.5), transparent);
+  margin-left: 15px;
+}
+
+.centered-title::before {
+  content: '';
+  flex: 1;
+  height: 1px;
+  background: linear-gradient(to left, rgba(16, 185, 129, 0.5), transparent);
+  margin-right: 15px;
 }
 
 .chart-wrapper {

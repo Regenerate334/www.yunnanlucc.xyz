@@ -3,7 +3,7 @@
 </template>
 
 <script setup>
-import { ref, shallowRef, onMounted, onUnmounted } from 'vue';
+import { ref, shallowRef, onMounted, onUnmounted, watch } from 'vue';
 import * as echarts from 'echarts';
 import { clcdApi } from '../../../api/index.js';
 import { transformDataForCalculation, calculateESV } from '../../../utils/indices.ts';
@@ -75,8 +75,12 @@ function renderChart(years, u1, u2, d) {
     },
     legend: {
       data: ['城市化指数 (U1)', '生态环境指数 (U2)', '耦合协调度 (D)'],
-      textStyle: { color: '#fff' },
-      bottom: 0
+      textStyle: { color: '#fff', fontSize: 12 },
+      bottom: 0,
+      icon: 'rect',
+      itemWidth: 12,
+      itemHeight: 12,
+      itemGap: 20
     },
     grid: {
       top: '15%',
@@ -166,8 +170,8 @@ function renderChart(years, u1, u2, d) {
             ]
           ],
           label: {
-              position: 'right',
-              color: 'rgba(255,255,255,0.5)'
+            position: 'right',
+            color: 'rgba(255,255,255,0.5)'
           }
         }
       }
@@ -180,6 +184,30 @@ function renderChart(years, u1, u2, d) {
 function handleResize() {
   chartInstance.value?.resize();
 }
+
+const props = defineProps({
+  year: { type: Number, default: 2023 }
+});
+
+watch(() => props.year, (newYear) => {
+  if (!chartInstance.value) return;
+
+  // Find index of the year
+  const option = chartInstance.value.getOption();
+  const years = option.xAxis[0].data;
+  const index = years.indexOf(newYear);
+
+  if (index !== -1) {
+    chartInstance.value.dispatchAction({
+      type: 'showTip',
+      seriesIndex: 0,
+      dataIndex: index
+    });
+
+    // Optional: Add a visual marker for the current year
+    // For now, just the tooltip is enough to indicate progress
+  }
+});
 
 onMounted(async () => {
   await fetchDataAndRender();

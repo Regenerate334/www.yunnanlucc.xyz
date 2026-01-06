@@ -44,8 +44,12 @@ router.get('/', async (req, res) => {
     try {
         const url = `https://restapi.amap.com/v3/weather/weatherInfo?key=${key}&city=${city}&extensions=${extensions}&output=JSON`;
 
+        console.log(`[Weather] Requesting: ${url}`); // 打印请求URL
+
         const response = await fetch(url);
         const data = await response.json();
+
+        console.log('[Weather] Response:', JSON.stringify(data, null, 2)); // 打印完整响应
 
         if (data.status !== '1') {
             return res.status(400).json({

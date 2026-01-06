@@ -13,28 +13,31 @@
             <transition name="slide-fade">
                 <div v-if="isVisible" class="modal-window" @click.stop>
                     <div class="modal-header">
+                        <div class="header-placeholder"></div>
                         <span class="modal-title">
                             {{ props.year }}年 {{ currentPrefectureName }} 土地利用结构
                         </span>
-                        <div class="custom-select" ref="dropdownRef">
-                            <div class="select-trigger" @click="toggleDropdown">
-                                <span>{{ currentPrefectureName }}</span>
-                                <span class="arrow" :class="{ open: isDropdownOpen }">▼</span>
-                            </div>
-                            <transition name="dropdown-fade">
-                                <div v-if="isDropdownOpen" class="options-panel">
-                                    <div class="options-list">
-                                        <div v-for="city in prefectureList" :key="city.code" class="option-item"
-                                            :class="{ selected: city.code === selectedAdcode }"
-                                            @click="selectPrefecture(city)">
-                                            <span class="dot" v-if="city.code === selectedAdcode"></span>
-                                            {{ city.name }}
+                        <div class="header-right">
+                            <div class="custom-select" ref="dropdownRef">
+                                <div class="select-trigger" @click="toggleDropdown">
+                                    <span>{{ currentPrefectureName }}</span>
+                                    <span class="arrow" :class="{ open: isDropdownOpen }">▼</span>
+                                </div>
+                                <transition name="dropdown-fade">
+                                    <div v-if="isDropdownOpen" class="options-panel">
+                                        <div class="options-list">
+                                            <div v-for="city in prefectureList" :key="city.code" class="option-item"
+                                                :class="{ selected: city.code === selectedAdcode }"
+                                                @click="selectPrefecture(city)">
+                                                <span class="dot" v-if="city.code === selectedAdcode"></span>
+                                                {{ city.name }}
+                                            </div>
                                         </div>
                                     </div>
-                                </div>
-                            </transition>
+                                </transition>
+                            </div>
+                            <button class="close-btn" @click.stop="toggleChart">✕</button>
                         </div>
-                        <button class="close-btn" @click.stop="toggleChart">✕</button>
                     </div>
                     <div ref="chartContainer" class="chart-container"></div>
                 </div>
@@ -44,7 +47,7 @@
 </template>
 
 <script setup>
-import { ref, shallowRef, watch, onMounted, onUnmounted, nextTick } from 'vue';
+import { ref, shallowRef, watch, onMounted, onUnmounted, nextTick, computed } from 'vue';
 import * as echarts from 'echarts';
 import { centroid, area } from '@turf/turf';
 import { clcdApi } from '../../api/index.js';
@@ -80,6 +83,18 @@ function selectPrefecture(city) {
     currentPrefectureName.value = city.name;
     handlePrefectureChange();
     isDropdownOpen.value = false;
+
+    // 搜索定位逻辑：在地图更新后触发高亮
+    nextTick(() => {
+        if (chartInstance.value) {
+            // 取消之前的所有选中
+            chartInstance.value.dispatchAction({
+                type: 'geoUnSelect',
+                seriesIndex: 0
+            });
+            // 触发新的选中高亮（虽然县级图是按地州加载的，但这里可以预留逻辑或触发整体视图调整）
+        }
+    });
 }
 
 function handleClickOutside(event) {
@@ -150,7 +165,6 @@ async function loadCountyGeo() {
 
 async function loadCountyStats(prefectureName) {
     try {
-        // 按地级市加载全量时间序列数据，符合时间序列监测逻辑
         const data = await clcdApi.getCountyDataByPrefecture(prefectureName);
         countyStats = data;
     } catch (e) {
@@ -214,7 +228,7 @@ function updatePiePositions() {
     chartInstance.value.setOption({
         series: seriesUpdates,
         geo: {
-            regions: [] // Clear dynamic regions to avoid redundant labels
+            regions: []
         }
     });
 }
@@ -253,7 +267,7 @@ function getBaseChartOption(year, dataList) {
         coordinateSystem: 'geo',
         name: item.name,
         center: item.name,
-        radius: [0, 30],
+        radius: [0, 30], // 彻底恢复初始半径
         data: getLandUseSeriesData(item.name, year),
         label: { show: false },
         tooltip: { show: false },
@@ -316,16 +330,16 @@ function getBaseChartOption(year, dataList) {
             bottom: '0%',
             left: 'center',
             textStyle: { color: '#fff', fontSize: 12 },
-            itemWidth: 16,
-            itemHeight: 16
+            itemWidth: 12,
+            itemHeight: 12
         },
         geo: {
             map: `map_${selectedAdcode.value}`,
             roam: true,
             scaleLimit: { min: 0.8, max: 10 },
             aspectScale: 1.0,
-            layoutCenter: ['50%', '50%'],
-            layoutSize: '90%',
+            layoutCenter: ['50%', '50%'], // 彻底恢复中心
+            layoutSize: '90%', // 彻底恢复地图比例
             label: { show: false },
             itemStyle: {
                 areaColor: '#e7e8ea',
@@ -333,7 +347,7 @@ function getBaseChartOption(year, dataList) {
                 borderWidth: 1
             },
             emphasis: {
-                label: { show: false }, // Force hide geo labels
+                label: { show: false },
                 itemStyle: {
                     areaColor: '#fef08a'
                 }
@@ -406,7 +420,15 @@ async function handlePrefectureChange() {
     }
     const option = getBaseChartOption(props.year, countyData);
     chartInstance.value.setOption(option, { notMerge: true });
-    updatePiePositions();
+
+    // 关键修复：切换地州后重置地图视角，实现“定位”效果
+    chartInstance.value.dispatchAction({
+        type: 'restore'
+    });
+
+    nextTick(() => {
+        updatePiePositions();
+    });
 }
 
 watch(() => props.year, (newYear) => {
@@ -515,11 +537,28 @@ watch(() => props.year, (newYear) => {
     border-bottom: 1px solid rgba(255, 255, 255, 0.08);
 }
 
+.header-placeholder {
+    width: 300px;
+}
+
+.header-right {
+    display: flex;
+    align-items: center;
+    gap: 15px;
+    width: 300px;
+    justify-content: flex-end;
+}
+
 .modal-title {
-    font-size: 16px;
-    font-weight: 600;
-    color: #a5ccff;
-    letter-spacing: 0.02em;
+    position: absolute;
+    left: 50%;
+    transform: translateX(-50%);
+    font-size: 24px;
+    font-weight: 700;
+    color: #ffffff;
+    letter-spacing: 2px;
+    text-shadow: 0 0 20px rgba(59, 130, 246, 0.5);
+    white-space: nowrap;
 }
 
 .close-btn {
@@ -546,7 +585,6 @@ watch(() => props.year, (newYear) => {
 
 .custom-select {
     position: relative;
-    margin-right: 10px;
     font-size: 14px;
     pointer-events: auto;
 }
@@ -585,37 +623,50 @@ watch(() => props.year, (newYear) => {
 .options-panel {
     position: absolute;
     top: 100%;
-    left: 0;
-    width: 100%;
-    max-height: 350px;
-    overflow-y: auto;
-    background: rgba(13, 25, 48, 0.6);
-    border: 1px solid rgba(255, 255, 255, 0.08);
+    right: 0;
+    width: 180px;
+    /* 缩小宽度 */
+    max-height: 400px;
+    display: flex;
+    flex-direction: column;
+    background: rgba(13, 25, 48, 0.9);
+    border: 1px solid rgba(255, 255, 255, 0.1);
     border-radius: 12px;
     margin-top: 8px;
-    padding: 6px;
-    z-index: 1001;
+    padding: 0;
+    z-index: 1002;
     backdrop-filter: blur(24px);
     box-shadow: 0 12px 40px rgba(0, 0, 0, 0.4);
+    overflow: hidden;
 }
 
-.options-panel::-webkit-scrollbar {
-    width: 4px;
-}
-
-.options-panel::-webkit-scrollbar-track {
-    background: transparent;
-}
-
-.options-panel::-webkit-scrollbar-thumb {
-    background: rgba(255, 255, 255, 0.1);
-    border-radius: 10px;
+.no-results {
+    padding: 20px;
+    text-align: center;
+    color: rgba(255, 255, 255, 0.4);
+    font-size: 13px;
 }
 
 .options-list {
+    flex: 1;
+    overflow-y: auto;
+    padding: 6px;
     display: flex;
     flex-direction: column;
     gap: 2px;
+}
+
+.options-list::-webkit-scrollbar {
+    width: 4px;
+}
+
+.options-list::-webkit-scrollbar-track {
+    background: transparent;
+}
+
+.options-list::-webkit-scrollbar-thumb {
+    background: rgba(255, 255, 255, 0.1);
+    border-radius: 10px;
 }
 
 .option-item {

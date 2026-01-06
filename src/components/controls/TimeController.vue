@@ -26,7 +26,7 @@
 
 <script setup>
 import { computed, onBeforeUnmount, onMounted, ref } from 'vue';
-import { useGlobalStore } from '../../store/index.js';
+import { useGlobalStore } from '../../stores/index.ts';
 
 const store = useGlobalStore();
 const years = computed(() => store.yearsAll);

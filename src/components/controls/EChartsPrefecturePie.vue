@@ -13,6 +13,7 @@
       <transition name="slide-fade">
         <div v-if="isVisible" class="modal-window" @click.stop>
           <div class="modal-header">
+            <div class="header-placeholder"></div>
             <span class="modal-title">{{ props.year }}年云南省地级市土地利用结构</span>
             <button class="close-btn" @click.stop="toggleChart">✕</button>
           </div>
@@ -286,8 +287,8 @@ function getBaseChartOption(year) {
         color: '#fff',
         fontSize: 12
       },
-      itemWidth: 16,
-      itemHeight: 16
+      itemWidth: 12,
+      itemHeight: 12
     },
     geo: {
       map: 'yunnan_cities',
@@ -464,10 +465,19 @@ onUnmounted(() => {
 }
 
 .modal-title {
-  font-size: 16px;
-  font-weight: 600;
-  color: #a5ccff;
-  letter-spacing: 0.02em;
+  position: absolute;
+  left: 50%;
+  transform: translateX(-50%);
+  font-size: 24px;
+  font-weight: 700;
+  color: #ffffff;
+  letter-spacing: 2px;
+  text-shadow: 0 0 20px rgba(59, 130, 246, 0.5);
+  white-space: nowrap;
+}
+
+.header-placeholder {
+  width: 32px;
 }
 
 .close-btn {

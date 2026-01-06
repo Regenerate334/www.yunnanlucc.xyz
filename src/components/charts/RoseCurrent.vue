@@ -5,7 +5,7 @@
 <script setup>
 import * as echarts from 'echarts';
 import { onMounted, onBeforeUnmount, ref, shallowRef, watch, computed, nextTick } from 'vue';
-import { useGlobalStore } from '../../store/index.js';
+import { useGlobalStore } from '../../stores/index.ts';
 
 const store = useGlobalStore();
 const el = shallowRef(null);

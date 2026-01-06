@@ -10,7 +10,7 @@
 </template>
 
 <script setup>
-import { ref, shallowRef, onMounted, onUnmounted } from 'vue';
+import { ref, shallowRef, onMounted, onUnmounted, watch } from 'vue';
 import * as echarts from 'echarts';
 import { analysisApi } from '../../../api/index.js';
 import { transformMatrixToChordData } from '../../../utils/sci_indices.ts';
@@ -46,11 +46,9 @@ const landUseNames = {
 
 async function fetchDataAndRender() {
   try {
-    // 尝试从后端获取数据
-    // const res = await analysisApi.getTransferMatrix(selectedPeriod.value);
-    // 暂时使用模拟数据，确保展示效果
-    const matrix = generateMockMatrix();
-    const types = Object.keys(landUseColors);
+    const res = await analysisApi.getTransferMatrix(selectedPeriod.value);
+    const matrix = res.absoluteMatrix;
+    const types = res.landTypes;
 
     const { nodes, links } = transformMatrixToChordData(matrix, types);
 
@@ -58,8 +56,8 @@ async function fetchDataAndRender() {
     const graphNodes = nodes.map(n => ({
       name: landUseNames[n.name] || n.name,
       value: n.value,
-      itemStyle: { color: landUseColors[n.name] },
-      label: { show: true, position: 'right', color: '#fff' }
+      itemStyle: { color: landUseColors[n.name] || '#ccc' },
+      label: { show: true, position: 'right', color: '#fff', fontSize: 10 }
     }));
 
     const graphLinks = links.map(l => ({
@@ -68,7 +66,7 @@ async function fetchDataAndRender() {
       value: l.value,
       lineStyle: {
         color: 'source',
-        opacity: 0.4,
+        opacity: 0.3,
         curveness: 0.3
       }
     }));
@@ -78,24 +76,6 @@ async function fetchDataAndRender() {
   } catch (e) {
     console.error('加载弦图数据失败:', e);
   }
-}
-
-function generateMockMatrix() {
-  // 生成一个 9x9 的随机转移矩阵
-  const size = 9;
-  const matrix = [];
-  for (let i = 0; i < size; i++) {
-    const row = [];
-    for (let j = 0; j < size; j++) {
-      if (i === j) {
-        row.push(1000 + Math.random() * 5000); // 保持不变的面积较大
-      } else {
-        row.push(Math.random() * 200); // 转移面积较小
-      }
-    }
-    matrix.push(row);
-  }
-  return matrix;
 }
 
 function renderChart(nodes, links) {
@@ -151,6 +131,23 @@ function renderChart(nodes, links) {
 function handleResize() {
   chartInstance.value?.resize();
 }
+
+const props = defineProps({
+  year: { type: Number, default: 2023 }
+});
+
+watch(() => props.year, (newYear) => {
+  let targetPeriod = '1990-2020';
+  if (newYear < 2000) targetPeriod = '1990-2000';
+  else if (newYear < 2010) targetPeriod = '2000-2010';
+  else if (newYear < 2020) targetPeriod = '2010-2020';
+  else targetPeriod = '1990-2020';
+
+  if (selectedPeriod.value !== targetPeriod) {
+    selectedPeriod.value = targetPeriod;
+    fetchDataAndRender();
+  }
+});
 
 onMounted(async () => {
   await fetchDataAndRender();

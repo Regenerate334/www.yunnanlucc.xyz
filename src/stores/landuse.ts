@@ -175,27 +175,13 @@ export const useLandUseStore = defineStore('landuse', () => {
                     return r.json()
                 })
             ])
-
             provinceData.value = provinceRes
             cityData.value = cityRes
             countyData.value = countyRes
             loadingState.value.loaded = true
         } catch (error) {
-            console.warn('API 加载失败，使用 Mock 数据:', error)
-
-            // 如果API失败，加载本地Mock数据
-            try {
-                const { generateMockData } = await import('@/utils/mockDataGenerator.ts')
-                const mockData = generateMockData()
-
-                provinceData.value = mockData.province
-                cityData.value = mockData.city
-                countyData.value = mockData.county
-                loadingState.value.loaded = true
-            } catch (mockError) {
-                loadingState.value.error = mockError as Error
-                throw mockError
-            }
+            console.error('API 加载失败:', error)
+            loadingState.value.error = error as Error
         } finally {
             loadingState.value.loading = false
         }
