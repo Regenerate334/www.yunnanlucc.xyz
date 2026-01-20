@@ -5,7 +5,7 @@ import { body, validationResult } from 'express-validator';
 import pool from '../config/db.js';
 
 const router = express.Router();
-const JWT_SECRET = process.env.JWT_SECRET || 'your_jwt_secret_key_123456';
+const JWT_SECRET = process.env.JWT_SECRET || 'your_jwt_secret_key_here';
 
 // 登录接口
 router.post('/login', [
@@ -49,8 +49,8 @@ router.post('/login', [
             }
         });
     } catch (err) {
-        console.error(err);
-        res.status(500).json({ message: '服务器错误' });
+        console.error('\x1b[31m[auth] 登录失败:\x1b[0m', err);
+        res.status(500).json({ message: '服务器内部错误: ' + err.message });
     }
 });
 

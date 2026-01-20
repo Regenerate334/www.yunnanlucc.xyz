@@ -1,14 +1,12 @@
 import pg from 'pg';
-import dotenv from 'dotenv';
 
-dotenv.config();
-
+// 环境变量由 server/index.js 统一加载
 const pool = new pg.Pool({
-    host: process.env.PGHOST || 'localhost',
-    port: Number(process.env.PGPORT || 5432),
-    user: process.env.PGUSER || 'postgres',
-    password: process.env.PGPASSWORD || 'password',
-    database: process.env.PGDATABASE || 'yunnan_CLCD',
+    host: process.env.DB_HOST || 'localhost',
+    port: Number(process.env.DB_PORT || 5432),
+    user: process.env.DB_USER || 'postgres',
+    password: process.env.DB_PASSWORD || 'password',
+    database: process.env.DB_DATABASE || 'yunnan_CLCD',
     max: 10
 });
 

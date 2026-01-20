@@ -39,6 +39,7 @@
       <RegionalTrendControl />
     </div>
 
+
     <!-- 大屏指挥中心入口按钮（切换模式） -->
     <div v-if="!isDashboardMode" class="dashboard-entry-container">
       <button @click="isDashboardMode = true" class="dashboard-toggle-btn" title="进入大屏指挥中心">
@@ -604,5 +605,17 @@ html {
 .layer-fade-enter-from,
 .layer-fade-leave-to {
   opacity: 0;
+}
+
+/* Slide up transition */
+.slide-up-enter-active,
+.slide-up-leave-active {
+  transition: all 0.3s ease;
+}
+
+.slide-up-enter-from,
+.slide-up-leave-to {
+  opacity: 0;
+  transform: translateY(20px);
 }
 </style>

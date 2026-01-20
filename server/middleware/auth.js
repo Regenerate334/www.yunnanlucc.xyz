@@ -1,6 +1,6 @@
 import jwt from 'jsonwebtoken';
 
-const JWT_SECRET = process.env.JWT_SECRET || 'your_jwt_secret_key_123456';
+const JWT_SECRET = process.env.JWT_SECRET || 'your_jwt_secret_key_here';
 
 export const authMiddleware = (req, res, next) => {
     const token = req.headers.authorization?.split(' ')[1];

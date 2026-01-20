@@ -406,20 +406,40 @@ URL: http://localhost:8080/geoserver/WebGIS/wms
 - npm >= 8.0.0
 - PostgreSQL >= 12.0
 - GeoServer (可选，用于 WMS 服务)
+- **Ollama** (用于 AI 分析功能)
+
+### AI 功能配置
+本项目集成了 DeepSeek AI 模型用于智能数据分析。
+
+#### 安装 Ollama
+1. 访问 https://ollama.com 下载并安装 Ollama
+2. 安装完成后，系统会自动安装 Ollama 服务
+
+#### 使用方法
+**在启动项目前，请先手动启动 Ollama：**
+- **方法1**：点击桌面或开始菜单的 Ollama 图标
+- **方法2**：在命令行运行 `ollama serve`
+
+启动 Ollama 后，系统托盘会显示 Ollama 图标，表示服务已就绪。
 
 ### 开发环境启动
 ```bash
 # 安装依赖
 npm install
 
-# 同时启动前后端
-npm run dev:all
+# 启动前：确保 Ollama 已经运行！
 
-# 单独启动前端 (默认端口 5173)
+# 同时启动前后端
 npm run dev
+
+# 单独启动前端 (默认端口 5174)
+npm run client
 
 # 单独启动后端 (默认端口 3000)
 npm run server
+
+# 停止所有node进程（Windows）
+npm run stop
 ```
 
 ### 环境变量配置

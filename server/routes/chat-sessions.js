@@ -1,0 +1,133 @@
+import express from 'express';
+import pool from '../config/db.js';
+import { authMiddleware } from '../middleware/auth.js';
+
+const router = express.Router();
+
+/**
+ * GET /api/chat-sessions - 获取当前用户的所有会话
+ */
+router.get('/', authMiddleware, async (req, res) => {
+    try {
+        const userId = req.user.id;
+        const { rows } = await pool.query(
+            'SELECT id, title, created_at, updated_at FROM chat_sessions WHERE user_id = $1 ORDER BY updated_at DESC',
+            [userId]
+        );
+        res.json({ success: true, sessions: rows });
+    } catch (err) {
+        console.error('[Sessions] 获取失败:', err);
+        res.status(500).json({ error: '获取会话列表失败' });
+    }
+});
+
+/**
+ * POST /api/chat-sessions - 创建新会话
+ */
+router.post('/', authMiddleware, async (req, res) => {
+    try {
+        const userId = req.user.id;
+        const { title = '新对话' } = req.body;
+        const { rows } = await pool.query(
+            'INSERT INTO chat_sessions (user_id, title, messages) VALUES ($1, $2, $3) RETURNING id, title',
+            [userId, title, JSON.stringify([])]
+        );
+        res.json({ success: true, session: rows[0] });
+    } catch (err) {
+        console.error('[Sessions] 创建失败:', err);
+        res.status(500).json({ error: '创建会话失败' });
+    }
+});
+
+/**
+ * GET /api/chat-sessions/:id/messages - 获取会话的所有消息
+ */
+router.get('/:id/messages', authMiddleware, async (req, res) => {
+    try {
+        const userId = req.user.id;
+        const sessionId = req.params.id;
+
+        const { rows } = await pool.query(
+            'SELECT messages FROM chat_sessions WHERE id = $1 AND user_id = $2',
+            [sessionId, userId]
+        );
+
+        if (rows.length === 0) {
+            return res.status(403).json({ error: '无权访问该会话' });
+        }
+
+        res.json({ success: true, messages: rows[0].messages || [] });
+    } catch (err) {
+        console.error('[Messages] 获取失败:', err);
+        res.status(500).json({ error: '获取消息失败' });
+    }
+});
+
+/**
+ * POST /api/chat-sessions/:id/messages - 保存消息并更新会话
+ */
+router.post('/:id/messages', authMiddleware, async (req, res) => {
+    try {
+        const userId = req.user.id;
+        const sessionId = req.params.id;
+        const { role, content } = req.body;
+
+        // 1. 获取当前消息列表和标题
+        const { rows } = await pool.query(
+            'SELECT messages, title FROM chat_sessions WHERE id = $1 AND user_id = $2',
+            [sessionId, userId]
+        );
+
+        if (rows.length === 0) {
+            return res.status(403).json({ error: '无权访问该会话' });
+        }
+
+        let messages = rows[0].messages || [];
+        let title = rows[0].title;
+
+        // 2. 追加新消息
+        messages.push({ role, content, created_at: new Date().toISOString() });
+
+        // 3. 如果是用户的第一条消息，自动生成标题
+        if (role === 'user' && (title === '新对话' || !title)) {
+            title = content.length > 30 ? content.substring(0, 27) + '...' : content;
+        }
+
+        // 4. 更新数据库
+        await pool.query(
+            'UPDATE chat_sessions SET messages = $1, title = $2, updated_at = CURRENT_TIMESTAMP WHERE id = $3',
+            [JSON.stringify(messages), title, sessionId]
+        );
+
+        res.json({ success: true });
+    } catch (err) {
+        console.error('[Messages] 保存失败:', err);
+        res.status(500).json({ error: '保存消息失败' });
+    }
+});
+
+/**
+ * DELETE /api/chat-sessions/:id - 删除会话
+ */
+router.delete('/:id', authMiddleware, async (req, res) => {
+    try {
+        const userId = req.user.id;
+        const sessionId = req.params.id;
+
+        const result = await pool.query(
+            'DELETE FROM chat_sessions WHERE id = $1 AND user_id = $2',
+            [sessionId, userId]
+        );
+
+        if (result.rowCount === 0) {
+            return res.status(404).json({ error: '会话不存在或无权删除' });
+        }
+
+        res.json({ success: true });
+    } catch (err) {
+        console.error('[Sessions] 删除失败:', err);
+        res.status(500).json({ error: '删除会话失败' });
+    }
+});
+
+export default router;
