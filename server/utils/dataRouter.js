@@ -116,7 +116,7 @@ export class ContextBuilder {
         let table = `### 历史趋势数据 (1985-2023)\n\n`;
 
         // 表头统一使用 km²
-        const headerCells = ['年份', ...columns.map(c => `${this.translateColumn(c)}<br>(km² - 禁止转换)`)];
+        const headerCells = ['年份', ...columns.map(c => `${this.translateColumn(c)}<br>(km²)`)];
 
         table += `| ${headerCells.join(' | ')} |\n`;
         table += `|${headerCells.map(() => '---').join('|')}|\n`;
@@ -136,7 +136,7 @@ export class ContextBuilder {
         let table = `### 区域对比数据\n\n`;
 
         // 表头统一使用 km²
-        const headerCells = ['地区', ...columns.map(c => `${this.translateColumn(c)}<br>(km² - 禁止转换)`)];
+        const headerCells = ['地区', ...columns.map(c => `${this.translateColumn(c)}<br>(km²)`)];
 
         table += `| ${headerCells.join(' | ')} |\n`;
         table += `|${headerCells.map(() => '---').join('|')}|\n`;
@@ -155,7 +155,7 @@ export class ContextBuilder {
         const landUseKeys = Object.keys(LAND_USE_CONFIG);
         const columns = Object.keys(sample).filter(k => landUseKeys.includes(k));
 
-        let table = `### 土地利用结构 (单位: km² - 请保持原始数值，禁止转换为万单位)\n\n`;
+        let table = `### 土地利用结构 (单位: km²)\n\n`;
 
         table += `| 地区 | ${columns.map(c => this.translateColumn(c)).join(' | ')} |\n`;
         table += `|---${columns.map(() => '|---').join('')}|\n`;

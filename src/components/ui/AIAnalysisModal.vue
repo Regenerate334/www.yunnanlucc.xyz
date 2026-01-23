@@ -715,6 +715,28 @@ watch(messages, (newMsgs) => {
   max-width: none;
 }
 
+/* 全屏模式下的响应式调整 */
+.ai-modal-container.fullscreen .welcome-container {
+  max-width: 900px;
+}
+
+.ai-modal-container.fullscreen .message {
+  max-width: 1100px;
+}
+
+.ai-modal-container.fullscreen .markdown-body :deep(table) {
+  max-width: 100%;
+}
+
+.ai-modal-container.fullscreen .input-pill {
+  max-width: 900px;
+  margin: 0 auto;
+}
+
+.ai-modal-container.fullscreen .ai-modal-footer .input-pill {
+  max-width: 1000px;
+}
+
 .fullscreen-btn {
   background: transparent;
   border: none;
