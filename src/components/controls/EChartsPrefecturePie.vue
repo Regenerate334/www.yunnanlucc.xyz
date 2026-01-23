@@ -22,7 +22,7 @@
             <div class="ai-floating-ball-container">
               <button class="ai-floating-ball" @click.stop="openAIAnalysis">
                 <div class="ball-content">
-                  <img :src="deepseekIcon" alt="AI" class="ai-ball-logo" />
+                  <ChatGptIcon :size="24" color="#ffffff" class="ai-ball-logo" />
                   <span class="ai-ball-text">AI 一键分析</span>
                 </div>
               </button>
@@ -35,7 +35,7 @@
 
     <!-- AI 分析弹窗 -->
     <AIAnalysisModal v-model:visible="showAIModal" :year="props.year" :region="'云南省各地级市'" analysis-type="pie"
-      :auto-question="aiAutoQuestion" />
+      :component-context="{ type: 'prefecture_pie' }" />
   </div>
 </template>
 
@@ -45,7 +45,7 @@ import * as echarts from 'echarts';
 import { centroid, area } from '@turf/turf';
 import { clcdApi } from '../../api/index.js';
 import AIAnalysisModal from '../ui/AIAnalysisModal.vue';
-import deepseekIcon from '../../assets/icons/deepseek-icon.png';
+import ChatGptIcon from '../icons/ChatGptIcon.vue';
 
 import prefecturePieIcon from '../../assets/icons/prefecture_pie.png';
 const iconUrl = prefecturePieIcon;
@@ -56,7 +56,6 @@ const props = defineProps({
 
 const isVisible = ref(false);
 const showAIModal = ref(false);
-const aiAutoQuestion = ref('');
 const chartContainer = shallowRef(null);
 const chartInstance = shallowRef(null);
 let citiesGeoJSON = null;
@@ -249,9 +248,7 @@ function getBaseChartOption(year) {
         position: 'inside',
         formatter: params => {
           const val = params.value;
-          const areaStr = val >= 10000
-            ? (val / 10000).toFixed(2) + ' 万km²'
-            : val.toFixed(2) + ' km²';
+          const areaStr = val.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + ' km²';
           return `${params.name}\n${areaStr}\n${params.percent.toFixed(1)}%`;
         },
         fontSize: 13,
@@ -381,7 +378,6 @@ onUnmounted(() => {
 
 // 打开 AI 分析弹窗
 const openAIAnalysis = () => {
-  aiAutoQuestion.value = `分析云南省各地级市${props.year}年的土地利用结构特征，比较各地差异`;
   showAIModal.value = true;
 };
 </script>

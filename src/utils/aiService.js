@@ -49,7 +49,7 @@ export async function analyzeData({ question, year, landData, context }) {
  * @param {Function} onDone - 完成时的回调 () => void
  * @param {Function} onError - 错误时的回调 (error: string) => void
  */
-export async function analyzeDataStream({ messages, year, landData, region, deepThinking, model }, onChunk, onDone, onError, signal) {
+export async function analyzeDataStream({ messages, year, landData, componentContext, region, deepThinking, model }, onChunk, onDone, onError, signal) {
     try {
         // 清理消息历史,只保留 role 和 content,避免 Vue 响应式对象的干扰
         const sanitizedMessages = messages.map(m => ({
@@ -67,6 +67,7 @@ export async function analyzeDataStream({ messages, year, landData, region, deep
                 messages: sanitizedMessages,
                 year,
                 landData,
+                componentContext,
                 region,
                 deepThinking,
                 model
@@ -123,6 +124,10 @@ export async function analyzeDataStream({ messages, year, landData, region, deep
 
         onDone?.();
     } catch (error) {
+        if (error.name === 'AbortError') {
+            console.log('[AI Service] 请求被用户中止');
+            return;
+        }
         console.error('[AI Service] 流式请求失败:', error);
         onError?.(error.message || '网络错误');
     }

@@ -2,7 +2,7 @@
   <Teleport to="body">
     <transition name="modal-fade">
       <div v-if="visible" class="ai-modal-overlay" @click.self="handleClose">
-        <div class="ai-modal-container">
+        <div class="ai-modal-container" :class="{ fullscreen: isFullscreen }">
           <!-- Sidebar -->
           <div class="sidebar">
             <div class="sidebar-header">
@@ -37,15 +37,29 @@
           <div class="main-content">
             <!-- Header (Close Button Only) -->
             <div class="ai-modal-header">
+              <button class="fullscreen-btn" @click="toggleFullscreen" :title="isFullscreen ? '退出全屏' : '全屏'">
+                <svg v-if="!isFullscreen" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                  stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                  <path
+                    d="M8 3H5a2 2 0 0 0-2 2v3m18 0V5a2 2 0 0 0-2-2h-3m0 18h3a2 2 0 0 0 2-2v-3M3 16v3a2 2 0 0 0 2 2h3" />
+                </svg>
+                <svg v-else width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                  stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                  <path
+                    d="M8 3v3a2 2 0 0 1-2 2H3m18 0h-3a2 2 0 0 1-2-2V3m0 18v-3a2 2 0 0 1 2-2h3M3 16h3a2 2 0 0 1 2 2v3" />
+                </svg>
+              </button>
               <button class="close-btn" @click="handleClose" title="关闭">×</button>
             </div>
 
             <!-- 消息区域 -->
-            <div class="ai-modal-body" ref="messagesContainer">
+            <div class="ai-modal-body" :class="{ 'no-scroll': messages.length === 0 }" ref="messagesContainer">
               <!-- 欢迎界面 (新对话) -->
               <div v-if="messages.length === 0" class="welcome-container">
                 <div class="welcome-section">
-                  <img :src="deepseekLogo" alt="DeepSeek" class="welcome-logo" />
+                  <ChatGptIcon :size="160" color="#ffffff" class="welcome-logo" />
+                  <h1 class="welcome-title">土地利用智能分析助手</h1>
+                  <p class="welcome-subtitle">基于 AI 大模型，为您提供专业的土地利用变化分析与决策支持</p>
                 </div>
 
                 <!-- 居中的输入框 -->
@@ -70,7 +84,10 @@
                           <div v-if="showModelDropdown" class="model-dropdown-menu">
                             <div v-for="model in availableModels" :key="model.value" class="model-dropdown-item"
                               :class="{ active: selectedModel === model.value }" @click.stop="selectModel(model.value)">
-                              {{ model.label }}
+                              <div class="model-info">
+                                <span class="model-name">{{ model.label }}</span>
+                                <span class="model-desc">{{ model.desc }}</span>
+                              </div>
                             </div>
                           </div>
                         </transition>
@@ -201,7 +218,10 @@
                       <div v-if="showModelDropdown" class="model-dropdown-menu">
                         <div v-for="model in availableModels" :key="model.value" class="model-dropdown-item"
                           :class="{ active: selectedModel === model.value }" @click.stop="selectModel(model.value)">
-                          {{ model.label }}
+                          <div class="model-info">
+                            <span class="model-name">{{ model.label }}</span>
+                            <span class="model-desc">{{ model.desc }}</span>
+                          </div>
                         </div>
                       </div>
                     </transition>
@@ -221,7 +241,7 @@
                   </button>
                 </div>
               </div>
-              <div class="footer-hint">DeepSeek can make mistakes. Please check important info.</div>
+              <div class="footer-hint">AI可能会犯错，请核对重要信息。</div>
             </div>
           </div>
         </div>
@@ -236,8 +256,10 @@ import { analyzeDataStream, generateQuickQuestions } from '@/utils/aiService.js'
 import MarkdownIt from 'markdown-it';
 import hljs from 'highlight.js';
 import 'highlight.js/styles/atom-one-dark.css';
-import deepseekLogo from '@/assets/icons/deepseek-logo.png';
-import deepseekIcon from '@/assets/icons/deepseek-icon.png';
+import texmath from 'markdown-it-texmath';
+import katex from 'katex';
+import 'katex/dist/katex.min.css';
+import ChatGptIcon from '@/components/icons/ChatGptIcon.vue';
 
 const md = new MarkdownIt({
   html: true,
@@ -254,6 +276,10 @@ const md = new MarkdownIt({
     }
     return '<pre class="hljs"><code>' + md.utils.escapeHtml(str) + '</code></pre>';
   }
+}).use(texmath, {
+  engine: katex,
+  delimiters: 'dollars',
+  katexOptions: { throwOnError: false, displayMode: false }
 });
 
 const parseCache = new Map();
@@ -289,10 +315,10 @@ const getRenderedMarkdown = (text) => {
 const props = defineProps({
   visible: { type: Boolean, default: false },
   year: { type: Number, default: 2023 },
-  landData: { type: Object, default: () => ({}) },
+  landData: { type: [Object, Array], default: () => ([]) },
+  componentContext: { type: Object, default: () => ({}) },
   region: { type: String, default: '云南省' },
-  analysisType: { type: String, default: 'default' },
-  autoQuestion: { type: String, default: '' }
+  analysisType: { type: String, default: 'default' }
 });
 
 const emit = defineEmits(['update:visible', 'close']);
@@ -428,11 +454,19 @@ const saveMessage = async (role, content) => {
 const deepThinking = ref(true);
 
 // 模型选择
-const selectedModel = ref('deepseek-r1:1.5b');
+const isFullscreen = ref(false);
+const selectedModel = ref('gpt-oss:20b');
+
+const toggleFullscreen = () => {
+  isFullscreen.value = !isFullscreen.value;
+};
 const showModelDropdown = ref(false);
 const availableModels = [
-  { value: 'deepseek-r1:1.5b', label: '快速模式 · DeepSeek-R1 1.5B' },
-  { value: 'deepseek-r1:8b', label: '精确模式 · DeepSeek-R1 8B' }
+  { value: 'gpt-oss:120b-cloud', label: 'GPT-OSS 120B (Cloud)', desc: '云端超大模型 · 最强推理能力' },
+  { value: 'gpt-oss:20b', label: 'GPT-OSS 20B', desc: '高性能模式 · 适合复杂分析' },
+  { value: 'deepseek-r1:8b', label: 'DeepSeek-R1 8B', desc: '标准模式 · 性能平衡' },
+  { value: 'gemma3:4b', label: 'Gemma 3 4B', desc: '快速模式 · 响应灵敏' },
+  { value: 'deepseek-r1:1.5b', label: 'DeepSeek-R1 1.5B', desc: '极速模式 · 秒级响应' }
 ];
 
 const getModelLabel = computed(() => {
@@ -462,6 +496,12 @@ onMounted(() => {
 
 onUnmounted(() => {
   window.removeEventListener('click', handleClickOutside);
+  // 组件卸载时取消正在进行的请求
+  if (abortController.value) {
+    console.log('[AI Modal] 组件卸载，取消正在进行的请求');
+    abortController.value.abort();
+    abortController.value = null;
+  }
 });
 
 const quickQuestions = computed(() => {
@@ -480,6 +520,7 @@ watch(() => props.visible, async (visible) => {
     } else if (!currentSessionId.value && sessions.value.length > 0) {
       await selectSession(sessions.value[0].id);
     }
+
     nextTick(() => {
       inputField.value?.focus();
     });
@@ -487,6 +528,14 @@ watch(() => props.visible, async (visible) => {
 });
 
 const handleClose = () => {
+  console.log('[AI Modal] 关闭对话框');
+  // 关闭时取消正在进行的请求
+  if (abortController.value) {
+    console.log('[AI Modal] 关闭时取消正在进行的请求');
+    abortController.value.abort();
+    abortController.value = null;
+    loading.value = false;
+  }
   emit('update:visible', false);
   emit('close');
 };
@@ -499,6 +548,7 @@ const handleEnter = (e) => {
 
 const stopGeneration = () => {
   if (abortController.value) {
+    console.log('[AI Modal] 用户点击停止生成');
     abortController.value.abort();
     abortController.value = null;
     loading.value = false;
@@ -544,11 +594,21 @@ const sendMessage = async (text) => {
     // 发送前保存用户消息
     await saveMessage('user', userMessage);
 
+    // 调试: 打印传递给AI的数据
+    console.log('[AI Modal] 传递的数据:', {
+      year: props.year,
+      region: props.region,
+      contextType: props.componentContext?.type,
+      landDataType: Array.isArray(props.landData) ? 'Array' : typeof props.landData,
+      landDataLength: Array.isArray(props.landData) ? props.landData.length : Object.keys(props.landData).length
+    });
+
     await analyzeDataStream(
       {
         messages: messages.value.slice(0, -1),
         year: props.year,
         landData: props.landData,
+        componentContext: props.componentContext,
         region: props.region,
         deepThinking: deepThinking.value,
         model: selectedModel.value
@@ -642,10 +702,36 @@ watch(messages, (newMsgs) => {
   backdrop-filter: blur(20px);
   border-radius: 16px;
   display: flex;
-  overflow: hidden;
+  overflow: visible;
   box-shadow: 0 25px 80px -12px rgba(0, 0, 0, 0.6);
   position: relative;
   border: 1px solid rgba(59, 130, 246, 0.2);
+  transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.ai-modal-container.fullscreen {
+  width: 95vw;
+  height: 95vh;
+  max-width: none;
+}
+
+.fullscreen-btn {
+  background: transparent;
+  border: none;
+  color: #94a3b8;
+  padding: 4px;
+  cursor: pointer;
+  margin-right: 12px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: color 0.2s;
+  border-radius: 4px;
+}
+
+.fullscreen-btn:hover {
+  color: #e2e8f0;
+  background: rgba(255, 255, 255, 0.05);
 }
 
 .sidebar {
@@ -656,6 +742,8 @@ watch(messages, (newMsgs) => {
   flex-direction: column;
   padding: 16px;
   transition: all 0.3s ease;
+  border-top-left-radius: 16px;
+  border-bottom-left-radius: 16px;
 }
 
 .sidebar-header {
@@ -795,6 +883,8 @@ watch(messages, (newMsgs) => {
   height: 100%;
   position: relative;
   background: rgba(13, 25, 48, 0.3);
+  border-top-right-radius: 16px;
+  border-bottom-right-radius: 16px;
 }
 
 .ai-modal-header {
@@ -830,6 +920,10 @@ watch(messages, (newMsgs) => {
   scroll-behavior: smooth;
 }
 
+.ai-modal-body.no-scroll {
+  overflow: hidden;
+}
+
 .ai-modal-body::-webkit-scrollbar {
   width: 8px;
 }
@@ -853,11 +947,11 @@ watch(messages, (newMsgs) => {
   display: flex;
   flex-direction: column;
   align-items: center;
-  justify-content: center;
+  justify-content: flex-start;
   max-width: 720px;
   margin: 0 auto;
   width: 100%;
-  padding: 40px 20px;
+  padding: 60px 20px 20px 20px;
   animation: fadeIn 0.8s ease-out;
   position: relative;
 }
@@ -875,18 +969,40 @@ watch(messages, (newMsgs) => {
 }
 
 .welcome-logo {
-  width: 320px;
-  height: auto;
-  max-height: 320px;
-  object-fit: contain;
-  margin-bottom: 24px;
-  opacity: 1;
-  filter: drop-shadow(0 0 60px rgba(59, 130, 246, 0.6));
+  width: 160px;
+  height: 160px;
+  margin-bottom: 20px;
+  opacity: 0.95;
+  filter: drop-shadow(0 0 30px rgba(255, 255, 255, 0.2));
   transition: transform 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
 }
 
 .welcome-logo:hover {
   transform: scale(1.05);
+}
+
+.welcome-section {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+}
+
+.welcome-title {
+  font-size: 26px;
+  font-weight: 700;
+  color: #ffffff;
+  margin: 0 0 12px 0;
+  letter-spacing: 1px;
+  text-align: center;
+}
+
+.welcome-subtitle {
+  font-size: 14px;
+  color: rgba(255, 255, 255, 0.5);
+  margin: 0 0 24px 0;
+  text-align: center;
+  white-space: nowrap;
 }
 
 .centered-input-wrapper {
@@ -963,7 +1079,7 @@ watch(messages, (newMsgs) => {
   position: absolute;
   bottom: calc(100% + 12px);
   left: 0;
-  min-width: 140px;
+  min-width: 200px;
   background: #1e293b;
   border: 1px solid rgba(59, 130, 246, 0.5);
   border-radius: 12px;
@@ -981,23 +1097,45 @@ watch(messages, (newMsgs) => {
 
 .model-dropdown-item {
   padding: 10px 16px;
-  font-size: 11px;
-  color: #cbd5e1;
   cursor: pointer;
   transition: all 0.2s;
   text-align: left;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+}
+
+.model-dropdown-item:last-child {
+  border-bottom: none;
+}
+
+.model-info {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.model-name {
+  font-size: 13px;
+  color: #e2e8f0;
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.model-desc {
+  font-size: 11px;
+  color: #94a3b8;
   white-space: nowrap;
 }
 
 .model-dropdown-item:hover {
   background: rgba(59, 130, 246, 0.2);
-  color: #ffffff;
 }
 
 .model-dropdown-item.active {
   background: rgba(59, 130, 246, 0.3);
+}
+
+.model-dropdown-item.active .model-name {
   color: #60a5fa;
-  font-weight: 600;
 }
 
 .dropdown-fade-enter-active,
@@ -1126,8 +1264,8 @@ watch(messages, (newMsgs) => {
 }
 
 .message.user {
-  align-items: flex-start;
-  /* 用户消息也改为左对齐，保持文档流一致 */
+  align-items: flex-end;
+  /* 用户消息右对齐 */
   margin-bottom: 32px;
 }
 
@@ -1135,25 +1273,35 @@ watch(messages, (newMsgs) => {
   width: 100%;
 }
 
+.message.user .bubble-wrapper {
+  width: auto;
+  max-width: 80%;
+  display: flex;
+  justify-content: flex-end;
+}
+
 .bubble {
   padding: 0;
-  background: transparent !important;
-  border: none !important;
+  background: transparent;
+  border: none;
   font-size: 16px;
   line-height: 1.8;
   color: #e2e8f0;
   text-align: justify;
-  /* 两侧对齐 */
   text-justify: inter-word;
 }
 
 .user .bubble {
-  color: #60a5fa;
-  /* 用户消息用颜色区分，而非气泡 */
+  color: #ffffff;
+  background: #3b82f6;
+  /* 蓝色背景 */
+  padding: 12px 20px;
+  border-radius: 16px 16px 4px 16px;
+  /* 气泡圆角 */
   font-weight: 500;
-  font-size: 18px;
-  border-left: 3px solid #3b82f6 !important;
-  padding-left: 16px;
+  font-size: 16px;
+  box-shadow: 0 4px 12px rgba(59, 130, 246, 0.3);
+  text-align: left;
 }
 
 .assistant .bubble {
@@ -1182,6 +1330,36 @@ watch(messages, (newMsgs) => {
   display: flex;
   align-items: center;
   gap: 8px;
+}
+
+.optimized-tag {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  background: rgba(16, 185, 129, 0.1);
+  color: #10b981;
+  padding: 2px 8px;
+  border-radius: 10px;
+  font-size: 11px;
+  border: 1px solid rgba(16, 185, 129, 0.2);
+  margin-left: 8px;
+  animation: fadeIn 0.3s ease;
+}
+
+.optimized-tag svg {
+  opacity: 0.8;
+}
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+    transform: translateX(-5px);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
 }
 
 .thinking-icon-svg,

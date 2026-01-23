@@ -44,7 +44,7 @@
                         <div class="ai-floating-ball-container">
                             <button class="ai-floating-ball" @click.stop="openAIAnalysis">
                                 <div class="ball-content">
-                                    <img :src="deepseekIcon" alt="AI" class="ai-ball-logo" />
+                                    <ChatGptIcon :size="24" color="#ffffff" class="ai-ball-logo" />
                                     <span class="ai-ball-text">AI 一键分析</span>
                                 </div>
                             </button>
@@ -57,7 +57,7 @@
 
         <!-- AI 分析弹窗 -->
         <AIAnalysisModal v-model:visible="showAIModal" :year="props.year" :region="currentPrefectureName"
-            analysis-type="pie" :auto-question="aiAutoQuestion" />
+            analysis-type="pie" :component-context="{ type: 'county_pie', region: currentPrefectureName }" />
     </div>
 </template>
 
@@ -67,7 +67,7 @@ import * as echarts from 'echarts';
 import { centroid, area } from '@turf/turf';
 import { clcdApi } from '../../api/index.js';
 import AIAnalysisModal from '../ui/AIAnalysisModal.vue';
-import deepseekIcon from '../../assets/icons/deepseek-icon.png';
+import ChatGptIcon from '../icons/ChatGptIcon.vue';
 
 const props = defineProps({
     year: {
@@ -91,11 +91,9 @@ const currentPrefectureName = ref('昆明市');
 const isDropdownOpen = ref(false);
 const dropdownRef = ref(null);
 const showAIModal = ref(false);
-const aiAutoQuestion = ref('');
 
 // 打开 AI 分析弹窗
 const openAIAnalysis = () => {
-    aiAutoQuestion.value = `分析${currentPrefectureName.value}${props.year}年的土地利用结构特征，并简述其地理意义`;
     showAIModal.value = true;
 };
 
@@ -302,9 +300,7 @@ function getBaseChartOption(year, dataList) {
                 position: 'inside',
                 formatter: params => {
                     const val = params.value;
-                    const areaStr = val >= 10000
-                        ? (val / 10000).toFixed(2) + ' 万km²'
-                        : val.toFixed(2) + ' km²';
+                    const areaStr = val.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + ' km²';
                     return `${params.name}\n${areaStr}\n${params.percent.toFixed(1)}%`;
                 },
                 fontSize: 12,

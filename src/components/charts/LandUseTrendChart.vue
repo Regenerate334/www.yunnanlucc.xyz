@@ -150,7 +150,7 @@ const updateChart = () => {
       axisLabel: {
         color: 'rgba(165, 204, 255, 0.6)',
         fontSize: 9,
-        formatter: (value) => value >= 10000 ? (value / 10000).toFixed(0) + '万' : value.toFixed(0)
+        formatter: (value) => value.toLocaleString('en-US')
       },
       splitLine: { lineStyle: { color: 'rgba(255,255,255,0.03)' } },
       axisLine: { show: false },
@@ -184,7 +184,7 @@ const updateChart = () => {
         fontSize: 10,
         fontWeight: 'bold',
         distance: 8,
-        formatter: (params) => params.value.toFixed(0)
+        formatter: (params) => params.value.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
       },
       areaStyle: {
         color: new echarts.graphic.LinearGradient(0, 0, 0, 1, [
@@ -237,7 +237,7 @@ const updateChart = () => {
 
         allTypes.forEach(item => {
           const val = item.value;
-          const areaStr = val >= 10000 ? (val / 10000).toFixed(2) + ' 万km²' : val.toFixed(2) + ' km²';
+          const areaStr = val.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + ' km²';
           const isCurrentGrid = params.some(p => p.seriesName === item.name);
 
           html += `<div style="display:flex; justify-content:space-between; align-items:center; margin:6px 0; min-width:240px; opacity: ${isCurrentGrid ? 1 : 0.7}; scale: ${isCurrentGrid ? 1.02 : 1};">

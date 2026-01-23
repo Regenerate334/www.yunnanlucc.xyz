@@ -4,7 +4,7 @@
     <div class="messages-container" ref="messagesContainer">
       <div v-if="messages.length === 0" class="empty-state">
         <div class="ai-avatar-icon">
-          <img :src="deepseekIcon" alt="DeepSeek" class="empty-logo" />
+          <ChatGptIcon :size="48" color="#3b82f6" class="empty-logo" />
         </div>
         <p>你好！我是土地利用分析 AI 助手</p>
         <p class="sub-text">选择下方问题或输入您的问题</p>
@@ -23,7 +23,7 @@
             <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2" />
             <circle cx="12" cy="7" r="4" />
           </svg>
-          <img v-else :src="deepseekIcon" alt="AI" class="avatar-img" />
+          <ChatGptIcon v-else :size="24" color="#3b82f6" class="avatar-img" />
         </div>
         <div class="content">
           <!-- 深度思考过程 -->
@@ -31,7 +31,7 @@
             <div class="thinking-header" @click="toggleThinking(index)">
               <div class="thinking-title">
                 <span class="thinking-icon" :class="{ 'spinning': !parseMessage(msg.content).content && loading }">
-                  <img :src="deepseekIcon" alt="thinking" width="12" height="12" />
+                  <ChatGptIcon :size="12" color="#64748b" />
                 </span>
                 <span class="thinking-text">{{ !parseMessage(msg.content).content && loading ? '正在思考...' : '思考过程'
                 }}</span>
@@ -81,7 +81,10 @@ import { analyzeDataStream } from '@/utils/aiService.js';
 import MarkdownIt from 'markdown-it';
 import hljs from 'highlight.js';
 import 'highlight.js/styles/atom-one-dark.css';
-import deepseekIcon from '@/assets/icons/deepseek-icon.png';
+import texmath from 'markdown-it-texmath';
+import katex from 'katex';
+import 'katex/dist/katex.min.css';
+import ChatGptIcon from '@/components/icons/ChatGptIcon.vue';
 
 const md = new MarkdownIt({
   html: true,
@@ -97,6 +100,10 @@ const md = new MarkdownIt({
     }
     return '<pre class="hljs"><code>' + md.utils.escapeHtml(str) + '</code></pre>';
   }
+}).use(texmath, {
+  engine: katex,
+  delimiters: 'dollars',
+  katexOptions: { throwOnError: false, displayMode: false }
 });
 
 const props = defineProps({

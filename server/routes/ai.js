@@ -1,453 +1,167 @@
 import express from 'express';
-import pool from '../config/db.js';
-import { handleError } from '../middleware/logger.js';
+import ollama from 'ollama';
+import { DataRouter } from '../utils/dataRouter.js';
 
 const router = express.Router();
+const dataRouter = new DataRouter();
 
-// ============ 本地 Ollama API 配置 ============
-const OLLAMA_URL = process.env.OLLAMA_URL || 'http://localhost:11434';
-const OLLAMA_MODEL = process.env.OLLAMA_MODEL || 'deepseek-r1:8b';
+// ============ 本地 Ollama 配置 ============
+const OLLAMA_MODEL = process.env.OLLAMA_MODEL || 'gpt-oss:20b';
 
+const SYSTEM_PROMPT = `# CRITICAL: Data Authenticity Constraint (最高优先级)
+**你只能使用"数据背景"章节中通过API传入的真实数据库数据进行分析。**
+- 严禁编造、推测、臆想任何数值、年份或统计结果。
+- 如果用户询问的数据不在提供的上下文中，必须明确告知"当前数据背景未包含该信息"，而非编造回答。
+- 所有引用的数字必须能在"数据背景"表格中找到对应来源。
+- 违反此规则将导致分析结果无效。
+
+---
+
+# Role Definition
+你是由"云南省国土空间规划系统"搭载的首席GIS数据分析师与生态规划专家。你的核心职责是基于用户提供的地理统计数据，进行专业的土地利用/覆盖变化（LUCC）分析、生态敏感性评估及空间规划建议。
+
+# Knowledge Base & Context
+1. **地理背景**: 云南省地处中国西南，地势西北高东南低，地形以山地高原为主，生态环境脆弱且多样。分析时需考虑"山地生态"、"高原湖泊保护"及"耕地红线"等政策背景。
+2. **数据标准**: 数据基于 CLCD (China Land Cover Dataset) 分类体系。
+   - 耕地 (Cropland): 农业生产用地，关乎粮食安全。
+   - 林地 (Forest): 森林资源，生态核心，碳汇主体。
+   - 灌木 (Shrub): 过渡性植被，生态缓冲带。
+   - 草地 (Grassland): 畜牧与生态功能兼具。
+   - 水体 (Water): 湖泊、河流（重点关注九大高原湖泊：滇池、洱海、抚仙湖等）。
+   - 建设用地 (Impervious): 城市扩张、不透水面，需严控增量。
+   - 裸地/冰雪 (Barren/Snow): 自然保留地。
+
+# Analytical Framework (CoT)
+在接收到数据后，请严格遵循以下思维链进行分析：
+1. **现状概览**: 快速识别该区域的主导地类（占比最大）和稀缺地类。
+2. **时空演变**: 如果提供多期数据，计算变化幅度。
+   - *关注点*: 建设用地是否无序扩张？耕地是否减少？林地是否破碎化？
+3. **转移逻辑**: 分析地类之间的转化关系（如：耕地→建设用地=城市化占用；耕地→林地=退耕还林政策）。
+4. **归因与建议**: 结合云南省情，给出基于数据的规划建议（如：严控建设用地增量，提升存量用地效率）。
+
+# Output Constraints
+1. **拒绝罗列**: 不要把数据翻译成文字再读一遍（用户能看懂图表）。请直接输出**比率、变化率、趋势判断**。
+2. **数据严谨**: 引用数据必须精准，必须使用 **km²** 作为单位，保留两位小数并添加千位分隔符（例如：12,345.67 km²）。**严禁**使用“万km²”、“亿km²”等缩略单位。严禁编造数据。
+3. **格式规范**: 
+   - 使用 Markdown 渲染。
+   - 使用 \`###\` 分级标题组织内容。
+   - 关键结论使用 **加粗**。
+   - 数据对比强烈建议使用 Markdown 表格。
+   - 涉及警示性内容（如耕地剧减）使用 \`>\` 引用块强调。
+
+# Style Guide
+- 语言风格：学术、客观、精炼（类似《地理学报》或政府规划公报）。
+- 避免口语化表达（如"哪怕"、"大概"、"好像"）。
+- 结尾必须包含一段"**决策建议**"或"**政策启示**"。`;
+
+const SIMPLE_SYSTEM_PROMPT = `# 角色：GIS数据分析师
+你必须基于提供的【数据背景】回答问题。
+
+# 核心规则
+1. **绝对真实**：只能使用提供的数据，严禁编造。
+2. **完整性**：如果用户询问"各类"或"所有"数据，必须列出表格中存在的**全部9种地类**（耕地、林地、灌木、草地、水体、湿地、建设用地、裸地、冰雪），不可遗漏。
+3. **格式**：使用 Markdown 表格展示数据。
+
+# 数据背景说明
+数据包含云南省的土地利用面积（单位：km²，已添加千位分隔符）。请务必保持此格式，不要转换为“万”单位。
+`;
 
 /**
- * 调用本地 Ollama API (非流式)
+ * 处理 AI 流式响应 - 使用 Ollama SDK
  */
-async function callOllamaAPI(prompt, systemPrompt) {
-    console.log(`[AI] 调用 Ollama API: ${OLLAMA_URL}, 模型: ${OLLAMA_MODEL}`);
+async function handleAIStream(req, res) {
+    const { year, messages, question, componentContext, region, model } = req.body;
+    const selectedModel = model || OLLAMA_MODEL;
+    let history = messages || (question ? [{ role: 'user', content: question }] : []);
 
-    const response = await fetch(`${OLLAMA_URL}/api/chat`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-            model: OLLAMA_MODEL,
-            messages: [
-                { role: 'system', content: systemPrompt },
-                { role: 'user', content: prompt }
-            ],
-            stream: false,
+    if (history.length === 0) {
+        return res.status(400).json({ error: '请提供问题' });
+    }
+
+    res.setHeader('Content-Type', 'text/event-stream');
+    res.setHeader('Cache-Control', 'no-cache');
+    res.setHeader('Connection', 'keep-alive');
+    res.flushHeaders();
+
+    try {
+        const lastUserMsg = history.filter(m => m.role === 'user').pop()?.content || '';
+
+        console.log('\n' + '='.repeat(60));
+        console.log('[AI] 收到分析请求 (Ollama SDK)');
+        console.log('='.repeat(60));
+        console.log(`[AI] 模型: ${selectedModel}`);
+        console.log(`[AI] 区域: ${region || '云南省'}`);
+        console.log(`[AI] 年份: ${year || 2023}`);
+        console.log(`[AI] 上下文类型: ${componentContext?.type || 'none'}`);
+        console.log(`[AI] 用户问题: ${lastUserMsg}`);
+
+        const richContext = await dataRouter.route(lastUserMsg, componentContext, year || 2023);
+
+        // 针对小模型使用简化 Prompt
+        const isSmallModel = selectedModel.includes('1.5b') || selectedModel.includes('4b') || selectedModel.includes('gemma');
+        const currentSystemPrompt = isSmallModel ? SIMPLE_SYSTEM_PROMPT : SYSTEM_PROMPT;
+
+        const fullMessages = [{ role: 'system', content: currentSystemPrompt }];
+        if (richContext) {
+            console.log('-'.repeat(60));
+            console.log('[AI] 数据上下文:');
+            console.log(richContext);
+            console.log('-'.repeat(60));
+            fullMessages.push({ role: 'system', content: `数据背景：\n${richContext}` });
+        }
+
+        fullMessages.push(...history);
+        console.log(`[AI] 发送到 Ollama (共 ${fullMessages.length} 条消息)`);
+
+        // 使用 Ollama SDK 流式响应
+        const response = await ollama.chat({
+            model: selectedModel,
+            messages: fullMessages,
+            stream: true,
+            keep_alive: 0,
             options: {
-                temperature: 0.7,
-                num_ctx: 4096
+                temperature: 0.6,
+                num_ctx: 8192,
+                top_p: 0.9
             }
-        })
-    });
-
-    if (!response.ok) {
-        throw new Error(`Ollama API 错误: ${response.status} ${response.statusText}`);
-    }
-
-    const data = await response.json();
-    return data.message?.content || '';
-}
-
-const generateContent = callOllamaAPI;
-
-// ============ 数据获取函数 ============
-
-async function getProvinceData(year) {
-    try {
-        const { rows } = await pool.query(`
-            SELECT 
-                year,
-                MAX(CASE WHEN land_use_type = 'Cropland' THEN area END) as cropland,
-                MAX(CASE WHEN land_use_type = 'Forest' THEN area END) as forest,
-                MAX(CASE WHEN land_use_type = 'Shrub' THEN area END) as shrub,
-                MAX(CASE WHEN land_use_type = 'Grassland' THEN area END) as grassland,
-                MAX(CASE WHEN land_use_type = 'Water' THEN area END) as water,
-                MAX(CASE WHEN land_use_type = 'Snow/Ice' THEN area END) as snow_ice,
-                MAX(CASE WHEN land_use_type = 'Barren' THEN area END) as barren,
-                MAX(CASE WHEN land_use_type = 'Impervious' THEN area END) as impervious,
-                MAX(CASE WHEN land_use_type = 'Wetland' THEN area END) as wetland
-            FROM clcd_province 
-            WHERE year = $1
-            GROUP BY year
-        `, [year]);
-        return rows;
-    } catch (e) {
-        console.error('[AI] 获取省级数据失败:', e.message);
-        return [];
-    }
-}
-
-async function getHistoricalTrend(year, fullHistory = false) {
-    const startYear = fullHistory ? 1985 : Math.max(1990, year - 4);
-    try {
-        const { rows } = await pool.query(`
-            SELECT 
-                year,
-                MAX(CASE WHEN land_use_type = 'Cropland' THEN area END)/1000000 as cropland,
-                MAX(CASE WHEN land_use_type = 'Forest' THEN area END)/1000000 as forest,
-                MAX(CASE WHEN land_use_type = 'Impervious' THEN area END)/1000000 as impervious
-            FROM clcd_province 
-            WHERE year BETWEEN $1 AND $2
-            GROUP BY year 
-            ORDER BY year
-        `, [startYear, year]);
-        return rows;
-    } catch (e) {
-        console.error('[AI] 获取历史趋势失败:', e.message);
-        return [];
-    }
-}
-
-async function getPrefectureRanking(year) {
-    try {
-        const { rows } = await pool.query(`
-            SELECT region_name, 
-                COALESCE(cropland, 0)/1000000 as cropland,
-                COALESCE(forest, 0)/1000000 as forest,
-                COALESCE(impervious, 0)/1000000 as impervious
-            FROM clcd_prefecture 
-            WHERE year = $1
-            ORDER BY impervious DESC
-            LIMIT 5
-        `, [year]);
-        return rows;
-    } catch (e) {
-        console.error('[AI] 获取地级市排名失败:', e.message);
-        return [];
-    }
-}
-
-async function getAllPrefectureData(year) {
-    try {
-        const { rows } = await pool.query(`
-            SELECT region_name, 
-                COALESCE(cropland, 0) as cropland,
-                COALESCE(forest, 0) as forest,
-                COALESCE(grassland, 0) as grassland,
-                COALESCE(water, 0) as water,
-                COALESCE(impervious, 0) as impervious
-            FROM clcd_prefecture 
-            WHERE year = $1
-            ORDER BY impervious DESC
-        `, [year]);
-        return rows;
-    } catch (e) {
-        console.error('[AI] 获取全量地级市数据失败:', e.message);
-        return [];
-    }
-}
-
-async function getPrefectureHistoricalTrend(prefectureName, yearStart, yearEnd) {
-    try {
-        const { rows } = await pool.query(`
-            SELECT year, 
-                COALESCE(cropland, 0)/1000000 as cropland,
-                COALESCE(forest, 0)/1000000 as forest,
-                COALESCE(impervious, 0)/1000000 as impervious
-            FROM clcd_prefecture 
-            WHERE TRIM(region_name) = $1 AND year BETWEEN $2 AND $3
-            ORDER BY year
-        `, [prefectureName.trim(), yearStart, yearEnd]);
-        return rows;
-    } catch (e) {
-        console.error('[AI] 获取地级市历史趋势失败:', e.message);
-        return [];
-    }
-}
-
-async function getCountyDataByPrefecture(prefecture, year) {
-    try {
-        const { rows } = await pool.query(`
-            SELECT c.region_name, 
-                COALESCE(c.cropland, 0) as cropland,
-                COALESCE(c.forest, 0) as forest,
-                COALESCE(c.impervious, 0) as impervious
-            FROM clcd_county c
-            JOIN yunnan_country_level_city_boundaries b 
-              ON TRIM(c.region_name) = TRIM(b.县级)
-            WHERE b.地级 = $1 AND c.year = $2
-            ORDER BY c.impervious DESC
-        `, [prefecture.trim(), year]);
-        return rows;
-    } catch (e) {
-        console.error('[AI] 获取区县数据失败:', e.message);
-        return [];
-    }
-}
-
-// ============ 核心逻辑：按需加载与并行查询 ============
-
-function analyzeQuestion(question) {
-    const needs = {
-        provinceData: false,
-        historicalTrend: false,
-        fullHistory: false,
-        prefectureRanking: false,
-        allPrefectures: false,
-        prefectureTrend: false,
-        countyData: false,
-        targetPrefecture: null,
-        isChatOnly: false
-    };
-
-    if (!question || question.trim().length < 2) {
-        needs.isChatOnly = true;
-        return needs;
-    }
-
-    const q = question.toLowerCase();
-    const chatKeywords = ['你好', '您好', '嗨', 'hello', 'hi', '你是谁', '谁做的', '功能', '帮助', '谢谢', '再见'];
-    const dataKeywords = ['数据', '面积', '耕地', '林地', '草地', '建设', '水域', '趋势', '变化', '历史', '对比', '排名', '昆明', '曲靖', '玉溪', '保山', '昭通', '丽江', '普洱', '临沧', '楚雄', '红河', '文山', '西双版纳', '大理', '德宏', '怒江', '迪庆', '县', '区', '市', '州', '19', '20'];
-
-    const isChat = chatKeywords.some(k => q.includes(k));
-    const hasData = dataKeywords.some(k => q.includes(k));
-
-    if (isChat && !hasData) {
-        needs.isChatOnly = true;
-        return needs;
-    }
-
-    const prefectures = ['昆明', '曲靖', '玉溪', '保山', '昭通', '丽江', '普洱', '临沧', '楚雄', '红河', '文山', '西双版纳', '大理', '德宏', '怒江', '迪庆'];
-    for (const p of prefectures) {
-        if (question.includes(p)) {
-            needs.targetPrefecture = p.endsWith('市') || p.endsWith('州') ? p : (['西双版纳', '红河', '文山', '楚雄', '大理', '德宏', '怒江', '迪庆'].includes(p) ? p + '州' : p + '市');
-            needs.prefectureTrend = true;
-            needs.countyData = true;
-            break;
-        }
-    }
-
-    if (q.includes('对比') || q.includes('比较') || q.includes('排名') || q.includes('各地')) {
-        needs.allPrefectures = true;
-        needs.prefectureRanking = true;
-    }
-
-    if (q.includes('趋势') || q.includes('变化') || q.includes('历史')) {
-        needs.historicalTrend = true;
-        if (q.includes('1985') || q.includes('全部') || q.includes('长期')) needs.fullHistory = true;
-    }
-
-    if (q.includes('区县') || q.includes('县')) needs.countyData = true;
-    if (q.includes('全省') || q.includes('云南') || q.includes('面积')) needs.provinceData = true;
-
-    if (hasData && !Object.values(needs).some(v => v === true)) {
-        needs.provinceData = true;
-    }
-
-    return needs;
-}
-
-async function buildRichContext(year, region, question) {
-    const startTime = Date.now();
-    const needs = analyzeQuestion(question);
-
-    if (needs.isChatOnly) {
-        console.log(`[AI] 识别为闲聊，跳过上下文构建`);
-        return "";
-    }
-
-    if (region && region !== '云南省') {
-        needs.targetPrefecture = region;
-        needs.prefectureTrend = true;
-    }
-
-    const queries = {};
-    if (needs.provinceData) queries.province = getProvinceData(year);
-    if (needs.historicalTrend) queries.trend = getHistoricalTrend(year, needs.fullHistory);
-    if (needs.prefectureRanking) queries.ranking = getPrefectureRanking(year);
-    if (needs.allPrefectures) queries.allPref = getAllPrefectureData(year);
-    if (needs.targetPrefecture && needs.prefectureTrend) queries.prefTrend = getPrefectureHistoricalTrend(needs.targetPrefecture, Math.max(1990, year - 10), year);
-    if (needs.targetPrefecture && needs.countyData) queries.county = getCountyDataByPrefecture(needs.targetPrefecture, year);
-
-    const results = await Promise.all(Object.values(queries));
-    const data = {};
-    Object.keys(queries).forEach((key, index) => { data[key] = results[index]; });
-
-    let context = `## 地理空间分析上下文 (${year}年)\n\n`;
-
-    if (data.province?.length > 0) {
-        const r = data.province[0];
-        const f = v => (v / 1e6).toFixed(2);
-        context += `### 云南省现状\n- 耕地: ${f(r.cropland)} km² | 林地: ${f(r.forest)} km² | 建设用地: ${f(r.impervious)} km²\n\n`;
-    }
-
-    if (data.trend?.length > 1) {
-        context += `### 历史趋势\n| 年份 | 耕地 | 林地 | 建设用地 |\n|---|---|---|---|\n`;
-        data.trend.forEach(r => { context += `| ${r.year} | ${Number(r.cropland).toFixed(1)} | ${Number(r.forest).toFixed(1)} | ${Number(r.impervious).toFixed(1)} |\n`; });
-        context += `\n`;
-    }
-
-    if (data.prefTrend?.length > 1) {
-        context += `### ${needs.targetPrefecture}趋势\n| 年份 | 耕地 | 林地 | 建设用地 |\n|---|---|---|---|\n`;
-        data.prefTrend.forEach(r => { context += `| ${r.year} | ${Number(r.cropland).toFixed(1)} | ${Number(r.forest).toFixed(1)} | ${Number(r.impervious).toFixed(1)} |\n`; });
-        context += `\n`;
-    }
-
-    console.log(`[AI] 上下文构建耗时: ${Date.now() - startTime}ms`);
-    return context;
-}
-
-// ============ 路由处理 ============
-
-const SYSTEM_PROMPT = `你是云南省土地利用变化(LUCC)分析专家系统。请严格遵守以下输出规范：
-1. 充分利用提供的地理空间数据上下文进行专业、严谨的分析。
-2. 使用 Markdown 格式使内容易于阅读，包括使用适当的层级标题。
-3. 关键数据和重要结论请使用 **加粗** 显示。
-4. 涉及多项数据对比或详细列表时，优先使用 Markdown 表格展示。
-5. 保持简洁、专业的中文表达风格，直接回答用户问题或提供深度洞察。`;
-
-router.post('/analyze-stream', async (req, res) => {
-    const { year, messages, question, landData, region, model } = req.body;
-    const selectedModel = model || OLLAMA_MODEL;
-    let history = messages || (question ? [{ role: 'user', content: question }] : []);
-
-    if (history.length === 0) return res.status(400).json({ error: '请提供问题' });
-
-    res.setHeader('Content-Type', 'text/event-stream');
-    res.setHeader('Cache-Control', 'no-cache');
-    res.setHeader('Connection', 'keep-alive');
-    res.flushHeaders();
-
-    try {
-        const lastUserMsg = history.filter(m => m.role === 'user').pop()?.content || '';
-        const richContext = await buildRichContext(year || 2020, region, lastUserMsg);
-
-        const fullMessages = [{ role: 'system', content: SYSTEM_PROMPT }];
-        if (richContext) fullMessages.push({ role: 'system', content: `数据背景：\n${richContext}` });
-        fullMessages.push(...history);
-
-        const ollamaRes = await fetch(`${OLLAMA_URL}/api/chat`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-                model: selectedModel,
-                messages: fullMessages,
-                stream: true,
-                options: { temperature: 0.7, num_ctx: 4096 }
-            })
         });
 
-        const reader = ollamaRes.body.getReader();
-        const decoder = new TextDecoder();
-        let buffer = '';
-
-        while (true) {
-            const { done, value } = await reader.read();
-            if (done) break;
-
-            buffer += decoder.decode(value, { stream: true });
-            const lines = buffer.split('\n');
-            buffer = lines.pop();
-
-            for (const line of lines) {
-                if (!line.trim()) continue;
-                try {
-                    const json = JSON.parse(line);
-                    if (json.message?.thought) {
-                        res.write(`data: ${JSON.stringify({ content: `<think>${json.message.thought}</think>` })}\n\n`);
-                    }
-                    if (json.message?.content) {
-                        res.write(`data: ${JSON.stringify({ content: json.message.content })}\n\n`);
-                    }
-                    if (json.done) {
-                        res.write(`data: ${JSON.stringify({ done: true })}\n\n`);
-                    }
-                } catch (e) {
-                    console.error('[AI] 解析 Ollama 响应行失败:', e.message, 'Line:', line);
-                }
+        // 处理流式响应
+        for await (const part of response) {
+            if (part.message?.content) {
+                res.write(`data: ${JSON.stringify({ content: part.message.content })}\n\n`);
+            }
+            if (part.done) {
+                res.write(`data: ${JSON.stringify({ done: true })}\n\n`);
             }
         }
 
-        if (buffer.trim()) {
-            try {
-                const json = JSON.parse(buffer);
-                if (json.message?.thought) res.write(`data: ${JSON.stringify({ content: `<think>${json.message.thought}</think>` })}\n\n`);
-                if (json.message?.content) res.write(`data: ${JSON.stringify({ content: json.message.content })}\n\n`);
-                if (json.done) res.write(`data: ${JSON.stringify({ done: true })}\n\n`);
-            } catch (e) { }
-        }
-
         res.end();
+        console.log(`[AI] 分析完成，响应已发送`);
+
     } catch (err) {
-        res.write(`data: ${JSON.stringify({ error: err.message })}\n\n`);
-        res.end();
+        console.error('[AI] 错误:', err);
+        if (!res.writableEnded) {
+            res.write(`data: ${JSON.stringify({ error: err.message })}\n\n`);
+            res.end();
+        }
     }
-});
+}
 
-// 保持其他路由完整性 (suggestions 等)
+// 路由定义
+router.post('/analyze-stream', handleAIStream);
+router.post('/chat', handleAIStream);
+
 router.get('/suggestions', (req, res) => {
-    res.json({ success: true, suggestions: ['分析当前土地利用结构', '耕地变化趋势分析', '建设用地扩张特点'] });
-});
-
-// 添加 /chat 路由作为 /analyze-stream 的别名（兼容性）
-router.post('/chat', async (req, res) => {
-    const { year, messages, question, landData, region, model } = req.body;
-    const selectedModel = model || OLLAMA_MODEL;
-    let history = messages || (question ? [{ role: 'user', content: question }] : []);
-
-    if (history.length === 0) return res.status(400).json({ error: '请提供问题' });
-
-    res.setHeader('Content-Type', 'text/event-stream');
-    res.setHeader('Cache-Control', 'no-cache');
-    res.setHeader('Connection', 'keep-alive');
-    res.flushHeaders();
-
-    try {
-        const lastUserMsg = history.filter(m => m.role === 'user').pop()?.content || '';
-        const richContext = await buildRichContext(year || 2020, region, lastUserMsg);
-
-        const fullMessages = [{ role: 'system', content: SYSTEM_PROMPT }];
-        if (richContext) fullMessages.push({ role: 'system', content: `数据背景：\n${richContext}` });
-        fullMessages.push(...history);
-
-        const ollamaRes = await fetch(`${OLLAMA_URL}/api/chat`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-                model: selectedModel,
-                messages: fullMessages,
-                stream: true,
-                options: { temperature: 0.7, num_ctx: 4096 }
-            })
-        });
-
-        const reader = ollamaRes.body.getReader();
-        const decoder = new TextDecoder();
-        let buffer = '';
-
-        while (true) {
-            const { done, value } = await reader.read();
-            if (done) break;
-
-            buffer += decoder.decode(value, { stream: true });
-            const lines = buffer.split('\n');
-            buffer = lines.pop();
-
-            for (const line of lines) {
-                if (!line.trim()) continue;
-                try {
-                    const json = JSON.parse(line);
-                    if (json.message?.thought) {
-                        res.write(`data: ${JSON.stringify({ content: `<think>${json.message.thought}</think>` })}\n\n`);
-                    }
-                    if (json.message?.content) {
-                        res.write(`data: ${JSON.stringify({ content: json.message.content })}\n\n`);
-                    }
-                    if (json.done) {
-                        res.write(`data: ${JSON.stringify({ done: true })}\n\n`);
-                    }
-                } catch (e) {
-                    console.error('[AI] 解析 Ollama 响应行失败:', e.message, 'Line:', line);
-                }
-            }
-        }
-
-        if (buffer.trim()) {
-            try {
-                const json = JSON.parse(buffer);
-                if (json.message?.thought) res.write(`data: ${JSON.stringify({ content: `<think>${json.message.thought}</think>` })}\n\n`);
-                if (json.message?.content) res.write(`data: ${JSON.stringify({ content: json.message.content })}\n\n`);
-                if (json.done) res.write(`data: ${JSON.stringify({ done: true })}\n\n`);
-            } catch (e) { }
-        }
-
-        res.end();
-    } catch (err) {
-        res.write(`data: ${JSON.stringify({ error: err.message })}\n\n`);
-        res.end();
-    }
+    res.json({
+        success: true,
+        suggestions: [
+            '分析云南省近40年的耕地变化趋势',
+            '对比昆明和曲靖的建设用地占比',
+            '查看2023年各地级市的林地排名',
+            '分析滇中地区的土地利用结构特点'
+        ]
+    });
 });
 
 export default router;

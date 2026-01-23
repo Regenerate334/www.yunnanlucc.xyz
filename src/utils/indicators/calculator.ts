@@ -4,7 +4,8 @@
  * 基于谢高地2023年生态服务价值当量表
  */
 
-import type { ProvinceYearData, LandUseIndicators, LandUseType, IndicatorStatus } from '@/types/landuse'
+import type { ProvinceYearData, LandUseIndicators } from '@/types/landuse'
+import { IndicatorStatus, LandUseType } from '@/types/landuse'
 
 // ============================================
 // 常量配置
@@ -41,9 +42,9 @@ const POPULATION_DATA: Record<number, number> = {
 
 /**
  * 云南省耕地红线目标值
- * 2410万亩 = 160.67万公顷 = 1606.7 km²
+ * 2410万亩 ≈ 16066.67 km²
  */
-const CROPLAND_REDLINE_TARGET = 16067  // km²
+const CROPLAND_REDLINE_TARGET = 16066.67  // km²
 
 // ============================================
 // 核心计算类
@@ -286,7 +287,14 @@ export class IndicatorCalculator {
         if (years === 0) return result
 
         // 计算各地类的动态度
-        const landTypes: Array<keyof ProvinceYearData> = ['耕地', '林地', '草地', '水域', '建设用地', '未利用地']
+        const landTypes: Array<keyof ProvinceYearData> = [
+            LandUseType.CROPLAND,
+            LandUseType.FOREST,
+            LandUseType.GRASSLAND,
+            LandUseType.WATER,
+            LandUseType.CONSTRUCTION,
+            LandUseType.UNUSED
+        ]
 
         landTypes.forEach(type => {
             const prevValue = previous[type] as number
