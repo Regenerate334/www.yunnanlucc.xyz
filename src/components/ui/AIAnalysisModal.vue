@@ -628,6 +628,8 @@ const sendMessage = async (text) => {
         abortController.value = null;
         // 完成后保存 AI 消息
         await saveMessage('assistant', messages.value[assistantMsgIndex].content);
+        // 刷新会话列表以获取 AI 生成的智能标题
+        await loadSessions();
       },
       (error) => {
         if (error !== 'The user aborted a request.') {

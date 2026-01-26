@@ -1,8 +1,52 @@
 import express from 'express';
 import pool from '../config/db.js';
 import { authMiddleware } from '../middleware/auth.js';
+import ollama from 'ollama';
 
 const router = express.Router();
+
+/**
+ * 使用 AI 生成简洁的对话标题（异步执行，不阻塞主流程）
+ */
+async function generateSessionTitle(sessionId, userMessage) {
+    try {
+        const response = await ollama.chat({
+            model: 'gemma3:4b', // 使用快速小模型生成标题
+            messages: [
+                {
+                    role: 'system',
+                    content: '你是一个标题生成器。根据用户的问题，生成一个5-15字的简洁中文标题。只输出标题本身，不要任何解释、标点或引号。'
+                },
+                {
+                    role: 'user',
+                    content: `为这个问题生成标题：${userMessage}`
+                }
+            ],
+            options: {
+                temperature: 0.3,
+                num_ctx: 256
+            }
+        });
+
+        const title = response.message?.content?.trim().slice(0, 30) || userMessage.slice(0, 20);
+
+        // 更新数据库中的标题
+        await pool.query(
+            'UPDATE chat_sessions SET title = $1 WHERE id = $2',
+            [title, sessionId]
+        );
+
+        console.log(`[Sessions] AI 生成标题: "${title}" (session: ${sessionId})`);
+    } catch (err) {
+        console.error('[Sessions] AI 生成标题失败，使用截断标题:', err.message);
+        // 失败时使用简单截断作为后备
+        const fallbackTitle = userMessage.length > 20 ? userMessage.slice(0, 17) + '...' : userMessage;
+        await pool.query(
+            'UPDATE chat_sessions SET title = $1 WHERE id = $2',
+            [fallbackTitle, sessionId]
+        ).catch(() => { });
+    }
+}
 
 /**
  * GET /api/chat-sessions - 获取当前用户的所有会话
@@ -84,13 +128,14 @@ router.post('/:id/messages', authMiddleware, async (req, res) => {
 
         let messages = rows[0].messages || [];
         let title = rows[0].title;
+        const isFirstUserMessage = role === 'user' && (title === '新对话' || !title);
 
         // 2. 追加新消息
         messages.push({ role, content, created_at: new Date().toISOString() });
 
-        // 3. 如果是用户的第一条消息，自动生成标题
-        if (role === 'user' && (title === '新对话' || !title)) {
-            title = content.length > 30 ? content.substring(0, 27) + '...' : content;
+        // 3. 如果是用户的第一条消息，先设临时标题，稍后异步生成智能标题
+        if (isFirstUserMessage) {
+            title = content.length > 20 ? content.substring(0, 17) + '...' : content;
         }
 
         // 4. 更新数据库
@@ -98,6 +143,11 @@ router.post('/:id/messages', authMiddleware, async (req, res) => {
             'UPDATE chat_sessions SET messages = $1, title = $2, updated_at = CURRENT_TIMESTAMP WHERE id = $3',
             [JSON.stringify(messages), title, sessionId]
         );
+
+        // 5. 异步生成 AI 标题（不阻塞响应）
+        if (isFirstUserMessage) {
+            generateSessionTitle(sessionId, content).catch(() => { });
+        }
 
         res.json({ success: true });
     } catch (err) {
