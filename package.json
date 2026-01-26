@@ -4,7 +4,7 @@
   "version": "1.0.0",
   "type": "module",
   "scripts": {
-    "dev": "concurrently -n \"SERVER,CLIENT\" -c \"green,blue\" \"npm run server\" \"npm run client\"",
+    "dev": "concurrently -k -n \"OLLAMA,SERVER,CLIENT\" -c \"magenta,green,blue\" \"ollama serve\" \"npm run server\" \"npm run client\"",
     "client": "vite",
     "server": "node ./server/start.js",
     "stop": "taskkill /F /IM node.exe",
