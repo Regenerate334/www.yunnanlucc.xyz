@@ -570,12 +570,7 @@ const sendMessage = async (text) => {
     content: userMessage
   });
 
-  // 立即更新前端会话标题（如果是第一条消息）
-  const currentSession = sessions.value.find(s => s.id === currentSessionId.value);
-  if (currentSession && (currentSession.title === '新对话' || !currentSession.title)) {
-    currentSession.title = userMessage.length > 30 ? userMessage.substring(0, 27) + '...' : userMessage;
-  }
-
+  // 移除前端手动更新标题的逻辑，完全交给后端 AI 处理
   await scrollToBottom();
   loading.value = true;
   abortController.value = new AbortController();
@@ -628,8 +623,10 @@ const sendMessage = async (text) => {
         abortController.value = null;
         // 完成后保存 AI 消息
         await saveMessage('assistant', messages.value[assistantMsgIndex].content);
-        // 刷新会话列表以获取 AI 生成的智能标题
-        await loadSessions();
+        // 延迟 2 秒刷新会话列表，确保后端 AI 已完成标题生成
+        setTimeout(() => {
+          loadSessions();
+        }, 2000);
       },
       (error) => {
         if (error !== 'The user aborted a request.') {

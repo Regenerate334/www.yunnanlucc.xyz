@@ -11,20 +11,20 @@ const router = express.Router();
 async function generateSessionTitle(sessionId, userMessage) {
     try {
         const response = await ollama.chat({
-            model: 'gemma3:4b', // 使用快速小模型生成标题
+            model: 'deepseek-r1:8b', // 使用本地已有的模型
             messages: [
                 {
                     role: 'system',
-                    content: '你是一个标题生成器。根据用户的问题，生成一个5-15字的简洁中文标题。只输出标题本身，不要任何解释、标点或引号。'
+                    content: '你是一个专业的对话标题提取器。请根据用户的问题，提取一个4-8个字的极简中文标题（例如：云南耕地分析、昆明建设用地等）。只输出标题文字，严禁包含“标题：”、引号、标点或任何解释。'
                 },
                 {
                     role: 'user',
-                    content: `为这个问题生成标题：${userMessage}`
+                    content: userMessage
                 }
             ],
             options: {
                 temperature: 0.3,
-                num_ctx: 256
+                num_ctx: 512
             }
         });
 
