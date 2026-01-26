@@ -17,7 +17,8 @@
               <div class="history-group">
                 <div class="group-title">Today</div>
                 <div v-for="session in sessions" :key="session.id" class="history-item"
-                  :class="{ active: currentSessionId === session.id }" @click="selectSession(session.id)">
+                  :class="{ active: currentSessionId === session.id }" @click="selectSession(session.id)"
+                  :title="session.title">
                   <div class="item-content">
                     <span class="item-title">{{ session.title || '新对话' }}</span>
                   </div>
