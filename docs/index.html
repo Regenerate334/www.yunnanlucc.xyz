@@ -1,0 +1,1204 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>API 参考文档 - 云南省国土空间规划监测预警平台</title>
+    <style>
+        :root {
+            --sidebar-bg: #1a1a2e;
+            --sidebar-text: #a0a0b0;
+            --sidebar-active: #fff;
+            --main-bg: #fff;
+            --text-color: #333;
+            --code-bg: #f5f5f5;
+            --border-color: #e0e0e0;
+            --link-color: #0077cc;
+            --method-get: #61affe;
+            --method-post: #49cc90;
+            --method-put: #fca130;
+            --method-delete: #f93e3e;
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: "Segoe UI", "PingFang SC", "Microsoft YaHei", sans-serif;
+            font-size: 14px;
+            line-height: 1.6;
+            color: var(--text-color);
+            display: flex;
+        }
+
+        .sidebar {
+            width: 300px;
+            min-height: 100vh;
+            background: var(--sidebar-bg);
+            color: var(--sidebar-text);
+            position: fixed;
+            left: 0;
+            top: 0;
+            bottom: 0;
+            overflow-y: auto;
+            padding: 20px 0;
+        }
+
+        .sidebar-header {
+            padding: 0 20px 20px;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+            margin-bottom: 15px;
+        }
+
+        .sidebar-header h1 {
+            font-size: 15px;
+            font-weight: 600;
+            color: #fff;
+            margin-bottom: 4px;
+        }
+
+        .sidebar-header .version {
+            font-size: 12px;
+            color: var(--sidebar-text);
+        }
+
+        .sidebar-section {
+            margin-bottom: 8px;
+        }
+
+        .sidebar-section-title {
+            font-size: 11px;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            color: #888;
+            padding: 12px 20px 6px;
+        }
+
+        .sidebar a {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            padding: 6px 20px;
+            color: var(--sidebar-text);
+            text-decoration: none;
+            font-size: 12px;
+            transition: all 0.15s;
+        }
+
+        .sidebar a:hover {
+            color: #fff;
+            background: rgba(255, 255, 255, 0.05);
+        }
+
+        .sidebar .method-tag {
+            font-size: 9px;
+            font-weight: 700;
+            padding: 2px 5px;
+            border-radius: 3px;
+            min-width: 36px;
+            text-align: center;
+        }
+
+        .sidebar .method-tag.get {
+            background: rgba(97, 175, 254, 0.2);
+            color: var(--method-get);
+        }
+
+        .sidebar .method-tag.post {
+            background: rgba(73, 204, 144, 0.2);
+            color: var(--method-post);
+        }
+
+        .sidebar .method-tag.put {
+            background: rgba(252, 161, 48, 0.2);
+            color: var(--method-put);
+        }
+
+        .sidebar .method-tag.delete {
+            background: rgba(249, 62, 62, 0.2);
+            color: var(--method-delete);
+        }
+
+        .main {
+            margin-left: 300px;
+            flex: 1;
+            min-height: 100vh;
+            background: var(--main-bg);
+        }
+
+        .content {
+            max-width: 900px;
+            padding: 40px 50px;
+        }
+
+        .page-title {
+            font-size: 28px;
+            font-weight: 600;
+            margin-bottom: 8px;
+            color: #1a1a2e;
+        }
+
+        .page-desc {
+            color: #666;
+            margin-bottom: 30px;
+            padding-bottom: 20px;
+            border-bottom: 1px solid var(--border-color);
+        }
+
+        .category {
+            font-size: 20px;
+            font-weight: 600;
+            margin: 40px 0 20px;
+            padding-bottom: 10px;
+            border-bottom: 2px solid var(--border-color);
+            color: #1a1a2e;
+        }
+
+        .category:first-of-type {
+            margin-top: 0;
+        }
+
+        .endpoint {
+            margin: 30px 0;
+            padding-bottom: 30px;
+            border-bottom: 1px solid #eee;
+        }
+
+        .endpoint:last-child {
+            border-bottom: none;
+        }
+
+        .endpoint-header {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            margin-bottom: 12px;
+            flex-wrap: wrap;
+        }
+
+        .endpoint-method {
+            font-size: 12px;
+            font-weight: 700;
+            padding: 4px 10px;
+            border-radius: 4px;
+            color: #fff;
+        }
+
+        .endpoint-method.get {
+            background: var(--method-get);
+        }
+
+        .endpoint-method.post {
+            background: var(--method-post);
+        }
+
+        .endpoint-method.put {
+            background: var(--method-put);
+        }
+
+        .endpoint-method.delete {
+            background: var(--method-delete);
+        }
+
+        .endpoint-path {
+            font-family: "SFMono-Regular", Consolas, "Liberation Mono", monospace;
+            font-size: 15px;
+            font-weight: 600;
+            color: #1a1a2e;
+        }
+
+        .endpoint-path .param {
+            color: var(--link-color);
+        }
+
+        .endpoint-auth {
+            font-size: 11px;
+            padding: 3px 8px;
+            border-radius: 3px;
+            margin-left: auto;
+        }
+
+        .endpoint-auth.required {
+            background: #fff3cd;
+            color: #856404;
+        }
+
+        .endpoint-auth.none {
+            background: #d4edda;
+            color: #155724;
+        }
+
+        .endpoint-desc {
+            color: #555;
+            margin-bottom: 16px;
+        }
+
+        .params-title {
+            font-size: 13px;
+            font-weight: 600;
+            color: #1a1a2e;
+            margin: 16px 0 8px;
+        }
+
+        .params-table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 13px;
+            margin-bottom: 16px;
+        }
+
+        .params-table th {
+            text-align: left;
+            padding: 8px 12px;
+            background: #f8f9fa;
+            border: 1px solid var(--border-color);
+            font-weight: 600;
+            color: #555;
+        }
+
+        .params-table td {
+            padding: 8px 12px;
+            border: 1px solid var(--border-color);
+            vertical-align: top;
+        }
+
+        .params-table .param-name {
+            font-family: monospace;
+            font-weight: 600;
+            color: #c7254e;
+        }
+
+        .params-table .param-type {
+            color: var(--link-color);
+            font-size: 12px;
+        }
+
+        .params-table .required {
+            color: #d73a49;
+            font-size: 11px;
+            font-weight: 600;
+        }
+
+        .params-table .optional {
+            color: #6a737d;
+            font-size: 11px;
+        }
+
+        .returns {
+            margin: 16px 0;
+        }
+
+        .returns-title {
+            font-size: 13px;
+            font-weight: 600;
+            color: #1a1a2e;
+            margin-bottom: 8px;
+        }
+
+        .returns-type {
+            font-family: monospace;
+            color: var(--link-color);
+        }
+
+        pre {
+            background: var(--code-bg);
+            border: 1px solid var(--border-color);
+            border-radius: 4px;
+            padding: 14px 16px;
+            overflow-x: auto;
+            font-family: "SFMono-Regular", Consolas, monospace;
+            font-size: 13px;
+            line-height: 1.5;
+            margin: 12px 0;
+        }
+
+        code {
+            font-family: "SFMono-Regular", Consolas, monospace;
+            font-size: 13px;
+        }
+
+        .inline-code {
+            background: var(--code-bg);
+            padding: 2px 6px;
+            border-radius: 3px;
+            color: #c7254e;
+        }
+
+        .example-title {
+            font-size: 13px;
+            font-weight: 600;
+            color: #1a1a2e;
+            margin: 16px 0 8px;
+        }
+
+        .type-section {
+            margin: 40px 0 20px;
+        }
+
+        .type-title {
+            font-size: 16px;
+            font-weight: 600;
+            margin-bottom: 12px;
+            color: #1a1a2e;
+        }
+
+        @media (max-width: 900px) {
+            .sidebar {
+                width: 260px;
+            }
+
+            .main {
+                margin-left: 260px;
+            }
+
+            .content {
+                padding: 30px;
+            }
+        }
+    </style>
+</head>
+
+<body>
+    <nav class="sidebar">
+        <div class="sidebar-header">
+            <h1>云南省国土空间规划监测预警平台</h1>
+            <span class="version">API 参考文档 v1.0.0</span>
+        </div>
+
+        <div class="sidebar-section">
+            <div class="sidebar-section-title">用户认证</div>
+            <a href="#auth-login"><span class="method-tag post">POST</span>/api/auth/login</a>
+            <a href="#auth-register"><span class="method-tag post">POST</span>/api/auth/register</a>
+            <a href="#auth-verify"><span class="method-tag get">GET</span>/api/auth/verify</a>
+        </div>
+
+        <div class="sidebar-section">
+            <div class="sidebar-section-title">土地利用数据</div>
+            <a href="#clcd-years"><span class="method-tag get">GET</span>/api/clcd/years</a>
+            <a href="#clcd-summary"><span class="method-tag get">GET</span>/api/clcd/{year}/summary</a>
+            <a href="#clcd-province"><span class="method-tag get">GET</span>/api/clcd/province</a>
+            <a href="#clcd-prefecture"><span class="method-tag get">GET</span>/api/clcd/prefecture</a>
+            <a href="#clcd-county"><span class="method-tag get">GET</span>/api/clcd/county</a>
+            <a href="#clcd-trend"><span class="method-tag get">GET</span>/api/clcd/trend/{level}/{name}</a>
+        </div>
+
+        <div class="sidebar-section">
+            <div class="sidebar-section-title">行政区划</div>
+            <a href="#regions"><span class="method-tag get">GET</span>/api/regions/{level}</a>
+        </div>
+
+        <div class="sidebar-section">
+            <div class="sidebar-section-title">空间分析</div>
+            <a href="#analysis-periods"><span class="method-tag get">GET</span>/api/analysis/transfer-matrix/periods</a>
+            <a href="#analysis-matrix"><span class="method-tag get">GET</span>/api/analysis/transfer-matrix/{period}</a>
+            <a href="#analysis-dashboard"><span class="method-tag get">GET</span>/api/analysis/dashboard/{year}</a>
+        </div>
+
+        <div class="sidebar-section">
+            <div class="sidebar-section-title">气象服务</div>
+            <a href="#weather"><span class="method-tag get">GET</span>/api/weather</a>
+        </div>
+
+        <div class="sidebar-section">
+            <div class="sidebar-section-title">智能分析</div>
+            <a href="#ai-stream"><span class="method-tag post">POST</span>/api/ai/analyze-stream</a>
+            <a href="#ai-suggestions"><span class="method-tag get">GET</span>/api/ai/suggestions</a>
+        </div>
+
+        <div class="sidebar-section">
+            <div class="sidebar-section-title">会话管理</div>
+            <a href="#sessions-list"><span class="method-tag get">GET</span>/api/chat-sessions</a>
+            <a href="#sessions-create"><span class="method-tag post">POST</span>/api/chat-sessions</a>
+            <a href="#sessions-delete"><span class="method-tag delete">DELETE</span>/api/chat-sessions/{id}</a>
+            <a href="#sessions-messages"><span class="method-tag get">GET</span>/api/chat-sessions/{id}/messages</a>
+            <a href="#sessions-add"><span class="method-tag post">POST</span>/api/chat-sessions/{id}/messages</a>
+        </div>
+
+        <div class="sidebar-section">
+            <div class="sidebar-section-title">类型定义</div>
+            <a href="#types-landuse">土地利用类型</a>
+            <a href="#types-models">AI模型列表</a>
+            <a href="#types-prefecture">云南省地级市</a>
+        </div>
+    </nav>
+
+    <div class="main">
+        <div class="content">
+            <h1 class="page-title">API 参考文档</h1>
+            <p class="page-desc">
+                基础地址: <code class="inline-code">http://localhost:3000</code><br>
+                除 <code class="inline-code">/api/auth/*</code>、<code class="inline-code">/api/weather</code> 和 <code
+                    class="inline-code">/health</code> 外，所有接口均需要 JWT 令牌认证。
+                请在请求头中添加: <code class="inline-code">Authorization: Bearer {token}</code>
+            </p>
+
+            <!-- 用户认证 -->
+            <h2 class="category" id="auth">用户认证</h2>
+
+            <div class="endpoint" id="auth-login">
+                <div class="endpoint-header">
+                    <span class="endpoint-method post">POST</span>
+                    <span class="endpoint-path">/api/auth/login</span>
+                    <span class="endpoint-auth none">无需认证</span>
+                </div>
+                <p class="endpoint-desc">用户登录接口。验证用户名和密码，成功后返回 JWT 令牌。令牌有效期为 24 小时。</p>
+
+                <div class="params-title">请求参数</div>
+                <table class="params-table">
+                    <tr>
+                        <th>参数名</th>
+                        <th>类型</th>
+                        <th>必填</th>
+                        <th>说明</th>
+                    </tr>
+                    <tr>
+                        <td><span class="param-name">username</span></td>
+                        <td><span class="param-type">string</span></td>
+                        <td><span class="required">必填</span></td>
+                        <td>用户名</td>
+                    </tr>
+                    <tr>
+                        <td><span class="param-name">password</span></td>
+                        <td><span class="param-type">string</span></td>
+                        <td><span class="required">必填</span></td>
+                        <td>密码</td>
+                    </tr>
+                </table>
+
+                <div class="returns">
+                    <div class="returns-title">返回值</div>
+                    <span class="returns-type">Object</span> - 包含令牌和用户信息的对象
+                </div>
+
+                <div class="example-title">响应示例</div>
+                <pre><code>{
+  "success": true,
+  "token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...",
+  "user": {
+    "id": 1,
+    "username": "admin",
+    "role": "admin"
+  }
+}</code></pre>
+            </div>
+
+            <div class="endpoint" id="auth-register">
+                <div class="endpoint-header">
+                    <span class="endpoint-method post">POST</span>
+                    <span class="endpoint-path">/api/auth/register</span>
+                    <span class="endpoint-auth none">无需认证</span>
+                </div>
+                <p class="endpoint-desc">用户注册接口。创建新用户账号，密码使用 bcrypt 加密存储。</p>
+
+                <div class="params-title">请求参数</div>
+                <table class="params-table">
+                    <tr>
+                        <th>参数名</th>
+                        <th>类型</th>
+                        <th>必填</th>
+                        <th>说明</th>
+                    </tr>
+                    <tr>
+                        <td><span class="param-name">username</span></td>
+                        <td><span class="param-type">string</span></td>
+                        <td><span class="required">必填</span></td>
+                        <td>用户名，至少 3 个字符，不能与已有用户重复</td>
+                    </tr>
+                    <tr>
+                        <td><span class="param-name">password</span></td>
+                        <td><span class="param-type">string</span></td>
+                        <td><span class="required">必填</span></td>
+                        <td>密码，至少 6 个字符</td>
+                    </tr>
+                </table>
+
+                <div class="returns">
+                    <div class="returns-title">返回值</div>
+                    <span class="returns-type">Object</span> - 包含注册结果和用户信息
+                </div>
+            </div>
+
+            <div class="endpoint" id="auth-verify">
+                <div class="endpoint-header">
+                    <span class="endpoint-method get">GET</span>
+                    <span class="endpoint-path">/api/auth/verify</span>
+                    <span class="endpoint-auth required">需要认证</span>
+                </div>
+                <p class="endpoint-desc">验证令牌有效性。如果令牌有效，返回解码后的用户信息；如果令牌无效或已过期，返回 401 错误。</p>
+
+                <div class="returns">
+                    <div class="returns-title">返回值</div>
+                    <span class="returns-type">Object</span> - 包含用户 ID、用户名和角色
+                </div>
+            </div>
+
+            <!-- 土地利用数据 -->
+            <h2 class="category" id="clcd">土地利用数据</h2>
+
+            <div class="endpoint" id="clcd-years">
+                <div class="endpoint-header">
+                    <span class="endpoint-method get">GET</span>
+                    <span class="endpoint-path">/api/clcd/years</span>
+                    <span class="endpoint-auth required">需要认证</span>
+                </div>
+                <p class="endpoint-desc">获取数据集中可用的年份列表。数据来源于中国土地覆盖数据集 (CLCD)，时间跨度为 1985-2023 年。</p>
+
+                <div class="returns">
+                    <div class="returns-title">返回值</div>
+                    <span class="returns-type">Array&lt;number&gt;</span> - 年份数组
+                </div>
+
+                <div class="example-title">响应示例</div>
+                <pre><code>[1985, 1990, 1995, 2000, 2005, 2010, 2015, 2020, 2023]</code></pre>
+            </div>
+
+            <div class="endpoint" id="clcd-summary">
+                <div class="endpoint-header">
+                    <span class="endpoint-method get">GET</span>
+                    <span class="endpoint-path">/api/clcd/<span class="param">{year}</span>/summary</span>
+                    <span class="endpoint-auth required">需要认证</span>
+                </div>
+                <p class="endpoint-desc">获取指定年份云南省各土地利用类型的面积汇总数据。</p>
+
+                <div class="params-title">路径参数</div>
+                <table class="params-table">
+                    <tr>
+                        <th>参数名</th>
+                        <th>类型</th>
+                        <th>说明</th>
+                    </tr>
+                    <tr>
+                        <td><span class="param-name">year</span></td>
+                        <td><span class="param-type">number</span></td>
+                        <td>目标年份，如 2023、2020 等</td>
+                    </tr>
+                </table>
+
+                <div class="returns">
+                    <div class="returns-title">返回值</div>
+                    <span class="returns-type">Array&lt;Object&gt;</span> - 各地类面积汇总数组
+                </div>
+
+                <div class="example-title">响应示例</div>
+                <pre><code>[
+  { "class_code": 1, "class_name": "Cropland", "area_km2": 57432.15 },
+  { "class_code": 2, "class_name": "Forest", "area_km2": 198234.88 },
+  { "class_code": 3, "class_name": "Shrub", "area_km2": 12345.67 }
+]</code></pre>
+            </div>
+
+            <div class="endpoint" id="clcd-province">
+                <div class="endpoint-header">
+                    <span class="endpoint-method get">GET</span>
+                    <span class="endpoint-path">/api/clcd/province</span>
+                    <span class="endpoint-auth required">需要认证</span>
+                </div>
+                <p class="endpoint-desc">获取云南省省级土地利用时间序列数据。返回宽表格式，每行包含一个年份的所有地类面积。面积单位为平方米 (m²)。</p>
+
+                <div class="returns">
+                    <div class="returns-title">返回值</div>
+                    <span class="returns-type">Array&lt;Object&gt;</span> - 各年份数据数组
+                </div>
+            </div>
+
+            <div class="endpoint" id="clcd-prefecture">
+                <div class="endpoint-header">
+                    <span class="endpoint-method get">GET</span>
+                    <span class="endpoint-path">/api/clcd/prefecture</span>
+                    <span class="endpoint-auth required">需要认证</span>
+                </div>
+                <p class="endpoint-desc">获取云南省 16 个地级市（州）的全量土地利用数据。包含所有年份和所有地类的面积信息。</p>
+            </div>
+
+            <div class="endpoint" id="clcd-county">
+                <div class="endpoint-header">
+                    <span class="endpoint-method get">GET</span>
+                    <span class="endpoint-path">/api/clcd/county</span>
+                    <span class="endpoint-auth required">需要认证</span>
+                </div>
+                <p class="endpoint-desc">获取云南省所有区县的全量土地利用数据。包含所有年份和所有地类的面积信息。</p>
+            </div>
+
+            <div class="endpoint" id="clcd-trend">
+                <div class="endpoint-header">
+                    <span class="endpoint-method get">GET</span>
+                    <span class="endpoint-path">/api/clcd/trend/<span class="param">{level}</span>/<span
+                            class="param">{name}</span></span>
+                    <span class="endpoint-auth required">需要认证</span>
+                </div>
+                <p class="endpoint-desc">获取指定区域的土地利用历史变化趋势数据。可查询地级市或区县级别的多年数据。</p>
+
+                <div class="params-title">路径参数</div>
+                <table class="params-table">
+                    <tr>
+                        <th>参数名</th>
+                        <th>类型</th>
+                        <th>说明</th>
+                    </tr>
+                    <tr>
+                        <td><span class="param-name">level</span></td>
+                        <td><span class="param-type">string</span></td>
+                        <td>行政级别: <code class="inline-code">prefecture</code> (地级市) 或 <code
+                                class="inline-code">county</code> (区县)</td>
+                    </tr>
+                    <tr>
+                        <td><span class="param-name">name</span></td>
+                        <td><span class="param-type">string</span></td>
+                        <td>区域名称，如"昆明市"、"五华区"（需进行 URL 编码）</td>
+                    </tr>
+                </table>
+
+                <div class="example-title">请求示例</div>
+                <pre><code>GET /api/clcd/trend/prefecture/昆明市
+GET /api/clcd/trend/county/官渡区</code></pre>
+            </div>
+
+            <!-- 行政区划 -->
+            <h2 class="category" id="region">行政区划</h2>
+
+            <div class="endpoint" id="regions">
+                <div class="endpoint-header">
+                    <span class="endpoint-method get">GET</span>
+                    <span class="endpoint-path">/api/regions/<span class="param">{level}</span></span>
+                    <span class="endpoint-auth required">需要认证</span>
+                </div>
+                <p class="endpoint-desc">获取云南省行政区划列表或层级结构。支持获取省-市-县三级结构、地级市列表或区县列表。</p>
+
+                <div class="params-title">路径参数</div>
+                <table class="params-table">
+                    <tr>
+                        <th>参数名</th>
+                        <th>类型</th>
+                        <th>说明</th>
+                    </tr>
+                    <tr>
+                        <td><span class="param-name">level</span></td>
+                        <td><span class="param-type">string</span></td>
+                        <td>
+                            <code class="inline-code">hierarchy</code> - 返回省-市-县树形结构<br>
+                            <code class="inline-code">prefecture</code> - 返回地级市名称数组<br>
+                            <code class="inline-code">county</code> - 返回区县名称数组
+                        </td>
+                    </tr>
+                </table>
+
+                <div class="example-title">hierarchy 响应示例</div>
+                <pre><code>[
+  { "name": "昆明市", "children": ["五华区", "盘龙区", "官渡区", "西山区", ...] },
+  { "name": "曲靖市", "children": ["麒麟区", "沾益区", "马龙区", ...] }
+]</code></pre>
+            </div>
+
+            <!-- 空间分析 -->
+            <h2 class="category" id="analysis">空间分析</h2>
+
+            <div class="endpoint" id="analysis-periods">
+                <div class="endpoint-header">
+                    <span class="endpoint-method get">GET</span>
+                    <span class="endpoint-path">/api/analysis/transfer-matrix/periods</span>
+                    <span class="endpoint-auth required">需要认证</span>
+                </div>
+                <p class="endpoint-desc">获取土地利用转移矩阵可用的时间周期列表。转移矩阵用于分析不同时期之间各地类的面积转换情况。</p>
+
+                <div class="returns">
+                    <div class="returns-title">返回值</div>
+                    <span class="returns-type">Array&lt;string&gt;</span> - 时间周期字符串数组
+                </div>
+
+                <div class="example-title">响应示例</div>
+                <pre><code>["1990-2000", "2000-2010", "2010-2020", "2020-2023"]</code></pre>
+            </div>
+
+            <div class="endpoint" id="analysis-matrix">
+                <div class="endpoint-header">
+                    <span class="endpoint-method get">GET</span>
+                    <span class="endpoint-path">/api/analysis/transfer-matrix/<span class="param">{period}</span></span>
+                    <span class="endpoint-auth required">需要认证</span>
+                </div>
+                <p class="endpoint-desc">获取指定时间段的土地利用转移矩阵。返回绝对量矩阵（面积值）和百分比矩阵（转移比例）。</p>
+
+                <div class="params-title">路径参数</div>
+                <table class="params-table">
+                    <tr>
+                        <th>参数名</th>
+                        <th>类型</th>
+                        <th>说明</th>
+                    </tr>
+                    <tr>
+                        <td><span class="param-name">period</span></td>
+                        <td><span class="param-type">string</span></td>
+                        <td>时间周期，格式为"起始年-结束年"，如 <code class="inline-code">2010-2020</code></td>
+                    </tr>
+                </table>
+
+                <div class="returns">
+                    <div class="returns-title">返回值</div>
+                    <span class="returns-type">Object</span> - 转移矩阵对象
+                </div>
+
+                <div class="example-title">响应示例</div>
+                <pre><code>{
+  "absoluteMatrix": [[0, 1234.5, 567.8, ...], ...],
+  "percentageMatrix": [[0, 0.025, 0.011, ...], ...],
+  "landTypes": ["Cropland", "Forest", "Shrub", "Grassland", "Water", "Barren", "Impervious", "Wetland"],
+  "period": "2010-2020"
+}</code></pre>
+            </div>
+
+            <div class="endpoint" id="analysis-dashboard">
+                <div class="endpoint-header">
+                    <span class="endpoint-method get">GET</span>
+                    <span class="endpoint-path">/api/analysis/dashboard/<span class="param">{year}</span></span>
+                    <span class="endpoint-auth required">需要认证</span>
+                </div>
+                <p class="endpoint-desc">获取大屏看板综合数据。包含省份土地利用汇总、土地利用动态度排行榜、预警信息等。</p>
+
+                <div class="params-title">路径参数</div>
+                <table class="params-table">
+                    <tr>
+                        <th>参数名</th>
+                        <th>类型</th>
+                        <th>说明</th>
+                    </tr>
+                    <tr>
+                        <td><span class="param-name">year</span></td>
+                        <td><span class="param-type">number</span></td>
+                        <td>目标年份，如 2023</td>
+                    </tr>
+                </table>
+
+                <div class="params-title">查询参数</div>
+                <table class="params-table">
+                    <tr>
+                        <th>参数名</th>
+                        <th>类型</th>
+                        <th>必填</th>
+                        <th>说明</th>
+                    </tr>
+                    <tr>
+                        <td><span class="param-name">type</span></td>
+                        <td><span class="param-type">string</span></td>
+                        <td><span class="optional">可选</span></td>
+                        <td>
+                            动态度计算类型，默认 <code class="inline-code">comprehensive</code>（综合动态度）<br>
+                            可选值: comprehensive | cropland | forest | grassland | impervious | water
+                        </td>
+                    </tr>
+                </table>
+
+                <div class="returns">
+                    <div class="returns-title">返回值</div>
+                    <span class="returns-type">Object</span> - 包含 summary、ranking、alerts 等字段
+                </div>
+            </div>
+
+            <!-- 气象服务 -->
+            <h2 class="category" id="weather-section">气象服务</h2>
+
+            <div class="endpoint" id="weather">
+                <div class="endpoint-header">
+                    <span class="endpoint-method get">GET</span>
+                    <span class="endpoint-path">/api/weather</span>
+                    <span class="endpoint-auth none">无需认证</span>
+                </div>
+                <p class="endpoint-desc">获取实时天气或天气预报数据。该接口代理高德天气 API，自动添加天气图标。</p>
+
+                <div class="params-title">查询参数</div>
+                <table class="params-table">
+                    <tr>
+                        <th>参数名</th>
+                        <th>类型</th>
+                        <th>默认值</th>
+                        <th>说明</th>
+                    </tr>
+                    <tr>
+                        <td><span class="param-name">city</span></td>
+                        <td><span class="param-type">string</span></td>
+                        <td><code class="inline-code">530100</code></td>
+                        <td>城市行政区划代码，如昆明市为 530100</td>
+                    </tr>
+                    <tr>
+                        <td><span class="param-name">extensions</span></td>
+                        <td><span class="param-type">string</span></td>
+                        <td><code class="inline-code">base</code></td>
+                        <td><code class="inline-code">base</code> - 实况天气 | <code class="inline-code">all</code> - 天气预报
+                        </td>
+                    </tr>
+                </table>
+
+                <div class="example-title">请求示例</div>
+                <pre><code>GET /api/weather?city=530100&extensions=base</code></pre>
+            </div>
+
+            <!-- 智能分析 -->
+            <h2 class="category" id="ai">智能分析</h2>
+
+            <div class="endpoint" id="ai-stream">
+                <div class="endpoint-header">
+                    <span class="endpoint-method post">POST</span>
+                    <span class="endpoint-path">/api/ai/analyze-stream</span>
+                    <span class="endpoint-auth required">需要认证</span>
+                </div>
+                <p class="endpoint-desc">AI 驱动的土地利用数据智能分析接口。支持自然语言提问，系统会自动注入相关数据上下文，返回 SSE (Server-Sent Events) 流式响应。
+                </p>
+
+                <div class="params-title">请求参数</div>
+                <table class="params-table">
+                    <tr>
+                        <th>参数名</th>
+                        <th>类型</th>
+                        <th>必填</th>
+                        <th>说明</th>
+                    </tr>
+                    <tr>
+                        <td><span class="param-name">messages</span></td>
+                        <td><span class="param-type">Array&lt;Object&gt;</span></td>
+                        <td><span class="required">必填</span></td>
+                        <td>对话消息数组，每条消息包含 role ("user" 或 "assistant") 和 content 字段</td>
+                    </tr>
+                    <tr>
+                        <td><span class="param-name">year</span></td>
+                        <td><span class="param-type">number</span></td>
+                        <td><span class="optional">可选</span></td>
+                        <td>分析的目标年份，默认 2023</td>
+                    </tr>
+                    <tr>
+                        <td><span class="param-name">componentContext</span></td>
+                        <td><span class="param-type">Object</span></td>
+                        <td><span class="optional">可选</span></td>
+                        <td>组件上下文对象，type 可选: province_trend | prefecture_pie | county_pie</td>
+                    </tr>
+                    <tr>
+                        <td><span class="param-name">model</span></td>
+                        <td><span class="param-type">string</span></td>
+                        <td><span class="optional">可选</span></td>
+                        <td>AI 模型名称，默认 gpt-oss:20b。可选模型见<a href="#types-models">AI模型列表</a></td>
+                    </tr>
+                </table>
+
+                <div class="returns">
+                    <div class="returns-title">返回值</div>
+                    <span class="returns-type">text/event-stream</span> - SSE 流式响应
+                </div>
+
+                <div class="example-title">请求示例</div>
+                <pre><code>{
+  "messages": [
+    { "role": "user", "content": "分析云南省近40年耕地面积变化趋势" }
+  ],
+  "year": 2023,
+  "componentContext": { "type": "province_trend" },
+  "model": "gpt-oss:20b"
+}</code></pre>
+
+                <div class="example-title">响应格式</div>
+                <pre><code>data: {"content": "根据"}
+data: {"content": "数据分析"}
+data: {"content": "，云南省耕地..."}
+data: {"done": true}</code></pre>
+            </div>
+
+            <div class="endpoint" id="ai-suggestions">
+                <div class="endpoint-header">
+                    <span class="endpoint-method get">GET</span>
+                    <span class="endpoint-path">/api/ai/suggestions</span>
+                    <span class="endpoint-auth required">需要认证</span>
+                </div>
+                <p class="endpoint-desc">获取 AI 分析建议问题列表。返回一组预设的分析问题，可用于引导用户进行数据分析。</p>
+
+                <div class="example-title">响应示例</div>
+                <pre><code>{
+  "success": true,
+  "suggestions": [
+    "分析云南省近40年的耕地变化趋势",
+    "对比昆明和曲靖的建设用地占比",
+    "查看2023年各地级市的林地排名",
+    "分析滇中地区的土地利用结构特点"
+  ]
+}</code></pre>
+            </div>
+
+            <!-- 会话管理 -->
+            <h2 class="category" id="sessions">会话管理</h2>
+
+            <div class="endpoint" id="sessions-list">
+                <div class="endpoint-header">
+                    <span class="endpoint-method get">GET</span>
+                    <span class="endpoint-path">/api/chat-sessions</span>
+                    <span class="endpoint-auth required">需要认证</span>
+                </div>
+                <p class="endpoint-desc">获取当前用户的所有对话会话列表。按更新时间倒序排列。</p>
+
+                <div class="returns">
+                    <div class="returns-title">返回值</div>
+                    <span class="returns-type">Object</span> - 包含 sessions 数组，每个会话有 id、title、created_at、updated_at 字段
+                </div>
+            </div>
+
+            <div class="endpoint" id="sessions-create">
+                <div class="endpoint-header">
+                    <span class="endpoint-method post">POST</span>
+                    <span class="endpoint-path">/api/chat-sessions</span>
+                    <span class="endpoint-auth required">需要认证</span>
+                </div>
+                <p class="endpoint-desc">创建新的对话会话。</p>
+
+                <div class="params-title">请求参数</div>
+                <table class="params-table">
+                    <tr>
+                        <th>参数名</th>
+                        <th>类型</th>
+                        <th>必填</th>
+                        <th>说明</th>
+                    </tr>
+                    <tr>
+                        <td><span class="param-name">title</span></td>
+                        <td><span class="param-type">string</span></td>
+                        <td><span class="optional">可选</span></td>
+                        <td>会话标题，默认为"新对话"</td>
+                    </tr>
+                </table>
+            </div>
+
+            <div class="endpoint" id="sessions-delete">
+                <div class="endpoint-header">
+                    <span class="endpoint-method delete">DELETE</span>
+                    <span class="endpoint-path">/api/chat-sessions/<span class="param">{id}</span></span>
+                    <span class="endpoint-auth required">需要认证</span>
+                </div>
+                <p class="endpoint-desc">删除指定的对话会话。只能删除当前用户创建的会话。</p>
+
+                <div class="params-title">路径参数</div>
+                <table class="params-table">
+                    <tr>
+                        <th>参数名</th>
+                        <th>类型</th>
+                        <th>说明</th>
+                    </tr>
+                    <tr>
+                        <td><span class="param-name">id</span></td>
+                        <td><span class="param-type">number</span></td>
+                        <td>会话 ID</td>
+                    </tr>
+                </table>
+            </div>
+
+            <div class="endpoint" id="sessions-messages">
+                <div class="endpoint-header">
+                    <span class="endpoint-method get">GET</span>
+                    <span class="endpoint-path">/api/chat-sessions/<span class="param">{id}</span>/messages</span>
+                    <span class="endpoint-auth required">需要认证</span>
+                </div>
+                <p class="endpoint-desc">获取指定会话的所有消息记录。只能获取当前用户创建的会话消息。</p>
+
+                <div class="returns">
+                    <div class="returns-title">返回值</div>
+                    <span class="returns-type">Object</span> - 包含 messages 数组，每条消息有 role、content、created_at 字段
+                </div>
+            </div>
+
+            <div class="endpoint" id="sessions-add">
+                <div class="endpoint-header">
+                    <span class="endpoint-method post">POST</span>
+                    <span class="endpoint-path">/api/chat-sessions/<span class="param">{id}</span>/messages</span>
+                    <span class="endpoint-auth required">需要认证</span>
+                </div>
+                <p class="endpoint-desc">向指定会话添加新消息。如果是用户的第一条消息且会话标题为"新对话"，系统会异步调用 AI 自动生成智能标题。</p>
+
+                <div class="params-title">请求参数</div>
+                <table class="params-table">
+                    <tr>
+                        <th>参数名</th>
+                        <th>类型</th>
+                        <th>必填</th>
+                        <th>说明</th>
+                    </tr>
+                    <tr>
+                        <td><span class="param-name">role</span></td>
+                        <td><span class="param-type">string</span></td>
+                        <td><span class="required">必填</span></td>
+                        <td>消息角色: <code class="inline-code">user</code> (用户) 或 <code
+                                class="inline-code">assistant</code> (AI助手)</td>
+                    </tr>
+                    <tr>
+                        <td><span class="param-name">content</span></td>
+                        <td><span class="param-type">string</span></td>
+                        <td><span class="required">必填</span></td>
+                        <td>消息内容</td>
+                    </tr>
+                </table>
+            </div>
+
+            <!-- 类型定义 -->
+            <h2 class="category" id="types">类型定义</h2>
+
+            <div class="type-section" id="types-landuse">
+                <div class="type-title">土地利用类型 (LandUseType)</div>
+                <p class="endpoint-desc">CLCD 土地利用分类体系，共 9 种地类。</p>
+                <table class="params-table">
+                    <tr>
+                        <th>代码</th>
+                        <th>英文名称</th>
+                        <th>中文名称</th>
+                        <th>说明</th>
+                    </tr>
+                    <tr>
+                        <td>1</td>
+                        <td>Cropland</td>
+                        <td>耕地</td>
+                        <td>农业生产用地，包括水田和旱地</td>
+                    </tr>
+                    <tr>
+                        <td>2</td>
+                        <td>Forest</td>
+                        <td>林地</td>
+                        <td>森林资源覆盖区域</td>
+                    </tr>
+                    <tr>
+                        <td>3</td>
+                        <td>Shrub</td>
+                        <td>灌木</td>
+                        <td>灌木丛覆盖区域</td>
+                    </tr>
+                    <tr>
+                        <td>4</td>
+                        <td>Grassland</td>
+                        <td>草地</td>
+                        <td>天然草地和人工草地</td>
+                    </tr>
+                    <tr>
+                        <td>5</td>
+                        <td>Water</td>
+                        <td>水体</td>
+                        <td>湖泊、河流、水库等</td>
+                    </tr>
+                    <tr>
+                        <td>6</td>
+                        <td>Snow/Ice</td>
+                        <td>冰雪</td>
+                        <td>永久性冰雪覆盖区域</td>
+                    </tr>
+                    <tr>
+                        <td>7</td>
+                        <td>Barren</td>
+                        <td>裸地</td>
+                        <td>无植被覆盖的地表</td>
+                    </tr>
+                    <tr>
+                        <td>8</td>
+                        <td>Impervious</td>
+                        <td>建设用地</td>
+                        <td>城市建成区、道路等不透水面</td>
+                    </tr>
+                    <tr>
+                        <td>9</td>
+                        <td>Wetland</td>
+                        <td>湿地</td>
+                        <td>湿地生态系统</td>
+                    </tr>
+                </table>
+            </div>
+
+            <div class="type-section" id="types-models">
+                <div class="type-title">AI 模型列表 (AIModel)</div>
+                <p class="endpoint-desc">系统支持的本地 AI 推理模型，基于 Ollama 运行。</p>
+                <table class="params-table">
+                    <tr>
+                        <th>模型标识</th>
+                        <th>参数量</th>
+                        <th>特点</th>
+                    </tr>
+                    <tr>
+                        <td><code class="inline-code">gpt-oss:20b</code></td>
+                        <td>20B</td>
+                        <td>默认模型，分析能力与响应速度平衡</td>
+                    </tr>
+                    <tr>
+                        <td><code class="inline-code">deepseek-r1:8b</code></td>
+                        <td>8B</td>
+                        <td>标准模式，适合一般分析任务</td>
+                    </tr>
+                    <tr>
+                        <td><code class="inline-code">gemma3:4b</code></td>
+                        <td>4B</td>
+                        <td>快速模式，响应迅速</td>
+                    </tr>
+                    <tr>
+                        <td><code class="inline-code">deepseek-r1:1.5b</code></td>
+                        <td>1.5B</td>
+                        <td>极速模式，适合简单问答</td>
+                    </tr>
+                </table>
+            </div>
+
+            <div class="type-section" id="types-prefecture">
+                <div class="type-title">云南省地级行政区划</div>
+                <p class="endpoint-desc">云南省 16 个地级市（州）及其行政区划代码（高德地图编码）。</p>
+                <table class="params-table">
+                    <tr>
+                        <th>名称</th>
+                        <th>区划代码</th>
+                        <th>名称</th>
+                        <th>区划代码</th>
+                    </tr>
+                    <tr>
+                        <td>昆明市</td>
+                        <td>530100</td>
+                        <td>曲靖市</td>
+                        <td>530300</td>
+                    </tr>
+                    <tr>
+                        <td>玉溪市</td>
+                        <td>530400</td>
+                        <td>保山市</td>
+                        <td>530500</td>
+                    </tr>
+                    <tr>
+                        <td>昭通市</td>
+                        <td>530600</td>
+                        <td>丽江市</td>
+                        <td>530700</td>
+                    </tr>
+                    <tr>
+                        <td>普洱市</td>
+                        <td>530800</td>
+                        <td>临沧市</td>
+                        <td>530900</td>
+                    </tr>
+                    <tr>
+                        <td>楚雄彝族自治州</td>
+                        <td>532300</td>
+                        <td>红河哈尼族彝族自治州</td>
+                        <td>532500</td>
+                    </tr>
+                    <tr>
+                        <td>文山壮族苗族自治州</td>
+                        <td>532600</td>
+                        <td>西双版纳傣族自治州</td>
+                        <td>532800</td>
+                    </tr>
+                    <tr>
+                        <td>大理白族自治州</td>
+                        <td>532900</td>
+                        <td>德宏傣族景颇族自治州</td>
+                        <td>533100</td>
+                    </tr>
+                    <tr>
+                        <td>怒江傈僳族自治州</td>
+                        <td>533300</td>
+                        <td>迪庆藏族自治州</td>
+                        <td>533400</td>
+                    </tr>
+                </table>
+            </div>
+
+        </div>
+    </div>
+</body>
+
+</html>

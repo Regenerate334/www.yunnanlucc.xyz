@@ -435,3 +435,32 @@ OLLAMA_MODEL=gpt-oss:20b
 **数据驱动决策，AI 守护未来** 🌍🤖
 
 **项目状态**: ✅ 生产可用
+
+---
+
+## 📚 API 文档
+
+完整的后端 API 文档位于 `docs/` 目录：
+
+| 文档 | 说明 |
+|------|------|
+| [交互式文档](./docs/index.html) | Cesium 风格 API 参考文档，支持在线浏览 |
+| [Markdown 文档](./docs/API_DOCUMENTATION.md) | 纯文本 API 参考手册 |
+| [OpenAPI 规范](./docs/openapi.yaml) | OpenAPI 3.0 规范，可导入 Swagger UI |
+| [Postman 集合](./docs/postman_collection.json) | Postman 测试集合，支持一键导入 |
+
+### 本地预览文档
+
+```bash
+cd docs
+python -m http.server 8888
+# 访问 http://localhost:8888
+```
+
+### GitHub Pages 部署
+
+1. 推送代码到 GitHub
+2. 进入仓库 Settings → Pages
+3. Source 选择 `main` 分支，文件夹选择 `/docs`
+4. 访问 `https://your-username.github.io/my_webgis_project/`
+
