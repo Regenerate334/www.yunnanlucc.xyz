@@ -181,34 +181,34 @@
 
         <!-- 测试1: 配置文件加载 -->
         <div class="test-section">
-            <h2>1. 土地利用类型配置 <span id="config-status" class="status loading">未加载</span></h2>
+            <h2>1. 土地利用类型配置 <span id="config-status" class="status loading">未加�?/span></h2>
             <button onclick="testLoadConfig()">加载配置文件</button>
             <div id="config-result" class="data-display" style="display: none;"></div>
         </div>
 
         <!-- 测试2: 省级数据加载 -->
         <div class="test-section">
-            <h2>2. 省级数据 <span id="province-status" class="status loading">未加载</span></h2>
+            <h2>2. 省级数据 <span id="province-status" class="status loading">未加�?/span></h2>
             <div class="controls">
                 <button onclick="testLoadProvinceData()">加载全部省级数据</button>
                 <select id="year-select">
-                    <option value="1985">1985年</option>
-                    <option value="2000">2000年</option>
-                    <option value="2010">2010年</option>
-                    <option value="2020">2020年</option>
-                    <option value="2023" selected>2023年</option>
+                    <option value="1985">1985�?/option>
+                    <option value="2000">2000�?/option>
+                    <option value="2010">2010�?/option>
+                    <option value="2020">2020�?/option>
+                    <option value="2023" selected>2023�?/option>
                 </select>
-                <button onclick="testLoadProvinceByYear()">按年份加载</button>
+                <button onclick="testLoadProvinceByYear()">按年份加�?/button>
             </div>
             <div id="province-stats" class="stats-grid" style="display: none;"></div>
             <div id="province-result" class="data-display" style="display: none;"></div>
         </div>
 
-        <!-- 测试3: 地级市数据加载 -->
+        <!-- 测试3: 地级市数据加�?-->
         <div class="test-section">
-            <h2>3. 地级市数据 <span id="prefecture-status" class="status loading">未加载</span></h2>
+            <h2>3. 地级市数�?<span id="prefecture-status" class="status loading">未加�?/span></h2>
             <div class="controls">
-                <button onclick="testLoadPrefectureData()">加载全部地级市数据</button>
+                <button onclick="testLoadPrefectureData()">加载全部地级市数�?/button>
             </div>
             <div id="prefecture-stats" class="stats-grid" style="display: none;"></div>
             <div id="prefecture-result" class="data-display" style="display: none;"></div>
@@ -216,7 +216,7 @@
 
         <!-- 测试4: 县级数据统计 -->
         <div class="test-section">
-            <h2>4. 县级数据 <span id="county-status" class="status loading">未加载</span></h2>
+            <h2>4. 县级数据 <span id="county-status" class="status loading">未加�?/span></h2>
             <div class="controls">
                 <button onclick="testLoadCountyData()">加载县级数据统计</button>
             </div>
@@ -230,7 +230,7 @@
             const statusEl = document.getElementById('config-status');
             const resultEl = document.getElementById('config-result');
 
-            statusEl.innerHTML = '<span class="loading-spinner"></span>加载中';
+            statusEl.innerHTML = '<span class="loading-spinner"></span>加载�?;
             statusEl.className = 'status loading';
 
             try {
@@ -242,12 +242,12 @@
                 resultEl.textContent = JSON.stringify(config, null, 2);
                 resultEl.style.display = 'block';
 
-                statusEl.textContent = '✓ 成功';
+                statusEl.textContent = '�?成功';
                 statusEl.className = 'status success';
 
                 console.log('配置加载成功:', config);
             } catch (error) {
-                statusEl.textContent = '✗ 失败';
+                statusEl.textContent = '�?失败';
                 statusEl.className = 'status error';
                 resultEl.textContent = `错误: ${error.message}`;
                 resultEl.style.display = 'block';
@@ -260,7 +260,7 @@
             const resultEl = document.getElementById('province-result');
             const statsEl = document.getElementById('province-stats');
 
-            statusEl.innerHTML = '<span class="loading-spinner"></span>加载中';
+            statusEl.innerHTML = '<span class="loading-spinner"></span>加载�?;
             statusEl.className = 'status loading';
 
             try {
@@ -287,15 +287,15 @@
         `;
                 statsEl.style.display = 'grid';
 
-                resultEl.textContent = JSON.stringify(data.slice(0, 3), null, 2) + '\n... (仅显示前3条)';
+                resultEl.textContent = JSON.stringify(data.slice(0, 3), null, 2) + '\n... (仅显示前3�?';
                 resultEl.style.display = 'block';
 
-                statusEl.textContent = '✓ 成功';
+                statusEl.textContent = '�?成功';
                 statusEl.className = 'status success';
 
                 console.log('省级数据加载成功:', data);
             } catch (error) {
-                statusEl.textContent = '✗ 失败';
+                statusEl.textContent = '�?失败';
                 statusEl.className = 'status error';
                 console.error('省级数据加载失败:', error);
             }
@@ -315,9 +315,9 @@
                 if (yearData) {
                     resultEl.textContent = JSON.stringify(yearData, null, 2);
                     resultEl.style.display = 'block';
-                    console.log(`${year}年数据:`, yearData);
+                    console.log(`${year}年数�?`, yearData);
                 } else {
-                    resultEl.textContent = `未找到${year}年的数据`;
+                    resultEl.textContent = `未找�?{year}年的数据`;
                     resultEl.style.display = 'block';
                 }
             } catch (error) {
@@ -330,7 +330,7 @@
             const resultEl = document.getElementById('prefecture-result');
             const statsEl = document.getElementById('prefecture-stats');
 
-            statusEl.innerHTML = '<span class="loading-spinner"></span>加载中';
+            statusEl.innerHTML = '<span class="loading-spinner"></span>加载�?;
             statusEl.className = 'status loading';
 
             try {
@@ -349,24 +349,24 @@
           </div>
           <div class="stat-card">
             <div class="stat-value">${cities.length}</div>
-            <div class="stat-label">地级市数量</div>
+            <div class="stat-label">地级市数�?/div>
           </div>
           <div class="stat-card">
             <div class="stat-value">${years.length}</div>
-            <div class="stat-label">年份数</div>
+            <div class="stat-label">年份�?/div>
           </div>
         `;
                 statsEl.style.display = 'grid';
 
-                resultEl.textContent = `地级市列表: ${cities.join(', ')}`;
+                resultEl.textContent = `地级市列�? ${cities.join(', ')}`;
                 resultEl.style.display = 'block';
 
-                statusEl.textContent = '✓ 成功';
+                statusEl.textContent = '�?成功';
                 statusEl.className = 'status success';
 
-                console.log('地级市数据加载成功:', data);
+                console.log('地级市数据加载成�?', data);
             } catch (error) {
-                statusEl.textContent = '✗ 失败';
+                statusEl.textContent = '�?失败';
     </script>
 </body>
 

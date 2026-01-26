@@ -37,9 +37,9 @@ export default defineConfig({
     chunkSizeWarningLimit: 2000, // 增加 chunk 大小警告限制，Cesium 较大
     rollupOptions: {
       output: {
-        manualChunks: {
-          cesium: ['cesium'] // 将 Cesium 拆分为独立 chunk
-        }
+        // manualChunks: {
+        //   cesium: ['cesium'] // 将 Cesium 拆分为独立 chunk
+        // }
       }
     }
   }
