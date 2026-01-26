@@ -2,6 +2,7 @@
 node_modules/
 .pnp
 .pnp.js
+server/node_modules/
 
 # Build artifacts
 dist/
@@ -12,6 +13,10 @@ dist-ssr/
 .output/
 .vercel/
 .tsbuildinfo
+*.zip
+*.tar.gz
+*.rar
+*.7z
 
 # Environment variables (Sensitive data)
 .env
@@ -42,12 +47,29 @@ __snapshots__/
 *.njsproj
 *.sln
 *.sw?
+.history/
+.project
+.settings/
+.classpath
 
 # OS
 .DS_Store
 Thumbs.db
 desktop.ini
+Icon?
+ehthumbs.db
+
+# Database
+*.db
+*.sqlite
 
 # GIS Data (Optional: ignore large data files if they are not meant for version control)
 # src/assets/data/*.json
 # public/data/*.zip
+# *.shp
+# *.dbf
+# *.shx
+# *.prj
+
+# AI Agent
+.agent/cache/
