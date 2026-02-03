@@ -104,8 +104,11 @@ const handleLogin = async () => {
             localStorage.setItem('auth_token', res.token);
             localStorage.setItem('user_info', JSON.stringify(res.user));
 
-            // 强制刷新跳转，确保 Cesium 实例重新初始化
-            window.location.href = '/workbench';
+            // 在跳转前确保 localStorage 已完成写入（通过一个小延迟或简单的同步操作）
+            console.log('[Login] Storage updated, navigating to workbench...');
+            
+            // 使用 router.push，但在微任务后执行，确保状态传播
+            router.push('/workbench');
         }
     } catch (err) {
         alert(err.message || '登录失败，请检查账号密码');

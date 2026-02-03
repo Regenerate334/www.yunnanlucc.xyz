@@ -326,21 +326,39 @@ const updateChart = () => {
     chartInstance.value.setOption(option);
 }
 
+// resize 事件处理
+const handleResize = () => {
+    if (chartInstance.value) {
+        chartInstance.value.resize();
+    }
+};
+
 onMounted(() => {
     nextTick(() => {
-        initChart()
-    })
-})
+        initChart();
+        window.addEventListener('resize', handleResize);
+    });
+});
 
 onUnmounted(() => {
+    // 移除 resize 监听
+    window.removeEventListener('resize', handleResize);
+    
+    // 销毁 ECharts 实例
     if (chartInstance.value) {
-        chartInstance.value.dispose()
+        try {
+            chartInstance.value.dispose();
+        } catch (e) {
+            console.warn('[RegionalTrendChart] Chart dispose warning:', e);
+        }
+        chartInstance.value = null;
     }
-})
+});
 
+// 使用 shallowRef 监听避免深层响应开销
 watch(() => props.seriesData, () => {
-    updateChart()
-}, { deep: true })
+    updateChart();
+}, { deep: false }); // 只监听引用变化，减少不必要的重新渲染
 </script>
 
 <style scoped>

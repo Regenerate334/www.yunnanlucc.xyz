@@ -369,11 +369,23 @@ watch(() => props.year, (newYear) => {
 });
 
 onUnmounted(() => {
+  // 移除 resize 事件监听
+  window.removeEventListener('resize', handleResize);
+  
+  // 销毁 ECharts 实例
   if (chartInstance.value) {
-    window.removeEventListener('resize', handleResize);
-    chartInstance.value.dispose();
+    try {
+      chartInstance.value.dispose();
+    } catch (e) {
+      console.warn('[EChartsPrefecturePie] Chart dispose warning:', e);
+    }
     chartInstance.value = null;
   }
+  
+  // 清理 GeoJSON 和数据缓存
+  citiesGeoJSON = null;
+  citiesData = null;
+  landUseData = null;
 });
 
 // 打开 AI 分析弹窗

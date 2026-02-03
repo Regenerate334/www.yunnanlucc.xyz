@@ -12,7 +12,7 @@ const CLCD_CLASS_MAP = {
 // 获取年份列表
 router.get('/years', async (_req, res) => {
     try {
-        const { rows } = await pool.query('SELECT DISTINCT year FROM public.yunnan_clcd_merged_table ORDER BY year');
+        const { rows } = await pool.query('SELECT DISTINCT year FROM public.clcd_province ORDER BY year');
         res.json(rows.map(r => r.year));
     } catch (err) { handleError(res, err); }
 });
@@ -21,17 +21,16 @@ router.get('/years', async (_req, res) => {
 router.get('/:year/summary', async (req, res) => {
     const year = Number(req.params.year);
     try {
+        // 改为从 clcd_province 静态表获取，不再需要 SUM 计算
         const sql = `
-      SELECT landuse_type, SUM(area_sqm) / 1e6 AS area_km2
-      FROM public.yunnan_clcd_merged_table
-      WHERE year = $1
-      GROUP BY landuse_type
-      ORDER BY landuse_type
-    `;
+            SELECT land_use_type as class_name, area as area_km2
+            FROM public.clcd_province
+            WHERE year = $1
+            ORDER BY land_use_type
+        `;
         const { rows } = await pool.query(sql, [year]);
         res.json(rows.map(r => ({
-            class_code: Number(r.landuse_type),
-            class_name: CLCD_CLASS_MAP[Number(r.landuse_type)] || String(r.landuse_type),
+            class_name: r.class_name,
             area_km2: Number(r.area_km2)
         })));
     } catch (err) { handleError(res, err); }
@@ -143,6 +142,124 @@ router.get('/county/year/:year', async (req, res) => {
         const { rows } = await pool.query(sql, [Number(year)]);
         res.json(rows);
     } catch (err) { handleError(res, err); }
+});
+
+// 获取县级空间数据（GeoJSON格式，用于区域检测分析）
+router.get('/spatial/county/:year', async (req, res) => {
+    const { year } = req.params;
+    try {
+        // 从空间表获取几何数据，并关联统计属性
+        // 修正: 经过排查，空间表字段名为 name_zh 而非 name
+        // 动态探测列名以解决 500 报错 (column s.name/s.name_zh does not exist)
+        const colSql = `
+            SELECT column_name 
+            FROM information_schema.columns 
+            WHERE table_schema = 'public' AND table_name = 'spatial_county_yunnan_stats'
+        `;
+        const { rows: columns } = await pool.query(colSql);
+        const colNames = columns.map(c => c.column_name);
+        console.log('[clcd] Actual columns in spatial table:', colNames);
+
+        // 智能映射
+        const nameCol = colNames.find(c => ['name_zh', '县级', 'name', 'region_name', 'NAME'].includes(c)) || colNames[0];
+        const geomCol = colNames.find(c => ['geom', 'geometry', 'shape', 'the_geom'].includes(c)) || 'geom';
+        const adcodeCol = colNames.find(c => ['adcode', 'code', 'ADCODE'].includes(c)) || 'adcode';
+
+        const finalSql = `
+            SELECT 
+                s.${nameCol} as name,
+                ${colNames.includes(adcodeCol) ? `s.${adcodeCol}` : 'NULL'} as adcode,
+                ST_AsGeoJSON(s.${geomCol}) as geometry,
+                c.cropland, c.forest, c.shrub, c.grassland, c.water,
+                c.snow_ice, c.barren, c.impervious, c.wetland
+            FROM public.spatial_county_yunnan_stats s
+            LEFT JOIN public.clcd_county c ON ${colNames.includes(nameCol) && typeof nameCol === 'string' ? `TRIM(CAST(s.${nameCol} AS TEXT))` : `s.${nameCol}::text`} = TRIM(c.region_name) AND c.year = $1
+            WHERE s.${geomCol} IS NOT NULL
+        `;
+        const { rows } = await pool.query(finalSql, [Number(year)]);
+
+        // 构建 GeoJSON FeatureCollection
+        const features = rows.map(row => ({
+            type: 'Feature',
+            properties: {
+                name: row.name,
+                adcode: row.adcode,
+                cropland: Number(row.cropland) || 0,
+                forest: Number(row.forest) || 0,
+                shrub: Number(row.shrub) || 0,
+                grassland: Number(row.grassland) || 0,
+                water: Number(row.water) || 0,
+                snow_ice: Number(row.snow_ice) || 0,
+                barren: Number(row.barren) || 0,
+                impervious: Number(row.impervious) || 0,
+                wetland: Number(row.wetland) || 0
+            },
+            geometry: JSON.parse(row.geometry)
+        }));
+
+        res.json({
+            type: 'FeatureCollection',
+            features
+        });
+    } catch (err) {
+        console.error('[clcd] Spatial API Error:', err);
+        handleError(res, err);
+    }
+});
+
+// 获取格网级空间数据（GeoJSON格式，用于区域检测分析）
+router.get('/spatial/grid/:year', async (req, res) => {
+    const { year } = req.params;
+    try {
+        const colSql = `
+            SELECT column_name 
+            FROM information_schema.columns 
+            WHERE table_schema = 'public' AND table_name = 'spatial_grid_yunnan_stats'
+        `;
+        const { rows: columns } = await pool.query(colSql);
+        const colNames = columns.map(c => c.column_name);
+
+        const nameCol = colNames.find(c => ['id', 'fid', 'gid', 'grid_id', 'OBJECTID'].includes(c)) || colNames[0];
+        const geomCol = colNames.find(c => ['geom', 'geometry', 'shape', 'the_geom'].includes(c)) || 'geom';
+
+        const finalSql = `
+            SELECT 
+                s.${nameCol} as name,
+                ST_AsGeoJSON(s.${geomCol}) as geometry,
+                c.cropland, c.forest, c.shrub, c.grassland, c.water,
+                c.snow_ice, c.barren, c.impervious, c.wetland
+            FROM public.spatial_grid_yunnan_stats s
+            LEFT JOIN public.clcd_county c ON s.${nameCol}::text = c.region_name AND c.year = $1
+            WHERE s.${geomCol} IS NOT NULL
+            LIMIT 10000 
+        `;
+        const { rows } = await pool.query(finalSql, [Number(year)]);
+
+        const features = rows.map(row => ({
+            type: 'Feature',
+            properties: {
+                name: `格网 ${row.name}`,
+                cropland: Number(row.cropland) || 0,
+                forest: Number(row.forest) || 0,
+                shrub: Number(row.shrub) || 0,
+                grassland: Number(row.grassland) || 0,
+                water: Number(row.water) || 0,
+                snow_ice: Number(row.snow_ice) || 0,
+                barren: Number(row.barren) || 0,
+                impervious: Number(row.impervious) || 0,
+                wetland: Number(row.wetland) || 0
+            },
+            geometry: JSON.parse(row.geometry)
+        }));
+
+        res.json({
+            type: 'FeatureCollection',
+            features
+        });
+    } catch (err) {
+        console.error('[clcd] Grid Spatial API Error:', err);
+        handleError(res, err);
+    }
 });
 
 export default router;

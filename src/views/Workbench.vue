@@ -28,6 +28,8 @@
       <BaseMapSelector @change="handleBaseMapChange" />
     </div>
 
+    <!-- 空间图层选择器已迁移到区域检测页面 -->
+
     <!-- 底部控制按钮组（Dashboard模式下隐藏） -->
     <div v-if="!isDashboardMode" class="bottom-controls-container">
       <ViewResetControl />
@@ -37,6 +39,14 @@
       <EChartsCountyPie :year="selectedYear" />
       <LandUseTrendControl :seriesData="cachedClcdData" />
       <RegionalTrendControl />
+      <!-- 区域检测入口按钮 -->
+      <button type="button" class="control-btn regional-analysis-btn" @click.prevent="goToRegionalAnalysis" title="区域检测分析">
+        <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z" />
+          <circle cx="12" cy="10" r="3" />
+        </svg>
+        <span class="btn-label">区域检测</span>
+      </button>
     </div>
 
 
@@ -81,6 +91,7 @@ import EChartsPrefecturePie from '../components/controls/EChartsPrefecturePie.vu
 import EChartsCountyPie from '../components/controls/EChartsCountyPie.vue';
 import LandUseTrendControl from '../components/controls/LandUseTrendControl.vue';
 import RegionalTrendControl from '../components/controls/RegionalTrendControl.vue';
+import SpatialLayerSelector from '../components/controls/SpatialLayerSelector.vue';
 import DashboardOverlay from './DashboardOverlay.vue';
 import { useMapStore } from '../stores/map.ts';
 import { clcdApi, authApi } from '../api/index.js';
@@ -93,6 +104,7 @@ const mapStore = useMapStore();
 const viewer = shallowRef(null);
 const clcdLayer = shallowRef(null);
 const baseMapLayer = shallowRef(null);
+const spatialLayer = shallowRef(null);
 const cachedClcdData = ref([]);
 
 const selectedYear = ref(1985);
@@ -106,52 +118,41 @@ const clcdColors = {
   Shrub: 'rgb(51,160,44)',
   Grassland: 'rgb(171,211,123)',
   Water: 'rgb(30,105,180)',
-  'Snow/Ice': 'rgb(166,206,227)',
-  Barren: 'rgb(207,189,163)',
-  Impervious: 'rgb(226,66,144)',
-  Wetland: 'rgb(40,155,232)'
+  Wetland: 'rgb(130,209,219)',
+  Impervious: 'rgb(227,26,28)',
+  Barren: 'rgb(255,255,255)',
+  Snow_Ice: 'rgb(173, 216, 230)'
 };
 
-// 图例中文名称映射
 const legendNames = {
   Cropland: '耕地',
   Forest: '林地',
   Shrub: '灌木',
   Grassland: '草地',
   Water: '水域',
-  'Snow/Ice': '冰雪',
-  Barren: '裸地',
+  Wetland: '湿地',
   Impervious: '建设用地',
-  Wetland: '湿地'
+  Barren: '裸地',
+  Snow_Ice: '冰雪'
 };
 
-// 退出登录
-const handleLogout = () => {
-  localStorage.removeItem('auth_token');
-  localStorage.removeItem('user_info');
-  router.push('/login');
-};
-
-// 验证登录状态
-const checkAuth = async () => {
+async function handleLogout() {
   try {
-    await authApi.verify();
-  } catch (err) {
-    console.error('身份验证失败:', err);
-    handleLogout();
+    localStorage.removeItem('auth_token');
+    router.push('/login');
+  } catch (e) {
+    console.error('Logout failed:', e);
   }
-};
+}
 
-// 监听年份变化
-watch(selectedYear, (newYear) => {
-  if (newYear && viewer.value) {
-    loadCLCDLayer(newYear);
-    loadYearData(newYear);
-  }
-});
+const checkAuth = async () => {
+  // 冗余检查已移除，完全交由 router/index.js 的 beforeEach 导航守卫处理
+  // 避免在 SPA 跳转瞬间产生额外的并发认证请求
+};
 
 onMounted(async () => {
-  await checkAuth();
+  // 移除 checkAuth() 调用，确保页面能立即开始 Cesium 初始化
+  // await checkAuth(); 
 
   try {
     const viewerInstance = new Cesium.Viewer("cesiumContainer", {
@@ -248,6 +249,14 @@ onMounted(async () => {
   }
 });
 
+// 响应年份变化，自动更新图层
+watch(selectedYear, (newYear, oldYear) => {
+  if (viewer.value && newYear !== oldYear) {
+    loadCLCDLayer(newYear);
+    loadYearData(newYear);
+  }
+});
+
 async function loadYearData(year) {
   try {
     if (cachedClcdData.value.length === 0) {
@@ -265,15 +274,15 @@ async function loadYearData(year) {
           灌木: yearData.shrub,
           草地: yearData.grassland,
           水域: yearData.water,
-          冰雪: yearData.snow_ice,
-          裸地: yearData.barren,
+          湿地: yearData.wetland,
           建设用地: yearData.impervious,
-          湿地: yearData.wetland
+          裸地: yearData.barren,
+          冰雪: yearData.snow_ice
         };
       }
     }
-  } catch (e) {
-    console.error('加载 CLCD 数据失败:', e);
+  } catch (error) {
+    console.error('加载年度数据失败:', error);
   }
 }
 
@@ -329,7 +338,6 @@ function loadCLCDLayer(year) {
   const oldLayer = clcdLayer.value;
 
   try {
-    // Add new layer first
     const newLayer = viewer.value.imageryLayers.addImageryProvider(
       new Cesium.WebMapServiceImageryProvider({
         url: 'http://localhost:8080/geoserver/WebGIS/wms',
@@ -346,8 +354,6 @@ function loadCLCDLayer(year) {
 
     clcdLayer.value = newLayer;
 
-    // Remove old layer after a short delay to allow new tiles to load (optional, but safer to just remove after add)
-    // Cesium renders layers in order, so new layer on top covers old one.
     if (oldLayer) {
       viewer.value.imageryLayers.remove(oldLayer, true);
     }
@@ -357,12 +363,82 @@ function loadCLCDLayer(year) {
 }
 
 onUnmounted(() => {
-  if (viewer.value && typeof viewer.value.dispose === 'function') {
-    viewer.value.dispose();
+  console.log('[Workbench] Component unmounting, starting cleanup...');
+  
+  // 1. 移除 CLCD 图层
+  if (viewer.value && clcdLayer.value) {
+    try {
+      viewer.value.imageryLayers.remove(clcdLayer.value, true);
+    } catch (e) {
+      console.warn('[Workbench] CLCD layer cleanup warning:', e);
+    }
+    clcdLayer.value = null;
+  }
+  
+  // 2. 移除底图图层
+  if (viewer.value && baseMapLayer.value) {
+    try {
+      viewer.value.imageryLayers.remove(baseMapLayer.value, true);
+    } catch (e) {
+      console.warn('[Workbench] BaseMap layer cleanup warning:', e);
+    }
+    baseMapLayer.value = null;
+  }
+  
+  // 3. 移除空间图层
+  if (viewer.value && spatialLayer.value) {
+    try {
+      viewer.value.imageryLayers.remove(spatialLayer.value, true);
+    } catch (e) {
+      console.warn('[Workbench] Spatial layer cleanup warning:', e);
+    }
+    spatialLayer.value = null;
+  }
+  
+  // 4. 移除所有数据源（如云南边界等）
+  if (viewer.value) {
+    try {
+      viewer.value.dataSources.removeAll(true);
+    } catch (e) {
+      console.warn('[Workbench] DataSources cleanup warning:', e);
+    }
+  }
+  
+  // 5. 清除 mapStore 中的 viewer 引用
+  mapStore.setViewer(null);
+  
+  // 6. 销毁 Cesium Viewer
+  if (viewer.value && typeof viewer.value.destroy === 'function') {
+    try {
+      viewer.value.destroy();
+    } catch (e) {
+      console.warn('[Workbench] Viewer destroy warning:', e);
+    }
     viewer.value = null;
   }
+  
   window.cesiumViewer = null;
+  
+  // 7. 清理缓存数据
+  cachedClcdData.value = [];
+  currentYearData.value = {};
+  
+  console.log('[Workbench] Cleanup complete');
 });
+
+// 跳转到区域检测分析页面
+function goToRegionalAnalysis() {
+  console.log('[Workbench] 准备跳转到区域检测页面...');
+  router.push('/regional-analysis')
+    .then(() => {
+      console.log('[Workbench] 跳转成功');
+    })
+    .catch(err => {
+      console.error('[Workbench] 跳转失败:', err);
+    });
+}
+
+// 空间图层逻辑已迁移
 </script>
 
 <style>
@@ -380,24 +456,22 @@ html {
   padding: 0;
   width: 100%;
   height: 100%;
+  overflow: hidden;
 }
-</style>
 
-<style scoped>
 #cesiumContainerWrapper {
-  position: fixed;
-  top: 0;
-  left: 0;
-  width: 100vw;
-  height: 100vh;
+  position: relative;
+  width: 100%;
+  height: 100%;
   overflow: hidden;
 }
 
 #cesiumContainer {
   width: 100%;
   height: 100%;
-  position: relative;
-  z-index: 10;
+  position: absolute;
+  top: 0;
+  left: 0;
 }
 
 .header-container {
@@ -458,7 +532,6 @@ html {
   pointer-events: none;
   background-image: url('../assets/images/front_bg.png');
   background-size: 106% 103%;
-  /* 水平放大8%，垂直放大4% */
   background-position: center;
   background-repeat: no-repeat;
 }
@@ -473,7 +546,6 @@ html {
   pointer-events: none;
   background-image: url('../assets/images/mask.png');
   background-size: 108% 104%;
-  /* 同步调整掩膜层 */
   background-position: center;
   background-repeat: no-repeat;
 }
@@ -492,45 +564,119 @@ html {
   z-index: 1100;
 }
 
+.spatial-layer-selector-container {
+  position: fixed;
+  top: 40px;
+  left: 380px;
+  z-index: 1100;
+}
+
 .bottom-controls-container {
   position: fixed;
   bottom: 30px;
-  left: 20px;
-  z-index: 1100;
+  left: 50%;
+  transform: translateX(-50%);
   display: flex;
-  flex-direction: row;
-  align-items: center;
-  gap: 12px;
-  padding: 8px 12px;
+  gap: 16px;
+  z-index: 110;
+  pointer-events: auto; /* 确保可点击 */
+}
+
+.control-btn {
+  width: 64px;
+  height: 64px;
+  border-radius: 14px;
+  border: 1px solid rgba(255, 255, 255, 0.08);
   background: rgba(13, 25, 48, 0.4);
   backdrop-filter: blur(12px);
-  border-radius: 16px;
-  border: 1px solid rgba(255, 255, 255, 0.1);
+  cursor: pointer;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  color: #a5ccff;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+}
+
+.control-btn:hover {
+  background: rgba(30, 58, 138, 0.6);
+  border-color: rgba(59, 130, 246, 0.5);
+  transform: translateY(-4px);
+  color: #ffffff;
+}
+
+.control-btn .icon {
+  width: 24px;
+  height: 24px;
+}
+
+.btn-label {
+  font-size: 10px;
+  font-weight: 600;
+}
+
+.dashboard-entry-container {
+  position: fixed;
+  bottom: 30px;
+  right: 30px;
+  z-index: 110;
+}
+
+.dashboard-toggle-btn {
+  width: 64px;
+  height: 64px;
+  border-radius: 14px;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  background: rgba(13, 25, 48, 0.4);
+  backdrop-filter: blur(12px);
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+}
+
+.dashboard-toggle-btn:hover {
+  background: rgba(30, 58, 138, 0.6);
+  border-color: rgba(59, 130, 246, 0.5);
+  transform: translateY(-4px);
+}
+
+.toggle-icon-img {
+  width: 32px;
+  height: 32px;
+  opacity: 0.9;
 }
 
 .right-panels {
   position: fixed;
   top: 100px;
   right: 20px;
-  z-index: 1100;
+  z-index: 110;
   display: flex;
   flex-direction: column;
-  gap: 20px;
-  width: 280px;
+  gap: 16px;
 }
 
 .panel-card {
   background: rgba(13, 25, 48, 0.4);
   backdrop-filter: blur(12px);
-  border-radius: 16px;
-  border: 1px solid rgba(255, 255, 255, 0.1);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 12px;
   padding: 16px;
 }
 
+.legend-panel {
+  min-width: 160px;
+}
+
 .legend-grid {
-  display: grid;
-  grid-template-columns: repeat(2, 1fr);
-  gap: 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
 }
 
 .legend-item {
@@ -540,53 +686,28 @@ html {
 }
 
 .legend-color {
-  width: 12px;
-  height: 12px;
-  border-radius: 2px;
+  width: 20px;
+  height: 14px;
+  border-radius: 3px;
+  border: 1px solid rgba(255, 255, 255, 0.2);
 }
 
 .legend-name {
-  color: rgba(255, 255, 255, 0.8);
   font-size: 12px;
+  color: rgba(255, 255, 255, 0.8);
 }
 
-.chart-panel {
-  height: 300px;
+/* 过渡动画 */
+.layer-fade-enter-active,
+.layer-fade-leave-active {
+  transition: opacity 0.5s ease;
 }
 
-.dashboard-entry-container {
-  position: fixed;
-  bottom: 30px;
-  right: 20px;
-  z-index: 1100;
+.layer-fade-enter-from,
+.layer-fade-leave-to {
+  opacity: 0;
 }
 
-.dashboard-toggle-btn {
-  width: 64px;
-  height: 64px;
-  border-radius: 14px;
-  border: 1px solid rgba(255, 255, 255, 0.1);
-  background: rgba(13, 25, 48, 0.4);
-  backdrop-filter: blur(12px);
-  cursor: pointer;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  transition: all 0.3s ease;
-}
-
-.dashboard-toggle-btn:hover {
-  background: rgba(30, 58, 138, 0.6);
-  border-color: rgba(59, 130, 246, 0.5);
-  transform: translateY(-2px);
-}
-
-.toggle-icon-img {
-  width: 36px;
-  height: 36px;
-}
-
-/* Transitions */
 .fade-enter-active,
 .fade-leave-active {
   transition: opacity 0.5s ease;
@@ -595,27 +716,5 @@ html {
 .fade-enter-from,
 .fade-leave-to {
   opacity: 0;
-}
-
-.layer-fade-enter-active,
-.layer-fade-leave-active {
-  transition: opacity 0.8s cubic-bezier(0.4, 0, 0.2, 1);
-}
-
-.layer-fade-enter-from,
-.layer-fade-leave-to {
-  opacity: 0;
-}
-
-/* Slide up transition */
-.slide-up-enter-active,
-.slide-up-leave-active {
-  transition: all 0.3s ease;
-}
-
-.slide-up-enter-from,
-.slide-up-leave-to {
-  opacity: 0;
-  transform: translateY(20px);
 }
 </style>

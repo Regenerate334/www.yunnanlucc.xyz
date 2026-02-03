@@ -85,6 +85,9 @@ const chartInstance = shallowRef(null);
 let countyGeoJSON = null;
 let countyData = null;
 let countyStats = null;
+// 追踪已注册的地图，用于内存清理
+const registeredMaps = new Set();
+
 const prefectureList = ref([]);
 const selectedAdcode = ref('530100'); // Default to Kunming
 const currentPrefectureName = ref('昆明市');
@@ -132,11 +135,28 @@ onMounted(() => {
 
 onUnmounted(() => {
     document.removeEventListener('click', handleClickOutside);
+    
+    // 清理 resize 事件监听
+    window.removeEventListener('resize', handleResize);
+    
+    // 清理 ECharts 实例
     if (chartInstance.value) {
-        window.removeEventListener('resize', handleResize);
-        chartInstance.value.dispose();
+        try {
+            chartInstance.value.dispose();
+        } catch (e) {
+            console.warn('[EChartsCountyPie] Chart dispose warning:', e);
+        }
         chartInstance.value = null;
     }
+    
+    // 清理 GeoJSON 和统计数据缓存
+    countyGeoJSON = null;
+    countyData = null;
+    countyStats = null;
+    
+    // 注意: ECharts 注册的地图无法卸载，这是 ECharts 的限制
+    // 但清除引用可以让 GC 回收大部分内存
+    registeredMaps.clear();
 });
 
 const landUseColors = {

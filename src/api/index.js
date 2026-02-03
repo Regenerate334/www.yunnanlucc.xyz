@@ -8,6 +8,11 @@ async function request(url, options = {}) {
     // 从 localStorage 获取 Token
     const token = localStorage.getItem('auth_token');
 
+    if (!token && !url.includes('/api/auth')) {
+        console.warn(`[API] Requesting ${url} without token! Current localStorage:`,
+            { auth_token: token, keys: Object.keys(localStorage) });
+    }
+
     // 设置默认 Headers
     const headers = {
         'Content-Type': 'application/json',
@@ -86,7 +91,16 @@ export const clcdApi = {
     getCountyDataByYear: (year) => request(`/api/clcd/county/year/${year}`),
 
     // 获取特定地级市下所有区县的全量数据
-    getCountyDataByPrefecture: (prefecture) => request(`/api/clcd/county/prefecture/${encodeURIComponent(prefecture)}`)
+    getCountyDataByPrefecture: (prefecture) => request(`/api/clcd/county/prefecture/${encodeURIComponent(prefecture)}`),
+
+    // 获取县级空间数据（GeoJSON格式，用于区域检测分析）
+    getSpatialCountyData: (year) => request(`/api/clcd/spatial/county/${year}`),
+
+    // 获取格网级空间数据（GeoJSON格式，用于区域检测分析）
+    getSpatialGridData: (year) => request(`/api/clcd/spatial/grid/${year}`),
+
+    // 获取所有可用的年份列表
+    getAvailableYears: () => request('/api/clcd/years')
 };
 
 // 行政区划相关接口
