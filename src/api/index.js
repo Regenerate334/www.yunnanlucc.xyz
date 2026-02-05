@@ -99,6 +99,9 @@ export const clcdApi = {
     // 获取格网级空间数据（GeoJSON格式，用于区域检测分析）
     getSpatialGridData: (year) => request(`/api/clcd/spatial/grid/${year}`),
 
+    // 获取动态分级断点
+    getBreaks: (attr, year, method = 'quantile', classes = 8) => request(`/api/clcd/breaks?attr=${attr}&year=${year}&method=${method}&classes=${classes}`),
+
     // 获取所有可用的年份列表
     getAvailableYears: () => request('/api/clcd/years')
 };

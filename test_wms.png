@@ -1,3 +1,0 @@
-<?xml version="1.0" encoding="UTF-8" standalone="no"?><!DOCTYPE ServiceExceptionReport SYSTEM "http://localhost:8080/geoserver/schemas/wms/1.1.1/WMS_exception_1_1_1.dtd"> <ServiceExceptionReport version="1.1.1" >   <ServiceException>
-      The requested Style can not be used with this layer.  The style specifies an attribute named &apos;cropland&apos;, not found in the &apos;spatial_county_yunnan_stats&apos; layer
-</ServiceException></ServiceExceptionReport>

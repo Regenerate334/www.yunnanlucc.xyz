@@ -262,4 +262,266 @@ router.get('/spatial/grid/:year', async (req, res) => {
     }
 });
 
+// 计算分级断点（用于WMS样式动态分级）
+// GET /api/clcd/breaks?attr=cropland&year=1990&unit=county&method=quantile&classes=8
+router.get('/breaks', async (req, res) => {
+    const { attr = 'cropland', year = 1990, unit = 'county', method = 'quantile', classes = 8 } = req.query;
+
+    // 属性名到数据库字段前缀的映射
+    const attrPrefixMap = {
+        cropland: 'cro', forest: 'for', shrub: 'shr', grassland: 'gra',
+        water: 'wat', wetland: 'wet', impervious: 'imp', barren: 'bar', snow_ice: 'ice'
+    };
+
+    const prefix = attrPrefixMap[attr];
+    if (!prefix) {
+        return res.status(400).json({ error: `Invalid attribute: ${attr}` });
+    }
+
+    // 智能字段名映射逻辑
+    // 由于数据库列名可能被截断 (如 cro_sq_198 等)，不能简单使用 slice(-3)
+    let fieldName = `${prefix}_sq_${String(year).slice(-3)}`;
+
+    try {
+        // 1. 获取该属性所有相关列名
+        const colsSql = `
+            SELECT column_name 
+            FROM information_schema.columns 
+            WHERE table_schema = 'public' 
+              AND table_name = $1 
+              AND column_name LIKE '${prefix}_sq_%'
+            ORDER BY column_name  -- 假设列名按字母序也能对应年份序 (198 < 199 < 200)
+        `;
+        const tableName = unit === 'grid' ? 'spatial_grid_yunnan_stats' : 'spatial_county_yunnan_stats';
+        const { rows: colRows } = await pool.query(colsSql, [tableName]);
+        const dbCols = colRows.map(r => r.column_name);
+
+        // 2. 获取所有可用年份
+        const yearSql = 'SELECT DISTINCT year FROM public.clcd_province ORDER BY year';
+        const { rows: yearRows } = await pool.query(yearSql);
+        const years = yearRows.map(r => r.year);
+
+        // 3. 建立映射
+        // 前提：列的数量和顺序 与 年份的数量和顺序 一致 (或大致对应)
+        // 如果数量不一致，尝试模糊匹配
+        const yearIndex = years.indexOf(Number(year));
+        let matchedCol = null;
+
+        if (yearIndex !== -1 && yearIndex < dbCols.length) {
+            matchedCol = dbCols[yearIndex];
+            // 校验：如果列名包含年份后两位，增加可信度
+            // cro_sq_198 (1985) -> 85 vs 98?
+            // cro_sq_199 (1990) -> 90 vs 99?
+            // 这种简单的映射可能不可靠，但比直接拼凑更强。
+            // 更好的策略：如果字段数 == 年份数，直接依序映射
+            if (dbCols.length === years.length) {
+                fieldName = matchedCol;
+            } else {
+                // 备用策略：尝试匹配 slice(-3)
+                const simpleMatch = `${prefix}_sq_${String(year).slice(-3)}`;
+                if (dbCols.includes(simpleMatch)) {
+                    fieldName = simpleMatch;
+                } else {
+                    // 尝试匹配 年份-1980 + 198? 不，太复杂。
+                    // 回退到按顺序映射
+                    fieldName = matchedCol;
+                }
+            }
+        }
+
+        // 如果上面逻辑失败（没找到对应的），保留原fieldName尝试查询（会报错字段不存在）
+
+        // 验证字段是否存在
+        const colCheck = await pool.query(`
+            SELECT column_name FROM information_schema.columns 
+            WHERE table_schema = 'public' AND table_name = $1 AND column_name = $2
+        `, [tableName, fieldName]);
+
+        if (colCheck.rows.length === 0) {
+            // 如果还找不到，返回第一个作为 fallback 避免崩盘，或者报错
+            // 尝试在前20个列里找
+            return res.status(400).json({ error: `Field ${fieldName} not found in ${tableName} (Mapped from year ${year})` });
+        }
+
+
+        let breaks = [];
+        let stats = {};
+
+        // 获取基本统计信息
+        const numClasses = Math.min(Math.max(parseInt(classes), 3), 12);
+
+        // 获取基本统计信息
+        const statsSql = `
+            SELECT 
+                min(${fieldName}) as min_val,
+                max(${fieldName}) as max_val,
+                avg(${fieldName}) as avg_val,
+                stddev(${fieldName}) as std_val,
+                count(${fieldName}) as count_val
+            FROM public.${tableName}
+            WHERE ${fieldName} IS NOT NULL AND ${fieldName} > 0
+        `;
+        const { rows: [statsRow] } = await pool.query(statsSql);
+        stats = {
+            min: Number(statsRow.min_val) / 1000000, // 转为km²
+            max: Number(statsRow.max_val) / 1000000,
+            avg: Number(statsRow.avg_val) / 1000000,
+            std: Number(statsRow.std_val) / 1000000,
+            count: Number(statsRow.count_val)
+        };
+
+        if (method === 'quantile' || method === 'percentile') {
+            // 百分位数分级（等分位）
+            const percentiles = [];
+            for (let i = 1; i < numClasses; i++) {
+                percentiles.push(i / numClasses);
+            }
+
+            const percentileSql = `
+                SELECT percentile_cont(ARRAY[${percentiles.join(',')}]) 
+                WITHIN GROUP (ORDER BY ${fieldName}) as breaks
+                FROM public.${tableName}
+                WHERE ${fieldName} IS NOT NULL AND ${fieldName} > 0
+            `;
+            const { rows: [percRow] } = await pool.query(percentileSql);
+
+            // 添加首尾值
+            breaks = [stats.min, ...percRow.breaks.map(v => Number(v) / 1000000), stats.max];
+            rows = [];
+        } else if (method === 'jenks' || method === 'natural_breaks') {
+            // 自然断点法 (Jenks)
+            // 1. 获取所有数据点
+            const allDataSql = `
+                SELECT ${fieldName} as val
+                FROM public.${tableName}
+                WHERE ${fieldName} IS NOT NULL AND ${fieldName} > 0
+                ORDER BY ${fieldName} ASC
+            `;
+            const { rows: allRows } = await pool.query(allDataSql);
+            // 限制数据量，防止 O(N^2) 过慢
+            // 如果数据超过 3000 条，进行抽样或回退到 quantile
+            let dataValues = allRows.map(r => Number(r.val) / 1000000);
+
+            if (dataValues.length > 3000) {
+                console.warn('[clcd] Too many points for Jenks, sampling 3000 points...');
+                // 简单均匀抽样
+                const step = Math.ceil(dataValues.length / 3000);
+                dataValues = dataValues.filter((_, i) => i % step === 0);
+            }
+
+            if (dataValues.length <= numClasses) {
+                breaks = dataValues; // 数据点太少，直接用
+            } else {
+                breaks = getJenksBreaks(dataValues, numClasses);
+            }
+
+        } else if (method === 'stddev') {
+            // 标准差分级
+            const mean = stats.avg;
+            const std = stats.std;
+            breaks = [
+                stats.min,
+                Math.max(stats.min, mean - 1.5 * std),
+                Math.max(stats.min, mean - 0.5 * std),
+                mean,
+                Math.min(stats.max, mean + 0.5 * std),
+                Math.min(stats.max, mean + 1.5 * std),
+                stats.max
+            ];
+        } else {
+            // 等间隔分级 (equal)
+            const range = stats.max - stats.min;
+            const step = range / numClasses;
+            breaks = Array.from({ length: numClasses + 1 }, (_, i) => stats.min + step * i);
+        }
+
+        // 格式化为易读数值
+        breaks = breaks.map(v => Math.round(v * 100) / 100);
+
+        res.json({
+            attribute: attr,
+            field: fieldName,
+            year: Number(year),
+            method,
+            classes: numClasses,
+            breaks,
+            stats,
+            unit: 'km²'
+        });
+    } catch (err) {
+        console.error('[clcd] Breaks API Error:', err);
+        handleError(res, err);
+    }
+});
+
+function getJenksBreaks(data, n_classes) {
+    if (n_classes > data.length) return data;
+
+    data.sort((a, b) => a - b);
+
+    const mat1 = [];
+    const mat2 = [];
+    const st = data.length + 1;
+    const cl = n_classes + 1;
+
+    for (let y = 0; y < cl; y++) {
+        mat1[y] = [];
+        mat2[y] = [];
+        for (let x = 0; x < st; x++) {
+            mat1[y][x] = 0;
+            mat2[y][x] = 0;
+        }
+    }
+
+    for (let x = 1; x < st; x++) {
+        mat1[1][x] = 1;
+        mat2[1][x] = 0;
+        for (let y = 2; y < cl; y++) mat2[y][x] = Infinity;
+    }
+
+    let v = 0;
+    for (let l = 2; l < st; l++) {
+        let s1 = 0;
+        let s2 = 0;
+        let w = 0;
+        for (let m = 1; m <= l; m++) {
+            const i3 = l - m + 1;
+            const val = data[i3 - 1];
+            s2 += val * val;
+            s1 += val;
+            w++;
+            v = s2 - (s1 * s1) / w;
+            const i4 = i3 - 1;
+            if (i4 !== 0) {
+                for (let j = 2; j < cl; j++) {
+                    if (mat2[j][l] >= (v + mat2[j - 1][i4])) {
+                        mat1[j][l] = i3;
+                        mat2[j][l] = v + mat2[j - 1][i4];
+                    }
+                }
+            }
+        }
+        mat1[1][l] = 1;
+        mat2[1][l] = v;
+    }
+
+    const kclass = [];
+    let k = data.length;
+    kclass[n_classes] = data[data.length - 1];
+    kclass[0] = data[0];
+
+    for (let countNum = n_classes; countNum >= 2; countNum--) {
+        const id = parseInt(mat1[countNum][k], 10) - 2;
+        if (id >= 0 && id < data.length) {
+            kclass[countNum - 1] = data[id];
+        } else {
+            kclass[countNum - 1] = data[0]; // fallback
+        }
+        k = parseInt(mat1[countNum][k], 10) - 1;
+    }
+
+    // 确保结果单调递增并去重
+    return [...new Set(kclass)].sort((a, b) => a - b);
+}
+
 export default router;

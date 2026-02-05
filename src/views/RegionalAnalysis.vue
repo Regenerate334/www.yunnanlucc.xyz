@@ -43,32 +43,36 @@
             <option v-for="year in years" :key="year" :value="year">{{ year }}</option>
           </select>
         </div>
+
+        <div class="control-group">
+          <label>底图</label>
+          <select v-model="currentBaseMap" @change="loadBaseMap(currentBaseMap)">
+            <option v-for="opt in baseMapOptions" :key="opt.value" :value="opt.value">
+              {{ opt.label }}
+            </option>
+          </select>
+        </div>
       </div>
     </div>
 
     <!-- 图例 -->
-    <div v-if="legendBreaks.length > 0" class="legend-container">
-      <div class="legend-title">{{ currentAttributeLabel }}</div>
+    <div class="legend-container">
+      <div class="legend-title">{{ currentAttributeLabel }} ({{ selectedYear }}年)</div>
       <div class="legend-items">
         <div v-for="(color, index) in currentColorScale" :key="index" class="legend-item">
           <span class="legend-color" :style="{ background: color }"></span>
-          <span class="legend-label">{{ formatLegendLabel(index) }}</span>
+          <span class="legend-label">{{ currentLegendLabels[index] }}</span>
         </div>
       </div>
       <div class="legend-unit">单位: km²</div>
     </div>
 
-    <!-- 区域信息弹窗 -->
-    <div v-if="selectedEntity" class="info-popup" :style="popupStyle">
-      <div class="popup-header">
-        <span>{{ selectedEntity.name }}</span>
-        <button @click="selectedEntity = null" class="popup-close">×</button>
-      </div>
-      <div class="popup-content">
-        <div v-for="(value, key) in selectedEntity.properties" :key="key" class="popup-row">
-          <span class="popup-label">{{ getAttributeLabel(key) }}:</span>
-          <span class="popup-value">{{ formatValue(value) }} km²</span>
-        </div>
+    <!-- 区域信息悬浮提示 -->
+    <div v-if="selectedEntity" class="info-tooltip" :style="popupStyle">
+      <div class="tooltip-title">{{ selectedEntity.name }}</div>
+      <div v-for="(value, key) in selectedEntity.properties" :key="key" class="tooltip-row">
+        <span class="tooltip-label">{{ key }}:</span>
+        <span class="tooltip-value">{{ value }}</span>
       </div>
     </div>
 
@@ -98,24 +102,74 @@ const dataSource = shallowRef(null);
 let clickHandler = null;
 
 const isLoading = ref(false);
+const currentStatsField = ref(null);
 const spatialUnit = ref('county');
 const selectedAttribute = ref('cropland');
 const selectedYear = ref(1990);
 const years = ref([]);
 
+// 底图切换
+const currentBaseMap = ref('imagery');
+const baseMapExpanded = ref(false);
+const baseMapOptions = [
+  { value: 'imagery', label: '天地图影像' },
+  { value: 'vector', label: '天地图矢量' },
+  { value: 'terrain', label: '天地图地形' }
+];
+
 const legendBreaks = ref([]);
 const selectedEntity = ref(null);
 const popupStyle = ref({ left: '0px', top: '0px' });
 
-const colorScale5 = ['#2ecc71', '#7dcea0', '#f9e79f', '#f5b041', '#e74c3c'];
-const colorScale10 = ['#A50026', '#D73027', '#F46D43', '#FDAE61', '#FEE08B', '#D9EF8B', '#A6D96A', '#66BD63', '#1A9850', '#006837'];
+// 各地类的图例配置（颜色 + 分级范围）
+// 10级颜色方案配置 (与 GeoServer SLD 同步)
+const legendConfigs = {
+  cropland: {
+    colors: ['#ffffe5', '#fff7bc', '#fee391', '#fec44f', '#fe9929', '#ec7014', '#cc4c02', '#993404', '#662506', '#401200'], 
+    labels: []
+  },
+  forest: {
+    colors: ['#f7fcf5', '#e5f5e0', '#c7e9c0', '#a1d99b', '#74c476', '#41ab5d', '#238b45', '#006d2c', '#00441b', '#00220e'], 
+    labels: []
+  },
+  shrub: {
+    colors: ['#ffffe5', '#f7fcb9', '#d9f0a3', '#addd8e', '#78c679', '#41ab5d', '#238443', '#006837', '#004529', '#002818'], 
+    labels: []
+  },
+  grassland: {
+    colors: ['#ffffcc', '#e4f4ac', '#ccebc5', '#a8ddb5', '#7bccc4', '#4eb3d3', '#2b8cbe', '#0868ac', '#084081', '#042040'],
+    labels: []
+  },
+  water: {
+    colors: ['#f7fbff', '#deebf7', '#c6dbef', '#9ecae1', '#6baed6', '#4292c6', '#2171b5', '#08519c', '#08306b', '#041836'], 
+    labels: []
+  },
+  wetland: {
+    colors: ['#f7fcf0', '#e0f3db', '#ccebc5', '#a8ddb5', '#7bccc4', '#4eb3d3', '#2b8cbe', '#0868ac', '#084081', '#042040'], 
+    labels: []
+  },
+  impervious: {
+    colors: ['#fff5f0', '#fee0d2', '#fcbba1', '#fc9272', '#fb6a4a', '#ef3b2c', '#cb181d', '#a50f15', '#67000d', '#400008'], 
+    labels: []
+  },
+  barren: {
+    colors: ['#ffffff', '#f0f0f0', '#d9d9d9', '#bdbdbd', '#969696', '#737373', '#525252', '#252525', '#111111', '#000000'],
+    labels: []
+  },
+  snow_ice: {
+    colors: ['#f7fcfd', '#e0ecf4', '#bfd3e6', '#9ebcda', '#8c96c6', '#8c6bb1', '#88419d', '#810f7c', '#4d004b', '#270026'],
+    labels: []
+  }
+};
 
+// 获取当前属性的颜色列表
 const currentColorScale = computed(() => {
-  return selectedAttribute.value === 'forest' ? colorScale10 : colorScale5;
+  return legendConfigs[selectedAttribute.value]?.colors || legendConfigs.cropland.colors;
 });
 
-// 用于 getColorForValue 的色阶引用
-const colorScale = computed(() => currentColorScale.value);
+// 获取当前属性的图例标签
+// 获取当前属性的图例标签 (Ref, 动态更新)
+const currentLegendLabels = ref([]);
 
 const attributes = [
   { value: 'cropland', label: '耕地面积' },
@@ -167,23 +221,24 @@ function cleanupData() {
 }
 
 // 空间单元变化监听
-watch(spatialUnit, (newUnit) => {
-  console.log(`[RegionalAnalysis] Spatial unit changed to ${newUnit}, updating WMS...`);
-  loadSpatialLayer(newUnit);
-  // 切换单元后自动重载数据
-  loadAndRender();
+watch(spatialUnit, (newUnit, oldUnit) => {
+  if (newUnit !== oldUnit) {
+    console.log(`[RegionalAnalysis] Spatial unit changed to ${newUnit}`);
+    // 使用 WMS 渲染
+    loadWMSLayer();
+  }
 });
 
-// 监听年份变化，自动刷新
+// 监听年份变化，自动刷新 WMS 图层
 watch(selectedYear, () => {
-  console.log('[RegionalAnalysis] Year changed, auto-refreshing...');
-  loadAndRender();
+  console.log('[RegionalAnalysis] Year changed, updating WMS...');
+  loadWMSLayer();
 });
 
-// 监听分析指标变化，如果是 GeoJSON 渲染，则只需要重新上色即可，但为了逻辑简单统一调用重载
+// 监听分析指标变化，更新 WMS 样式
 watch(selectedAttribute, () => {
-  console.log('[RegionalAnalysis] Attribute changed, auto-refreshing...');
-  loadAndRender();
+  console.log('[RegionalAnalysis] Attribute changed, updating WMS style...');
+  loadWMSLayer();
 });
 
 async function fetchYears() {
@@ -215,11 +270,11 @@ onMounted(async () => {
   // 延迟初始化以确保 DOM 渲染
   setTimeout(async () => {
     await initCesium();
-    // 自动触发第一次加载，让用户进来就能看到数据
+    // 自动触发第一次加载
     if (viewer.value) {
-      console.log('[RegionalAnalysis] Auto-triggering initial load...');
-      loadSpatialLayer(spatialUnit.value); // 同步加载 WMS底图
-      loadAndRender(); // 全矢量加载
+      console.log('[RegionalAnalysis] Auto-triggering initial WMS load...');
+      // 使用纯 WMS 渲染模式，最省内存
+      loadWMSLayer();
     }
   }, 300);
 });
@@ -284,32 +339,73 @@ async function initCesium() {
       }
     });
 
-    // 设置点击事件
+  // 设置悬浮事件（鼠标移动时显示信息）
+    let hoverDebounceTimer = null;
+    let lastPickPosition = null;
+    
     clickHandler = new Cesium.ScreenSpaceEventHandler(viewer.value.scene.canvas);
-    clickHandler.setInputAction((click) => {
-      const picked = viewer.value.scene.pick(click.position);
-      if (Cesium.defined(picked) && picked.id && picked.id.properties) {
-        const props = {};
-        const propertyNames = picked.id.properties.propertyNames;
-        propertyNames.forEach(name => {
-          if (attributes.some(a => a.value === name)) {
-            props[name] = picked.id.properties[name].getValue();
-          }
-        });
-
-        selectedEntity.value = {
-          name: picked.id.properties.name?.getValue() || '未知区域',
-          properties: props
-        };
-
-        popupStyle.value = {
-          left: click.position.x + 20 + 'px',
-          top: click.position.y + 'px'
-        };
-      } else {
-        selectedEntity.value = null;
-      }
-    }, Cesium.ScreenSpaceEventType.LEFT_CLICK);
+    clickHandler.setInputAction((movement) => {
+      const position = movement.endPosition;
+      
+      // 防抖：避免过于频繁的请求
+      if (hoverDebounceTimer) clearTimeout(hoverDebounceTimer);
+      
+      hoverDebounceTimer = setTimeout(() => {
+        // 检查位置是否有显著变化（避免静止时重复查询）
+        if (lastPickPosition && 
+            Math.abs(position.x - lastPickPosition.x) < 5 && 
+            Math.abs(position.y - lastPickPosition.y) < 5) {
+          return;
+        }
+        lastPickPosition = { x: position.x, y: position.y };
+        
+        // 异步查询 WMS 特征
+        const ray = viewer.value.camera.getPickRay(position);
+        if (!ray) return;
+        
+        const featurePromise = viewer.value.scene.imageryLayers.pickImageryLayerFeatures(ray, viewer.value.scene);
+        
+        if (Cesium.defined(featurePromise)) {
+            featurePromise.then(features => {
+                if (features && features.length > 0) {
+                    const feature = features[0];
+                    const props = feature.properties || feature.data?.properties || {};
+                    
+                    // 获取区域名称
+                    const regionName = props['地名'] || props['地级'] || props['省级'] || '未知区域';
+                    const displayProps = {};
+                    
+                    // 提取动态属性
+                    if (currentStatsField.value && props[currentStatsField.value] !== undefined) {
+                        const rawVal = Number(props[currentStatsField.value]);
+                        const valKm2 = (rawVal / 1000000).toFixed(2);
+                        const attrLabel = currentAttributeLabel.value;
+                        displayProps[attrLabel] = `${valKm2} km²`;
+                    }
+                    
+                    selectedEntity.value = {
+                        name: regionName,
+                        properties: displayProps
+                    };
+                    
+                    // 更新弹窗位置（跟随鼠标）
+                    popupStyle.value = {
+                        left: position.x + 15 + 'px',
+                        top: position.y + 15 + 'px'
+                    };
+                } else {
+                    // 鼠标移出数据区域，隐藏弹窗
+                    selectedEntity.value = null;
+                }
+            }).catch(() => {
+                selectedEntity.value = null;
+            });
+        } else {
+            selectedEntity.value = null;
+        }
+      }, 80); // 80ms 防抖延迟
+      
+    }, Cesium.ScreenSpaceEventType.MOUSE_MOVE);
     
     console.log('[RegionalAnalysis] Cesium initialized successfully');
 
@@ -327,19 +423,33 @@ function loadBaseMap(mapType) {
   }
 
   const token = 'ab70e90828db5b27aa040f2cb879c7f1';
-  let layerName = 'img';
-  let url = `http://t0.tianditu.gov.cn/img_w/wmts?service=wmts&request=GetTile&version=1.0.0&LAYER=${layerName}&tileMatrixSet=w&TileMatrix={TileMatrix}&TileRow={TileRow}&TileCol={TileCol}&style=default&format=tiles&tk=${token}`;
+  
+  // 底图配置
+  const baseMapConfigs = {
+    imagery: { layer: 'img', labelLayer: 'cia', name: '天地图影像' },
+    vector: { layer: 'vec', labelLayer: 'cva', name: '天地图矢量' },
+    terrain: { layer: 'ter', labelLayer: 'cta', name: '天地图地形' }
+  };
+  
+  const config = baseMapConfigs[mapType] || baseMapConfigs.imagery;
 
   try {
+    // 加载底图图层
+    const baseUrl = `http://t0.tianditu.gov.cn/${config.layer}_w/wmts?service=wmts&request=GetTile&version=1.0.0&LAYER=${config.layer}&tileMatrixSet=w&TileMatrix={TileMatrix}&TileRow={TileRow}&TileCol={TileCol}&style=default&format=tiles&tk=${token}`;
+    
     const imageryProvider = new Cesium.WebMapTileServiceImageryProvider({
-      url: url,
-      layer: layerName,
+      url: baseUrl,
+      layer: config.layer,
       style: 'default',
       format: 'image/jpeg',
       tileMatrixSetID: 'w',
       maximumLevel: 18
     });
     baseMapLayer.value = viewer.value.imageryLayers.addImageryProvider(imageryProvider, 0);
+    
+    // 更新当前底图类型
+    currentBaseMap.value = mapType;
+    console.log(`[RegionalAnalysis] Base map changed to: ${config.name}`);
   } catch (e) {
     console.error('Failed to load base map:', e);
   }
@@ -377,118 +487,14 @@ async function loadYunnanBoundary() {
   }
 }
 
-// 加载数据的函数（之前模板中调用）
-async function loadAndRender() {
-  if (!viewer.value) {
-    console.error('Viewer not available');
-    return;
-  }
-  
-  isLoading.value = true;
-
-  try {
-    // 先清理旧的 DataSource 以释放内存
-    if (dataSource.value && viewer.value) {
-      try {
-        if (dataSource.value.entities) {
-          dataSource.value.entities.removeAll();
-        }
-        viewer.value.dataSources.remove(dataSource.value, true);
-      } catch (e) {
-        console.warn('[RegionalAnalysis] Old dataSource cleanup warning:', e);
-      }
-      dataSource.value = null;
-    }
-
-    console.log(`[RegionalAnalysis] Loading ${spatialUnit.value} vector data for year ${selectedYear.value}...`);
-    let geojson;
-    if (spatialUnit.value === 'grid') {
-      geojson = await clcdApi.getSpatialGridData(selectedYear.value);
-    } else {
-      geojson = await clcdApi.getSpatialCountyData(selectedYear.value);
-    }
-    
-    console.log(`[RegionalAnalysis] Received GeoJSON:`, geojson);
-    
-    if (!geojson || !geojson.features || geojson.features.length === 0) {
-      console.warn(`[RegionalAnalysis] No data for year ${selectedYear.value}. Full API response:`, geojson);
-      alert(`未找到 ${selectedYear.value} 年的空间统计数据，请尝试其他年份`);
-      isLoading.value = false;
-      return;
-    }
-
-    const values = geojson.features
-      .map(f => f.properties[selectedAttribute.value] || 0)
-      .filter(v => v > 0);
-    
-    // 林地指标使用 10 级分段以匹配 SLD 模板
-    const steps = selectedAttribute.value === 'forest' ? 10 : 5;
-    const breaks = calculateBreaks(values, steps);
-    legendBreaks.value = breaks;
-
-    const ds = await Cesium.GeoJsonDataSource.load(geojson, {
-      stroke: Cesium.Color.WHITE.withAlpha(0.8),
-      strokeWidth: 1,
-      fill: Cesium.Color.TRANSPARENT,
-      clampToGround: true
-    });
-
-    const entities = ds.entities.values;
-    entities.forEach(entity => {
-      if (entity.polygon) {
-        const value = entity.properties[selectedAttribute.value]?.getValue() || 0;
-        const color = getColorForValue(value, breaks);
-        entity.polygon.material = color.withAlpha(0.75);
-        entity.polygon.outline = true;
-        entity.polygon.outlineColor = Cesium.Color.WHITE.withAlpha(0.6);
-        entity.polygon.outlineWidth = 1;
-      }
-    });
-
-    viewer.value.dataSources.add(ds);
-    dataSource.value = ds;
-    viewer.value.flyTo(ds, { duration: 1.5 });
-
-  } catch (e) {
-    console.error('加载空间数据失败:', e);
-  } finally {
-    isLoading.value = false;
-  }
-}
-
-function calculateBreaks(values, numClasses) {
-  if (values.length === 0) return [];
-  const sorted = [...values].sort((a, b) => a - b);
-  const min = sorted[0];
-  const max = sorted[sorted.length - 1];
-  const interval = (max - min) / numClasses;
-  
-  const breaks = [];
-  for (let i = 0; i <= numClasses; i++) {
-    breaks.push(min + interval * i);
-  }
-  return breaks;
-}
-
-function getColorForValue(value, breaks) {
-  const scale = colorScale.value; // 使用 computed 的值
-  if (breaks.length < 2) return Cesium.Color.GRAY;
-  for (let i = 0; i < breaks.length - 1; i++) {
-    if (value >= breaks[i] && value < breaks[i + 1]) {
-      return Cesium.Color.fromCssColorString(scale[i]);
-    }
-  }
-  if (value >= breaks[breaks.length - 2]) {
-    return Cesium.Color.fromCssColorString(scale[scale.length - 1]);
-  }
-  return Cesium.Color.fromCssColorString(scale[0]);
-}
+// ==================== GeoJSON 矢量渲染已移除 ====================
+// 现在使用纯 WMS 渲染模式，由 GeoServer 处理样式
+// 这大幅减少了前端内存使用，避免 OOM
 
 function formatLegendLabel(index) {
   if (legendBreaks.value.length < 2) return '';
   const min = legendBreaks.value[index];
   const max = legendBreaks.value[index + 1];
-  // 使用辅助函数
   return `${formatValue(min)} - ${formatValue(max)}`;
 }
 
@@ -497,45 +503,117 @@ function formatValue(value) {
   return value.toLocaleString('zh-CN', { maximumFractionDigits: 2 });
 }
 
-// 空间图层切换逻辑已直接绑定到空间单元
-function loadSpatialLayer(layerType) {
-  if (!viewer.value) return;
-  // 移除旧图层
+// ==================== WMS 图层加载（纯 WMS 渲染模式）====================
+// 根据选择的空间单元、年份和属性加载 WMS 图层
+async function loadWMSLayer() {
+  if (!viewer.value) {
+    console.warn('[RegionalAnalysis] Viewer not ready');
+    return;
+  }
+  
+  isLoading.value = true;
+  
+  // 移除旧的 WMS 图层
   if (spatialLayer.value) {
-    viewer.value.imageryLayers.remove(spatialLayer.value, true);
+    try {
+      viewer.value.imageryLayers.remove(spatialLayer.value, true);
+    } catch (e) {
+      console.warn('[RegionalAnalysis] WMS layer cleanup warning:', e);
+    }
     spatialLayer.value = null;
   }
   
-  // 如果是 'none' 就不加载 (虽然现在 UI 上至少会选一个，但保留防御性判断)
-  if (layerType === 'none') return;
-
+   // 构建图层名称
   const layerNameMap = {
     county: 'WebGIS:spatial_county_yunnan_stats',
     grid: 'WebGIS:spatial_grid_yunnan_stats'
   };
-
-  const layerName = layerNameMap[layerType];
-  if (!layerName) return;
-
+  
+  const layerName = layerNameMap[spatialUnit.value];
+  if (!layerName) {
+    isLoading.value = false;
+    return;
+  }
+  
+  // 属性名到数据库字段前缀的映射
+  const attrPrefixMap = {
+    cropland: 'cro', forest: 'for', shrub: 'shr', grassland: 'gra',
+    water: 'wat', wetland: 'wet', impervious: 'imp', barren: 'bar', snow_ice: 'ice'
+  };
+  
+  const prefix = attrPrefixMap[selectedAttribute.value] || 'cro';
+  
+  // 获取动态分级断点及其对应的正确字段名
   try {
-    const newLayer = viewer.value.imageryLayers.addImageryProvider(
-      new Cesium.WebMapServiceImageryProvider({
-        url: 'http://localhost:8080/geoserver/WebGIS/wms',
-        layers: layerName,
-        parameters: {
-          service: 'WMS',
-          version: '1.1.0',
-          request: 'GetMap',
-          format: 'image/png',
-          transparent: true,
-          styles: ''
+    // 增加分级数到10级，以更好区分高端数值（如宣威 vs 隆阳）
+    // 使用自然断点法(Jenks)以获得最佳的视觉区分度
+    const numClasses = 10;
+    const breaksData = await clcdApi.getBreaks(selectedAttribute.value, selectedYear.value, 'jenks', numClasses);
+    let breaks = breaksData.breaks; // [min, th1, ..., th(k), max]
+    const dynamicAttr = breaksData.field;
+    currentStatsField.value = dynamicAttr;
+    
+    // Jenks 可能返回少于请求的分级数（如果数据值种类少）
+    // 补全 breaks 数组，确保长度满足 numClasses + 1
+    while (breaks.length < numClasses + 1) {
+        breaks.push(breaks[breaks.length - 1]);
+    }
+    
+    console.log(`[RegionalAnalysis] Loaded breaks (Jenks) for field: ${dynamicAttr}, classes: ${numClasses}`);
+    
+    // 更新图例标签
+    const labels = [];
+    for (let i = 0; i < numClasses; i++) {
+        const minVal = Math.round(breaks[i]);
+        const maxVal = Math.round(breaks[i+1]);
+        if (minVal === maxVal && i > 0 && breaks[i] === breaks[breaks.length-1]) {
+             // 已经到了填充的尾部，不再显示重复标签
+             break;
         }
-      })
-    );
+        labels.push(`${minVal}-${maxVal}`);
+    }
+    
+    currentLegendLabels.value = labels;
+    
+    // 构建 GeoServer env 参数
+    let envParams = `attr:${dynamicAttr}`;
+    for (let i = 1; i < numClasses; i++) {
+        // 安全获取阈值，如果越界则用最大值
+        const val = i < breaks.length - 1 ? breaks[i] : breaks[breaks.length - 1];
+        const valSqM = Math.round(val * 1000000); 
+        envParams += `;th${i}:${valSqM}`;
+    }
+    
+    console.log(`[RegionalAnalysis] Loading WMS: ${layerName}, env: ${envParams}`);
+  
+    const wmsProvider = new Cesium.WebMapServiceImageryProvider({
+      url: 'http://localhost:8080/geoserver/WebGIS/wms',
+      layers: layerName,
+      enablePickFeatures: true, // 开启特征拾取
+      parameters: {
+        service: 'WMS',
+        version: '1.1.0',
+        request: 'GetMap',
+        format: 'image/png',
+        transparent: true,
+        styles: `${selectedAttribute.value}_dynamic`,
+        env: envParams,
+        info_format: 'application/json' // 请求JSON格式的特征信息
+      }
+    });
+    
+    // 监听加载错误
+    wmsProvider.errorEvent.addEventListener((error) => {
+      console.warn(`[RegionalAnalysis] WMS tile error:`, error);
+    });
+    
+    const newLayer = viewer.value.imageryLayers.addImageryProvider(wmsProvider);
     spatialLayer.value = newLayer;
-    console.log(`[RegionalAnalysis] Sync WMS Layer loaded: ${layerName}`);
-  } catch (e) {
-    console.error(`[RegionalAnalysis] Sync WMS Load error:`, e);
+    
+  } catch (err) {
+    console.error('[RegionalAnalysis] Failed to load breaks or WMS:', err);
+  } finally {
+    isLoading.value = false;
   }
 }
 
@@ -808,6 +886,56 @@ onUnmounted(() => {
 }
 
 /* 信息弹窗 */
+/* 悬浮提示框 */
+.info-tooltip {
+  position: fixed;
+  background: rgba(15, 23, 42, 0.95);
+  backdrop-filter: blur(8px);
+  border-radius: 8px;
+  border: 1px solid rgba(59, 130, 246, 0.3);
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.4);
+  z-index: 1000;
+  pointer-events: none; /* 不阻挡鼠标事件 */
+  min-width: 160px;
+  max-width: 280px;
+  padding: 10px 14px;
+  animation: tooltipFadeIn 0.15s ease-out;
+}
+
+@keyframes tooltipFadeIn {
+  from { opacity: 0; transform: translateY(5px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.tooltip-title {
+  font-size: 14px;
+  font-weight: 600;
+  color: #fff;
+  margin-bottom: 6px;
+  padding-bottom: 6px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.tooltip-row {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 3px 0;
+  font-size: 13px;
+}
+
+.tooltip-label {
+  color: rgba(255, 255, 255, 0.6);
+  white-space: nowrap;
+}
+
+.tooltip-value {
+  color: #60a5fa;
+  font-weight: 500;
+  text-align: right;
+}
+
+/* 原有弹窗样式（保留用于其他用途） */
 .info-popup {
   position: fixed;
   background: rgba(13, 25, 48, 0.95);
