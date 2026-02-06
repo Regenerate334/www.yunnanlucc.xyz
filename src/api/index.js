@@ -100,7 +100,7 @@ export const clcdApi = {
     getSpatialGridData: (year) => request(`/api/clcd/spatial/grid/${year}`),
 
     // 获取动态分级断点
-    getBreaks: (attr, year, method = 'quantile', classes = 8) => request(`/api/clcd/breaks?attr=${attr}&year=${year}&method=${method}&classes=${classes}`),
+    getBreaks: (attr, year, method = 'quantile', classes = 8, unit = 'county') => request(`/api/clcd/breaks?attr=${attr}&year=${year}&method=${method}&classes=${classes}&unit=${unit}`),
 
     // 获取所有可用的年份列表
     getAvailableYears: () => request('/api/clcd/years')

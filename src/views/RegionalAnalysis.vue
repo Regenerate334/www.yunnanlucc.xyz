@@ -1,57 +1,74 @@
 <template>
   <div class="regional-analysis-page">
     <div id="cesiumContainer" class="map-container"></div>
-    <!-- 顶部控制面板 -->
-    <div class="analysis-header">
-      <button class="back-btn" @click="goBack" title="返回工作台">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-          <path d="M19 12H5M12 19l-7-7 7-7" />
-        </svg>
-        返回工作台
-      </button>
+    <!-- 顶部悬浮控制面板 -->
+    <div class="analysis-header floating-glass">
+      <div class="header-left">
+        <button class="back-btn-circle" @click="goBack" title="返回工作台">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+            <path d="M15 18l-6-6 6-6" />
+          </svg>
+        </button>
+        <div class="divider-vertical"></div>
+        <div class="header-title">区域土地利用检测分析</div>
+      </div>
 
-      <div class="header-title">区域土地利用检测分析</div>
-
-      <div class="controls">
-        <div class="control-group">
-          <label>空间单元</label>
-          <div class="btn-group">
-            <button 
-              :class="{ active: spatialUnit === 'county' }" 
-              @click="spatialUnit = 'county'"
-            >县级</button>
-            <button 
-              :class="{ active: spatialUnit === 'grid' }" 
-              @click="spatialUnit = 'grid'"
-              title="切换为格网单元"
-            >格网</button>
-          </div>
+      <div class="header-right">
+        <!-- 空间单元 (Segmented Control) -->
+        <div class="segmented-control">
+          <div class="segment-bg" :style="{ left: spatialUnit === 'county' ? '4px' : '50%' }"></div>
+          <button 
+            :class="{ active: spatialUnit === 'county' }" 
+            @click="spatialUnit = 'county'"
+          >县级</button>
+          <button 
+            :class="{ active: spatialUnit === 'grid' }" 
+            @click="spatialUnit = 'grid'"
+          >格网</button>
         </div>
 
-        <div class="control-group">
-          <label>分析指标</label>
+        <div class="divider-vertical small"></div>
+
+        <!-- 分析指标 -->
+        <div class="glass-select-wrapper">
+          <svg class="select-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
+          </svg>
           <select v-model="selectedAttribute">
             <option v-for="attr in attributes" :key="attr.value" :value="attr.value">
               {{ attr.label }}
             </option>
           </select>
+          <svg class="chevron-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M6 9l6 6 6-6" />
+          </svg>
         </div>
 
-        <div class="control-group">
-          <label>年份</label>
+        <!-- 年份 -->
+        <div class="glass-select-wrapper">
+          <svg class="select-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+          </svg>
           <select v-model="selectedYear">
             <option v-for="year in years" :key="year" :value="year">{{ year }}</option>
           </select>
+          <svg class="chevron-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M6 9l6 6 6-6" />
+          </svg>
         </div>
-
-        <div class="control-group">
-          <label>底图</label>
+        
+        <!-- 底图 -->
+        <div class="glass-select-wrapper icon-only" title="切换底图">
+           <svg class="select-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M9 20l-5.447-2.724A1 1 0 013 16.382V5.618a1 1 0 011.447-.894L9 7m0 13l6-3m-6 3V7m6 10l4.553 2.276A1 1 0 0021 18.382V7.618a1 1 0 00-.553-.894L15 4m0 13V4m0 0L9 7" />
+          </svg>
           <select v-model="currentBaseMap" @change="loadBaseMap(currentBaseMap)">
-            <option v-for="opt in baseMapOptions" :key="opt.value" :value="opt.value">
+             <option v-for="opt in baseMapOptions" :key="opt.value" :value="opt.value">
               {{ opt.label }}
             </option>
           </select>
         </div>
+
       </div>
     </div>
 
@@ -65,6 +82,16 @@
         </div>
       </div>
       <div class="legend-unit">单位: km²</div>
+    </div>
+
+    <!-- 时间轴控制器 -->
+    <div class="time-player-container" v-if="years.length > 0">
+      <!-- 极简模式播放器 -->
+      <TimePlayer 
+        :years="years"
+        v-model="selectedYear"
+        :interval="500"
+      />
     </div>
 
     <!-- 区域信息悬浮提示 -->
@@ -89,9 +116,12 @@ import { ref, shallowRef, computed, watch, onMounted, onUnmounted } from 'vue';
 import { useRouter } from 'vue-router';
 import * as Cesium from 'cesium';
 import { clcdApi } from '../api/index.js';
+import TimePlayer from '../components/controls/TimePlayer.vue';
+import { useGlobalStore } from '../stores/index.ts';
 import 'cesium/Build/Cesium/Widgets/widgets.css';
 
 const router = useRouter();
+const store = useGlobalStore();
 
 const viewer = shallowRef(null);
 const baseMapLayer = shallowRef(null);
@@ -105,8 +135,22 @@ const isLoading = ref(false);
 const currentStatsField = ref(null);
 const spatialUnit = ref('county');
 const selectedAttribute = ref('cropland');
-const selectedYear = ref(1990);
+// sync selectedYear with store
+const selectedYear = computed({
+  get: () => store.currentYear,
+  set: (val) => store.setYear(val)
+});
+
+// Cache for WMS layers to support smooth playback
+const wmsLayerCache = new Map(); // Map<year, Cesium.ImageryLayer>
 const years = ref([]);
+
+// 监听年份变化，重新加载图层
+watch(selectedYear, (newVal) => {
+    loadWMSLayer();
+});
+
+// ... rest of imports ...
 
 // 底图切换
 const currentBaseMap = ref('imagery');
@@ -221,10 +265,11 @@ function cleanupData() {
 }
 
 // 空间单元变化监听
+// 空间单元变化监听
 watch(spatialUnit, (newUnit, oldUnit) => {
   if (newUnit !== oldUnit) {
     console.log(`[RegionalAnalysis] Spatial unit changed to ${newUnit}`);
-    // 使用 WMS 渲染
+    clearWMSCache(); // Clear cache to prevent showing wrong layers
     loadWMSLayer();
   }
 });
@@ -232,12 +277,14 @@ watch(spatialUnit, (newUnit, oldUnit) => {
 // 监听年份变化，自动刷新 WMS 图层
 watch(selectedYear, () => {
   console.log('[RegionalAnalysis] Year changed, updating WMS...');
-  loadWMSLayer();
+  loadWMSLayer(false); // Silent update for smooth playback
 });
 
 // 监听分析指标变化，更新 WMS 样式
+// 监听分析指标变化，更新 WMS 样式
 watch(selectedAttribute, () => {
   console.log('[RegionalAnalysis] Attribute changed, updating WMS style...');
+  clearWMSCache(); // Clear cache to prevent showing wrong layers
   loadWMSLayer();
 });
 
@@ -245,13 +292,21 @@ async function fetchYears() {
   try {
     const data = await clcdApi.getAvailableYears();
     years.value = data || [];
-    if (years.value.length > 0 && !years.value.includes(selectedYear.value)) {
-      selectedYear.value = years.value[years.value.length - 1];
+    
+    // Sync with global store for TimeController
+    store.setYearsAll(years.value);
+    
+    if (years.value.length > 0) {
+       // If current store year is invalid, set to valid year
+       if (!years.value.includes(store.currentYear)) {
+          store.setYear(years.value[years.value.length - 1]);
+       }
     }
   } catch (err) {
     console.error('[RegionalAnalysis] Failed to fetch years:', err);
     // 回退默认值
     years.value = [1985, 1990, 1995, 2000, 2005, 2010, 2015, 2020, 2022];
+    store.setYearsAll(years.value);
   }
 }
 
@@ -330,7 +385,7 @@ async function initCesium() {
     // 加载云南省边界
     loadYunnanBoundary();
 
-    // 飞到初始视角
+    // 飞到初始视角 (保持与 Workbench 云南范围一致)
     viewer.value.camera.setView({
       destination: Cesium.Cartesian3.fromDegrees(101.8, 25.2, 1900000),
       orientation: {
@@ -346,6 +401,14 @@ async function initCesium() {
     clickHandler = new Cesium.ScreenSpaceEventHandler(viewer.value.scene.canvas);
     clickHandler.setInputAction((movement) => {
       const position = movement.endPosition;
+      
+      // 1. 立即更新弹窗位置，实现丝滑跟随
+      // 注意：这里使用的是当前鼠标位置，独立于数据请求
+      // 居中显示：横向居中，纵向位于鼠标上方
+      popupStyle.value = {
+        left: position.x + 'px',
+        top: position.y - 20 + 'px' // 上移 20px
+      };
       
       // 防抖：避免过于频繁的请求
       if (hoverDebounceTimer) clearTimeout(hoverDebounceTimer);
@@ -388,11 +451,7 @@ async function initCesium() {
                         properties: displayProps
                     };
                     
-                    // 更新弹窗位置（跟随鼠标）
-                    popupStyle.value = {
-                        left: position.x + 15 + 'px',
-                        top: position.y + 15 + 'px'
-                    };
+                    // 注意：不再此处更新位置，防止位置跳变回请求发起时的位置
                 } else {
                     // 鼠标移出数据区域，隐藏弹窗
                     selectedEntity.value = null;
@@ -403,7 +462,7 @@ async function initCesium() {
         } else {
             selectedEntity.value = null;
         }
-      }, 80); // 80ms 防抖延迟
+      }, 50); // 稍微降低防抖时间，提高响应速度
       
     }, Cesium.ScreenSpaceEventType.MOUSE_MOVE);
     
@@ -505,22 +564,29 @@ function formatValue(value) {
 
 // ==================== WMS 图层加载（纯 WMS 渲染模式）====================
 // 根据选择的空间单元、年份和属性加载 WMS 图层
-async function loadWMSLayer() {
+// ==================== WMS 图层加载（滚动缓冲区策略）====================
+// targetYear: 要加载/显示的年份 (默认 selectedYear)
+// visible: 是否立即可见 (预加载设为 false)
+async function loadWMSLayer(targetYear = null, visible = true) {
   if (!viewer.value) {
     console.warn('[RegionalAnalysis] Viewer not ready');
     return;
   }
-  
-  isLoading.value = true;
-  
-  // 移除旧的 WMS 图层
-  if (spatialLayer.value) {
-    try {
-      viewer.value.imageryLayers.remove(spatialLayer.value, true);
-    } catch (e) {
-      console.warn('[RegionalAnalysis] WMS layer cleanup warning:', e);
+
+  const year = targetYear || selectedYear.value;
+
+  // 1. 如果需要显示，且已在缓存中存在，直接切换可见性
+  if (wmsLayerCache.has(year)) {
+    if (visible) {
+      updateLayerVisibility(year);
     }
-    spatialLayer.value = null;
+    return;
+  }
+
+  // 2. 如果是当前年份且需要显示，且当前无图层（首次加载），开启加载动画
+  // 如果已有图层，则静默加载新图层，保持当前图层直到新图层就绪 (电影模式)
+  if (visible && year === selectedYear.value && !spatialLayer.value) {
+    isLoading.value = true;
   }
   
    // 构建图层名称
@@ -541,36 +607,61 @@ async function loadWMSLayer() {
     water: 'wat', wetland: 'wet', impervious: 'imp', barren: 'bar', snow_ice: 'ice'
   };
   
-  const prefix = attrPrefixMap[selectedAttribute.value] || 'cro';
-  
   // 获取动态分级断点及其对应的正确字段名
   try {
-    // 增加分级数到10级，以更好区分高端数值（如宣威 vs 隆阳）
-    // 使用自然断点法(Jenks)以获得最佳的视觉区分度
+    // 针对不同尺度选择最佳分级方法
+    const method = spatialUnit.value === 'grid' ? 'quantile' : 'jenks';
     const numClasses = 10;
-    const breaksData = await clcdApi.getBreaks(selectedAttribute.value, selectedYear.value, 'jenks', numClasses);
+    
+    console.log(`[RegionalAnalysis] Requesting breaks: unit=${spatialUnit.value}, method=${method}, classes=${numClasses}`);
+    
+    // 直接使用 fetch 避免 api/index.js 可能存在的参数传递问题
+    const token = localStorage.getItem('auth_token');
+    const url = `/api/clcd/breaks?attr=${selectedAttribute.value}&year=${year}&method=${method}&classes=${numClasses}&unit=${spatialUnit.value}`;
+    
+    // 获取断点 (Legend) 数据
+    // 注意：即使是预加载，我们也需要获取已计算好的 Breaks 以生成正确的样式
+    const response = await fetch(url, {
+        headers: {
+            'Authorization': `Bearer ${token}`,
+            'Content-Type': 'application/json'
+        }
+    });
+
+    if (!response.ok) {
+        throw new Error(`API error: ${response.status}`);
+    }
+
+    const breaksData = await response.json();
     let breaks = breaksData.breaks; // [min, th1, ..., th(k), max]
     const dynamicAttr = breaksData.field;
     currentStatsField.value = dynamicAttr;
     
-    // Jenks 可能返回少于请求的分级数（如果数据值种类少）
-    // 补全 breaks 数组，确保长度满足 numClasses + 1
+    console.log('[RegionalAnalysis] Breaks Response:', breaksData);
+    
+    // 异常检测：如果格网模式下出现巨大数值，显示警告
+    if (spatialUnit.value === 'grid' && breaks[breaks.length-1] > 200) {
+        console.error('[RegionalAnalysis] DATA ANOMALY: Grid breaks are unexpectedly large (>200 km²). Likely received County data.');
+    }
+
+    // Jenks 可能返回少于请求的分级数
     while (breaks.length < numClasses + 1) {
         breaks.push(breaks[breaks.length - 1]);
     }
     
-    console.log(`[RegionalAnalysis] Loaded breaks (Jenks) for field: ${dynamicAttr}, classes: ${numClasses}`);
+    console.log(`[RegionalAnalysis] Loaded breaks for field: ${dynamicAttr}, classes: ${numClasses}`);
     
     // 更新图例标签
     const labels = [];
     for (let i = 0; i < numClasses; i++) {
-        const minVal = Math.round(breaks[i]);
-        const maxVal = Math.round(breaks[i+1]);
-        if (minVal === maxVal && i > 0 && breaks[i] === breaks[breaks.length-1]) {
-             // 已经到了填充的尾部，不再显示重复标签
+        const formatNum = (num) => num < 10 ? num.toFixed(2) : Math.round(num);
+        const minValStr = formatNum(breaks[i]);
+        const maxValStr = formatNum(breaks[i+1]);
+        
+        if (i > 0 && breaks[i] === breaks[breaks.length-1]) {
              break;
         }
-        labels.push(`${minVal}-${maxVal}`);
+        labels.push(`${minValStr}-${maxValStr}`);
     }
     
     currentLegendLabels.value = labels;
@@ -578,44 +669,112 @@ async function loadWMSLayer() {
     // 构建 GeoServer env 参数
     let envParams = `attr:${dynamicAttr}`;
     for (let i = 1; i < numClasses; i++) {
-        // 安全获取阈值，如果越界则用最大值
         const val = i < breaks.length - 1 ? breaks[i] : breaks[breaks.length - 1];
+        // 还原为平方米 (数据库单位)
         const valSqM = Math.round(val * 1000000); 
         envParams += `;th${i}:${valSqM}`;
     }
     
-    console.log(`[RegionalAnalysis] Loading WMS: ${layerName}, env: ${envParams}`);
+    const styleName = `${selectedAttribute.value}_dynamic`;
+    console.log(`[RegionalAnalysis] Loading WMS: ${layerName}, style=${styleName}, env=${envParams}`);
   
+    const wmsParameters = {
+          service: 'WMS',
+          version: '1.1.0',
+          request: 'GetMap',
+          transparent: 'true',
+          format: 'image/png',
+          styles: styleName,
+          env: envParams,
+          info_format: 'application/json'
+    };
+
     const wmsProvider = new Cesium.WebMapServiceImageryProvider({
       url: 'http://localhost:8080/geoserver/WebGIS/wms',
       layers: layerName,
-      enablePickFeatures: true, // 开启特征拾取
-      parameters: {
-        service: 'WMS',
-        version: '1.1.0',
-        request: 'GetMap',
-        format: 'image/png',
-        transparent: true,
-        styles: `${selectedAttribute.value}_dynamic`,
-        env: envParams,
-        info_format: 'application/json' // 请求JSON格式的特征信息
-      }
+      enablePickFeatures: true,
+      parameters: wmsParameters
     });
-    
-    // 监听加载错误
-    wmsProvider.errorEvent.addEventListener((error) => {
-      console.warn(`[RegionalAnalysis] WMS tile error:`, error);
-    });
-    
+
+    // 创建图层，初始透明度 0 (除非是当前唯一且无缓存，但策略是先隐后显)
     const newLayer = viewer.value.imageryLayers.addImageryProvider(wmsProvider);
-    spatialLayer.value = newLayer;
+    newLayer.alpha = 0; 
+    newLayer.show = true; // 保持 show=true 但 alpha=0 以便预加载纹理
+
+    // 存入缓存
+    wmsLayerCache.set(year, newLayer);
+
+    // 如果需要显示，执行切换逻辑
+    if (visible) {
+       updateLayerVisibility(year);
+       isLoading.value = false;
+    }
     
   } catch (err) {
-    console.error('[RegionalAnalysis] Failed to load breaks or WMS:', err);
-  } finally {
+    console.error('[RegionalAnalysis] Failed to load breaks/WMS:', err);
     isLoading.value = false;
   }
 }
+
+// 清理所有 WMS 缓存 (在切换指标或空间单元时调用)
+function clearWMSCache() {
+  wmsLayerCache.forEach((layer) => {
+    try {
+      if (viewer.value && !viewer.value.isDestroyed()) {
+        viewer.value.imageryLayers.remove(layer, true);
+      }
+    } catch (e) {
+      console.warn('Cache cleanup failed', e);
+    }
+  });
+  wmsLayerCache.clear();
+  spatialLayer.value = null;
+}
+
+// 核心切换逻辑：只显示目标年份，隐藏其他，清理过期
+function updateLayerVisibility(targetYear) {
+    // 1. 设置当前层可见
+    const targetLayer = wmsLayerCache.get(targetYear);
+    if (targetLayer) {
+        targetLayer.alpha = 1;
+        spatialLayer.value = targetLayer; 
+    }
+
+    // 2. 隐藏其他层
+    wmsLayerCache.forEach((layer, yr) => {
+        if (yr !== targetYear) {
+            layer.alpha = 0;
+        }
+    });
+
+    // 3. 预加载未来 2 年
+    const allYears = years.value;
+    const currentIndex = allYears.indexOf(targetYear);
+    if (currentIndex !== -1) {
+        if (currentIndex + 1 < allYears.length) loadWMSLayer(allYears[currentIndex + 1], false);
+        if (currentIndex + 2 < allYears.length) loadWMSLayer(allYears[currentIndex + 2], false);
+    }
+
+    // 4. 清理缓存 (保留当前前后各 2 年)
+    const keepRange = new Set();
+    for (let i = currentIndex - 2; i <= currentIndex + 5; i++) {
+        if (i >= 0 && i < allYears.length) keepRange.add(allYears[i]);
+    }
+
+    wmsLayerCache.forEach((layer, yr) => {
+        if (!keepRange.has(yr)) {
+            try {
+                if (viewer.value && !viewer.value.isDestroyed()) {
+                    viewer.value.imageryLayers.remove(layer, true);
+                }
+            } catch (e) {
+                console.warn('Cleanup failed', e);
+            }
+            wmsLayerCache.delete(yr);
+        }
+    });
+}
+
 
 function getAttributeLabel(key) {
   const attr = attributes.find(a => a.value === key);
@@ -688,127 +847,210 @@ onUnmounted(() => {
   left: 0;
 }
 
-/* 顶部控制面板 */
-.analysis-header {
-  position: fixed;
+/* 顶部控制面板 - 悬浮毛玻璃设计 (全宽版) */
+.analysis-header.floating-glass {
+  position: absolute;
   top: 0;
   left: 0;
   right: 0;
+  height: 64px;
   display: flex;
+  justify-content: space-between;
   align-items: center;
-  gap: 24px;
-  padding: 12px 24px;
-  background: rgba(13, 25, 48, 0.9);
-  backdrop-filter: blur(16px);
-  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+  padding: 0 32px; /* Increased padding for full width */
+  background: rgba(15, 23, 42, 0.75); /* Slightly darker/more opaque for full bar */
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08); /* Only bottom border */
+  box-shadow: 0 4px 24px rgba(0, 0, 0, 0.2);
   z-index: 1000;
+  pointer-events: auto;
+  font-family: "PingFang SC", "Microsoft YaHei", "Helvetica Neue", Arial, sans-serif;
 }
 
-.back-btn {
+.header-left, .header-right {
   display: flex;
   align-items: center;
-  gap: 8px;
-  padding: 10px 20px;
-  background: rgba(255, 255, 255, 0.1);
-  border: 1px solid rgba(255, 255, 255, 0.2);
-  border-radius: 8px;
+  gap: 20px;
+}
+
+/* 圆形返回按钮 */
+.back-btn-circle {
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  background: rgba(255, 255, 255, 0.05);
   color: #fff;
-  font-size: 14px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
   cursor: pointer;
-  transition: all 0.3s;
+  transition: all 0.2s ease;
 }
 
-.back-btn:hover {
-  background: rgba(255, 255, 255, 0.2);
-  transform: translateX(-4px);
+.back-btn-circle:hover {
+  background: rgba(255, 255, 255, 0.15);
+  transform: scale(1.05);
+  border-color: rgba(255, 255, 255, 0.3);
 }
 
-.back-btn svg {
-  width: 18px;
-  height: 18px;
+.divider-vertical {
+  width: 1px;
+  height: 24px;
+  background: rgba(255, 255, 255, 0.1);
+}
+
+.divider-vertical.small {
+  height: 16px;
+  margin: 0 4px;
 }
 
 .header-title {
   font-size: 20px;
-  font-weight: 700;
-  color: #fff;
+  font-weight: 800; /* Bolder */
   letter-spacing: 2px;
-  text-shadow: 0 0 20px rgba(59, 130, 246, 0.5);
+  background: linear-gradient(135deg, #e2e8f0 0%, #ffffff 50%, #94a3b8 100%);
+  background-clip: text;
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  text-shadow: 0 2px 10px rgba(255, 255, 255, 0.1);
+  position: relative;
+  padding-right: 12px;
 }
 
-.controls {
+/* Decorative dot for title */
+.header-title::after {
+  content: '';
+  position: absolute;
+  top: 50%;
+  right: 0;
+  transform: translateY(-50%);
+  width: 6px;
+  height: 6px;
+  background: #3b82f6;
+  border-radius: 50%;
+  box-shadow: 0 0 8px #3b82f6;
+}
+
+/* Segmented Control (iOS style) */
+.segmented-control {
+  position: relative;
   display: flex;
-  align-items: center;
-  gap: 20px;
-  margin-left: auto;
+  background: rgba(0, 0, 0, 0.2);
+  padding: 4px;
+  border-radius: 12px;
+  border: 1px solid rgba(255, 255, 255, 0.05);
 }
 
-.control-group {
-  display: flex;
-  align-items: center;
-  gap: 8px;
+.segment-bg {
+  position: absolute;
+  top: 4px;
+  left: 4px;
+  width: calc(50% - 4px);
+  height: calc(100% - 8px);
+  background: rgba(59, 130, 246, 0.8);
+  border-radius: 8px;
+  transition: left 0.3s cubic-bezier(0.4, 0.0, 0.2, 1);
+  box-shadow: 0 2px 8px rgba(59, 130, 246, 0.4); 
 }
 
-.control-group label {
+.segmented-control button {
+  position: relative;
+  z-index: 1;
+  width: 60px;
+  padding: 6px 0;
+  border: none;
+  background: none;
   color: rgba(255, 255, 255, 0.6);
   font-size: 13px;
-}
-
-.control-group select {
-  background: rgba(255, 255, 255, 0.1);
-  border: 1px solid rgba(255, 255, 255, 0.2);
-  border-radius: 6px;
-  color: #fff;
-  padding: 8px 12px;
-  font-size: 13px;
+  font-weight: 500;
+  font-family: inherit; /* Inherit font from header */
   cursor: pointer;
-  min-width: 120px;
+  transition: color 0.3s;
 }
 
-.control-group select:focus {
-  outline: none;
-  border-color: #3b82f6;
-}
-
-.control-group select option {
-  background: #1e3a5f;
+.segmented-control button.active {
   color: #fff;
+  text-shadow: 0 1px 2px rgba(0,0,0,0.2);
 }
 
-.btn-group {
+/* Glass Select Wrapper */
+.glass-select-wrapper {
+  position: relative;
   display: flex;
-  gap: 0;
-}
-
-.btn-group button {
-  padding: 8px 16px;
-  background: rgba(255, 255, 255, 0.1);
-  border: 1px solid rgba(255, 255, 255, 0.2);
-  color: rgba(255, 255, 255, 0.7);
-  font-size: 13px;
-  cursor: pointer;
+  align-items: center;
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 12px;
+  padding: 0 12px;
+  height: 40px;
   transition: all 0.2s;
 }
 
-.btn-group button:first-child {
-  border-radius: 6px 0 0 6px;
+.glass-select-wrapper:hover {
+  background: rgba(255, 255, 255, 0.1);
+  border-color: rgba(255, 255, 255, 0.2);
 }
 
-.btn-group button:last-child {
-  border-radius: 0 6px 6px 0;
-  border-left: none;
+.glass-select-wrapper.icon-only {
+  padding: 0;
+  width: 40px;
+  justify-content: center;
 }
 
-.btn-group button.active {
-  background: #3b82f6;
-  border-color: #3b82f6;
+.glass-select-wrapper select {
+  appearance: none;
+  background: transparent;
+  border: none;
   color: #fff;
+  font-size: 14px;
+  padding: 0 24px 0 32px; /* Left space for icon, right for chevron */
+  height: 100%;
+  cursor: pointer;
+  outline: none;
 }
 
-.btn-group button:disabled {
-  opacity: 0.4;
-  cursor: not-allowed;
+.glass-select-wrapper.icon-only select {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  opacity: 0; /* Hidden select covering the icon */
 }
+
+/* Icons styling */
+.select-icon {
+  position: absolute;
+  left: 10px;
+  width: 16px;
+  height: 16px;
+  color: rgba(255, 255, 255, 0.6);
+  pointer-events: none;
+}
+
+.glass-select-wrapper.icon-only .select-icon {
+  position: static;
+  color: rgba(255, 255, 255, 0.8);
+}
+
+.chevron-icon {
+  position: absolute;
+  right: 10px;
+  width: 14px;
+  height: 14px;
+  color: rgba(255, 255, 255, 0.4);
+  pointer-events: none;
+}
+
+/* Dark option styling for dropdowns */
+.glass-select-wrapper select option {
+  background: #1e293b;
+  color: #fff;
+  padding: 8px;
+}
+
 
 .load-btn {
   padding: 10px 24px;
@@ -836,53 +1078,71 @@ onUnmounted(() => {
 }
 
 /* 图例 */
+/* 图例 */
 .legend-container {
   position: fixed;
-  bottom: 30px;
+  bottom: 40px; /* Slightly higher */
   right: 30px;
-  background: rgba(13, 25, 48, 0.9);
-  backdrop-filter: blur(12px);
+  background: rgba(15, 23, 42, 0.6); /* Same as TimePlayer */
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
   border: 1px solid rgba(255, 255, 255, 0.1);
-  border-radius: 12px;
-  padding: 16px;
+  border-radius: 16px;
+  padding: 20px;
   z-index: 1000;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.2);
+  transition: all 0.3s ease;
+  min-width: 180px;
+}
+
+.legend-container:hover {
+  background: rgba(15, 23, 42, 0.8);
+  box-shadow: 0 12px 40px rgba(0, 0, 0, 0.4);
 }
 
 .legend-title {
   font-size: 14px;
   font-weight: 600;
   color: #fff;
-  margin-bottom: 12px;
+  margin-bottom: 16px;
+  padding-bottom: 8px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+  letter-spacing: 0.5px;
 }
 
 .legend-items {
   display: flex;
   flex-direction: column;
-  gap: 8px;
+  gap: 10px; /* Increased gap */
 }
 
 .legend-item {
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: 12px;
 }
 
 .legend-color {
-  width: 20px;
-  height: 14px;
-  border-radius: 3px;
+  width: 16px;
+  height: 16px;
+  border-radius: 4px;
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  box-shadow: 0 2px 4px rgba(0,0,0,0.2);
 }
 
 .legend-label {
-  font-size: 12px;
-  color: rgba(255, 255, 255, 0.8);
+  font-size: 13px;
+  color: rgba(255, 255, 255, 0.9);
+  font-family: "PingFang SC", "Microsoft YaHei", "Helvetica Neue", Arial, sans-serif;
+  font-weight: 500;
 }
 
 .legend-unit {
   font-size: 11px;
-  color: rgba(255, 255, 255, 0.5);
-  margin-top: 10px;
+  color: rgba(255, 255, 255, 0.6);
+  margin-top: 16px;
   text-align: right;
+  font-family: "PingFang SC", "Microsoft YaHei", sans-serif;
 }
 
 /* 信息弹窗 */
@@ -899,6 +1159,7 @@ onUnmounted(() => {
   min-width: 160px;
   max-width: 280px;
   padding: 10px 14px;
+  transform: translate(-50%, -100%); /* 关键：实现居中并位于上方 */
   animation: tooltipFadeIn 0.15s ease-out;
 }
 
@@ -914,6 +1175,7 @@ onUnmounted(() => {
   margin-bottom: 6px;
   padding-bottom: 6px;
   border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+  text-align: center;
 }
 
 .tooltip-row {
@@ -1030,5 +1292,14 @@ onUnmounted(() => {
 
 @keyframes spin {
   to { transform: rotate(360deg); }
+}
+
+.time-player-container {
+  position: fixed;
+  bottom: 10px;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 1000;
+  width: 600px;
 }
 </style>

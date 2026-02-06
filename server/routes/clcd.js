@@ -387,7 +387,6 @@ router.get('/breaks', async (req, res) => {
 
             // 添加首尾值
             breaks = [stats.min, ...percRow.breaks.map(v => Number(v) / 1000000), stats.max];
-            rows = [];
         } else if (method === 'jenks' || method === 'natural_breaks') {
             // 自然断点法 (Jenks)
             // 1. 获取所有数据点
@@ -450,6 +449,155 @@ router.get('/breaks', async (req, res) => {
         });
     } catch (err) {
         console.error('[clcd] Breaks API Error:', err);
+        handleError(res, err);
+    }
+});
+
+/**
+ * 获取变化检测的分级断点 (年份B - 年份A)
+ * 仅支持数值差值统计
+ */
+router.get('/breaks/diff', async (req, res) => {
+    const { attr = 'cropland', year1, year2, unit = 'county', method = 'jenks', classes = 10 } = req.query;
+
+    if (!year1 || !year2) {
+        return res.status(400).json({ error: 'year1 and year2 are required for diff analysis' });
+    }
+
+    const tableName = unit === 'grid' ? 'spatial_grid_yunnan_stats' : 'spatial_county_yunnan_stats';
+
+    try {
+        // 1. 获取所有列名以辅助映射
+        const { rows: cols } = await pool.query(`
+            SELECT column_name 
+            FROM information_schema.columns 
+            WHERE table_schema = 'public' AND table_name = $1
+        `, [tableName]);
+        const dbCols = cols.map(c => c.column_name);
+
+        // 2. 映射字段名的辅助函数 (简化版，复用逻辑)
+        const getFieldForYear = (targetYear) => {
+            const attrPrefixMap = {
+                cropland: 'cro', forest: 'for', shrub: 'shr', grassland: 'gra',
+                water: 'wat', wetland: 'wet', impervious: 'imp', barren: 'bar', snow_ice: 'ice'
+            };
+            const prefix = attrPrefixMap[attr] || 'cro';
+
+            // 策略1：标准映射 (假设年份和列是严格对应的，或者使用后缀匹配)
+            // 简单匹配：prefix + '_sq_' + year的后3位 (适用于 1xx, 2xx)
+            // 例如 1990 -> cro_sq_199? 不一定。
+            // 之前的逻辑比较复杂，这里使用“最强匹配”：
+            // 如果列名包含 year 的后3位，优先匹配
+            const suffix = String(targetYear).slice(-3); // "022", "990"
+            const match = dbCols.find(c => c.startsWith(`${prefix}_sq_`) && c.endsWith(suffix));
+            if (match) return match;
+
+            // 策略2：按顺序映射（如果第一步失败）
+            // 需要先获取所有年份列表来确定 index... 比较繁琐。
+            // 这里我们假设后缀匹配是有效的，因为 check_year_mapping.js 显示 2022 -> cro_sq_231 (BAD!)
+            // 等等，check_year_mapping.js 显示:
+            // 1990 -> cro_sq_199 (匹配 '199' 吗？ 1990 string slice(-3) is '990'. NO match!)
+            // 1990 -> 数据库列 cro_sq_199.  
+            // 2022 -> cro_sq_231.
+            // 这种映射是 *索引偏移* (Offset) 的！
+
+            // 必须重新获取年份列表来做索引映射
+            return null;
+        };
+
+        // 重新获取年份列表以进行索引映射 (最稳妥)
+        const yearSql = 'SELECT DISTINCT year FROM public.clcd_province ORDER BY year';
+        const { rows: yearRows } = await pool.query(yearSql);
+        const years = yearRows.map(r => r.year);
+
+        const resolveField = (y) => {
+            const yInt = Number(y);
+            const idx = years.indexOf(yInt);
+            if (idx === -1) return null;
+
+            const attrPrefixMap = {
+                cropland: 'cro', forest: 'for', shrub: 'shr', grassland: 'gra',
+                water: 'wat', wetland: 'wet', impervious: 'imp', barren: 'bar', snow_ice: 'ice'
+            };
+            const prefix = attrPrefixMap[attr] || 'cro';
+
+            // 过滤出该属性的所有列 (按字母/数字顺序排序?)
+            // 注意：cro_sq_198, cro_sq_199... 需要按后缀数字排序
+            const relevantCols = dbCols
+                .filter(c => c.startsWith(`${prefix}_sq_`))
+                .sort((a, b) => {
+                    const numA = parseInt(a.split('_').pop());
+                    const numB = parseInt(b.split('_').pop());
+                    return numA - numB;
+                });
+
+            // 假设索引一致
+            if (idx < relevantCols.length) return relevantCols[idx];
+            return null;
+        };
+
+        const field1 = resolveField(year1);
+        const field2 = resolveField(year2);
+
+        if (!field1 || !field2) {
+            return res.status(400).json({ error: `Cannot resolve fields for years ${year1} or ${year2}` });
+        }
+
+        // 3. 计算差值统计 (Diff = field2 - field1)
+        // 使用 CTE 或直接查询
+        const statsSql = `
+            SELECT 
+                min(${field2} - ${field1}) as min_val,
+                max(${field2} - ${field1}) as max_val,
+                avg(${field2} - ${field1}) as avg_val
+            FROM public.${tableName}
+            WHERE ${field1} IS NOT NULL AND ${field2} IS NOT NULL
+        `;
+        const { rows: [statsRow] } = await pool.query(statsSql);
+        const stats = {
+            min: Number(statsRow.min_val) / 1000000,
+            max: Number(statsRow.max_val) / 1000000,
+            avg: Number(statsRow.avg_val) / 1000000
+        };
+
+        // 4. 获取所有差值数据进行 Jenks/Quantile 分级
+        const dataSql = `
+            SELECT (${field2} - ${field1}) as val
+            FROM public.${tableName}
+            WHERE ${field1} IS NOT NULL AND ${field2} IS NOT NULL
+            ORDER BY val ASC
+        `;
+        const { rows: allRows } = await pool.query(dataSql);
+        let dataValues = allRows.map(r => Number(r.val) / 1000000);
+
+        // 采样逻辑
+        if (dataValues.length > 5000) {
+            const step = Math.ceil(dataValues.length / 5000);
+            dataValues = dataValues.filter((_, i) => i % step === 0);
+        }
+
+        let breaks = [];
+        // 强制使用 Jenks 或等间距，因为差值分布可能很奇特（正态或双峰）
+        // 或者是 'diverging' 逻辑？
+        if (dataValues.length <= classes) {
+            breaks = dataValues;
+        } else {
+            breaks = getJenksBreaks(dataValues, classes);
+        }
+
+        res.json({
+            attribute: attr,
+            year1: Number(year1),
+            year2: Number(year2),
+            field1,
+            field2,
+            breaks,
+            stats,
+            unit: 'km²'
+        });
+
+    } catch (err) {
+        console.error('[clcd] Diff API Error:', err);
         handleError(res, err);
     }
 });
