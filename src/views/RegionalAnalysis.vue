@@ -265,7 +265,6 @@ function cleanupData() {
 }
 
 // 空间单元变化监听
-// 空间单元变化监听
 watch(spatialUnit, (newUnit, oldUnit) => {
   if (newUnit !== oldUnit) {
     console.log(`[RegionalAnalysis] Spatial unit changed to ${newUnit}`);
@@ -277,7 +276,7 @@ watch(spatialUnit, (newUnit, oldUnit) => {
 // 监听年份变化，自动刷新 WMS 图层
 watch(selectedYear, () => {
   console.log('[RegionalAnalysis] Year changed, updating WMS...');
-  loadWMSLayer(false); // Silent update for smooth playback
+  loadWMSLayer(null, false); // null = use selectedYear.value, false = silent update
 });
 
 // 监听分析指标变化，更新 WMS 样式

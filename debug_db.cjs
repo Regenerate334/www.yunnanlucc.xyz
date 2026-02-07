@@ -14,14 +14,20 @@ async function checkColumns(tableName) {
         const res = await pool.query(`
             SELECT column_name 
             FROM information_schema.columns 
-            WHERE table_schema = 'public' AND table_name = $1
+            WHERE table_schema = 'public' 
+              AND table_name = $1 
+              AND (
+                  column_name LIKE 's%_sq_%' 
+                  OR column_name LIKE 'i%_sq_%' 
+                  OR column_name LIKE '%_sq_233'
+              )
             ORDER BY column_name
         `, [tableName]);
 
         if (res.rows.length === 0) {
             console.log('No columns found');
         } else {
-            const relevant = res.rows.map(r => r.column_name).filter(c => c.startsWith('cro_sq_'));
+            const relevant = res.rows.map(r => r.column_name);
             console.log(JSON.stringify(relevant, null, 2));
         }
     } catch (err) {
@@ -37,11 +43,13 @@ async function checkYears() {
     } catch (err) { console.error(err.message); }
 }
 
-async function main() {
+// Main execution
+(async () => {
     await checkYears();
+    console.log('\n--- Checking County Stats ---');
     await checkColumns('spatial_county_yunnan_stats');
-    // await checkColumns('spatial_grid_yunnan_stats'); // Skip grid for now to reduce noise
-    pool.end();
-}
-
-main();
+    console.log('\n--- Checking Grid Stats ---');
+    await checkColumns('spatial_grid_yunnan_stats');
+    await pool.end();
+    process.exit(0);
+})();

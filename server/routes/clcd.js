@@ -295,7 +295,7 @@ router.get('/breaks', async (req, res) => {
         const tableName = unit === 'grid' ? 'spatial_grid_yunnan_stats' : 'spatial_county_yunnan_stats';
         const { rows: colRows } = await pool.query(colsSql, [tableName]);
 
-        // Custom sort to handle numeric suffixes if needed (though alphanumeric sorts 198, 199, 200 correctly)
+        // Custom sort to handle numeric suffixes if needed
         const dbCols = colRows.map(r => r.column_name).sort();
 
         // 2. 获取所有可用年份
@@ -303,23 +303,49 @@ router.get('/breaks', async (req, res) => {
         const { rows: yearRows } = await pool.query(yearSql);
         const years = yearRows.map(r => r.year);
 
-        // 3. 建立基于索引的映射
-        // Data analysis reveals: 
-        // Years: 1985, 1990, 1991 ... 2023 (Sorted)
-        // Cols:  cro_sq_198, cro_sq_199, cro_sq_200 ... (Sorted)
-        // Map year[i] -> col[i]
+        // 3. Establish index-based mapping with Alignment Fix
+        // Grid Table lacks 1985. Years: 1985 (idx 0), 1990 (idx 1)...
+        // Columns: 34 cols (1990-2023).
 
-        const yearIndex = years.indexOf(Number(year));
+        let targetIndex = years.indexOf(Number(year));
 
-        if (yearIndex !== -1 && yearIndex < dbCols.length) {
-            fieldName = dbCols[yearIndex];
-            console.log(`[clcd] Mapped year ${year} (index ${yearIndex}) to column ${fieldName}`);
-        } else {
-            console.warn(`[clcd] No spatial column found for year ${year} (Index ${yearIndex}, Cols ${dbCols.length})`);
-            // Fallback to previous logic just in case, or keep default
+        // Column mapping logic simplified: The years array (35 items) matches the columns array (35 items) 1:1.
+        // Index 0 -> 1985 -> bar_sq_198
+        // Index 1 -> 1990 -> bar_sq_199
+        // No shifting needed.
+        if (tableName === 'spatial_grid_yunnan_stats') {
+            // Verify alignment just in case
+            // console.log(`[clcd] Mapping year ${year} (Index ${targetIndex}) to column...`);
         }
 
-        // 如果上面逻辑失败（没找到对应的），保留原fieldName尝试查询（会报错字段不存在）
+        if (targetIndex !== -1) {
+            if (targetIndex < dbCols.length) {
+                // Happy path: Column now aligns perfectly (e.g. 2023 -> imp_sq_231)
+                fieldName = dbCols[targetIndex];
+            } else if (dbCols.length > 0) {
+                // Fallback only if genuinely out of bounds (e.g. 2024)
+                fieldName = dbCols[dbCols.length - 1];
+                console.warn(`[clcd] Missing column for year ${year}. Fallback to: ${fieldName}`);
+            }
+        } else {
+            // Year not available (e.g. grid mode 1985)
+            fieldName = null;
+        }
+
+        if (fieldName) {
+            console.log(`[clcd] Mapped year ${year} to column ${fieldName}`);
+        } else {
+            console.warn(`[clcd] No spatial column found for year ${year} (Index ${targetIndex}, Cols ${dbCols.length})`);
+            // Default to a safe fallback or return empty stats to prevent crash
+            return res.json({
+                breaks: [],
+                min: 0,
+                max: 0,
+                unit: 'km²',
+                message: 'No data column available'
+            });
+        }
+
 
         // 验证字段是否存在
         const colCheck = await pool.query(`

@@ -268,7 +268,7 @@ const legendNames = {
   wetland: '湿地'
 };
 
-const attributes = [
+const allAttributes = [
   { label: '耕地', value: 'cropland' },
   { label: '林地', value: 'forest' },
   { label: '灌木', value: 'shrub' },
@@ -279,6 +279,13 @@ const attributes = [
   { label: '建设用地', value: 'impervious' },
   { label: '湿地', value: 'wetland' }
 ];
+
+const attributes = computed(() => {
+  if (spatialUnit.value === 'grid') {
+    return allAttributes.filter(attr => attr.value !== 'shrub');
+  }
+  return allAttributes;
+});
 
 // Sync years with global store
 const availableYears = computed(() => {
@@ -463,6 +470,19 @@ watch(spatialUnit, (newUnit, oldUnit) => {
         viewer.value.imageryLayers.remove(clcdLayer.value, true);
         clcdLayer.value = null;
       }
+      
+      // Auto-switch away from 'shrub' in grid mode since it's hidden/merged
+      if (newUnit === 'grid' && selectedAttribute.value === 'shrub') {
+          console.log('[Workbench] Auto-switching attribute from Shrub to Grassland for Grid mode');
+          selectedAttribute.value = 'grassland';
+          // This will trigger the selectedAttribute watcher, so we don't need to call loadWMSLayer here
+          // BUT, to be safe and avoid race conditions or double loading, we can let the watcher handle it.
+          // However, we are inside a watcher callback. Changing state here triggers another watcher? Yes.
+          // But loadWMSLayer is formatted to be synchronous-ish in setup.
+          // If we change selectedAttribute, the selectedAttribute watcher fires.
+          return; 
+      }
+      
       loadWMSLayer(selectedYear.value);
     }
   }
