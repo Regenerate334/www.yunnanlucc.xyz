@@ -283,50 +283,40 @@ router.get('/breaks', async (req, res) => {
     let fieldName = `${prefix}_sq_${String(year).slice(-3)}`;
 
     try {
-        // 1. 获取该属性所有相关列名
+        // 1. 获取该属性所有相关列名 (Strict match for sq columns)
         const colsSql = `
             SELECT column_name 
             FROM information_schema.columns 
             WHERE table_schema = 'public' 
               AND table_name = $1 
               AND column_name LIKE '${prefix}_sq_%'
-            ORDER BY column_name  -- 假设列名按字母序也能对应年份序 (198 < 199 < 200)
+            ORDER BY column_name 
         `;
         const tableName = unit === 'grid' ? 'spatial_grid_yunnan_stats' : 'spatial_county_yunnan_stats';
         const { rows: colRows } = await pool.query(colsSql, [tableName]);
-        const dbCols = colRows.map(r => r.column_name);
+
+        // Custom sort to handle numeric suffixes if needed (though alphanumeric sorts 198, 199, 200 correctly)
+        const dbCols = colRows.map(r => r.column_name).sort();
 
         // 2. 获取所有可用年份
         const yearSql = 'SELECT DISTINCT year FROM public.clcd_province ORDER BY year';
         const { rows: yearRows } = await pool.query(yearSql);
         const years = yearRows.map(r => r.year);
 
-        // 3. 建立映射
-        // 前提：列的数量和顺序 与 年份的数量和顺序 一致 (或大致对应)
-        // 如果数量不一致，尝试模糊匹配
+        // 3. 建立基于索引的映射
+        // Data analysis reveals: 
+        // Years: 1985, 1990, 1991 ... 2023 (Sorted)
+        // Cols:  cro_sq_198, cro_sq_199, cro_sq_200 ... (Sorted)
+        // Map year[i] -> col[i]
+
         const yearIndex = years.indexOf(Number(year));
-        let matchedCol = null;
 
         if (yearIndex !== -1 && yearIndex < dbCols.length) {
-            matchedCol = dbCols[yearIndex];
-            // 校验：如果列名包含年份后两位，增加可信度
-            // cro_sq_198 (1985) -> 85 vs 98?
-            // cro_sq_199 (1990) -> 90 vs 99?
-            // 这种简单的映射可能不可靠，但比直接拼凑更强。
-            // 更好的策略：如果字段数 == 年份数，直接依序映射
-            if (dbCols.length === years.length) {
-                fieldName = matchedCol;
-            } else {
-                // 备用策略：尝试匹配 slice(-3)
-                const simpleMatch = `${prefix}_sq_${String(year).slice(-3)}`;
-                if (dbCols.includes(simpleMatch)) {
-                    fieldName = simpleMatch;
-                } else {
-                    // 尝试匹配 年份-1980 + 198? 不，太复杂。
-                    // 回退到按顺序映射
-                    fieldName = matchedCol;
-                }
-            }
+            fieldName = dbCols[yearIndex];
+            console.log(`[clcd] Mapped year ${year} (index ${yearIndex}) to column ${fieldName}`);
+        } else {
+            console.warn(`[clcd] No spatial column found for year ${year} (Index ${yearIndex}, Cols ${dbCols.length})`);
+            // Fallback to previous logic just in case, or keep default
         }
 
         // 如果上面逻辑失败（没找到对应的），保留原fieldName尝试查询（会报错字段不存在）

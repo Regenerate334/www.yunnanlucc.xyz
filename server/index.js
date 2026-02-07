@@ -48,6 +48,8 @@ app.get('/health', async (_req, res) => {
 app.use('/api/auth', authRoutes);
 app.use('/api/weather', weatherRoutes); // 天气API无需认证
 
+
+
 app.use('/api/clcd', authMiddleware, clcdRoutes);
 app.use('/api/regions', authMiddleware, regionRoutes);
 app.use('/api/analysis', authMiddleware, analysisRoutes);

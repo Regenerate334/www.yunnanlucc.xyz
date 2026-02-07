@@ -16,7 +16,7 @@ const LAND_USE_CONFIG = {
         { "code": 5, "name_en": "wetland", "name_zh": "湿地", "name_zh_short": "湿地", "color": "#87CEEB", "description": "Wetland including marshes and swamps" },
         { "code": 6, "name_en": "water", "name_zh": "水体", "name_zh_short": "水体", "color": "#4169E1", "description": "Water bodies including rivers, lakes, and reservoirs" },
         { "code": 7, "name_en": "snow_ice", "name_zh": "冰雪", "name_zh_short": "冰雪", "color": "#B0C4DE", "description": "Snow and Ice" },
-        { "code": 8, "name_en": "impervious", "name_zh": "不透水面", "name_zh_short": "建设用地", "color": "#DC143C", "description": "Impervious surfaces including urban and built-up areas" },
+        { "code": 8, "name_en": "impervious", "name_zh": "建设用地", "name_zh_short": "建设用地", "color": "#DC143C", "description": "Impervious surfaces including urban and built-up areas" },
         { "code": 9, "name_en": "barren", "name_zh": "裸地", "name_zh_short": "裸地", "color": "#D2B48C", "description": "Bareland including bare soil, sand, and rocks" }
     ]
 };
