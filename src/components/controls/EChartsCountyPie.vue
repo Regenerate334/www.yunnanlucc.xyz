@@ -18,24 +18,12 @@
                             {{ props.year }}年 {{ currentPrefectureName }} 土地利用结构
                         </span>
                         <div class="header-right">
-                            <div class="custom-select" ref="dropdownRef">
-                                <div class="select-trigger" @click="toggleDropdown">
-                                    <span>{{ currentPrefectureName }}</span>
-                                    <span class="arrow" :class="{ open: isDropdownOpen }">▼</span>
-                                </div>
-                                <transition name="dropdown-fade">
-                                    <div v-if="isDropdownOpen" class="options-panel">
-                                        <div class="options-list">
-                                            <div v-for="city in prefectureList" :key="city.code" class="option-item"
-                                                :class="{ selected: city.code === selectedAdcode }"
-                                                @click="selectPrefecture(city)">
-                                                <span class="dot" v-if="city.code === selectedAdcode"></span>
-                                                {{ city.name }}
-                                            </div>
-                                        </div>
-                                    </div>
-                                </transition>
-                            </div>
+                            <RegionCascader 
+                                v-model="selectedRegion" 
+                                placeholder="搜索或选择区域" 
+                                :show-level-badge="false"
+                                @change="handleRegionChange"
+                            />
                             <button class="close-btn" @click.stop="toggleChart">✕</button>
                         </div>
                     </div>
@@ -65,8 +53,10 @@
 import { ref, shallowRef, watch, onMounted, onUnmounted, nextTick, computed } from 'vue';
 import * as echarts from 'echarts';
 import { centroid, area } from '@turf/turf';
+import bbox from '@turf/bbox';
 import { clcdApi } from '../../api/index.js';
 import AIAnalysisModal from '../ui/AIAnalysisModal.vue';
+import RegionCascader from './RegionCascader.vue';
 import ChatGptIcon from '../icons/ChatGptIcon.vue';
 
 const props = defineProps({
@@ -87,54 +77,198 @@ let countyData = null;
 let countyStats = null;
 // 追踪已注册的地图，用于内存清理
 const registeredMaps = new Set();
+let flashInterval = null; // 用于存储闪烁定时器
 
 const prefectureList = ref([]);
 const selectedAdcode = ref('530100'); // Default to Kunming
 const currentPrefectureName = ref('昆明市');
-const isDropdownOpen = ref(false);
-const dropdownRef = ref(null);
+// const isDropdownOpen = ref(false); // Removed
+// const dropdownRef = ref(null); // Removed
 const showAIModal = ref(false);
+const selectedRegion = ref({ name: '昆明市', level: 'prefecture' }); // For RegionCascader
 
 // 打开 AI 分析弹窗
 const openAIAnalysis = () => {
     showAIModal.value = true;
 };
 
-function toggleDropdown() {
-    isDropdownOpen.value = !isDropdownOpen.value;
-}
+// Removed toggleDropdown
+// Removed selectPrefecture
 
-function selectPrefecture(city) {
-    selectedAdcode.value = city.code;
-    currentPrefectureName.value = city.name;
-    handlePrefectureChange();
-    isDropdownOpen.value = false;
-
-    // 搜索定位逻辑：在地图更新后触发高亮
-    nextTick(() => {
-        if (chartInstance.value) {
-            // 取消之前的所有选中
-            chartInstance.value.dispatchAction({
-                type: 'geoUnSelect',
-                seriesIndex: 0
+async function handleRegionChange(region) {
+    if (!region || !region.name) return;
+    
+    let targetPrefectureName = '';
+    let targetCountyName = '';
+    
+    if (region.level === 'prefecture') {
+        targetPrefectureName = region.name;
+    } else if (region.level === 'county' && region.parentName) {
+        targetPrefectureName = region.parentName;
+        targetCountyName = region.name;
+    } else {
+        return;
+    }
+    
+    // Find adcode for the prefecture
+    const pref = prefectureList.value.find(p => p.name === targetPrefectureName);
+    if (!pref) {
+        console.warn(`Prefecture not found: ${targetPrefectureName}`);
+        return;
+    }
+    
+    const prefectureChanged = selectedAdcode.value !== pref.code;
+    
+    // Update state
+    selectedAdcode.value = pref.code;
+    currentPrefectureName.value = targetPrefectureName;
+    
+    // Using handlePrefectureChange to reload map if needed
+    if (prefectureChanged) {
+        await handlePrefectureChange();
+    }
+    
+    // If a county was selected, highlight it
+    if (targetCountyName && chartInstance.value && countyGeoJSON) {
+        // 1. Locate the county feature in GeoJSON
+        const feature = countyGeoJSON.features.find(f => f.properties.name === targetCountyName);
+        
+        if (feature) {
+             // Calculate center and bbox
+             const centerPoint = centroid(feature);
+             const centerCoords = centerPoint.geometry.coordinates; // [lng, lat]
+             
+             // Calculate smart zoom based on bbox
+             const featureBbox = bbox(feature); // [minX, minY, maxX, maxY]
+             const width = featureBbox[2] - featureBbox[0];
+             const height = featureBbox[3] - featureBbox[1];
+             const maxDim = Math.max(width, height);
+             
+             // Empirical formula for zoom level based on degree span
+             // This might need tuning. E.g., 0.1 deg span -> zoom 10?
+             // ECharts zoom is a scale factor relative to initial view.
+             // We can use a simpler approach: let ECharts handle it via 'center' and 'zoom'
+             // But 'zoom' in setOption(geo) is relative to current or initial?
+             // It's a scaling factor.
+             
+             // Let's try a dynamic zoom factor.
+             // Larger county (bigger maxDim) -> smaller zoom
+             // Smaller county (smaller maxDim) -> bigger zoom
+             // Base (entire province) is roughly 5-6 degrees span.
+             // A county is roughly 0.2 - 0.5 degrees.
+             // So zoom factor should be roughly 10 - 20x relative to global?
+             // No, ECharts roams.
+             
+             // Better approach:
+             // 1. Set center.
+             // 2. Set explicit zoom value.
+             let targetZoom = 6; // default
+             if (maxDim > 0) {
+                 // Adjust these constants based on trial
+                 targetZoom = 1.5 / maxDim; 
+                 if (targetZoom < 2) targetZoom = 2;
+                 if (targetZoom > 15) targetZoom = 15;
+             }
+             
+            chartInstance.value.setOption({
+                geo: {
+                    center: centerCoords,
+                    zoom: targetZoom, 
+                }
             });
-            // 触发新的选中高亮（虽然县级图是按地州加载的，但这里可以预留逻辑或触发整体视图调整）
+            
+             // Force update pie positions IMMEDIATELY after zoom
+             // animation takes time, so we might want to disable animation for this step 
+             // or keep calling it.
+             // Simple fix: update immediately (start) and then allow roam listener to handle rest
+             updatePiePositions();
+            
+             // 3. Flash highlight effect
+             flashHighlight(targetCountyName);
+        } else {
+            console.warn(`Feature not found for county: ${targetCountyName}`);
         }
-    });
-}
-
-function handleClickOutside(event) {
-    if (dropdownRef.value && !dropdownRef.value.contains(event.target)) {
-        isDropdownOpen.value = false;
+    } else if (!targetCountyName && chartInstance.value) {
+        // ... restore ...
+         chartInstance.value.dispatchAction({
+            type: 'restore'
+        });
+        nextTick(() => updatePiePositions());
     }
 }
 
+function flashHighlight(name) {
+    if (!chartInstance.value) return;
+    
+    // 清除之前的定时器
+    if (flashInterval) {
+        clearInterval(flashInterval);
+        flashInterval = null;
+    }
+    
+    let count = 0;
+    const maxFlashes = 6; // 闪烁3次（亮/暗交替6次）
+    const intervalTime = 300; // 300ms 间隔
+    
+    flashInterval = setInterval(() => {
+        // 如果组件已卸载或图表不存在，停止
+        if (!chartInstance.value) {
+             if (flashInterval) clearInterval(flashInterval);
+             return;
+        }
+
+        if (count >= maxFlashes) {
+            clearInterval(flashInterval);
+            flashInterval = null;
+            // 确保最后停留在高亮状态
+            chartInstance.value.dispatchAction({
+                type: 'highlight',
+                geoIndex: 0,
+                name: name
+            });
+            chartInstance.value.dispatchAction({
+                type: 'showTip',
+                seriesIndex: 0, // tooltips 仍然可以关联到 series，或者关联到 geo
+                name: name
+            });
+            return;
+        }
+        
+        if (count % 2 === 0) {
+            // 高亮
+             chartInstance.value.dispatchAction({
+                type: 'highlight',
+                geoIndex: 0, 
+                name: name
+            });
+             chartInstance.value.dispatchAction({
+                type: 'showTip',
+                seriesIndex: 0,
+                name: name
+            });
+        } else {
+            // 取消高亮
+             chartInstance.value.dispatchAction({
+                type: 'downplay',
+                geoIndex: 0,
+                name: name
+            });
+             chartInstance.value.dispatchAction({
+                type: 'hideTip'
+            });
+        }
+        
+        count++;
+    }, intervalTime);
+}
+
+
 onMounted(() => {
-    document.addEventListener('click', handleClickOutside);
+    // document.addEventListener('click', handleClickOutside); // Removed
 });
 
 onUnmounted(() => {
-    document.removeEventListener('click', handleClickOutside);
+    // document.removeEventListener('click', handleClickOutside); // Removed
     
     // 清理 resize 事件监听
     window.removeEventListener('resize', handleResize);
@@ -153,6 +287,12 @@ onUnmounted(() => {
     countyGeoJSON = null;
     countyData = null;
     countyStats = null;
+    
+    // 清理闪烁定时器
+    if (flashInterval) {
+        clearInterval(flashInterval);
+        flashInterval = null;
+    }
     
     // 注意: ECharts 注册的地图无法卸载，这是 ECharts 的限制
     // 但清除引用可以让 GC 回收大部分内存
@@ -400,6 +540,10 @@ function getBaseChartOption(year, dataList) {
 }
 
 function updateYear(newYear) {
+    if (flashInterval) {
+        clearInterval(flashInterval);
+        flashInterval = null;
+    }
     if (!chartInstance.value || !countyStats) return;
     const baseOption = getBaseChartOption(newYear, countyData);
     chartInstance.value.setOption(baseOption, { notMerge: true });

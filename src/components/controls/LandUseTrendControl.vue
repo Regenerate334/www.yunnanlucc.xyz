@@ -1,7 +1,11 @@
 <template>
   <div class="land-use-trend-control">
-    <button @click="toggleChart" class="control-btn" :class="{ active: isVisible }" title="土地利用变化趋势">
-      <img src="../../assets/icons/zhexiantu_icon.png" alt="趋势图" class="icon-img" />
+    <button @click="toggleChart" class="control-btn" :class="{ active: isVisible }" title="省级土地利用变化趋势">
+      <svg class="trend-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+        <path d="M3 17l6-6 4 4 8-8" stroke-linecap="round" stroke-linejoin="round"/>
+        <path d="M17 7h4v4" stroke-linecap="round" stroke-linejoin="round"/>
+      </svg>
+      <span class="btn-label">省级趋势</span>
     </button>
 
     <Teleport to="body">
@@ -112,11 +116,19 @@ const openAIAnalysis = () => {
   backdrop-filter: blur(12px);
   cursor: pointer;
   display: flex;
+  flex-direction: column;
   align-items: center;
   justify-content: center;
+  gap: 2px;
   transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
   color: #a5ccff;
+}
+
+.btn-label {
+  font-size: 10px;
+  color: rgba(255, 255, 255, 0.9);
+  font-weight: 600;
 }
 
 .control-btn:hover {
@@ -146,6 +158,19 @@ const openAIAnalysis = () => {
   opacity: 1;
 }
 
+.trend-icon {
+  width: 32px;
+  height: 32px;
+  stroke: #ffffff;
+  opacity: 0.9;
+  transition: all 0.3s ease;
+}
+
+.control-btn:hover .trend-icon {
+  opacity: 1;
+  stroke: #60a5fa;
+}
+
 .modal-backdrop {
   position: fixed;
   top: 0;
@@ -170,7 +195,7 @@ const openAIAnalysis = () => {
   box-shadow: 0 24px 64px rgba(0, 0, 0, 0.5);
   backdrop-filter: blur(24px);
   -webkit-backdrop-filter: blur(24px);
-  z-index: 1000;
+  z-index: 2000; /* Standardized High Z-Index */
   display: flex;
   flex-direction: column;
   overflow: hidden;
@@ -298,11 +323,7 @@ const openAIAnalysis = () => {
   transition: all 0.3s cubic-bezier(0.25, 0.8, 0.25, 1);
 }
 
-.slide-fade-enter-from {
-  opacity: 0;
-  transform: translate(-50%, -50%) scale(0.8);
-}
-
+.slide-fade-enter-from,
 .slide-fade-leave-to {
   opacity: 0;
   transform: translate(-50%, -50%) scale(0.8);

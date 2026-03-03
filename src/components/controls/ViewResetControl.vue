@@ -2,6 +2,7 @@
   <div class="view-reset-control">
     <button @click="resetView" class="reset-btn" title="复位视图">
       <img :src="resetIcon" alt="复位" class="reset-icon" />
+      <span class="btn-label">视图复位</span>
     </button>
   </div>
 </template>
@@ -47,11 +48,19 @@ function resetView() {
   backdrop-filter: blur(12px);
   cursor: pointer;
   display: flex;
+  flex-direction: column;
   align-items: center;
   justify-content: center;
+  gap: 2px;
   transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
   color: #a5ccff;
+}
+
+.btn-label {
+  font-size: 10px;
+  color: rgba(255, 255, 255, 0.9);
+  font-weight: 600;
 }
 
 .reset-btn:hover {

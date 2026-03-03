@@ -328,10 +328,11 @@ onUnmounted(() => {
 }
 
 .year-item.selected {
-  background: rgba(59, 130, 246, 0.2);
-  color: #3b82f6;
+  background: #3b82f6;
+  color: #ffffff;
   font-weight: 600;
-  border-color: rgba(59, 130, 246, 0.4);
+  border-color: #60a5fa;
+  box-shadow: 0 0 10px rgba(59, 130, 246, 0.5);
 }
 
 .backdrop {

@@ -2,7 +2,11 @@
     <div class="regional-trend-control">
         <!-- 入口按钮 -->
         <button @click="openModal" class="control-btn" title="区域趋势深度监测">
-            <img src="../../assets/icons/zhexiantu_icon.png" class="icon" alt="区域监测" />
+            <svg class="region-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M3 17l4-4 3 3 5-5 4 4" stroke-linecap="round" stroke-linejoin="round"/>
+                <circle cx="18" cy="6" r="3" fill="none"/>
+                <path d="M20 8l2 2" stroke-linecap="round"/>
+            </svg>
             <span class="btn-label">区域监测</span>
         </button>
 
@@ -25,7 +29,9 @@
                                         <span v-if="selectedRegion.name" class="level-badge">{{ selectedRegion.level ===
                                             'prefecture' ? '地级' : '县级' }}</span>
                                     </span>
-                                    <span class="arrow" :class="{ open: isRegionDropdownOpen }">▲</span>
+                                    <svg class="arrow" :class="{ open: isRegionDropdownOpen }" viewBox="0 0 24 24" width="14" height="14">
+                                        <path d="M6 9l6 6 6-6" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round"/>
+                                    </svg>
                                 </div>
 
                                 <transition name="dropdown-fade">
@@ -57,7 +63,9 @@
                                                         @mouseenter="activePrefecture = pref.name"
                                                         @click="selectRegion(pref.name, 'prefecture')">
                                                         {{ pref.name }}
-                                                        <span class="sub-arrow">▶</span>
+                                                        <svg class="sub-arrow" viewBox="0 0 12 12" width="12" height="12">
+                                                            <path d="M4 2l4 4-4 4" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round"/>
+                                                        </svg>
                                                     </div>
                                                 </div>
                                             </div>
@@ -153,9 +161,55 @@ const filteredHierarchy = computed(() => {
     return result;
 });
 
+// 监听过滤结果，自动展开和定位
+watch(filteredHierarchy, (newVal) => {
+    if (searchQuery.value && newVal.length > 0) {
+        // 1. 如果只有一个地州匹配，或某个地州下有匹配的县，自动选中第一个
+        const firstMatch = newVal[0];
+        if (firstMatch) {
+            // 如果尚未选中或当前选中的不在结果中，则更新选中
+            if (!activePrefecture.value || !newVal.find(p => p.name === activePrefecture.value)) {
+                activePrefecture.value = firstMatch.name;
+            }
+            
+            // 2. 尝试滚动到匹配的县
+            setTimeout(() => {
+                const query = searchQuery.value.trim().toLowerCase();
+                // 查找第一个匹配的县
+                const matchedCounty = firstMatch.children.find(c => c.toLowerCase().includes(query));
+                
+                if (matchedCounty) {
+                    // 使用 ref 查找，因为 modal 被 teleport 到 body，不能使用 .regional-trend-control 选择器
+                    let items = [];
+                    if (regionDropdownRef.value) {
+                        items = regionDropdownRef.value.querySelectorAll('.column-item');
+                    } else {
+                        // Fallback global selector formatted for the modal class
+                        items = document.querySelectorAll('.monitoring-modal .column-item');
+                    }
+                    
+                    for (const item of items) {
+                        if (item.textContent.trim() === matchedCounty) {
+                            item.scrollIntoView({ block: 'center', behavior: 'smooth' });
+                            break;
+                        }
+                    }
+                }
+            }, 100);
+        }
+    }
+});
+
 // 当前显示的县级列表
 const currentCounties = computed(() => {
     if (!activePrefecture.value) return [];
+    
+    // 保持与 RegionCascader 一致：搜索时从过滤结果中获取
+    if (searchQuery.value) {
+        const pref = filteredHierarchy.value.find(p => p.name === activePrefecture.value);
+        return pref ? pref.children : [];
+    }
+    
     const pref = hierarchy.value.find(p => p.name === activePrefecture.value);
     return pref ? pref.children : [];
 });
@@ -299,17 +353,17 @@ onMounted(() => {
     box-shadow: 0 6px 16px rgba(0, 0, 0, 0.3);
 }
 
-.icon {
-    width: 28px;
-    height: 28px;
-    object-fit: contain;
+.region-icon {
+    width: 32px;
+    height: 32px;
+    stroke: #ffffff;
     opacity: 0.9;
     transition: all 0.3s ease;
 }
 
-.control-btn:hover .icon {
+.control-btn:hover .region-icon {
     opacity: 1;
-    transform: scale(1.1);
+    stroke: #60a5fa;
 }
 
 .btn-label {
@@ -419,9 +473,10 @@ onMounted(() => {
 }
 
 .arrow {
-    font-size: 10px;
-    color: rgba(255, 255, 255, 0.4);
-    transition: transform 0.3s;
+    width: 12px;
+    height: 12px;
+    color: #a5ccff;
+    transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
 .arrow.open {
@@ -615,14 +670,17 @@ onMounted(() => {
 }
 
 /* 动画 */
-.slide-fade-enter-active,
+.slide-fade-enter-active {
+    transition: all 0.4s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
 .slide-fade-leave-active {
-    transition: all 0.4s cubic-bezier(0.16, 1, 0.3, 1);
+    transition: all 0.3s cubic-bezier(0.25, 0.8, 0.25, 1);
 }
 
 .slide-fade-enter-from,
 .slide-fade-leave-to {
-    transform: translate(-50%, -45%);
+    transform: translate(-50%, -50%) scale(0.8);
     opacity: 0;
 }
 

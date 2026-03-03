@@ -12,31 +12,35 @@
 
       <transition name="slide-fade">
         <div v-if="isVisible" class="modal-window" @click.stop>
-          <div class="modal-header">
-            <div class="header-placeholder"></div>
-            <span class="modal-title">{{ props.year }}年云南省地级市土地利用结构</span>
-            <button class="close-btn" @click.stop="toggleChart">✕</button>
-          </div>
-          <div class="chart-container-wrapper">
-            <!-- AI 悬浮球 (左上角) -->
-            <div class="ai-floating-ball-container">
-              <button class="ai-floating-ball" @click.stop="openAIAnalysis">
-                <div class="ball-content">
-                  <ChatGptIcon :size="24" color="#ffffff" class="ai-ball-logo" />
-                  <span class="ai-ball-text">AI 一键分析</span>
+                    <div class="modal-header">
+                        <div class="header-placeholder"></div>
+                        <span class="modal-title">
+                            {{ props.year }}年云南省地级市土地利用结构
+                        </span>
+                        <div class="header-right">
+                            <button class="close-btn" @click.stop="toggleChart">✕</button>
+                        </div>
+                    </div>
+                    <div class="chart-container-wrapper">
+                        <!-- AI 悬浮球 (左上角) -->
+                        <div class="ai-floating-ball-container">
+                            <button class="ai-floating-ball" @click.stop="openAIAnalysis">
+                                <div class="ball-content">
+                                    <ChatGptIcon :size="24" color="#ffffff" class="ai-ball-logo" />
+                                    <span class="ai-ball-text">AI 一键分析</span>
+                                </div>
+                            </button>
+                        </div>
+                        <div ref="chartContainer" class="chart-container"></div>
+                    </div>
                 </div>
-              </button>
-            </div>
-            <div ref="chartContainer" class="chart-container"></div>
-          </div>
-        </div>
-      </transition>
-    </Teleport>
+            </transition>
+        </Teleport>
 
-    <!-- AI 分析弹窗 -->
-    <AIAnalysisModal v-model:visible="showAIModal" :year="props.year" :region="'云南省各地级市'" analysis-type="pie"
-      :component-context="{ type: 'prefecture_pie' }" />
-  </div>
+        <!-- AI 分析弹窗 -->
+        <AIAnalysisModal v-model:visible="showAIModal" :year="props.year" :region="'云南省各地级市'" analysis-type="pie"
+            :component-context="{ type: 'prefecture_pie' }" />
+    </div>
 </template>
 
 <script setup>
@@ -51,7 +55,7 @@ import prefecturePieIcon from '../../assets/icons/prefecture_pie.png';
 const iconUrl = prefecturePieIcon;
 
 const props = defineProps({
-  year: { type: Number, default: 1985 }
+    year: { type: Number, default: 1985 }
 });
 
 const isVisible = ref(false);
@@ -481,7 +485,7 @@ const openAIAnalysis = () => {
   box-shadow: 0 24px 64px rgba(0, 0, 0, 0.5);
   backdrop-filter: blur(24px);
   -webkit-backdrop-filter: blur(24px);
-  z-index: 1000;
+  z-index: 2000;
   display: flex;
   flex-direction: column;
   overflow: hidden;
@@ -559,21 +563,17 @@ const openAIAnalysis = () => {
 }
 
 .slide-fade-enter-active {
-  transition: all 0.3s ease;
+    transition: all 0.4s cubic-bezier(0.34, 1.56, 0.64, 1);
 }
 
 .slide-fade-leave-active {
-  transition: all 0.2s ease;
+    transition: all 0.3s cubic-bezier(0.25, 0.8, 0.25, 1);
 }
 
-.slide-fade-enter-from {
-  opacity: 0;
-  transform: translate(-50%, -45%);
-}
-
+.slide-fade-enter-from,
 .slide-fade-leave-to {
-  opacity: 0;
-  transform: translate(-50%, -48%);
+    opacity: 0;
+    transform: translate(-50%, -50%) scale(0.8);
 }
 
 /* AI 悬浮球样式 */

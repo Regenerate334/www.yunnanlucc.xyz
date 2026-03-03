@@ -2,6 +2,7 @@
     <div class="distance-measure-control">
         <button @click="toggleMeasure" class="measure-btn" :class="{ active: isMeasuring }" title="测距">
             <img src="../../assets/icons/ceju.png" class="measure-icon" alt="测距" />
+            <span class="btn-label">测距</span>
         </button>
 
         <!-- 右侧弹出结果面板 -->
@@ -12,7 +13,9 @@
                     <div class="custom-unit-dropdown" ref="unitDropdownRef">
                         <div class="unit-trigger" @click="toggleUnitDropdown">
                             <span>{{ unitLabels[distanceUnit] }}</span>
-                            <span class="arrow" :class="{ open: isUnitDropdownOpen }">▼</span>
+                            <svg class="arrow" :class="{ open: isUnitDropdownOpen }" viewBox="0 0 12 12" width="12" height="12">
+                                <path d="M2 4l4 4 4-4" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round"/>
+                            </svg>
                         </div>
                         <transition name="dropdown-fade">
                             <div v-if="isUnitDropdownOpen" class="unit-options">
@@ -120,12 +123,20 @@ const isMeasuring = computed(() => activeTool.value === 'distance');
     backdrop-filter: blur(12px);
     cursor: pointer;
     display: flex;
+    flex-direction: column;
     align-items: center;
     justify-content: center;
+    gap: 2px;
     transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
     box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
     z-index: 2;
     color: #a5ccff;
+}
+
+.btn-label {
+    font-size: 10px;
+    color: rgba(255, 255, 255, 0.9);
+    font-weight: 600;
 }
 
 .measure-btn:hover {
@@ -148,8 +159,8 @@ const isMeasuring = computed(() => activeTool.value === 'distance');
 }
 
 .measure-icon {
-    width: 50px;
-    height: 50px;
+    width: 32px;
+    height: 32px;
     object-fit: contain;
     opacity: 0.8;
     transition: all 0.3s ease;
@@ -166,13 +177,13 @@ const isMeasuring = computed(() => activeTool.value === 'distance');
 /* 弹出面板样式 */
 .result-popover {
     position: absolute;
-    bottom: 80px;
-    /* 调整为上方弹出 */
-    left: 50%;
-    transform: translateX(-50%);
-    width: 220px;
-    background: rgba(13, 25, 48, 0.85);
-    border: 1px solid rgba(255, 255, 255, 0.1);
+    top: 50%; /* Center vertically */
+    left: 100%; /* Right of button */
+    margin-left: 16px; /* Gap */
+    transform: translateY(-50%);
+    width: 220px; /* Slightly increased to fit wider dropdown */
+    background: rgba(13, 25, 48, 0.6);
+    border: 1px solid rgba(255, 255, 255, 0.08);
     border-radius: 12px;
     backdrop-filter: blur(20px);
     box-shadow: 0 12px 40px rgba(0, 0, 0, 0.4);
@@ -184,50 +195,48 @@ const isMeasuring = computed(() => activeTool.value === 'distance');
     display: flex;
     justify-content: space-between;
     align-items: center;
-    padding: 12px 16px;
-    background: rgba(30, 58, 138, 0.3);
-    border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+    padding: 10px 12px; /* Reduced padding */
+    background: transparent; /* Removed dark background */
+    border-bottom: 1px solid rgba(255, 255, 255, 0.08); /* Fainter border */
     border-radius: 12px 12px 0 0;
 }
 
 .popover-title {
-    font-size: 13px;
+    font-size: 14px; /* Slightly larger */
     font-weight: 600;
-    color: #a5ccff;
+    color: #fff; /* White instead of blue-ish */
 }
 
+/* Dropdown Styles - Synced with AreaMeasureButton */
 .custom-unit-dropdown {
     position: relative;
     pointer-events: auto;
+    width: 110px; /* Fixed width */
 }
 
 .unit-trigger {
     display: flex;
     align-items: center;
     gap: 8px;
-    padding: 4px 12px;
-    background: rgba(255, 255, 255, 0.05);
-    border: 1px solid rgba(255, 255, 255, 0.1);
+    padding: 6px 12px;
+    background: rgba(255, 255, 255, 0.08);
+    border: 1px solid rgba(255, 255, 255, 0.15);
     border-radius: 6px;
     color: #fff;
-    font-size: 12px;
+    font-size: 13px;
     cursor: pointer;
     transition: all 0.2s;
-    min-width: 80px;
+    width: 100%; /* Fill container */
     justify-content: space-between;
 }
 
-.unit-trigger span {
-    pointer-events: none;
-}
-
 .unit-trigger:hover {
-    background: rgba(255, 255, 255, 0.1);
-    border-color: rgba(255, 255, 255, 0.2);
+    background: rgba(255, 255, 255, 0.15);
+    border-color: rgba(255, 255, 255, 0.25);
 }
 
 .arrow {
-    font-size: 8px;
+    font-size: 10px;
     color: #a5ccff;
     transition: transform 0.3s;
 }
@@ -238,53 +247,50 @@ const isMeasuring = computed(() => activeTool.value === 'distance');
 
 .unit-options {
     position: absolute;
-    top: 100%;
+    top: calc(100% + 4px);
     left: 0;
-    width: 100%;
-    background: linear-gradient(135deg, rgba(13, 25, 48, 0.8) 0%, rgba(13, 25, 48, 0.5) 100%);
-    border: 1px solid rgba(255, 255, 255, 0.12);
-    border-radius: 12px;
-    margin-top: 8px;
-    padding: 6px;
+    width: 100%; /* Match trigger width */
+    background: rgba(13, 25, 48, 0.7); /* Match parent glass style */
+    border: 1px solid rgba(255, 255, 255, 0.08); /* Match parent border */
+    border-radius: 8px;
+    padding: 4px;
     z-index: 1001;
-    backdrop-filter: blur(24px);
-    box-shadow: 0 12px 40px rgba(0, 0, 0, 0.5), inset 0 0 0 1px rgba(255, 255, 255, 0.05);
+    backdrop-filter: blur(20px); /* Match parent blur */
+    box-shadow: 0 12px 32px rgba(0, 0, 0, 0.5);
+    max-height: 200px;
+    overflow-y: auto;
+}
+
+/* Custom Scrollbar */
+.unit-options::-webkit-scrollbar {
+    width: 4px;
+}
+
+.unit-options::-webkit-scrollbar-thumb {
+    background: rgba(255, 255, 255, 0.2);
+    border-radius: 10px;
 }
 
 .unit-option {
-    padding: 10px 16px;
-    color: rgba(255, 255, 255, 0.7);
+    padding: 10px 12px; /* Comfortable padding */
+    color: rgba(255, 255, 255, 0.8);
     font-size: 13px;
     cursor: pointer;
-    transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
-    border-radius: 8px;
+    transition: all 0.2s;
+    border-radius: 6px;
     text-align: left;
-    position: relative;
-    display: flex;
-    align-items: center;
+    white-space: nowrap;
 }
 
 .unit-option:hover {
-    background: rgba(59, 130, 246, 0.12);
-    color: #ffffff;
-    padding-left: 20px;
+    background: rgba(59, 130, 246, 0.15);
+    color: #fff;
 }
 
 .unit-option.active {
-    background: rgba(59, 130, 246, 0.2);
+    background: rgba(59, 130, 246, 0.25);
     color: #3b82f6;
     font-weight: 600;
-}
-
-.unit-option.active::before {
-    content: '';
-    position: absolute;
-    left: 8px;
-    width: 3px;
-    height: 14px;
-    background: #3b82f6;
-    border-radius: 2px;
-    box-shadow: 0 0 8px rgba(59, 130, 246, 0.6);
 }
 
 .dropdown-fade-enter-active,
@@ -292,38 +298,38 @@ const isMeasuring = computed(() => activeTool.value === 'distance');
     transition: all 0.2s ease;
 }
 
+.dropdown-fade-enter-from,
+.dropdown-fade-leave-to {
+    opacity: 0;
+    transform: translateY(-4px);
+}
+
 .popover-content {
-    padding: 16px;
+    padding: 20px 16px; 
     display: flex;
     flex-direction: column;
-    gap: 12px;
+    gap: 16px; 
+    overflow: visible; /* Ensure dropdown can overflow */
 }
 
 .result-item {
     display: flex;
     flex-direction: column;
-    gap: 4px;
+    gap: 6px;
 }
 
 .result-item .label {
     font-size: 11px;
     text-transform: uppercase;
     letter-spacing: 0.05em;
-    color: rgba(255, 255, 255, 0.5);
-}
-
-.result-item .value {
-    font-size: 16px;
-    font-weight: 600;
-    color: #ffffff;
-    font-family: 'JetBrains Mono', monospace;
+    color: rgba(255, 255, 255, 0.6);
 }
 
 .popover-footer {
     padding: 12px 16px;
     border-top: 1px solid rgba(255, 255, 255, 0.08);
     text-align: right;
-    background: rgba(0, 0, 0, 0.1);
+    background: transparent; /* Removed dark background */
     border-radius: 0 0 12px 12px;
 }
 
@@ -355,7 +361,7 @@ const isMeasuring = computed(() => activeTool.value === 'distance');
 
 .slide-fade-enter-from,
 .slide-fade-leave-to {
-    transform: translate(-50%, 15px);
+    transform: translateY(-50%) translateX(-20px);
     opacity: 0;
 }
 </style>
