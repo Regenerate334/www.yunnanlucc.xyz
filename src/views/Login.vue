@@ -6,16 +6,7 @@
                 <p class="login-subtitle">{{ isLoginMode ? 'WELCOME!' : 'CREATE ACCOUNT' }}</p>
             </div>
 
-            <!-- 已登录状态提示 -->
-            <div v-if="isLoggedIn" class="logged-in-state">
-                <p class="logged-in-msg">您当前已登录</p>
-                <div class="logged-in-actions">
-                    <button @click="goToWorkbench" class="action-btn primary">进入工作台</button>
-                    <button @click="handleLogout" class="action-btn secondary">退出当前账号</button>
-                </div>
-            </div>
-
-            <form v-else @submit.prevent="handleSubmit" class="login-form">
+            <form @submit.prevent="handleSubmit" class="login-form">
                 <div class="input-group">
                     <div class="input-icon">
                         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
@@ -36,11 +27,10 @@
                     <input type="password" v-model="password" placeholder="请输入密码" required />
                 </div>
 
-                <div class="form-actions" v-if="isLoginMode">
-                    <label class="remember-me">
-                        <input type="checkbox" v-model="rememberMe" />
-                        <span>记住密码</span>
-                    </label>
+
+
+                <div v-if="errorMessage" class="error-message">
+                    {{ errorMessage }}
                 </div>
 
                 <button type="submit" class="login-btn" :disabled="isLoading">
@@ -59,36 +49,21 @@
 </template>
 
 <script setup>
-import { ref, onMounted } from 'vue';
+import { ref } from 'vue';
 import { useRouter } from 'vue-router';
-import { authApi } from '../api/index.js';
+import { useAuthStore } from '../stores/auth';
 
 const router = useRouter();
+const authStore = useAuthStore();
 const isLoginMode = ref(true);
-const isLoggedIn = ref(false);
 const username = ref('');
 const password = ref('');
-const rememberMe = ref(false);
+
 const isLoading = ref(false);
-
-const checkLoginStatus = () => {
-    const token = localStorage.getItem('auth_token');
-    if (token) {
-        isLoggedIn.value = true;
-    }
-};
-
-const goToWorkbench = () => {
-    router.replace('/workbench');
-};
-
-const handleLogout = () => {
-    localStorage.removeItem('auth_token');
-    localStorage.removeItem('user_info');
-    isLoggedIn.value = false;
-};
+const errorMessage = ref('');
 
 const handleSubmit = async () => {
+    errorMessage.value = '';
     if (isLoginMode.value) {
         await handleLogin();
     } else {
@@ -99,19 +74,15 @@ const handleSubmit = async () => {
 const handleLogin = async () => {
     isLoading.value = true;
     try {
-        const res = await authApi.login(username.value, password.value);
-        if (res.success) {
-            localStorage.setItem('auth_token', res.token);
-            localStorage.setItem('user_info', JSON.stringify(res.user));
-
-            // 在跳转前确保 localStorage 已完成写入（通过一个小延迟或简单的同步操作）
-            console.log('[Login] Storage updated, navigating to workbench...');
-            
-            // 使用 router.push，但在微任务后执行，确保状态传播
+        const success = await authStore.login(username.value, password.value);
+        if (success) {
+            console.log('[Login] Login successful, navigating to workbench...');
             router.push('/workbench');
+        } else {
+            errorMessage.value = '登录失败，请检查账号密码';
         }
     } catch (err) {
-        alert(err.message || '登录失败，请检查账号密码');
+        errorMessage.value = err.message || '登录失败，请检查账号密码';
     } finally {
         isLoading.value = false;
     }
@@ -120,22 +91,18 @@ const handleLogin = async () => {
 const handleRegister = async () => {
     isLoading.value = true;
     try {
-        const res = await authApi.register(username.value, password.value);
+        const res = await authStore.register(username.value, password.value);
         if (res.success) {
-            alert('注册成功，请登录');
+            alert('注册成功，请直接登录');
             isLoginMode.value = true;
             password.value = '';
         }
     } catch (err) {
-        alert(err.message || '注册失败');
+        errorMessage.value = err.message || '注册失败';
     } finally {
         isLoading.value = false;
     }
 };
-
-onMounted(() => {
-    checkLoginStatus();
-});
 </script>
 
 <style scoped>
@@ -179,55 +146,7 @@ onMounted(() => {
     text-transform: uppercase;
 }
 
-.logged-in-state {
-    display: flex;
-    flex-direction: column;
-    gap: 30px;
-    padding: 20px 0;
-}
 
-.logged-in-msg {
-    font-size: 18px;
-    color: #606266;
-}
-
-.logged-in-actions {
-    display: flex;
-    flex-direction: column;
-    gap: 15px;
-}
-
-.action-btn {
-    height: 50px;
-    border-radius: 8px;
-    font-size: 16px;
-    font-weight: 600;
-    cursor: pointer;
-    transition: all 0.3s;
-    border: none;
-}
-
-.action-btn.primary {
-    background: #1890ff;
-    color: #ffffff;
-}
-
-.action-btn.primary:hover {
-    background: #40a9ff;
-    transform: translateY(-1px);
-    box-shadow: 0 4px 12px rgba(24, 144, 255, 0.3);
-}
-
-.action-btn.secondary {
-    background: #f5f7fa;
-    color: #606266;
-    border: 1px solid #e4e7ed;
-}
-
-.action-btn.secondary:hover {
-    background: #e6e8eb;
-    color: #303133;
-}
 
 .login-form {
     display: flex;
@@ -271,25 +190,7 @@ onMounted(() => {
     box-shadow: 0 0 8px rgba(64, 158, 255, 0.1);
 }
 
-.form-actions {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    margin-top: 5px;
-}
 
-.remember-me {
-    display: flex;
-    align-items: center;
-    gap: 8px;
-    font-size: 14px;
-    color: #909399;
-    cursor: pointer;
-}
-
-.remember-me input {
-    cursor: pointer;
-}
 
 .login-btn {
     margin-top: 20px;
@@ -350,5 +251,12 @@ onMounted(() => {
 
 .mode-toggle a:hover {
     color: #66b1ff;
+}
+
+.error-message {
+    color: #f56c6c;
+    font-size: 14px;
+    margin-top: 10px;
+    text-align: center;
 }
 </style>
