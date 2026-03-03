@@ -124,5 +124,17 @@ export const analysisApi = {
     getTransferMatrix: (period) => request(`/api/analysis/transfer-matrix/${period}`),
 
     // 获取大屏指挥中心综合数据
-    getDashboardData: (year, type = 'comprehensive') => request(`/api/analysis/dashboard/${year}?type=${type}`)
+    getDashboardData: (year, type = 'comprehensive') => request(`/api/analysis/dashboard/${year}?type=${type}`),
+
+    // 动态查询流转 GeoJSON 数据（县域尺度）
+    getTransferFlowCounty: (params) => {
+        const qs = new URLSearchParams(params).toString();
+        return request(`/api/analysis/transfer-flow/county?${qs}`);
+    },
+
+    // 动态查询流转 GeoJSON 数据（格网尺度）
+    getTransferFlowGrid: (params) => {
+        const qs = new URLSearchParams(params).toString();
+        return request(`/api/analysis/transfer-flow/grid?${qs}`);
+    }
 };
