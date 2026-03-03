@@ -1,4 +1,5 @@
 import { createRouter, createWebHistory } from 'vue-router';
+import { useAuthStore } from '../stores/auth';
 
 import Portal from '../views/Portal.vue';
 import Login from '../views/Login.vue';
@@ -22,21 +23,37 @@ const router = createRouter({
 });
 
 // 导航守卫
-router.beforeEach((to, from, next) => {
+router.beforeEach(async (to, from, next) => {
+	const authStore = useAuthStore();
 	const token = localStorage.getItem('auth_token');
-	console.log(`[Router] From: ${from.path} To: ${to.path} Token: ${token ? 'Present' : 'Missing'}`);
 
-	// 如果访问的是登录页或门户页，直接放行
+	// public pages
 	if (to.path === '/login' || to.path === '/') {
-		// 如果已登录用户访问登录页，可以考虑跳转到工作台，但目前保持现状
+		next();
+		return;
+	}
+
+	// Checking if we have a token
+	if (!token) {
+		console.warn(`[Router] No token found. Redirecting to /login`);
+		next('/login');
+		return;
+	}
+
+	// logic for token verification
+	// valid token?
+	if (authStore.isAuthenticated) {
 		next();
 	} else {
-		// 如果访问的是受保护页面且没有 Token，重定向到登录页
-		if (!token) {
-			console.warn(`[Router] Access denied to ${to.path}. Redirecting to /login`);
-			next('/login');
-		} else {
+		// has token but not authorized in store (e.g. page refresh)
+		// verify with backend
+		console.log('[Router] Verifying token with backend...');
+		const isValid = await authStore.checkAuth();
+		if (isValid) {
 			next();
+		} else {
+			console.warn(`[Router] Token invalid. Redirecting to /login`);
+			next('/login');
 		}
 	}
 });

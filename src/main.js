@@ -6,4 +6,5 @@ import router from './router/index.js'
 
 const pinia = createPinia()
 
-createApp(App).use(router).use(pinia).mount('#app')
+// Ensure Pinia is installed before Router so stores can be used in navigation guards
+createApp(App).use(pinia).use(router).mount('#app')
