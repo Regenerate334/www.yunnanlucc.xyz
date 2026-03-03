@@ -91,60 +91,41 @@ my_webgis_project/
 ├── server/                          # 后端服务
 │   ├── index.js                     # Express 主服务器
 │   ├── init-ai.js                   # AI 模型初始化
-│   ├── .env                         # 数据库配置 (已忽略)
-│   ├── config/                      # 配置文件
-│   │   └── db.js                    # 数据库连接池
-│   ├── routes/                      # 路由模块
-│   │   ├── ai.js                    # AI 分析流式接口
-│   │   ├── chat.js                  # 聊天接口
-│   │   ├── chat-sessions.js         # 会话管理
-│   │   ├── clcd.js                  # CLCD 数据接口
+│   ├── .env                         # 环境变量配置
+│   ├── config/                      # 配置文件 (数据库、日志)
+│   │   ├── db.js
+│   │   └── logger.js
+│   ├── routes/                      # API 路由模块
+│   │   ├── ai/                      # AI 相关路由 (chat, session)
+│   │   ├── clcd/                    # CLCD 数据路由 (省/市/县)
+│   │   ├── analysis/                # 空间分析路由
 │   │   ├── auth.js                  # 用户认证
-│   │   └── analysis.js              # 空间分析接口
-│   └── utils/                       # 工具模块
-│       └── dataRouter.js            # AI 数据路由与上下文构建
+│   │   └── index.js                 # 路由入口
+│   ├── utils/                       # 工具模块
+│   └── logs/                        # 日志目录
 │
 ├── src/                             # 前端源码
-│   ├── components/                  # Vue 组件
+│   ├── components/                  # Vue 组件库
 │   │   ├── front_page.vue          # 主地图页面
-│   │   ├── login_page.vue          # 登录首页
-│   │   ├── charts/                 # 图表组件 (21 个)
-│   │   │   ├── LandUsePieChart.vue
-│   │   │   ├── LandUseTrendChart.vue
-│   │   │   ├── RegionalTrendChart.vue
-│   │   │   ├── LandTransferSankey.vue
-│   │   │   └── ...
-│   │   ├── controls/               # 控制组件 (14 个)
-│   │   │   ├── YearRangeSelector.vue
-│   │   │   ├── EChartsPrefecturePie.vue
-│   │   │   ├── EChartsCountyPie.vue
-│   │   │   └── ...
-│   │   ├── dashboard/              # 大屏看板组件 (5 个)
-│   │   │   └── AIAnalysisPanel.vue
-│   │   ├── ui/                     # UI 组件 (3 个)
-│   │   │   └── AIAnalysisModal.vue # AI 分析对话窗口
-│   │   └── icons/                  # 图标组件
-│   │       └── ChatGptIcon.vue
+│   │   ├── login_page.vue          # 登录页
+│   │   ├── charts/                 # ECharts 图表组件
+│   │   ├── controls/               # 地图控制组件 (时间轴、图例等)
+│   │   ├── dashboard/              # 分析面板组件
+│   │   └── ui/                     # 通用 UI 组件
 │   │
-│   ├── utils/                      # 工具函数
-│   │   ├── aiService.js           # AI 服务封装
-│   │   ├── clcdDataLoader.js      # CLCD 数据加载器
-│   │   └── indicators/            # 指标计算工具
-│   │       └── calculator.ts
+│   ├── utils/                      # 前端工具库
+│   │   ├── aiService.js           # AI 通信服务
+│   │   └── ...
 │   │
-│   ├── api/                        # API 封装
-│   │   └── index.js               # 统一接口管理
-│   │
+│   ├── api/                        # API 请求封装
 │   ├── stores/                     # Pinia 状态管理
-│   ├── router/                     # 路由配置
-│   ├── types/                      # TypeScript 类型定义
+│   ├── router/                     # Vue Router 配置
 │   └── assets/                     # 静态资源
 │
-├── public/                         # 公共资源
-│   └── data/                       # GeoJSON 数据
-│
-├── tests/                          # 测试文件
-├── package.json                    # 项目依赖
+├── public/                         # 静态文件 (GeoJSON, icons)
+├── scripts/                        # 辅助脚本 (Ollama 启动等)
+├── docs/                           # 项目文档 (API, OpenAPI)
+├── tests/                          # 测试套件
 └── vite.config.js                 # Vite 配置
 ```
 
