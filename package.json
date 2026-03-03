@@ -4,15 +4,16 @@
   "version": "1.0.0",
   "type": "module",
   "scripts": {
-    "dev": "concurrently -k -n \"OLLAMA,SERVER,CLIENT\" -c \"magenta,green,blue\" \"ollama serve\" \"npm run server\" \"npm run client\"",
+    "dev": "concurrently -k -n \"OLLAMA,SERVER,CLIENT\" -c \"magenta,green,blue\" \"node ./scripts/dev/start-ollama.js\" \"npm run server\" \"npm run client\"",
     "client": "vite",
     "server": "node ./server/start.js",
     "stop": "taskkill /F /IM node.exe",
     "build": "vite build",
     "preview": "vite preview",
-    "ai:off": "node ./scripts/ai-off.js"
+    "ai:off": "node ./scripts/dev/ai-off.js"
   },
   "dependencies": {
+    "@turf/bbox": "^7.3.4",
     "@turf/turf": "^7.2.0",
     "@types/turf": "^3.5.32",
     "bcryptjs": "^3.0.3",
@@ -33,7 +34,9 @@
     "pinia": "^2.2.4",
     "vite-plugin-cesium": "^1.2.23",
     "vue": "^3.5.13",
-    "vue-router": "^4.5.1"
+    "vue-router": "^4.5.1",
+    "winston": "^3.19.0",
+    "winston-daily-rotate-file": "^5.0.0"
   },
   "devDependencies": {
     "@tailwindcss/postcss": "^4.1.13",
