@@ -1,35 +1,20 @@
+/**
+ * 仪表盘数据路由
+ * 端点：/dashboard/:year
+ */
 import express from 'express';
-import pool from '../config/db.js';
-import { handleError } from '../middleware/logger.js';
-import { calculateDynamicDegree, calculateSingleDynamicDegree } from '../utils/indices/dynamicDegree.js';
-import { calculateTransferMatrix } from '../utils/indices/transferMatrix.js';
+import pool from '../../config/db.js';
+import { handleError } from '../../middleware/logger.js';
+import { calculateDynamicDegree, calculateSingleDynamicDegree } from '../../utils/indices/dynamicDegree.js';
 
 const router = express.Router();
 
-router.get('/transfer-matrix/periods', async (_req, res) => {
-    try {
-        const { rows } = await pool.query('SELECT DISTINCT period FROM public.clcd_transfer_matrix ORDER BY period');
-        res.json(rows.map(r => r.period));
-    } catch (err) { handleError(res, err); }
-});
-
-router.get('/transfer-matrix/:period', async (req, res) => {
-    const { period } = req.params;
-    try {
-        try {
-            const { rows } = await pool.query(`SELECT * FROM public.clcd_transfer_matrix WHERE period = $1`, [period]);
-
-            const { absoluteMatrix, percentageMatrix, landTypes } = calculateTransferMatrix(rows);
-
-            res.json({ absoluteMatrix, percentageMatrix, landTypes, period });
-        } catch (err) { handleError(res, err); }
-    } catch (err) { handleError(res, err); }
-});
-
-router.get('/dashboard/:year', async (req, res) => {
+// 获取仪表盘综合数据
+router.get('/:year', async (req, res) => {
     const year = Number(req.params.year);
-    const type = req.query.type || 'comprehensive'; // 默认综合动态度
-    const baseYear = 1985; // 基准年
+    const type = req.query.type || 'comprehensive';
+    const baseYear = 1985;
+
     try {
         // 1. 获取当前年份省份汇总数据
         const provinceSql = `SELECT * FROM public.clcd_province WHERE year = $1`;
@@ -73,13 +58,8 @@ router.get('/dashboard/:year', async (req, res) => {
                 };
                 dynamicDegree = calculateDynamicDegree(startData, endData, yearDiff);
             } else {
-                // 建立 type 到别名的映射
                 const typeMap = {
-                    cropland: 'c',
-                    forest: 'f',
-                    grassland: 'g',
-                    impervious: 'm',
-                    water: 'w'
+                    cropland: 'c', forest: 'f', grassland: 'g', impervious: 'm', water: 'w'
                 };
                 const alias = typeMap[type] || 'c';
                 const startArea = Number(r[alias + '2'] || 0);
@@ -105,7 +85,6 @@ router.get('/dashboard/:year', async (req, res) => {
             });
         }
 
-        // 调试日志：验证数据是否变化
         console.log(`[Dashboard] Year: ${year}, Type: ${type}, Top1: ${ranking[0]?.name} (${ranking[0]?.value}%)`);
 
         res.json({

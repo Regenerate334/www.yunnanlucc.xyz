@@ -1,6 +1,10 @@
+/**
+ * 区域数据路由
+ * 端点：/:level (hierarchy, prefecture, county)
+ */
 import express from 'express';
-import pool from '../config/db.js';
-import { handleError } from '../middleware/logger.js';
+import pool from '../../config/db.js';
+import { handleError } from '../../middleware/logger.js';
 
 const router = express.Router();
 
@@ -8,7 +12,6 @@ router.get('/:level', async (req, res) => {
     const { level } = req.params;
     try {
         if (level === 'hierarchy') {
-            // 增加省级过滤，只保留云南省的数据
             const sql = `
                 SELECT DISTINCT "地级" as prefecture, "县级" as county 
                 FROM public.yunnan_country_level_city_boundaries 
@@ -17,7 +20,6 @@ router.get('/:level', async (req, res) => {
             `;
             const { rows } = await pool.query(sql);
 
-            // 构建树形结构
             const hierarchy = {};
             rows.forEach(row => {
                 if (row.prefecture) {
