@@ -95,59 +95,64 @@
       </div>
     </div>
 
-    <!-- 区域分析专属图例 -->
-    <div v-if="!isDashboardMode && spatialUnit !== 'clcd'" class="floating-legend glass-panel">
-      <div class="legend-header">
-        <div class="legend-title">{{ currentAttributeLabel }}</div>
-        <div class="legend-subtitle">{{ selectedYear }}年 (单位: km²)</div>
-      </div>
-      <div class="legend-list">
-        <div v-for="(color, index) in currentColorScale" :key="index" class="legend-row">
-          <span class="legend-color-box" :style="{ background: color }"></span>
-          <!-- 防止越界访问 -->
-          <span class="legend-value">{{ currentLegendLabels[index] || '' }}</span>
-        </div>
-      </div>
-    </div>
+    <!-- 区域分析专属图例 (已统一为 AnalysisLegend 组件) -->
+    <AnalysisLegend 
+      v-if="!isDashboardMode && spatialUnit !== 'clcd' && !globalStore.legendData" 
+      class="floating-legend"
+      :title="selectedYear + '年' + currentAttributeLabel + '面积(km²)'"
+      :items="areaLegendItems"
+    />
+
+    <!-- 全局业务图例 (基于 Store 驱动，通常用于流转分析等) -->
+    <AnalysisLegend 
+      v-if="!isDashboardMode && globalStore.legendData" 
+      class="global-analysis-legend" 
+    />
+
     <!-- 顶部统一工具栏 Container -->
     <div v-if="!isDashboardMode" class="main-toolbar">
       
-      <!-- 图层类型选择器 (放在第一位以防布局跳动) -->
-      <DropdownSelector 
-        v-model="spatialUnit" 
-        :options="[ 
-          { label: 'CLCD 土地覆盖', value: 'clcd' },
-          { label: '县级统计', value: 'county' },
-          { label: '网格统计', value: 'grid' }
-        ]"
-        :width="150"
-        title="切换图层类型"
-      >
-        <template #icon>
-           <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-            <path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5" />
-           </svg>
-        </template>
-      </DropdownSelector>
+      <div class="theme-group" style="display: flex; gap: 8px; align-items: center;">
+        <!-- 属性选择器: 锚定右侧父级，向左延伸 -->
+        <transition name="expand-fade-left">
+          <div v-if="spatialUnit !== 'clcd'" class="anim-wrapper">
+            <DropdownSelector 
+              v-model="selectedAttribute" 
+              :options="attributes"
+              :width="160"
+              placeholder="选择分析指标"
+            >
+              <template #icon>
+                 <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <path d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
+                </svg>
+              </template>
+            </DropdownSelector>
+          </div>
+        </transition>
+
+        <!-- 图层类型选择器 (操作点锚定) -->
+        <DropdownSelector 
+          v-model="spatialUnit" 
+          :options="[ 
+            { label: 'CLCD 土地覆盖', value: 'clcd' },
+            { label: '县级统计', value: 'county' },
+            { label: '网格统计', value: 'grid' }
+          ]"
+          :width="150"
+          placeholder="流转分析态"
+          title="切换图层类型"
+        >
+          <template #icon>
+             <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5" />
+             </svg>
+          </template>
+        </DropdownSelector>
+      </div>
 
       <!-- 年份选择器 (现在所有模式都显示，与底部播放器共存或互补) -->
       <YearRangeSelector v-model:selectedYear="selectedYear" :width="200" />
-
-    
-      <!-- 属性选择器 -->
-      <DropdownSelector 
-        v-if="spatialUnit !== 'clcd'"
-        v-model="selectedAttribute" 
-        :options="attributes"
-        :width="160"
-        placeholder="选择分析指标"
-      >
-        <template #icon>
-           <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-            <path d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
-          </svg>
-        </template>
-      </DropdownSelector>
       
       <!-- BaseMap Selector (Moved into toolbar) -->
       <BaseMapSelector @change="handleBaseMapChange" />
@@ -195,11 +200,15 @@
 
     <!-- 右侧图表面板区域（Dashboard模式下隐藏 且 只在CLCD模式下显示） -->
     <div v-if="!isDashboardMode && spatialUnit === 'clcd'" class="right-panels">
-      <div class="panel-card legend-panel">
-        <div class="legend-grid">
-          <div v-for="(color, name) in clcdColors" :key="name" class="legend-item">
-            <span class="legend-color" :style="{ background: color }"></span>
-            <span class="legend-name">{{ legendNames[name] }}</span>
+      <div class="vibe-legend-container" style="position: fixed; bottom: 24px; right: 24px; z-index: 1000;">
+        <div class="vibe-legend-header">
+          <span class="vibe-legend-title">全国土地覆盖 (CLCD)</span>
+          <span class="vibe-legend-unit">分类</span>
+        </div>
+        <div class="vibe-legend-list">
+          <div v-for="(color, name) in clcdColors" :key="name" class="vibe-legend-item">
+            <span class="vibe-legend-swatch" :style="{ background: color }"></span>
+            <span class="vibe-legend-text">{{ legendNames[name] }}</span>
           </div>
         </div>
       </div>
@@ -234,11 +243,13 @@ import TransferMatrixControl from '../components/controls/TransferMatrixControl.
 import SpatialLayerSelector from '../components/controls/SpatialLayerSelector.vue';
 import TimePlayer from '../components/controls/TimePlayer.vue';
 import DashboardOverlay from './DashboardOverlay.vue';
+import AnalysisLegend from '../components/ui/AnalysisLegend.vue';
 import { useMapStore } from '../stores/map.ts';
 import { useGlobalStore } from '../stores/index.ts'; // New Import
 import { clcdApi, authApi, analysisApi } from '../api/index.js';
 import logoutIcon from '../assets/icons/logout.png';
 import dashboardIcon from '../assets/icons/dashboard.png';
+import { addExclusiveAnalysisLayer, clearAllAnalysisLayers } from '../utils/cesiumUtils.js';
 
 const router = useRouter();
 const mapStore = useMapStore();
@@ -259,7 +270,10 @@ const isDashboardMode = ref(false);
 const isRegionalAnalysisMode = ref(false); // Can be removed or ignored
 const isLoading = ref(false); 
 const currentStatsField = ref(''); 
-const spatialUnit = ref('clcd'); // Default to CLCD
+const spatialUnit = computed({
+  get: () => globalStore.activeLayer,
+  set: (val) => globalStore.setActiveLayer(val)
+});
 const selectedAttribute = ref('cropland');
 const wmsLayerCache = new Map(); // Map<cacheKey, Cesium.ImageryLayer>
 const MAX_WMS_CACHE_SIZE = 15; // LRU 缓存上限，防止内存溢出
@@ -288,8 +302,6 @@ function addToCache(key, layer) {
 const years = ref([]); // will be populated
 const currentLegendLabels = ref([]); // Dynamic labels for WMS layer
 
-const showRegionalTrendControl = ref(false);
-const showLandTransferControl = ref(false); // New: 土地流转控制面板
 const yunnanDataSource = shallowRef(null);
 const provinceDataSource = shallowRef(null);
 const highlightedEntity = shallowRef(null);
@@ -429,6 +441,15 @@ watch([isChangeMode, changeYearFrom, changeYearTo], () => {
 // 时间播放器年份数组 - 使用globalStore.yearsAll
 const playerYears = computed(() => {
   return globalStore.yearsAll || [1985, ...Array.from({ length: 2023 - 1990 + 1 }, (_, i) => 1990 + i)];
+});
+
+// 统一构建图例项传给组件，确保全平台视觉一致
+const areaLegendItems = computed(() => {
+  if (!currentColorScale.value || !currentLegendLabels.value) return [];
+  return currentColorScale.value.map((color, index) => ({
+    color: color,
+    label: currentLegendLabels.value[index] || ''
+  })).filter(item => item.label);
 });
 
 // ... (Colors and Attribute definitions remain same)
@@ -575,8 +596,35 @@ function cleanupDistantCache(centerYear) {
 
 // 响应区域分析参数变化 (图层切换 & 属性切换)
 watch([spatialUnit, selectedAttribute], ([newUnit, newAttr], [oldUnit, oldAttr]) => {
-  // 流转模式由 handleTransferQuery 独立管理，不走 WMS 流程
-  if (newAttr === 'transfer') return;
+  // 1. 如果当前是 land_transfer 且用户尝试切换到其他单位（通过下拉框），主动清理流转图层和图例
+  if (oldUnit === 'land_transfer' && newUnit !== 'land_transfer') {
+     console.log('[Workbench] User switched away from land_transfer, clearing transfer layer');
+     if (transferWmsLayer && viewer.value && !viewer.value.isDestroyed()) {
+        viewer.value.imageryLayers.remove(transferWmsLayer, true);
+        transferWmsLayer = null;
+     }
+     globalStore.clearLegend();
+  }
+
+  // 2. 点击县域或格网统计时，默认回到 1985 年的耕地图层（脱离 transfer 等旧状态）
+  if (oldUnit !== newUnit && ['county', 'grid'].includes(newUnit)) {
+    let needsUpdate = false;
+    if (selectedYear.value !== 1985) {
+      selectedYear.value = 1985;
+      needsUpdate = true;
+    }
+    if (selectedAttribute.value !== 'cropland') {
+      selectedAttribute.value = 'cropland';
+      needsUpdate = true;
+    }
+    // 如果有状态修改，提前返回，交由新的响应式值触发下一次 watch 周期去执行最终加载
+    if (needsUpdate) return; 
+  }
+
+  // 3. 流转模式独立管理，如果在此刻属性还是 transfer 或单位是 land_transfer，不触发基础 WMS
+  if (selectedAttribute.value === 'transfer' || newUnit === 'land_transfer') {
+      return;
+  }
 
   // 1. Handle Pause
   if (timePlayerRef.value && typeof timePlayerRef.value.pause === 'function') {
@@ -635,6 +683,43 @@ watch([spatialUnit, selectedAttribute], ([newUnit, newAttr], [oldUnit, oldAttr])
 const transferControlRef = ref(null);
 let transferWmsLayer = null; // 当前的流转 WMS 图层引用
 
+// 处理重置/清理分析图层
+function handleResetMap() {
+  console.log('[Workbench] handleResetMap called, clearing analysis layers');
+  // 1. 恢复之前的基础图层状态
+  globalStore.restorePreviousLayer();
+  
+  // 2. 清理流转图层和其他专属UI
+  clearAllAnalysisLayers(viewer.value);
+  transferWmsLayer = null;
+  
+  if (transferDataSource.value && viewer.value && !viewer.value.isDestroyed()) {
+    viewer.value.dataSources.remove(transferDataSource.value, true);
+    transferDataSource.value = null;
+  }
+
+  globalStore.clearLegend();
+  if (selectedAttribute.value === 'transfer') {
+    selectedAttribute.value = 'cropland';
+  }
+  
+  // 3. 触发当前 activeLayer 所对应图层的重新显示（如果被隐藏了的话）
+  if (globalStore.activeLayer === 'clcd' && clcdLayer.value) {
+     clcdLayer.value.show = true;
+  } else {
+     // 对于 grid/county，恢复它们由于 transferWmsLayer 显示导致被隐藏的状态
+     const cacheKey = `${selectedYear.value}_${globalStore.activeLayer}_${selectedAttribute.value}`;
+     const layer = wmsLayerCache.get(cacheKey);
+     if (layer) {
+       layer.show = true;
+       layer.alpha = 1;
+     } else {
+       // 防止缓存被清，重新加载
+       loadWMSLayer(selectedYear.value, true);
+     }
+  }
+}
+
 // transfer_dynamic.sld 的 10 级红蓝色带（与 SLD 一致）
 const transferColors = [
   '#053061', '#2166ac', '#4393c3', '#92c5de', '#d1e5f0',
@@ -654,10 +739,10 @@ async function handleTransferQuery(params) {
   }
 
   try {
-    const { yearStart, yearEnd, fromClass, toClass, unit } = params;
+    const { yearStart, yearEnd, fromClass, toClass, unit, legendTitle } = params;
 
-    // 1. 清理旧的流转图层
-    clearTransferLayer();
+    // 1. 记录旧图层引用用于平滑过渡 (Double Buffering)
+    const oldLayer = transferWmsLayer;
 
     // 1b. 隐藏现有的面积 WMS 图层和 CLCD 图层，避免遮挡
     wmsLayerCache.forEach((layer) => { layer.show = false; layer.alpha = 0; });
@@ -754,15 +839,24 @@ async function handleTransferQuery(params) {
       }
     });
 
-    const newLayer = viewer.value.imageryLayers.addImageryProvider(wmsProvider);
+    const newLayer = new Cesium.ImageryLayer(wmsProvider);
     newLayer.alpha = 1;
     newLayer.show = true;
-    viewer.value.imageryLayers.raiseToTop(newLayer);
+    
+    // 使用互斥策略添加
+    addExclusiveAnalysisLayer(viewer.value, newLayer);
+    
+    // 更新当前引用
     transferWmsLayer = newLayer;
+
+    // 延迟销毁逻辑在互斥模式下已由 addExclusiveAnalysisLayer 自动处理（即刻清理旧图层）
+    // 如果由于性能原因仍需保留 oldLayer 做平滑过渡，可以手动在 addExclusiveAnalysisLayer 中跳过清理或维持当前双缓冲逻辑
+    // 但根据“全局单例”要求，此处回归标准互斥调用。
 
     // 7. 更新图例
     const formatKm2 = (num) => {
       if (num === 0) return '0';
+      if (Number.isInteger(num)) return num.toString();
       const abs = Math.abs(num);
       if (abs >= 100) return Math.round(num).toString();
       if (abs >= 1) return num.toFixed(1);
@@ -780,6 +874,16 @@ async function handleTransferQuery(params) {
     // 标记为 transfer 模式（图例使用）
     selectedAttribute.value = 'transfer';
 
+    // 7. 同步更新全局图例 Store
+    globalStore.updateLegend({
+      title: legendTitle,
+      type: unit === 'grid' ? 'categorical' : 'continuous',
+      items: labels.map((l, i) => ({
+        label: l,
+        color: transferColors[i]
+      }))
+    });
+
     console.log('[Transfer] WMS layer rendered successfully.');
 
   } catch (err) {
@@ -793,40 +897,7 @@ async function handleTransferQuery(params) {
   }
 }
 
-/**
- * 清除流转 WMS 图层
- */
-function clearTransferLayer() {
-  if (transferWmsLayer && viewer.value && !viewer.value.isDestroyed()) {
-    viewer.value.imageryLayers.remove(transferWmsLayer, true);
-    transferWmsLayer = null;
-  }
-  // 兼容旧的 DataSource 方式（如有残留）
-  if (transferDataSource.value && viewer.value && !viewer.value.isDestroyed()) {
-    viewer.value.dataSources.remove(transferDataSource.value, true);
-    transferDataSource.value = null;
-  }
-}
-
-/**
- * 重置地图：清除流转图层，恢复原有图层
- */
-function handleResetMap() {
-  clearTransferLayer();
-
-  if (selectedAttribute.value === 'transfer') {
-    selectedAttribute.value = 'cropland';
-  }
-
-  // 恢复正常图层（根据当前空间单元模式）
-  if (spatialUnit.value === 'clcd') {
-    loadStandardLayer(selectedYear.value);
-  } else {
-    // 恢复县级/格网面积图层
-    loadWMSLayer(selectedYear.value, true);
-  }
-  console.log('[Transfer] Map reset complete.');
-}
+// 清理图层逻辑已挪到上方的 handleResetMap
 
 
 function setupClickHandler() {
@@ -1285,28 +1356,24 @@ function handleBaseMapChange(mapType) {
 function loadStandardLayer(year) {
   if (!viewer.value) return;
 
-  const oldLayer = clcdLayer.value;
-
   try {
-    const newLayer = viewer.value.imageryLayers.addImageryProvider(
-      new Cesium.WebMapServiceImageryProvider({
-        url: 'http://localhost:8080/geoserver/WebGIS/wms',
-        layers: `WebGIS:${year}_yunnan_CLCD_raster`,
-        parameters: {
-          service: 'WMS',
-          version: '1.1.0',
-          request: 'GetMap',
-          format: 'image/png',
-          transparent: true
-        }
-      })
-    );
+    const provider = new Cesium.WebMapServiceImageryProvider({
+      url: 'http://localhost:8080/geoserver/WebGIS/wms',
+      layers: `WebGIS:${year}_yunnan_CLCD_raster`,
+      parameters: {
+        service: 'WMS',
+        version: '1.1.0',
+        request: 'GetMap',
+        format: 'image/png',
+        transparent: true
+      }
+    });
 
+    // 使用互斥策略添加图层
+    const newLayer = new Cesium.ImageryLayer(provider);
+    addExclusiveAnalysisLayer(viewer.value, newLayer);
+    
     clcdLayer.value = newLayer;
-
-    if (oldLayer) {
-      viewer.value.imageryLayers.remove(oldLayer, true);
-    }
   } catch (e) {
     console.error(`加载 ${year} 年 CLCD 图层失败:`, e);
   }
@@ -1331,11 +1398,17 @@ async function loadWMSLayer(targetYear = null, visible = true) {
     ? `change_${changeYearFrom.value}_${changeYearTo.value}_${spatialUnit.value}_${selectedAttribute.value}`
     : `${year}_${spatialUnit.value}_${selectedAttribute.value}`;
 
-  // 1. 如果缓存中存在，直接切换可见性
+  // 1. 如果缓存中存在，验证其是否被外部强制销毁以防崩溃
   if (wmsLayerCache.has(cacheKey)) {
-    console.log('[Workbench] Cache HIT for:', cacheKey);
-    if (visible) updateLayerVisibility(cacheKey);
-    return;
+    const cachedLayer = wmsLayerCache.get(cacheKey);
+    if (cachedLayer && typeof cachedLayer.isDestroyed === 'function' && cachedLayer.isDestroyed()) {
+      console.log('[Workbench] Cache STALE (destroyed) for:', cacheKey);
+      wmsLayerCache.delete(cacheKey);
+    } else {
+      console.log('[Workbench] Cache HIT for:', cacheKey);
+      if (visible) updateLayerVisibility(cacheKey);
+      return;
+    }
   }
 
   console.log('[Workbench] Cache MISS for:', cacheKey, '- Loading new layer');
@@ -1385,6 +1458,7 @@ async function loadWMSLayer(targetYear = null, visible = true) {
     // km² 自适应精度格式化
     const formatKm2 = (num) => {
       if (num === 0) return '0';
+      if (Number.isInteger(num)) return num.toString();
       const abs = Math.abs(num);
       if (abs >= 100) return Math.round(num).toString();
       if (abs >= 1) return num.toFixed(1);
@@ -1466,10 +1540,11 @@ async function loadWMSLayer(targetYear = null, visible = true) {
       parameters: wmsParameters
     });
 
-    const newLayer = viewer.value.imageryLayers.addImageryProvider(wmsProvider);
+    const newLayer = new Cesium.ImageryLayer(wmsProvider);
     newLayer.alpha = 0; 
     newLayer.show = true;
 
+    // 缓存依然保留，但实际加载到地图时会触发互斥
     addToCache(cacheKey, newLayer);
 
     if (visible) {
@@ -1492,11 +1567,11 @@ function updateLayerVisibility(targetKey) {
     // 1. 设置当前层可见
     const targetLayer = wmsLayerCache.get(targetKey);
     if (targetLayer) {
+        // 使用互斥策略加载
+        addExclusiveAnalysisLayer(viewer.value, targetLayer);
+        
         targetLayer.alpha = 1;
         targetLayer.show = true;
-        if (viewer.value && !viewer.value.isDestroyed()) {
-             viewer.value.imageryLayers.raiseToTop(targetLayer);
-        }
         spatialLayer.value = targetLayer; 
     }
 
@@ -1962,64 +2037,13 @@ html {
 
 
 
-/* 浮动图例 (Regional Only) */
+/* 统一图例浮动位置 */
 .floating-legend {
   position: fixed;
   bottom: 24px;
-  right: 24px; /* 右下角 */
-  left: auto;
-  background: rgba(15, 23, 42, 0.6); 
-  backdrop-filter: blur(20px);
-  -webkit-backdrop-filter: blur(20px);
-  border: 1px solid rgba(255, 255, 255, 0.1);
-  border-radius: 16px;
-  padding: 16px;
-  z-index: 900;
-  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.2);
-  min-width: 200px;
-}
-
-.floating-legend .legend-title {
-  font-size: 14px;
-  font-weight: 600;
-  color: #fff;
-  margin-bottom: 4px;
-  border: none;
-  padding: 0;
-  text-align: center; /* Center Title */
-}
-
-.floating-legend .legend-subtitle {
-  font-size: 12px;
-  color: rgba(255,255,255,0.5);
-  margin-bottom: 12px;
-  text-align: center; /* Center Subtitle */
-}
-
-.legend-list {
-  display: flex;
-  flex-direction: column;
-  gap: 4px;
-}
-
-.legend-row {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-}
-
-.legend-color-box {
-  width: 20px;
-  height: 12px;
-  border-radius: 2px;
-  border: 1px solid rgba(255,255,255,0.3);
-}
-
-.legend-value {
-  font-size: 11px;
-  color: rgba(255,255,255,0.9);
-  /* Use same font as TimePlayer Year Selector: "PingFang SC", "Microsoft YaHei", sans-serif */
-  font-family: "PingFang SC", "Microsoft YaHei", sans-serif; 
+  right: 24px;
+  z-index: 1000;
+  box-shadow: 0 8px 32px rgba(0,0,0,0.4);
 }
 
 
@@ -2134,9 +2158,9 @@ html {
 }
 
 .change-mode-toggle.active {
-  background: linear-gradient(135deg, rgba(59, 130, 246, 0.3), rgba(37, 99, 235, 0.4));
-  border-color: rgba(59, 130, 246, 0.5);
-  color: #93c5fd;
+  background: #3B76E1 !important;
+  border-color: #3B76E1;
+  color: #ffffff;
 }
 
 .change-year-selector {
@@ -2169,4 +2193,36 @@ html {
   font-size: 16px;
 }
 
+.global-analysis-legend {
+  position: fixed;
+  bottom: 24px;
+  right: 24px;
+  z-index: 1000;
+  transition: all 0.3s ease;
+}
+
+/* 工具栏左向锚定过渡动画 (从右向左抽拉) */
+.expand-fade-left-enter-active,
+.expand-fade-left-leave-active {
+  transition: all 0.45s cubic-bezier(0.23, 1, 0.32, 1);
+  overflow: hidden;
+  white-space: nowrap;
+  transform-origin: right center; /* 锚定右侧图层选择器 */
+}
+
+.expand-fade-left-enter-from,
+.expand-fade-left-leave-to {
+  max-width: 0;
+  opacity: 0;
+  margin-right: -8px; /* 抵消 gap，确保右侧按钮静止 */
+  transform: scaleX(0.8) translateX(15px);
+}
+
+.expand-fade-left-enter-to,
+.expand-fade-left-leave-from {
+  max-width: 200px;
+  opacity: 1;
+  margin-right: 0;
+  transform: scaleX(1) translateX(0);
+}
 </style>
