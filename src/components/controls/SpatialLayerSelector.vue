@@ -1,6 +1,6 @@
 <template>
   <div class="spatial-layer-selector">
-    <div class="selector-header" @click="toggleDropdown">
+    <div class="selector-header" @click="toggleDropdown" :class="{ active: isOpen }">
       <span class="selected-layer">空间图层</span>
       <svg class="dropdown-icon" :class="{ open: isOpen }" width="12" height="12" viewBox="0 0 12 12">
         <path d="M2 4l4 4 4-4" stroke="currentColor" stroke-width="2" fill="none" />
@@ -78,6 +78,18 @@ onUnmounted(() => {
   cursor: pointer;
   transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+}
+
+.selector-header.active {
+  background: #3B76E1 !important;
+  border-color: #3B76E1;
+  color: #ffffff;
+  box-shadow: 0 4px 10px rgba(59, 118, 225, 0.3);
+}
+
+.selector-header.active .selected-layer,
+.selector-header.active .dropdown-icon {
+  color: #ffffff;
 }
 
 .selector-header:hover {

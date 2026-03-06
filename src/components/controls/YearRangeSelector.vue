@@ -228,9 +228,14 @@ onUnmounted(() => {
 }
 
 .display-button.active {
-  border-color: #3b82f6;
-  background: rgba(30, 58, 138, 0.6);
-  box-shadow: 0 0 15px rgba(59, 130, 246, 0.3);
+  background: #3B76E1 !important;
+  border-color: #3B76E1;
+  color: #ffffff;
+  box-shadow: 0 4px 10px rgba(59, 118, 225, 0.3);
+}
+
+.display-button.active .icon {
+  color: #ffffff;
 }
 
 .icon {
