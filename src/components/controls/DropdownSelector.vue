@@ -155,9 +155,15 @@ function handleClickOutside(event) {
 }
 
 .display-button.active {
-  border-color: #3b82f6;
-  background: rgba(30, 58, 138, 0.6);
-  box-shadow: 0 0 15px rgba(59, 130, 246, 0.3);
+  background: #3B76E1 !important;
+  border-color: #3B76E1;
+  color: #ffffff;
+  box-shadow: 0 4px 10px rgba(59, 118, 225, 0.3);
+}
+
+.display-button.active .icon-wrapper,
+.display-button.active .chevron-icon {
+  color: #ffffff;
 }
 
 /* 图标容器 */
@@ -199,10 +205,30 @@ function handleClickOutside(event) {
   z-index: 1200; /* Higher than toolbar containers (1100) */
   padding: 6px;
   backdrop-filter: blur(20px);
-  overflow: hidden;
+  max-height: 220px;
+  overflow-y: auto;
+  overflow-x: hidden;
   display: flex;
   flex-direction: column;
   gap: 2px;
+}
+
+/* 自定义滚动条样式 */
+.popover-panel::-webkit-scrollbar {
+  width: 4px;
+}
+
+.popover-panel::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.popover-panel::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.15);
+  border-radius: 4px;
+}
+
+.popover-panel::-webkit-scrollbar-thumb:hover {
+  background: rgba(255, 255, 255, 0.3);
 }
 
 .dropdown-item {
