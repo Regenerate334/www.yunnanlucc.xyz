@@ -114,7 +114,7 @@ function togglePanel() {
   height: 64px;
   border-radius: 14px;
   border: 1px solid rgba(148, 163, 184, 0.2);
-  background: linear-gradient(135deg, #0f172a 0%, #1e293b 100%);
+  background: rgba(13, 25, 48, 0.4);
   cursor: pointer;
   display: flex;
   flex-direction: column;
@@ -134,9 +134,10 @@ function togglePanel() {
 }
 
 .control-btn.active {
-  background: #3b82f6;
+  background: #3B76E1 !important;
   color: #fff;
-  border-color: #60a5fa;
+  border-color: #3B76E1;
+  box-shadow: 0 4px 10px rgba(59, 118, 225, 0.3);
 }
 
 .icon {
@@ -237,7 +238,7 @@ function togglePanel() {
 }
 
 .tab-btn.active {
-  background: #3b82f6;
+  background: #3B76E1;
   color: #fff;
 }
 

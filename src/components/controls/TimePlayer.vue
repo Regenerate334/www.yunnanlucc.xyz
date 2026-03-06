@@ -180,12 +180,16 @@ function shouldShowStaticLabel(index) {
   return index % step === 0;
 }
 
-// Popup State
-const isOpen = ref(false);
+// Popup State managed by global store
+import { useGlobalStore } from '../../stores/global'
+
+const globalStore = useGlobalStore()
+const panelName = 'time'
 const containerRef = ref(null);
+const isOpen = computed(() => globalStore.activePanel === panelName);
 
 function toggleOpen() {
-  isOpen.value = !isOpen.value;
+  globalStore.setActivePanel(panelName);
 }
 
 // Stop playback
@@ -231,7 +235,7 @@ function handleClickOutside(event) {
     const isSegment = target.closest && target.closest('.segmented-control');
     
     if (!isToolbar && !isHeader && !isDropdown && !isSegment) {
-      isOpen.value = false;
+      globalStore.setActivePanel(null);
     }
   }
 }
@@ -284,10 +288,10 @@ function handleClickOutside(event) {
 }
 
 .time-toggle-btn.active {
-  background: #3b82f6;
-  border-color: #60a5fa;
+  background: #3B76E1 !important;
+  border-color: #3B76E1;
   color: #ffffff;
-  box-shadow: 0 0 15px rgba(59, 130, 246, 0.5);
+  box-shadow: 0 4px 10px rgba(59, 118, 225, 0.3);
 }
 
 .time-toggle-btn.active:hover {

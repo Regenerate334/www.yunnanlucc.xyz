@@ -55,6 +55,7 @@ import * as echarts from 'echarts';
 import { centroid, area } from '@turf/turf';
 import bbox from '@turf/bbox';
 import { clcdApi } from '../../api/index.js';
+import { useGlobalStore } from '../../stores/global';
 import AIAnalysisModal from '../ui/AIAnalysisModal.vue';
 import RegionCascader from './RegionCascader.vue';
 import ChatGptIcon from '../icons/ChatGptIcon.vue';
@@ -69,7 +70,10 @@ const props = defineProps({
 import prefecturePieIcon from '../../assets/icons/prefecture_pie.png';
 const iconUrl = prefecturePieIcon;
 
-const isVisible = ref(false);
+const globalStore = useGlobalStore();
+const panelName = 'countyPie';
+
+const isVisible = computed(() => globalStore.activePanel === panelName);
 const chartContainer = shallowRef(null);
 const chartInstance = shallowRef(null);
 let countyGeoJSON = null;
@@ -558,7 +562,7 @@ function handleResize() {
 }
 
 async function toggleChart() {
-    isVisible.value = !isVisible.value;
+    globalStore.setActivePanel(panelName);
     if (isVisible.value) {
         await nextTick();
         if (chartInstance.value) {
@@ -652,10 +656,10 @@ watch(() => props.year, (newYear) => {
 }
 
 .control-btn.active {
-    background: #3b82f6;
-    border-color: #60a5fa;
+    background: #3B76E1 !important;
+    border-color: #3B76E1;
     color: #ffffff;
-    box-shadow: 0 0 15px rgba(59, 130, 246, 0.5);
+    box-shadow: 0 4px 10px rgba(59, 118, 225, 0.3);
 }
 
 .icon-img {

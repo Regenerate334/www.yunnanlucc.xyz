@@ -1,7 +1,7 @@
 <template>
     <div class="regional-trend-control">
         <!-- 入口按钮 -->
-        <button @click="openModal" class="control-btn" title="区域趋势深度监测">
+        <button @click="openModal" class="control-btn" :class="{ active: isVisible }" title="区域趋势深度监测">
             <svg class="region-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                 <path d="M3 17l4-4 3 3 5-5 4 4" stroke-linecap="round" stroke-linejoin="round"/>
                 <circle cx="18" cy="6" r="3" fill="none"/>
@@ -125,8 +125,12 @@
 import { ref, computed, watch, onMounted, onUnmounted } from 'vue';
 import RegionalTrendChart from '../charts/RegionalTrendChart.vue';
 import { regionApi, clcdApi } from '../../api/index.js';
+import { useGlobalStore } from '../../stores/global';
 
-const isVisible = ref(false);
+const globalStore = useGlobalStore();
+const panelName = 'regionalTrend';
+
+const isVisible = computed(() => globalStore.activePanel === panelName);
 const selectedRegion = ref({ name: '', level: '' });
 const hierarchy = ref([]); // 完整的层级数据
 const trendData = ref([]);
@@ -298,14 +302,14 @@ async function fetchTrendData() {
 }
 
 function openModal() {
-    isVisible.value = true;
+    globalStore.setActivePanel(panelName);
     if (hierarchy.value.length === 0) {
         fetchHierarchy();
     }
 }
 
 function closeModal() {
-    isVisible.value = false;
+    globalStore.setActivePanel(null);
 }
 
 watch(selectedRegion, (newVal) => {
@@ -343,6 +347,13 @@ onMounted(() => {
     overflow: hidden;
     flex-direction: column;
     gap: 2px;
+}
+
+.control-btn.active {
+    background: #3B76E1 !important;
+    border-color: #3B76E1;
+    color: #ffffff;
+    box-shadow: 0 4px 10px rgba(59, 118, 225, 0.3);
 }
 
 .control-btn:hover {

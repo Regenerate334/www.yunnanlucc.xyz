@@ -44,10 +44,11 @@
 </template>
 
 <script setup>
-import { ref, shallowRef, onUnmounted, watch, nextTick } from 'vue';
+import { ref, shallowRef, onUnmounted, watch, nextTick, computed } from 'vue';
 import * as echarts from 'echarts';
 import { centroid, area } from '@turf/turf';
 import { clcdApi } from '../../api/index.js';
+import { useGlobalStore } from '../../stores/global';
 import AIAnalysisModal from '../ui/AIAnalysisModal.vue';
 import ChatGptIcon from '../icons/ChatGptIcon.vue';
 
@@ -58,7 +59,10 @@ const props = defineProps({
     year: { type: Number, default: 1985 }
 });
 
-const isVisible = ref(false);
+const globalStore = useGlobalStore();
+const panelName = 'prefecturePie';
+
+const isVisible = computed(() => globalStore.activePanel === panelName);
 const showAIModal = ref(false);
 const chartContainer = shallowRef(null);
 const chartInstance = shallowRef(null);
@@ -350,7 +354,7 @@ function handleResize() {
 }
 
 async function toggleChart() {
-  isVisible.value = !isVisible.value;
+  globalStore.setActivePanel(panelName);
   if (isVisible.value) {
     await nextTick();
     if (chartInstance.value) {
@@ -431,10 +435,10 @@ const openAIAnalysis = () => {
 }
 
 .control-btn.active {
-  background: #3b82f6;
-  border-color: #60a5fa;
+  background: #3B76E1 !important;
+  border-color: #3B76E1;
   color: #ffffff;
-  box-shadow: 0 0 15px rgba(59, 130, 246, 0.5);
+  box-shadow: 0 4px 10px rgba(59, 118, 225, 0.3);
 }
 
 .icon-img {

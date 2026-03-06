@@ -1,7 +1,7 @@
 <template>
   <div class="regional-analysis-panel">
     <!-- 入口按钮 -->
-    <button @click="openPanel" class="control-btn" title="区域检测分析">
+    <button @click="openPanel" class="control-btn" :class="{ active: isVisible }" title="区域检测分析">
       <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
         <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z" />
         <circle cx="12" cy="10" r="3" />
@@ -94,10 +94,14 @@ import * as Cesium from 'cesium';
 import { clcdApi } from '../../api/index.js';
 import AnalysisLegend from '../ui/AnalysisLegend.vue';
 import { useMapStore } from '../../stores/map.ts';
+import { useGlobalStore } from '../../stores/global';
+
+const globalStore = useGlobalStore();
+const panelName = 'regionalAnalysis';
 
 const mapStore = useMapStore();
 
-const isVisible = ref(false);
+const isVisible = computed(() => globalStore.activePanel === panelName);
 const isLoading = ref(false);
 const spatialUnit = ref('county');
 const selectedAttribute = ref('cropland');
@@ -130,7 +134,7 @@ const currentAttributeLabel = computed(() => {
 });
 
 function openPanel() {
-  isVisible.value = true;
+  globalStore.setActivePanel(panelName);
   
   // 通知父组件隐藏其他控件
   const viewer = mapStore.viewer;
@@ -144,7 +148,7 @@ function openPanel() {
 }
 
 function closePanel() {
-  isVisible.value = false;
+  globalStore.setActivePanel(null);
   
   // 清理分析数据
   const viewer = mapStore.viewer;
@@ -286,6 +290,13 @@ onUnmounted(() => {
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
 }
 
+.control-btn.active {
+  background: #3B76E1 !important;
+  border-color: #3B76E1;
+  color: #ffffff;
+  box-shadow: 0 4px 10px rgba(59, 118, 225, 0.3);
+}
+
 .control-btn:hover {
   background: rgba(30, 58, 138, 0.6);
   border-color: rgba(59, 130, 246, 0.5);
@@ -406,9 +417,9 @@ onUnmounted(() => {
 }
 
 .btn-group button.active {
-  background: #3b82f6;
-  border-color: #3b82f6;
-  color: #fff;
+  background: #3B76E1;
+  border-color: #3B76E1;
+  color: #ffffff;
 }
 
 .btn-group button:disabled {
@@ -418,7 +429,7 @@ onUnmounted(() => {
 
 .load-btn {
   padding: 10px 24px;
-  background: linear-gradient(135deg, #3b82f6, #1d4ed8);
+  background: #3B76E1;
   border: none;
   border-radius: 8px;
   color: #fff;
