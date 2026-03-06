@@ -10,6 +10,13 @@ export const useGlobalStore = defineStore('global', () => {
     const yearsAll = ref([1985, ...Array.from({ length: 2023 - 1990 + 1 }, (_, i) => 1990 + i)])
     const selectedClasses = ref(['Cropland', 'Forest', 'Shrub', 'Grassland', 'Water', 'Snow/Ice', 'Barren', 'Impervious', 'Wetland'])
     const metricMode = ref('absolute') // 'absolute' | 'percent'
+    const activePanel = ref<string | null>(null) // Used to track which exclusive panel is open ('transfer', 'time', etc.)
+    const legendData = ref<any>(null) // Used for analysis legend
+
+    // 新增：全局图层互斥状态
+    const activeLayer = ref<string>('clcd') // 'clcd' | 'county' | 'grid' | 'land_transfer'
+    const previousLayer = ref<string>('clcd') // 记录进入分析前的图层
+
 
     // Actions
     function setYear(y: number) {
@@ -24,6 +31,10 @@ export const useGlobalStore = defineStore('global', () => {
         scope.value = { level, code }
     }
 
+    function setActivePanel(panel: string | null) {
+        activePanel.value = activePanel.value === panel ? null : panel
+    }
+
     function toggleMetric() {
         metricMode.value = metricMode.value === 'absolute' ? 'percent' : 'absolute'
     }
@@ -31,6 +42,29 @@ export const useGlobalStore = defineStore('global', () => {
     function setYearsAll(arr: number[]) {
         yearsAll.value = arr
     }
+
+    function updateLegend(data: any) {
+        legendData.value = data
+    }
+
+    function clearLegend() {
+        legendData.value = null
+    }
+
+    // 新增：图层状态控制
+    function setActiveLayer(layer: string) {
+        if (layer === 'land_transfer' && activeLayer.value !== 'land_transfer') {
+            previousLayer.value = activeLayer.value
+        }
+        activeLayer.value = layer
+    }
+
+    function restorePreviousLayer() {
+        if (activeLayer.value === 'land_transfer') {
+            activeLayer.value = previousLayer.value
+        }
+    }
+
 
     return {
         scope,
@@ -40,10 +74,19 @@ export const useGlobalStore = defineStore('global', () => {
         yearsAll,
         selectedClasses,
         metricMode,
+        activePanel,
+        legendData,
+        activeLayer,
+        previousLayer,
         setYear,
         setRange,
         setScope,
+        setActivePanel,
         toggleMetric,
-        setYearsAll
+        setYearsAll,
+        updateLegend,
+        clearLegend,
+        setActiveLayer,
+        restorePreviousLayer
     }
 })
