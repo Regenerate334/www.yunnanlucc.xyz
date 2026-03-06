@@ -1,0 +1,3551 @@
+﻿diff --git a/src/components/controls/AreaMeasureButton.vue b/src/components/controls/AreaMeasureButton.vue
+index f55c0f7..d19c45d 100644
+--- a/src/components/controls/AreaMeasureButton.vue
++++ b/src/components/controls/AreaMeasureButton.vue
+@@ -7,38 +7,64 @@
+ 
+         <!-- 鍙充晶寮瑰嚭缁撴灉闈㈡澘 -->
+         <transition name="slide-fade">
+-            <div v-if="activeTool === 'area'" class="result-popover">
+-                <div class="popover-header">
+-                    <span class="popover-title">娴嬮潰缁撴灉</span>
+-                    <div class="custom-unit-dropdown" ref="unitDropdownRef">
+-                        <div class="unit-trigger" @click="toggleUnitDropdown">
+-                            <span>{{ unitLabels[areaUnit] }}</span>
+-                            <svg class="arrow" :class="{ open: isUnitDropdownOpen }" viewBox="0 0 12 12" width="12" height="12">
+-                                <path d="M2 4l4 4 4-4" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round"/>
+-                            </svg>
+-                        </div>
+-                        <transition name="dropdown-fade">
+-                            <div v-if="isUnitDropdownOpen" class="unit-options">
+-                                <div v-for="(label, value) in unitLabels" :key="value" class="unit-option"
+-                                    :class="{ active: areaUnit === value }" @click="selectUnit(value)">
+-                                    {{ label }}
+-                                </div>
++            <div v-if="globalStore.activePanel === 'area'" class="result-popover vibe-panel">
++                <!-- 闈㈡澘澶撮儴: 灞呬腑鏍囬 + 鍏抽棴鎸夐挳 -->
++                <div class="vibe-panel-header">
++                    <h1 class="vibe-panel-title">娴嬮潰缁撴灉</h1>
++                    <button class="vibe-close-btn" @click="globalStore.setActivePanel(null)" title="鍏抽棴闈㈡澘">
++                        <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2.5">
++                            <path d="M18 6L6 18M6 6l12 12" />
++                        </svg>
++                    </button>
++                </div>
++
++                <!-- 闈㈡澘涓讳綋: 甯﹁摑绔栫嚎鐨勪簩绾ф爣棰?+ 鍐呭祵娣辫壊鍗＄墖 -->
++                <div class="vibe-panel-body">
++                    <!-- 鍗曚綅閫夋嫨妯″潡 -->
++                    <div class="vibe-section">
++                        <div class="vibe-section-label">鏄剧ず鍗曚綅</div>
++                        <div class="vibe-inset-card unit-selector-card" ref="unitDropdownRef">
++                            <div class="vibe-custom-select" @click.stop="toggleUnitDropdown">
++                                <span class="selected-text">{{ unitLabels[areaUnit] }}</span>
++                                <svg class="chevron" :class="{ open: isUnitDropdownOpen }" viewBox="0 0 24 24" width="14" height="14" stroke="currentColor" stroke-width="3" fill="none">
++                                    <path d="M6 9l6 6 6-6" />
++                                </svg>
+                             </div>
+-                        </transition>
++                            <transition name="dropdown-fade">
++                                <ul v-if="isUnitDropdownOpen" class="vibe-select-options">
++                                    <li v-for="(label, value) in unitLabels" :key="value" 
++                                        :class="{ active: areaUnit === value }" @click.stop="selectUnit(value)">
++                                        {{ label }}
++                                        <svg v-if="areaUnit === value" viewBox="0 0 24 24" width="12" height="12" stroke="currentColor" stroke-width="3" fill="none">
++                                            <path d="M20 6L9 17l-5-5" />
++                                        </svg>
++                                    </li>
++                                </ul>
++                            </transition>
++                        </div>
+                     </div>
+-                </div>
+-                <div class="popover-content">
+-                    <div class="result-item">
+-                        <span class="label">闈㈢Н</span>
+-                        <span class="value">{{ formatArea(results.area) }}</span>
++
++                    <!-- 缁撴灉鏁板€兼ā鍧?-->
++                    <div class="vibe-section">
++                        <div class="vibe-section-label">闈㈢Н</div>
++                        <div class="vibe-inset-card data-card">
++                            <span class="vibe-data-value">{{ formatArea(results.area) }}</span>
++                        </div>
+                     </div>
+-                    <div class="result-item">
+-                        <span class="label">鍛ㄩ暱</span>
+-                        <span class="value">{{ formatDistance(results.perimeter) }}</span>
++
++                    <div class="vibe-section">
++                        <div class="vibe-section-label">鍛ㄩ暱</div>
++                        <div class="vibe-inset-card data-card">
++                            <span class="vibe-data-value">{{ formatDistance(results.perimeter) }}</span>
++                        </div>
+                     </div>
+                 </div>
+-                <div class="popover-footer">
+-                    <button class="clear-btn" @click="clearMeasurement">娓呴櫎</button>
++
++                <!-- 闈㈡澘搴曢儴: 鍏ㄥ涓绘寜閽?-->
++                <div class="vibe-panel-footer">
++                    <button class="vibe-execute-btn vibe-warn" @click="clearMeasurement">
++                        娓呴櫎娴嬮噺缁撴灉
++                    </button>
+                 </div>
+             </div>
+         </transition>
+@@ -46,9 +72,11 @@
+ </template>
+ 
+ <script setup>
+-import { computed, ref, onMounted, onUnmounted } from 'vue';
++import { computed, ref, onMounted, onUnmounted, watch } from 'vue';
+ import { useMeasurement } from '../../composables/useMeasurement';
++import { useGlobalStore } from '../../stores/global';
+ 
++const globalStore = useGlobalStore();
+ const {
+     activeTool,
+     areaUnit,
+@@ -60,12 +88,19 @@ const {
+     formatArea
+ } = useMeasurement();
+ 
+-function toggleMeasure() {
+-    if (activeTool.value === 'area') {
++// 鐩戝惉鍏ㄥ眬闈㈡澘鐘舵€侊紝濡傛灉鏄?area 鍒欐縺娲绘祴閲忓伐鍏凤紝鍚﹀垯鍙栨秷婵€娲?+watch(() => globalStore.activePanel, (newVal) => {
++    if (newVal === 'area') {
++        if (activeTool.value !== 'area') {
++            activateTool('area');
++        }
++    } else if (activeTool.value === 'area') {
+         activateTool(null);
+-    } else {
+-        activateTool('area');
+     }
++});
++
++function toggleMeasure() {
++    globalStore.setActivePanel('area');
+ }
+ 
+ const isUnitDropdownOpen = ref(false);
+@@ -106,13 +141,11 @@ onUnmounted(() => {
+     document.removeEventListener('click', handleClickOutside);
+ });
+ 
+-const isMeasuring = computed(() => activeTool.value === 'area');
++const isMeasuring = computed(() => globalStore.activePanel === 'area');
+ </script>
+ 
+ <style scoped>
+-.area-measure-control {
+-    position: relative;
+-}
++/* 鏍瑰鍣ㄤ笉鍐嶉渶瑕?position: relative锛屼互渚垮瓙闈㈡澘鐩稿浜庝富宸ュ叿鏍忓鍣ㄥ榻?*/
+ 
+ .measure-btn {
+     width: 64px;
+@@ -148,10 +181,10 @@ const isMeasuring = computed(() => activeTool.value === 'area');
+ }
+ 
+ .measure-btn.active {
+-    background: #3b82f6;
+-    border-color: #60a5fa;
++    background: #3B76E1 !important;
++    border-color: #3B76E1;
+     color: #ffffff;
+-    box-shadow: 0 0 15px rgba(59, 130, 246, 0.5);
++    box-shadow: 0 4px 10px rgba(59, 118, 225, 0.3);
+ }
+ 
+ .measure-btn:active {
+@@ -174,191 +207,273 @@ const isMeasuring = computed(() => activeTool.value === 'area');
+     opacity: 1;
+ }
+ 
+-/* 寮瑰嚭闈㈡澘鏍峰紡 */
+-.result-popover {
++/* 寮瑰嚭闈㈡澘鍩虹缁撴瀯 (Vibe Panel 瑙勮寖) */
++.vibe-panel {
+     position: absolute;
+-    top: 50%; /* Center vertically */
+-    left: 100%; /* Right of button */
+-    margin-left: 16px; /* Gap */
+-    transform: translateY(-50%);
+-    width: 220px; /* Slightly increased to fit wider dropdown */
+-    background: rgba(13, 25, 48, 0.6);
+-    border: 1px solid rgba(255, 255, 255, 0.08); /* Fainter border */
+-    border-radius: 12px;
+-    backdrop-filter: blur(20px);
+-    box-shadow: 0 12px 40px rgba(0, 0, 0, 0.4);
+-    color: #fff;
++    top: 0;
++    left: 100%;
++    margin-left: 20px;
++    width: 260px;
++    background: rgba(23, 35, 46, 0.85); /* 瀹屽叏鍚屾鍦熷湴娴佽浆闈㈡澘鍙傛暟 */
++    backdrop-filter: blur(20px) saturate(180%);
++    border: 1px solid rgba(255, 255, 255, 0.12);
++    border-radius: 20px;
++    box-shadow: 0 15px 45px rgba(0, 0, 0, 0.5);
++    color: #E2E8F0;
+     z-index: 1000;
++    display: flex;
++    flex-direction: column;
++    /* 淇鎴柇闂锛氱Щ闄?overflow: hidden 浠ュ厑璁镐笅鎷夎彍鍗曟孩鍑虹埗瀹瑰櫒 */
++    overflow: visible; 
++    font-family: "PingFang SC", "Microsoft YaHei", sans-serif;
+ }
+ 
+-.popover-header {
++/* Header: 鏋侀檺鍘嬬缉楂樺害 */
++.vibe-panel-header {
++    position: relative;
+     display: flex;
+-    justify-content: space-between;
+     align-items: center;
+-    padding: 10px 14px; /* Reduced padding */
+-    background: transparent; /* Removed background */
++    justify-content: center;
++    height: 46px; /* 浠?54px 鍘嬬缉 */
+     border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+-    border-radius: 12px 12px 0 0;
+ }
+ 
+-.popover-title {
+-    font-size: 14px;
+-    font-weight: 600;
++.vibe-panel-title {
++    font-weight: 700;
++    font-size: 17px;
++    letter-spacing: 1.5px;
+     color: #fff;
++    margin: 0;
++    text-shadow: 0 2px 10px rgba(0,0,0,0.3);
+ }
+ 
+-.custom-unit-dropdown {
+-    position: relative;
+-    pointer-events: auto;
+-    width: 110px; /* Fixed width */
++.vibe-close-btn {
++    position: absolute;
++    right: 16px; /* 瀵归綈娴嬫祦杞潰鏉?16px */
++    top: 50%;
++    transform: translateY(-50%);
++    background: transparent;
++    border: none;
++    color: rgba(255, 255, 255, 0.85); /* 鎭㈠涓€ц壊 */
++    cursor: pointer;
++    padding: 6px;
++    display: flex;
++    transition: all 0.3s ease; /* 涓濇粦杩囨浮 */
++    border-radius: 50%;
+ }
+ 
+-.unit-trigger {
++.vibe-close-btn:hover {
++    color: #F56C6C; /* 鎮仠鍙樼孩 */
++    background: rgba(255, 255, 255, 0.1);
++    transform: translateY(-50%) rotate(90deg);
++}
++
++/* Body: 闂磋窛鑸掗€傜殑妯″潡鍖栧竷灞€ */
++/* Body: 鏋侀檺鍘嬬缉闂磋窛 */
++.vibe-panel-body {
++    padding: 12px 16px; 
+     display: flex;
+-    align-items: center;
++    flex-direction: column;
++    gap: 12px; 
++}
++
++/* 浜岀骇鏍囬绠€娲佸寲 */
++.vibe-section {
++    display: flex;
++    flex-direction: column;
+     gap: 8px;
+-    padding: 6px 12px;
+-    background: rgba(255, 255, 255, 0.08); /* Lighter bg */
+-    border: 1px solid rgba(255, 255, 255, 0.15); /* Sharper border */
+-    border-radius: 6px;
+-    color: #fff;
++}
++
++.vibe-section-label {
++    position: relative;
+     font-size: 13px;
+-    cursor: pointer;
++    font-weight: 700;
++    color: rgba(255, 255, 255, 0.85);
++    letter-spacing: 0.5px;
++    padding-left: 12px;
++    display: flex;
++    align-items: center;
++}
++
++.vibe-section-label::before {
++    content: '';
++    position: absolute;
++    left: 0;
++    top: 50%;
++    transform: translateY(-50%);
++    width: 3px;
++    height: 13px;
++    background: #3B76E1;
++    border-radius: 2px;
++    box-shadow: 0 0 8px rgba(59, 118, 225, 0.5);
++}
++
++/* 鍐呭祵鍗＄墖: 鏋侀檺灏哄鍘嬬缉 */
++.vibe-inset-card {
++    background: rgba(0, 0, 0, 0.25);
++    border: 1px solid rgba(255, 255, 255, 0.05);
++    border-radius: 8px;
++    padding: 6px 12px;
+     transition: all 0.2s;
+-    width: 100%; /* Fill container */
++}
++
++.vibe-inset-card.data-card {
++    display: flex;
++    align-items: center;
++    justify-content: center;
++    min-height: 34px;
++}
++
++.vibe-data-value {
++    font-size: 16px;
++    font-weight: 700;
++    color: #fff;
++    font-family: 'Inter', system-ui, sans-serif;
++    letter-spacing: 0.5px;
++}
++
++/* 涓嬫媺妗嗘繁搴﹀畾鍒?(Vibe Select) */
++.unit-selector-card {
++    position: relative;
++    padding: 0;
++}
++
++.vibe-custom-select {
++    padding: 10px 14px;
++    display: flex;
+     justify-content: space-between;
++    align-items: center;
++    cursor: pointer;
+ }
+ 
+-.unit-trigger:hover {
+-    background: rgba(255, 255, 255, 0.15);
+-    border-color: rgba(255, 255, 255, 0.25);
++.vibe-custom-select .selected-text {
++    font-size: 14px;
++    font-weight: 600;
+ }
+ 
+-.arrow {
+-    font-size: 10px;
+-    color: #a5ccff;
++.vibe-custom-select .chevron {
++    color: #64748B;
+     transition: transform 0.3s;
+ }
+ 
+-.arrow.open {
++.vibe-custom-select .chevron.open {
+     transform: rotate(180deg);
+ }
+ 
+-.unit-options {
++.vibe-select-options {
+     position: absolute;
+-    top: calc(100% + 4px);
++    top: calc(100% + 4px); /* 閫傚簲鏋佽嚧鍘嬬缉鍚庣殑闂磋窛 */
+     left: 0;
+-    width: 100%; /* Match trigger width */
+-    background: rgba(13, 25, 48, 0.7); /* Match parent glass style */
+-    border: 1px solid rgba(255, 255, 255, 0.08); /* Match parent border */
+-    border-radius: 8px;
+-    padding: 4px;
+-    z-index: 1001;
+-    backdrop-filter: blur(20px); /* Match parent blur */
+-    box-shadow: 0 12px 32px rgba(0, 0, 0, 0.5);
+-    max-height: 200px;
++    right: 0;
++    background: rgba(23, 35, 46, 0.98);
++    backdrop-filter: blur(15px);
++    border: 1px solid rgba(255, 255, 255, 0.12);
++    border-radius: 10px;
++    margin: 0;
++    padding: 6px;
++    list-style: none;
++    z-index: 2500; /* 纭繚灞傜骇楂樹簬涓€鍒囷紝绐佺牬瀹瑰櫒闄愬埗 */
++    box-shadow: 0 10px 25px rgba(0, 0, 0, 0.6);
++    max-height: 180px;
+     overflow-y: auto;
+ }
+ 
+-.unit-options::-webkit-scrollbar {
++/* 缁熶竴鏆楄壊婊氬姩鏉℃牱寮?*/
++.vibe-select-options::-webkit-scrollbar {
+     width: 4px;
+ }
+ 
+-.unit-options::-webkit-scrollbar-thumb {
+-    background: rgba(255, 255, 255, 0.1);
+-    border-radius: 10px;
++.vibe-select-options::-webkit-scrollbar-track {
++    background: transparent;
+ }
+ 
+-.unit-option {
+-    padding: 8px 12px;
+-    color: rgba(255, 255, 255, 0.8);
+-    font-size: 13px;
+-    cursor: pointer;
+-    transition: all 0.2s;
+-    border-radius: 6px;
+-    text-align: left;
+-    white-space: nowrap;
++.vibe-select-options::-webkit-scrollbar-thumb {
++    background: rgba(255, 255, 255, 0.15);
++    border-radius: 4px;
+ }
+ 
+-.unit-option:hover {
+-    background: rgba(59, 130, 246, 0.15);
+-    color: #fff;
++.vibe-select-options::-webkit-scrollbar-thumb:hover {
++    background: rgba(255, 255, 255, 0.25);
+ }
+ 
+-.unit-option.active {
+-    background: rgba(59, 130, 246, 0.25);
+-    color: #3b82f6;
+-    font-weight: 600;
++.vibe-select-options li {
++    padding: 10px 12px;
++    border-radius: 6px;
++    font-size: 13px;
++    color: #94A3B8;
++    cursor: pointer;
++    display: flex;
++    align-items: center;
++    justify-content: space-between;
+ }
+ 
+-.dropdown-fade-enter-active,
+-.dropdown-fade-leave-active {
+-    transition: all 0.2s ease;
++.vibe-select-options li:hover {
++    background: rgba(255, 255, 255, 0.08);
++    color: white;
+ }
+ 
+-.dropdown-fade-enter-from,
+-.dropdown-fade-leave-to {
+-    opacity: 0;
+-    transform: translateY(-4px);
++.vibe-select-options li.active {
++    background: #3B76E1;
++    color: white;
+ }
+ 
+-.popover-content {
+-    padding: 20px 16px; 
+-    display: flex;
+-    flex-direction: column;
+-    gap: 16px; 
++/* Footer 鏋侀檺绱у噾 */
++.vibe-panel-footer {
++    padding: 0 16px 12px;
+ }
+ 
+-.result-item {
++.vibe-execute-btn {
++    width: 100%;
++    height: 44px;
++    background: #3B76E1;
++    border: none;
++    border-radius: 12px;
++    color: white;
++    font-weight: 700;
++    font-size: 14px;
++    letter-spacing: 2px; /* 瀵归綈娴佽浆闈㈡澘鐨?2px */
++    cursor: pointer;
++    transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
++    box-shadow: 0 4px 15px rgba(59, 118, 225, 0.3);
+     display: flex;
+-    flex-direction: column;
+-    gap: 6px;
++    align-items: center;
++    justify-content: center;
+ }
+ 
+-.result-item .label {
+-    font-size: 11px;
+-    text-transform: uppercase;
+-    letter-spacing: 0.05em;
+-    color: rgba(255, 255, 255, 0.6);
++.vibe-execute-btn.vibe-warn {
++    background: rgba(245, 108, 108, 0.1);
++    border: 1px solid rgba(245, 108, 108, 0.3);
++    color: #F56C6C;
++    box-shadow: none;
+ }
+ 
+-.popover-footer {
+-    padding: 12px 16px;
+-    border-top: 1px solid rgba(255, 255, 255, 0.08);
+-    text-align: right;
+-    background: transparent; /* Removed background */
+-    border-radius: 0 0 12px 12px;
++.vibe-execute-btn.vibe-warn:hover {
++    background: rgba(245, 108, 108, 0.2);
++    border-color: rgba(245, 108, 108, 0.5);
++    transform: translateY(-1px);
+ }
+ 
+-.clear-btn {
+-    background: rgba(255, 255, 255, 0.05);
+-    border: 1px solid rgba(255, 255, 255, 0.1);
+-    border-radius: 6px;
+-    color: #a5ccff;
+-    font-size: 12px;
+-    padding: 6px 16px;
+-    cursor: pointer;
+-    transition: all 0.2s;
++.vibe-execute-btn:hover {
++    transform: translateY(-2px);
++    filter: brightness(1.1);
+ }
+ 
+-.clear-btn:hover {
+-    background: rgba(239, 68, 68, 0.2);
+-    border-color: rgba(239, 68, 68, 0.4);
+-    color: #fca5a5;
++.vibe-execute-btn:active {
++    transform: translateY(0);
+ }
+ 
+-/* 鍔ㄧ敾 */
++/* 杩涘満鍔ㄧ敾淇 */
+ .slide-fade-enter-active {
+-    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
++    transition: all 0.4s cubic-bezier(0.16, 1, 0.3, 1);
+ }
+ 
+ .slide-fade-leave-active {
+-    transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
++    transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+ }
+ 
+ .slide-fade-enter-from,
+ .slide-fade-leave-to {
+-    transform: translateY(-50%) translateX(-20px);
++    transform: translateX(-20px);
+     opacity: 0;
+ }
+ </style>
+diff --git a/src/components/controls/DistanceMeasureButton.vue b/src/components/controls/DistanceMeasureButton.vue
+index 8d8e724..8c7a666 100644
+--- a/src/components/controls/DistanceMeasureButton.vue
++++ b/src/components/controls/DistanceMeasureButton.vue
+@@ -7,42 +7,57 @@
+ 
+         <!-- 鍙充晶寮瑰嚭缁撴灉闈㈡澘 -->
+         <transition name="slide-fade">
+-            <div v-if="activeTool === 'distance'" class="result-popover">
+-                <div class="popover-header">
+-                    <span class="popover-title">娴嬭窛缁撴灉</span>
+-                    <div class="custom-unit-dropdown" ref="unitDropdownRef">
+-                        <div class="unit-trigger" @click="toggleUnitDropdown">
+-                            <span>{{ unitLabels[distanceUnit] }}</span>
+-                            <svg class="arrow" :class="{ open: isUnitDropdownOpen }" viewBox="0 0 12 12" width="12" height="12">
+-                                <path d="M2 4l4 4 4-4" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round"/>
+-                            </svg>
+-                        </div>
+-                        <transition name="dropdown-fade">
+-                            <div v-if="isUnitDropdownOpen" class="unit-options">
+-                                <div v-for="(label, value) in unitLabels" :key="value" class="unit-option"
+-                                    :class="{ active: distanceUnit === value }" @click="selectUnit(value)">
+-                                    {{ label }}
+-                                </div>
+-                            </div>
+-                        </transition>
+-                    </div>
++            <div v-if="globalStore.activePanel === 'distance'" class="result-popover vibe-panel">
++                <!-- 闈㈡澘澶撮儴: 灞呬腑鏍囬 + 鍏抽棴鎸夐挳 -->
++                <div class="vibe-panel-header">
++                    <h1 class="vibe-panel-title">娴嬭窛缁撴灉</h1>
++                    <button class="vibe-close-btn" @click="globalStore.setActivePanel(null)" title="鍏抽棴闈㈡澘">
++                        <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2.5">
++                            <path d="M18 6L6 18M6 6l12 12" />
++                        </svg>
++                    </button>
+                 </div>
+-                <div class="popover-content">
+-                    <div class="result-item">
+-                        <span class="label">鐩寸嚎璺濈</span>
+-                        <span class="value">{{ formatDistance(results.straight) }}</span>
+-                    </div>
+-                    <div class="result-item">
+-                        <span class="label">姘村钩璺濈</span>
+-                        <span class="value">{{ formatDistance(results.horizontal) }}</span>
++
++                <!-- 闈㈡澘涓讳綋: 甯﹁摑绔栫嚎鐨勪簩绾ф爣棰?+ 鍐呭祵娣辫壊鍗＄墖 -->
++                <div class="vibe-panel-body">
++                    <!-- 鍗曚綅閫夋嫨妯″潡 -->
++                    <div class="vibe-section">
++                        <div class="vibe-section-label">鏄剧ず鍗曚綅</div>
++                        <div class="vibe-inset-card unit-selector-card" ref="unitDropdownRef">
++                            <div class="vibe-custom-select" @click.stop="toggleUnitDropdown">
++                                <span class="selected-text">{{ unitLabels[distanceUnit] }}</span>
++                                <svg class="chevron" :class="{ open: isUnitDropdownOpen }" viewBox="0 0 24 24" width="14" height="14" stroke="currentColor" stroke-width="3" fill="none">
++                                    <path d="M6 9l6 6 6-6" />
++                                </svg>
++                            </div>
++                            <transition name="dropdown-fade">
++                                <ul v-if="isUnitDropdownOpen" class="vibe-select-options">
++                                    <li v-for="(label, value) in unitLabels" :key="value" 
++                                        :class="{ active: distanceUnit === value }" @click.stop="selectUnit(value)">
++                                        {{ label }}
++                                        <svg v-if="distanceUnit === value" viewBox="0 0 24 24" width="12" height="12" stroke="currentColor" stroke-width="3" fill="none">
++                                            <path d="M20 6L9 17l-5-5" />
++                                        </svg>
++                                    </li>
++                                </ul>
++                            </transition>
++                        </div>
+                     </div>
+-                    <div class="result-item">
+-                        <span class="label">鍨傜洿楂樺害</span>
+-                        <span class="value">{{ formatDistance(results.vertical) }}</span>
++
++                    <!-- 缁撴灉鏁板€兼ā鍧? 浠呬繚鐣欐按骞宠窛绂?-->
++                    <div class="vibe-section">
++                        <div class="vibe-section-label">姘村钩璺濈</div>
++                        <div class="vibe-inset-card data-card">
++                            <span class="vibe-data-value">{{ formatDistance(results.horizontal) }}</span>
++                        </div>
+                     </div>
+                 </div>
+-                <div class="popover-footer">
+-                    <button class="clear-btn" @click="clearMeasurement">娓呴櫎</button>
++
++                <!-- 闈㈡澘搴曢儴: 鍏ㄥ涓绘寜閽?-->
++                <div class="vibe-panel-footer">
++                    <button class="vibe-execute-btn vibe-warn" @click="clearMeasurement">
++                        娓呴櫎娴嬮噺缁撴灉
++                    </button>
+                 </div>
+             </div>
+         </transition>
+@@ -50,9 +65,11 @@
+ </template>
+ 
+ <script setup>
+-import { computed, ref, onMounted, onUnmounted } from 'vue';
++import { computed, ref, onMounted, onUnmounted, watch } from 'vue';
+ import { useMeasurement } from '../../composables/useMeasurement';
++import { useGlobalStore } from '../../stores/global';
+ 
++const globalStore = useGlobalStore();
+ const {
+     activeTool,
+     distanceUnit,
+@@ -62,12 +79,19 @@ const {
+     formatDistance
+ } = useMeasurement();
+ 
+-function toggleMeasure() {
+-    if (activeTool.value === 'distance') {
++// 鐩戝惉鍏ㄥ眬闈㈡澘鐘舵€侊紝濡傛灉鏄?distance 鍒欐縺娲绘祴閲忓伐鍏凤紝鍚﹀垯鍙栨秷婵€娲?+watch(() => globalStore.activePanel, (newVal) => {
++    if (newVal === 'distance') {
++        if (activeTool.value !== 'distance') {
++            activateTool('distance');
++        }
++    } else if (activeTool.value === 'distance') {
+         activateTool(null);
+-    } else {
+-        activateTool('distance');
+     }
++});
++
++function toggleMeasure() {
++    globalStore.setActivePanel('distance');
+ }
+ 
+ const isUnitDropdownOpen = ref(false);
+@@ -106,13 +130,11 @@ onUnmounted(() => {
+     document.removeEventListener('click', handleClickOutside);
+ });
+ 
+-const isMeasuring = computed(() => activeTool.value === 'distance');
++const isMeasuring = computed(() => globalStore.activePanel === 'distance');
+ </script>
+ 
+ <style scoped>
+-.distance-measure-control {
+-    position: relative;
+-}
++/* 鏍瑰鍣ㄤ笉鍐嶉渶瑕?position: relative锛屼互渚垮瓙闈㈡澘鐩稿浜庝富宸ュ叿鏍忓鍣ㄥ榻?*/
+ 
+ .measure-btn {
+     width: 64px;
+@@ -148,10 +170,10 @@ const isMeasuring = computed(() => activeTool.value === 'distance');
+ }
+ 
+ .measure-btn.active {
+-    background: #3b82f6;
+-    border-color: #60a5fa;
++    background: #3B76E1 !important;
++    border-color: #3B76E1;
+     color: #ffffff;
+-    box-shadow: 0 0 15px rgba(59, 130, 246, 0.5);
++    box-shadow: 0 4px 10px rgba(59, 118, 225, 0.3);
+ }
+ 
+ .measure-btn:active {
+@@ -174,194 +196,272 @@ const isMeasuring = computed(() => activeTool.value === 'distance');
+     opacity: 1;
+ }
+ 
+-/* 寮瑰嚭闈㈡澘鏍峰紡 */
+-.result-popover {
++/* 寮瑰嚭闈㈡澘鍩虹缁撴瀯 (Vibe Panel 瑙勮寖) */
++.vibe-panel {
+     position: absolute;
+-    top: 50%; /* Center vertically */
+-    left: 100%; /* Right of button */
+-    margin-left: 16px; /* Gap */
+-    transform: translateY(-50%);
+-    width: 220px; /* Slightly increased to fit wider dropdown */
+-    background: rgba(13, 25, 48, 0.6);
+-    border: 1px solid rgba(255, 255, 255, 0.08);
+-    border-radius: 12px;
+-    backdrop-filter: blur(20px);
+-    box-shadow: 0 12px 40px rgba(0, 0, 0, 0.4);
+-    color: #fff;
++    top: 0;
++    left: 100%;
++    margin-left: 20px;
++    width: 260px;
++    background: rgba(23, 35, 46, 0.85); /* 瀹屽叏鍚屾鍦熷湴娴佽浆闈㈡澘鍙傛暟 */
++    backdrop-filter: blur(20px) saturate(180%);
++    border: 1px solid rgba(255, 255, 255, 0.12);
++    border-radius: 20px;
++    box-shadow: 0 15px 45px rgba(0, 0, 0, 0.5);
++    color: #E2E8F0;
+     z-index: 1000;
++    display: flex;
++    flex-direction: column;
++    /* 淇鎴柇闂锛氱Щ闄?overflow: hidden 浠ュ厑璁镐笅鎷夎彍鍗曟孩鍑虹埗瀹瑰櫒 */
++    overflow: visible; 
++    font-family: "PingFang SC", "Microsoft YaHei", sans-serif;
+ }
+ 
+-.popover-header {
++/* Header: 鏋侀檺鍘嬬缉楂樺害 */
++.vibe-panel-header {
++    position: relative;
+     display: flex;
+-    justify-content: space-between;
+     align-items: center;
+-    padding: 10px 12px; /* Reduced padding */
+-    background: transparent; /* Removed dark background */
+-    border-bottom: 1px solid rgba(255, 255, 255, 0.08); /* Fainter border */
+-    border-radius: 12px 12px 0 0;
++    justify-content: center;
++    height: 46px; /* 浠?54px 鍘嬬缉 */
++    border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+ }
+ 
+-.popover-title {
+-    font-size: 14px; /* Slightly larger */
+-    font-weight: 600;
+-    color: #fff; /* White instead of blue-ish */
++.vibe-panel-title {
++    font-weight: 700;
++    font-size: 17px;
++    letter-spacing: 1.5px;
++    color: #fff;
++    margin: 0;
++    text-shadow: 0 2px 10px rgba(0,0,0,0.3);
+ }
+ 
+-/* Dropdown Styles - Synced with AreaMeasureButton */
+-.custom-unit-dropdown {
++.vibe-close-btn {
++    position: absolute;
++    right: 16px; /* 瀵归綈娴嬫祦杞潰鏉?16px */
++    top: 50%;
++    transform: translateY(-50%);
++    background: transparent;
++    border: none;
++    color: rgba(255, 255, 255, 0.85); /* 鎭㈠涓€ц壊 */
++    cursor: pointer;
++    padding: 6px;
++    display: flex;
++    transition: all 0.3s ease; /* 涓濇粦杩囨浮 */
++    border-radius: 50%;
++}
++
++.vibe-close-btn:hover {
++    color: #F56C6C; /* 鎮仠鍙樼孩 */
++    background: rgba(255, 255, 255, 0.1);
++    transform: translateY(-50%) rotate(90deg);
++}
++
++/* Body: 鏋侀檺鍘嬬缉闂磋窛 */
++.vibe-panel-body {
++    padding: 12px 16px; /* 浠?16/20 鍘嬬缉 */
++    display: flex;
++    flex-direction: column;
++    gap: 12px; /* 浠?14px 鍘嬬缉 */
++}
++
++/* 浜岀骇鏍囬绠€娲佸寲 */
++.vibe-section {
++    display: flex;
++    flex-direction: column;
++    gap: 8px; /* 浠?10px 鍘嬬缉 */
++}
++
++.vibe-section-label {
+     position: relative;
+-    pointer-events: auto;
+-    width: 110px; /* Fixed width */
++    font-size: 13px;
++    font-weight: 700;
++    color: rgba(255, 255, 255, 0.85);
++    letter-spacing: 0.5px;
++    padding-left: 12px;
++    display: flex;
++    align-items: center;
+ }
+ 
+-.unit-trigger {
++.vibe-section-label::before {
++    content: '';
++    position: absolute;
++    left: 0;
++    top: 50%;
++    transform: translateY(-50%);
++    width: 3px;
++    height: 13px;
++    background: #3B76E1;
++    border-radius: 2px;
++    box-shadow: 0 0 8px rgba(59, 118, 225, 0.5);
++}
++
++/* 鍐呭祵鍗＄墖: 鏋侀檺灏哄鍘嬬缉 */
++.vibe-inset-card {
++    background: rgba(0, 0, 0, 0.25);
++    border: 1px solid rgba(255, 255, 255, 0.05);
++    border-radius: 8px;
++    padding: 6px 12px; /* 浠?8/12 鍘嬬缉 */
++    transition: all 0.2s;
++}
++
++.vibe-inset-card.data-card {
+     display: flex;
+     align-items: center;
+-    gap: 8px;
+-    padding: 6px 12px;
+-    background: rgba(255, 255, 255, 0.08);
+-    border: 1px solid rgba(255, 255, 255, 0.15);
+-    border-radius: 6px;
++    justify-content: center;
++    min-height: 34px; /* 浠?38px 鍘嬬缉 */
++}
++
++.vibe-data-value {
++    font-size: 16px; /* 瀛楀彿闄嶇骇锛岀‘淇濅笉鐩栬繃涓绘爣棰?*/
++    font-weight: 700;
+     color: #fff;
+-    font-size: 13px;
+-    cursor: pointer;
+-    transition: all 0.2s;
+-    width: 100%; /* Fill container */
++    font-family: 'Inter', system-ui, sans-serif;
++    letter-spacing: 0.5px;
++}
++
++/* 涓嬫媺妗嗘繁搴﹀畾鍒?(Vibe Select) */
++.unit-selector-card {
++    position: relative;
++    padding: 0; /* 璁?trigger 濉弧 */
++}
++
++.vibe-custom-select {
++    padding: 10px 14px;
++    display: flex;
+     justify-content: space-between;
++    align-items: center;
++    cursor: pointer;
+ }
+ 
+-.unit-trigger:hover {
+-    background: rgba(255, 255, 255, 0.15);
+-    border-color: rgba(255, 255, 255, 0.25);
++.vibe-custom-select .selected-text {
++    font-size: 14px;
++    font-weight: 600;
+ }
+ 
+-.arrow {
+-    font-size: 10px;
+-    color: #a5ccff;
++.vibe-custom-select .chevron {
++    color: #64748B;
+     transition: transform 0.3s;
+ }
+ 
+-.arrow.open {
++.vibe-custom-select .chevron.open {
+     transform: rotate(180deg);
+ }
+ 
+-.unit-options {
++.vibe-select-options {
+     position: absolute;
+-    top: calc(100% + 4px);
++    top: calc(100% + 4px); /* 閫傚簲鏋佽嚧鍘嬬缉鍚庣殑闂磋窛 */
+     left: 0;
+-    width: 100%; /* Match trigger width */
+-    background: rgba(13, 25, 48, 0.7); /* Match parent glass style */
+-    border: 1px solid rgba(255, 255, 255, 0.08); /* Match parent border */
+-    border-radius: 8px;
+-    padding: 4px;
+-    z-index: 1001;
+-    backdrop-filter: blur(20px); /* Match parent blur */
+-    box-shadow: 0 12px 32px rgba(0, 0, 0, 0.5);
+-    max-height: 200px;
++    right: 0;
++    background: rgba(23, 35, 46, 0.98);
++    backdrop-filter: blur(15px);
++    border: 1px solid rgba(255, 255, 255, 0.12);
++    border-radius: 10px;
++    margin: 0;
++    padding: 6px;
++    list-style: none;
++    z-index: 2500; /* 纭繚灞傜骇楂樹簬涓€鍒囷紝绐佺牬瀹瑰櫒闄愬埗 */
++    box-shadow: 0 10px 25px rgba(0, 0, 0, 0.6);
++    max-height: 180px;
+     overflow-y: auto;
+ }
+ 
+-/* Custom Scrollbar */
+-.unit-options::-webkit-scrollbar {
++/* 瀵归綈鍦熷湴娴佽浆闈㈡澘鐨勬殫鑹叉粴鍔ㄦ潯 */
++.vibe-select-options::-webkit-scrollbar {
+     width: 4px;
+ }
+ 
+-.unit-options::-webkit-scrollbar-thumb {
+-    background: rgba(255, 255, 255, 0.2);
+-    border-radius: 10px;
++.vibe-select-options::-webkit-scrollbar-track {
++    background: transparent;
+ }
+ 
+-.unit-option {
+-    padding: 10px 12px; /* Comfortable padding */
+-    color: rgba(255, 255, 255, 0.8);
+-    font-size: 13px;
+-    cursor: pointer;
+-    transition: all 0.2s;
+-    border-radius: 6px;
+-    text-align: left;
+-    white-space: nowrap;
++.vibe-select-options::-webkit-scrollbar-thumb {
++    background: rgba(255, 255, 255, 0.15);
++    border-radius: 4px;
+ }
+ 
+-.unit-option:hover {
+-    background: rgba(59, 130, 246, 0.15);
+-    color: #fff;
++.vibe-select-options::-webkit-scrollbar-thumb:hover {
++    background: rgba(255, 255, 255, 0.25);
+ }
+ 
+-.unit-option.active {
+-    background: rgba(59, 130, 246, 0.25);
+-    color: #3b82f6;
+-    font-weight: 600;
++.vibe-select-options li {
++    padding: 10px 12px;
++    border-radius: 6px;
++    font-size: 13px;
++    color: #94A3B8;
++    cursor: pointer;
++    display: flex;
++    align-items: center;
++    justify-content: space-between;
+ }
+ 
+-.dropdown-fade-enter-active,
+-.dropdown-fade-leave-active {
+-    transition: all 0.2s ease;
++.vibe-select-options li:hover {
++    background: rgba(255, 255, 255, 0.08);
++    color: white;
+ }
+ 
+-.dropdown-fade-enter-from,
+-.dropdown-fade-leave-to {
+-    opacity: 0;
+-    transform: translateY(-4px);
++.vibe-select-options li.active {
++    background: #3B76E1;
++    color: white;
+ }
+ 
+-.popover-content {
+-    padding: 20px 16px; 
+-    display: flex;
+-    flex-direction: column;
+-    gap: 16px; 
+-    overflow: visible; /* Ensure dropdown can overflow */
++/* Footer 鏋侀檺绱у噾 */
++.vibe-panel-footer {
++    padding: 0 16px 12px; /* 绉婚櫎涓婂唴杈硅窛锛屽埄鐢?body gap */
+ }
+ 
+-.result-item {
++.vibe-execute-btn {
++    width: 100%;
++    height: 44px;
++    background: #3B76E1;
++    border: none;
++    border-radius: 12px;
++    color: white;
++    font-weight: 700;
++    font-size: 14px;
++    letter-spacing: 2px; /* 瀵归綈娴佽浆闈㈡澘鐨?2px */
++    cursor: pointer;
++    transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
++    box-shadow: 0 4px 15px rgba(59, 118, 225, 0.3);
+     display: flex;
+-    flex-direction: column;
+-    gap: 6px;
++    align-items: center;
++    justify-content: center;
+ }
+ 
+-.result-item .label {
+-    font-size: 11px;
+-    text-transform: uppercase;
+-    letter-spacing: 0.05em;
+-    color: rgba(255, 255, 255, 0.6);
++.vibe-execute-btn.vibe-warn {
++    background: rgba(245, 108, 108, 0.1);
++    border: 1px solid rgba(245, 108, 108, 0.3);
++    color: #F56C6C;
++    box-shadow: none;
+ }
+ 
+-.popover-footer {
+-    padding: 12px 16px;
+-    border-top: 1px solid rgba(255, 255, 255, 0.08);
+-    text-align: right;
+-    background: transparent; /* Removed dark background */
+-    border-radius: 0 0 12px 12px;
++.vibe-execute-btn.vibe-warn:hover {
++    background: rgba(245, 108, 108, 0.2);
++    border-color: rgba(245, 108, 108, 0.5);
++    transform: translateY(-1px);
+ }
+ 
+-.clear-btn {
+-    background: rgba(255, 255, 255, 0.05);
+-    border: 1px solid rgba(255, 255, 255, 0.1);
+-    border-radius: 6px;
+-    color: #a5ccff;
+-    font-size: 12px;
+-    padding: 6px 16px;
+-    cursor: pointer;
+-    transition: all 0.2s;
++.vibe-execute-btn:hover {
++    transform: translateY(-2px);
++    filter: brightness(1.1);
+ }
+ 
+-.clear-btn:hover {
+-    background: rgba(239, 68, 68, 0.2);
+-    border-color: rgba(239, 68, 68, 0.4);
+-    color: #fca5a5;
++.vibe-execute-btn:active {
++    transform: translateY(0);
+ }
+ 
+-/* 鍔ㄧ敾 */
++/* 杩涘満鍔ㄧ敾淇 */
+ .slide-fade-enter-active {
+-    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
++    transition: all 0.4s cubic-bezier(0.16, 1, 0.3, 1);
+ }
+ 
+ .slide-fade-leave-active {
+-    transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
++    transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+ }
+ 
+ .slide-fade-enter-from,
+ .slide-fade-leave-to {
+-    transform: translateY(-50%) translateX(-20px);
++    transform: translateX(-20px);
+     opacity: 0;
+ }
+ </style>
+diff --git a/src/components/controls/DropdownSelector.vue b/src/components/controls/DropdownSelector.vue
+index 92d160f..18e37b4 100644
+--- a/src/components/controls/DropdownSelector.vue
++++ b/src/components/controls/DropdownSelector.vue
+@@ -155,9 +155,15 @@ function handleClickOutside(event) {
+ }
+ 
+ .display-button.active {
+-  border-color: #3b82f6;
+-  background: rgba(30, 58, 138, 0.6);
+-  box-shadow: 0 0 15px rgba(59, 130, 246, 0.3);
++  background: #3B76E1 !important;
++  border-color: #3B76E1;
++  color: #ffffff;
++  box-shadow: 0 4px 10px rgba(59, 118, 225, 0.3);
++}
++
++.display-button.active .icon-wrapper,
++.display-button.active .chevron-icon {
++  color: #ffffff;
+ }
+ 
+ /* 鍥炬爣瀹瑰櫒 */
+@@ -199,12 +205,32 @@ function handleClickOutside(event) {
+   z-index: 1200; /* Higher than toolbar containers (1100) */
+   padding: 6px;
+   backdrop-filter: blur(20px);
+-  overflow: hidden;
++  max-height: 220px;
++  overflow-y: auto;
++  overflow-x: hidden;
+   display: flex;
+   flex-direction: column;
+   gap: 2px;
+ }
+ 
++/* 鑷畾涔夋粴鍔ㄦ潯鏍峰紡 */
++.popover-panel::-webkit-scrollbar {
++  width: 4px;
++}
++
++.popover-panel::-webkit-scrollbar-track {
++  background: transparent;
++}
++
++.popover-panel::-webkit-scrollbar-thumb {
++  background: rgba(255, 255, 255, 0.15);
++  border-radius: 4px;
++}
++
++.popover-panel::-webkit-scrollbar-thumb:hover {
++  background: rgba(255, 255, 255, 0.3);
++}
++
+ .dropdown-item {
+   padding: 10px 16px;
+   border-radius: 8px;
+diff --git a/src/components/controls/EChartsCountyPie.vue b/src/components/controls/EChartsCountyPie.vue
+index 2754a56..4fa1134 100644
+--- a/src/components/controls/EChartsCountyPie.vue
++++ b/src/components/controls/EChartsCountyPie.vue
+@@ -55,6 +55,7 @@ import * as echarts from 'echarts';
+ import { centroid, area } from '@turf/turf';
+ import bbox from '@turf/bbox';
+ import { clcdApi } from '../../api/index.js';
++import { useGlobalStore } from '../../stores/global';
+ import AIAnalysisModal from '../ui/AIAnalysisModal.vue';
+ import RegionCascader from './RegionCascader.vue';
+ import ChatGptIcon from '../icons/ChatGptIcon.vue';
+@@ -69,7 +70,10 @@ const props = defineProps({
+ import prefecturePieIcon from '../../assets/icons/prefecture_pie.png';
+ const iconUrl = prefecturePieIcon;
+ 
+-const isVisible = ref(false);
++const globalStore = useGlobalStore();
++const panelName = 'countyPie';
++
++const isVisible = computed(() => globalStore.activePanel === panelName);
+ const chartContainer = shallowRef(null);
+ const chartInstance = shallowRef(null);
+ let countyGeoJSON = null;
+@@ -558,7 +562,7 @@ function handleResize() {
+ }
+ 
+ async function toggleChart() {
+-    isVisible.value = !isVisible.value;
++    globalStore.setActivePanel(panelName);
+     if (isVisible.value) {
+         await nextTick();
+         if (chartInstance.value) {
+@@ -652,10 +656,10 @@ watch(() => props.year, (newYear) => {
+ }
+ 
+ .control-btn.active {
+-    background: #3b82f6;
+-    border-color: #60a5fa;
++    background: #3B76E1 !important;
++    border-color: #3B76E1;
+     color: #ffffff;
+-    box-shadow: 0 0 15px rgba(59, 130, 246, 0.5);
++    box-shadow: 0 4px 10px rgba(59, 118, 225, 0.3);
+ }
+ 
+ .icon-img {
+diff --git a/src/components/controls/EChartsPrefecturePie.vue b/src/components/controls/EChartsPrefecturePie.vue
+index 5ed6b66..06173ac 100644
+--- a/src/components/controls/EChartsPrefecturePie.vue
++++ b/src/components/controls/EChartsPrefecturePie.vue
+@@ -44,10 +44,11 @@
+ </template>
+ 
+ <script setup>
+-import { ref, shallowRef, onUnmounted, watch, nextTick } from 'vue';
++import { ref, shallowRef, onUnmounted, watch, nextTick, computed } from 'vue';
+ import * as echarts from 'echarts';
+ import { centroid, area } from '@turf/turf';
+ import { clcdApi } from '../../api/index.js';
++import { useGlobalStore } from '../../stores/global';
+ import AIAnalysisModal from '../ui/AIAnalysisModal.vue';
+ import ChatGptIcon from '../icons/ChatGptIcon.vue';
+ 
+@@ -58,7 +59,10 @@ const props = defineProps({
+     year: { type: Number, default: 1985 }
+ });
+ 
+-const isVisible = ref(false);
++const globalStore = useGlobalStore();
++const panelName = 'prefecturePie';
++
++const isVisible = computed(() => globalStore.activePanel === panelName);
+ const showAIModal = ref(false);
+ const chartContainer = shallowRef(null);
+ const chartInstance = shallowRef(null);
+@@ -350,7 +354,7 @@ function handleResize() {
+ }
+ 
+ async function toggleChart() {
+-  isVisible.value = !isVisible.value;
++  globalStore.setActivePanel(panelName);
+   if (isVisible.value) {
+     await nextTick();
+     if (chartInstance.value) {
+@@ -431,10 +435,10 @@ const openAIAnalysis = () => {
+ }
+ 
+ .control-btn.active {
+-  background: #3b82f6;
+-  border-color: #60a5fa;
++  background: #3B76E1 !important;
++  border-color: #3B76E1;
+   color: #ffffff;
+-  box-shadow: 0 0 15px rgba(59, 130, 246, 0.5);
++  box-shadow: 0 4px 10px rgba(59, 118, 225, 0.3);
+ }
+ 
+ .icon-img {
+diff --git a/src/components/controls/LandTransferControl.vue b/src/components/controls/LandTransferControl.vue
+index 2f1b5e1..e0605e9 100644
+--- a/src/components/controls/LandTransferControl.vue
++++ b/src/components/controls/LandTransferControl.vue
+@@ -1,92 +1,194 @@
+ <template>
+-  <div class="land-transfer-control panel-card">
++  <div class="land-transfer-control panel-card" ref="containerRef">
+     <div class="panel-header">
+-      <div class="header-icon">
+-        <svg viewBox="0 0 24 24" width="18" height="18" stroke="currentColor" stroke-width="2" fill="none">
+-          <path d="M8 7h12m0 0l-4-4m4 4l-4 4m0 6H4m0 0l4 4m-4-4l4-4" />
++      <h1 class="header-title">鍦熷湴娴佽浆鍔ㄦ€佺洃娴?/h1>
++      <button class="close-btn" @click="$emit('close')" title="鍏抽棴闈㈡澘">
++        <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2.5">
++          <path d="M18 6L6 18M6 6l12 12" />
+         </svg>
+-      </div>
+-      <span class="header-title">鍦熷湴娴佽浆鍒嗘瀽</span>
+-      <button class="close-btn" @click="$emit('close')">脳</button>
++      </button>
+     </div>
+ 
+     <div class="control-body">
+       <!-- 绌洪棿鍗曞厓閫夋嫨 -->
+-      <div class="control-row">
+-        <label>绌洪棿鍗曞厓</label>
+-        <div class="unit-toggle">
++      <div class="control-section">
++        <div class="section-label">绌洪棿缁熻鍗曞厓</div>
++        <div class="segmented-control">
+           <button 
+             :class="{ active: unit === 'county' }" 
+-            @click="unit = 'county'"
+-          >鍘跨骇</button>
++            @click.stop="unit = 'county'"
++          >鍘跨骇鍖哄煙</button>
+           <button 
+             :class="{ active: unit === 'grid' }" 
+-            @click="unit = 'grid'"
+-          >鏍肩綉</button>
++            @click.stop="unit = 'grid'"
++          >绌洪棿鏍肩綉</button>
+         </div>
+       </div>
+ 
+-      <!-- 鏃堕棿閫夋嫨 -->
+-      <div class="control-row">
+-        <label>鏃堕棿鍖洪棿</label>
+-        <div class="year-inputs">
+-          <input type="number" v-model.number="yearStart" :min="1985" :max="2022" class="year-input" />
+-          <span class="separator">-</span>
+-          <input type="number" v-model.number="yearEnd" :min="1986" :max="2023" class="year-input" />
++      <!-- 鐩戞祴鏃舵閫夋嫨 -->
++      <div class="control-section">
++        <div class="section-label">鐩戞祴鏃舵</div>
++        <div class="year-range-picker">
++          <div class="range-field">
++            <span class="field-tag">璧峰骞翠唤</span>
++            <input type="number" v-model.number="yearStart" :min="MIN_YEAR" :max="MAX_YEAR" @blur="validateYear" />
++          </div>
++          <div class="range-divider">
++            <div class="divider-line"></div>
++          </div>
++          <div class="range-field">
++            <span class="field-tag">鎴骞翠唤</span>
++            <input type="number" v-model.number="yearEnd" :min="MIN_YEAR" :max="MAX_YEAR" @blur="validateYear" />
++          </div>
+         </div>
+       </div>
+ 
+-      <!-- 鍦扮被娴佽浆 -->
+-      <div class="control-row transfer-flow">
+-        <div class="class-select-group">
+-          <label>杞嚭 (From)</label>
+-          <select v-model="fromClass" class="class-select">
+-            <option v-for="opt in landClasses" :key="opt.value" :value="opt.value">{{ opt.label }}</option>
+-          </select>
+-        </div>
+-        <div class="arrow-icon">鈫?/div>
+-        <div class="class-select-group">
+-          <label>杞叆 (To)</label>
+-          <select v-model="toClass" class="class-select">
+-            <option v-for="opt in landClasses" :key="opt.value" :value="opt.value">{{ opt.label }}</option>
+-          </select>
++      <!-- 娴佽浆鏂瑰悜 -->
++      <div class="control-section">
++        <div class="section-label">娴佽浆鏂瑰悜</div>
++        <div class="transfer-box">
++          <div class="select-wrapper custom-select" :class="{ open: fromOpen }">
++            <span class="select-hint">杞嚭</span>
++            <div class="select-trigger" @click.stop="toggleDropdown('from')">
++              <span class="selected-text">{{ landClasses.find(c => c.value === fromClass)?.label }}</span>
++              <svg class="chevron" viewBox="0 0 24 24" width="14" height="14" stroke="currentColor" stroke-width="3" fill="none">
++                <path d="M6 9l6 6 6-6" />
++              </svg>
++            </div>
++            <transition name="dropdown-fade">
++              <ul v-if="fromOpen" class="select-options">
++                <li 
++                  v-for="opt in landClasses" 
++                  :key="opt.value" 
++                  :class="{ active: fromClass === opt.value }"
++                  @click="selectOption('from', opt.value)"
++                >
++                  {{ opt.label }}
++                  <svg v-if="fromClass === opt.value" viewBox="0 0 24 24" width="12" height="12" stroke="currentColor" stroke-width="3" fill="none">
++                    <path d="M20 6L9 17l-5-5" />
++                  </svg>
++                </li>
++              </ul>
++            </transition>
++          </div>
++
++          <div class="swap-btn-container" @click.stop="swapLandTypes" title="鐐瑰嚮浜掓崲鏂瑰悜">
++            <div class="swap-btn" :style="{ transform: `rotate(${rotateDeg}deg)` }">
++              <svg viewBox="0 0 1024 1024" width="32" height="32">
++                <!-- 鍦嗗舰搴曟澘 -->
++                <path d="M512 114.3c219.9 0 398.8 178.9 398.8 398.8s-178.9 398.8-398.8 398.8S113.2 733 113.2 513.1c0-219.9 178.9-398.8 398.8-398.8z" fill="#BDD2EF"></path>
++                <!-- 绠ご (榛樿鏃嬭浆180搴︽寚鍚戝彸渚? -->
++                <g transform="rotate(180 512 512)">
++                  <path d="M281.9 512.2l164.1 164.1c12.5 12.5 32.8 12.5 45.3 0s12.5-32.8 0-45.3L371.1 511.9l120.2-161.5c12.5-12.5 12.5-32.8 0-45.3s-32.8-12.5-45.3 0L281.9 466.9c-12.5 12.5-12.5 32.8 0 45.3" fill="#2867CE"></path>
++                  <path d="M727.1 480.2H350v63.9h377.1v-63.9z" fill="#2867CE"></path>
++                </g>
++              </svg>
++            </div>
++          </div>
++
++          <div class="select-wrapper custom-select" :class="{ open: toOpen }">
++            <span class="select-hint">杞叆</span>
++            <div class="select-trigger" @click.stop="toggleDropdown('to')">
++              <span class="selected-text">{{ landClasses.find(c => c.value === toClass)?.label }}</span>
++              <svg class="chevron" viewBox="0 0 24 24" width="14" height="14" stroke="currentColor" stroke-width="3" fill="none">
++                <path d="M6 9l6 6 6-6" />
++              </svg>
++            </div>
++            <transition name="dropdown-fade">
++              <ul v-if="toOpen" class="select-options">
++                <li 
++                  v-for="opt in landClasses" 
++                  :key="opt.value" 
++                  :class="{ active: toClass === opt.value }"
++                  @click="selectOption('to', opt.value)"
++                >
++                  {{ opt.label }}
++                  <svg v-if="toClass === opt.value" viewBox="0 0 24 24" width="12" height="12" stroke="currentColor" stroke-width="3" fill="none">
++                    <path d="M20 6L9 17l-5-5" />
++                  </svg>
++                </li>
++              </ul>
++            </transition>
++          </div>
+         </div>
+       </div>
+ 
+       <!-- 鎵ц鎸夐挳 -->
+-      <div class="action-buttons">
+-          <button class="run-btn primary" @click="handleQuery" :disabled="loading">
+-            <span v-if="loading" class="spinner"></span>
+-            <span v-else>鐢熸垚娴佽浆鍥捐氨</span>
+-          </button>
+-          
+-          <button class="run-btn secondary" @click="$emit('reset')" title="娓呴櫎鍒嗘瀽缁撴灉骞惰繕鍘熷簳鍥?>
+-            <svg viewBox="0 0 24 24" width="16" height="16" stroke="currentColor" stroke-width="2" fill="none">
+-              <path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8" />
+-              <path d="M3 3v5h5" />
+-            </svg>
++      <div class="footer-actions">
++          <button class="execute-btn" @click.stop="handleQuery" :disabled="loading">
++            <span v-if="loading" class="spinner-small"></span>
++            <span v-else>鍦熷湴娴佽浆绌洪棿鏍煎眬</span>
+           </button>
+       </div>
+       
+-      <div v-if="errorMsg" class="error-msg">{{ errorMsg }}</div>
++      <transition name="err-fade">
++        <div v-if="errorMsg" class="validation-error">{{ errorMsg }}</div>
++      </transition>
+     </div>
+   </div>
+ </template>
+ 
+ <script setup>
+-import { ref } from 'vue';
++import { ref, computed, onMounted, onUnmounted } from 'vue';
++import { useGlobalStore } from '../../stores/global.ts';
+ 
+ const emit = defineEmits(['close', 'transfer-query', 'reset']);
+ 
++const containerRef = ref(null);
++const globalStore = useGlobalStore();
++const MIN_YEAR = 1985;
++const MAX_YEAR = 2023;
++
+ const unit = ref('county');
+-const yearStart = ref(1990);
+-const yearEnd = ref(2000);
+-const fromClass = ref(2); // Forest
+-const toClass = ref(7);   // Impervious
++const yearStart = ref(1985);
++const yearEnd = ref(1990);
++const fromClass = ref(1); // 鑰曞湴
++const toClass = ref(2);   // 鏋楀湴
+ const loading = ref(false);
+ const errorMsg = ref('');
++const fromOpen = ref(false);
++const toOpen = ref(false);
++const rotateDeg = ref(0);
++
++const swapLandTypes = () => {
++  const temp = fromClass.value;
++  fromClass.value = toClass.value;
++  toClass.value = temp;
++  rotateDeg.value += 360;
++};
++
++const toggleDropdown = (type) => {
++  if (type === 'from') {
++    fromOpen.value = !fromOpen.value;
++    toOpen.value = false;
++  } else {
++    toOpen.value = !toOpen.value;
++    fromOpen.value = false;
++  }
++};
++
++const selectOption = (type, val) => {
++  if (type === 'from') {
++    fromClass.value = val;
++    fromOpen.value = false;
++  } else {
++    toClass.value = val;
++    toOpen.value = false;
++  }
++};
++
++const validateYear = () => {
++  if (yearStart.value < MIN_YEAR) yearStart.value = MIN_YEAR;
++  if (yearStart.value > MAX_YEAR) yearStart.value = MAX_YEAR;
++  if (yearEnd.value < MIN_YEAR) yearEnd.value = MIN_YEAR;
++  if (yearEnd.value > MAX_YEAR) yearEnd.value = MAX_YEAR;
++
++  // 浜ゅ弶鏍￠獙锛氳捣濮嬩笉鍙ぇ浜庢埅姝?+  if (yearStart.value > yearEnd.value) {
++    yearStart.value = yearEnd.value;
++  }
++};
+ 
+-// 1-8 鍦扮被鏄犲皠锛堢亴鏈ㄥ凡鍚堝苟鍒版灄鍦帮級
+ const landClasses = [
+   { label: '鑰曞湴', value: 1 },
+   { label: '鏋楀湴', value: 2 },
+@@ -98,34 +200,63 @@ const landClasses = [
+   { label: '婀垮湴', value: 8 },
+ ];
+ 
++const dynamicTitle = computed(() => {
++  const fromName = landClasses.find(c => c.value === fromClass.value)?.label || '';
++  const toName = landClasses.find(c => c.value === toClass.value)?.label || '';
++  return `${yearStart.value}-${yearEnd.value}骞?{fromName}杞负${toName}闈㈢Н(km虏)`;
++});
++
+ const handleQuery = () => {
+   if (yearStart.value >= yearEnd.value) {
+     errorMsg.value = '璧峰骞翠唤蹇呴』灏忎簬缁撴潫骞翠唤';
+     return;
+   }
+   if (fromClass.value === toClass.value) {
+-    errorMsg.value = '杞嚭鍦扮被涓庤浆鍏ュ湴绫讳笉鑳界浉鍚?;
++    errorMsg.value = '鍦扮被涓嶈兘鐩稿悓';
+     return;
+   }
+-  
+   errorMsg.value = '';
+   loading.value = true;
+   
+-  // 绾弬鏁版彁浜わ紝鐢辩埗缁勪欢 Workbench 椹卞姩 WMS 鍔犺浇
++  // 鐘舵€佽嚜鍔ㄦ帴绠★細鍒囨崲鑷充笓闂ㄧ殑娴佽浆鍒嗘瀽鎬?+  globalStore.setActiveLayer('land_transfer');
++
+   emit('transfer-query', {
+     yearStart: yearStart.value,
+     yearEnd: yearEnd.value,
+     fromClass: fromClass.value,
+     toClass: toClass.value,
+-    unit: unit.value
++    unit: unit.value,
++    legendTitle: dynamicTitle.value
+   });
+ };
+ 
+-// 鐖剁粍浠跺姞杞藉畬鎴愬悗璋冪敤
+-const setLoading = (val) => {
+-  loading.value = val;
++const handleClickOutside = (event) => {
++  const path = event.composedPath();
++  const isInside = containerRef.value && path.includes(containerRef.value);
++  const isTrigger = path.some(el => el.classList && el.classList.contains('transfer-matrix-control'));
++  
++  if (!isInside && !isTrigger) {
++    emit('close');
++  }
++  
++  // Close dropdowns if clicking outside the custom select boxes
++  if (!path.some(el => el.classList && el.classList.contains('custom-select'))) {
++    fromOpen.value = false;
++    toOpen.value = false;
++  }
+ };
+ 
++onMounted(() => {
++  setTimeout(() => window.addEventListener('click', handleClickOutside), 0);
++});
++
++onUnmounted(() => {
++  window.removeEventListener('click', handleClickOutside);
++  // 涓嶈鍦ㄨ繖閲屽洖婊氾紒娴佽浆鍥惧眰搴斿綋鎸佷箙淇濈暀锛岀洿鍒扮敤鎴蜂富鍔ㄥ湪涓嬫媺妗嗕腑閫夋嫨鍏跺畠鍩虹鍥惧眰銆?+});
++
++const setLoading = (val) => { loading.value = val; };
+ const setError = (msg) => {
+   errorMsg.value = msg;
+   loading.value = false;
+@@ -134,196 +265,437 @@ const setError = (msg) => {
+ defineExpose({ setLoading, setError });
+ </script>
+ 
+-
+ <style scoped>
+ .land-transfer-control {
+   position: fixed;
+-  top: 120px;
+-  right: 20px;
+-  width: 340px;
+-  background: rgba(15, 23, 42, 0.95);
+-  backdrop-filter: blur(16px);
+-  border: 1px solid rgba(56, 189, 248, 0.3);
+-  border-radius: 12px;
+-  color: white;
++  bottom: calc(50% - 272px);
++  left: 100px;
++  width: 360px;
++  background: rgba(23, 35, 46, 0.85);
++  backdrop-filter: blur(20px) saturate(180%);
++  border: 1px solid rgba(255, 255, 255, 0.12);
++  border-radius: 20px;
++  color: #E2E8F0;
+   z-index: 2000;
+   display: flex;
+   flex-direction: column;
+-  box-shadow: 0 8px 32px rgba(0,0,0,0.5);
+-  transition: all 0.3s ease;
++  box-shadow: 0 12px 40px rgba(0, 0, 0, 0.4);
++  transition: all 0.4s cubic-bezier(0.16, 1, 0.3, 1);
++  font-family: "PingFang SC", "Microsoft YaHei", sans-serif;
+ }
+ 
+ .panel-header {
++  position: relative;
+   display: flex;
+   align-items: center;
+-  padding: 12px 16px;
+-  background: rgba(255, 255, 255, 0.05);
+-  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
++  justify-content: center;
++  height: 54px;
++  background: transparent;
++  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+ }
+ 
+ .header-title {
+-  flex: 1;
+-  margin-left: 8px;
+-  font-weight: 600;
+-  font-size: 14px;
++  font-weight: 700;
++  font-size: 20px;
++  letter-spacing: 2px;
++  color: #fff;
++  margin: 0;
++  text-shadow: 0 2px 10px rgba(0,0,0,0.5);
+ }
+ 
+ .close-btn {
+-  background: none;
++  position: absolute;
++  right: 16px;
++  top: 50%;
++  transform: translateY(-50%);
++  background: transparent;
+   border: none;
+-  color: #aaa;
+-  font-size: 20px;
++  color: #94A3B8;
+   cursor: pointer;
++  padding: 8px;
++  display: flex;
++  align-items: center;
++  justify-content: center;
++  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
++  border-radius: 50%;
++}
++
++.close-btn:hover {
++  color: white;
++  background: rgba(255, 255, 255, 0.1);
++  transform: translateY(-50%) rotate(90deg);
+ }
+-.close-btn:hover { color: white; }
+ 
+ .control-body {
+-  padding: 16px;
++  padding: 24px;
++  display: flex;
++  flex-direction: column;
++  gap: 16px; 
+ }
+ 
+-.control-row {
+-  margin-bottom: 16px;
++.control-section {
++  display: flex;
++  flex-direction: column;
++  gap: 12px;
+ }
+ 
+-.control-row label {
+-  display: block;
+-  font-size: 12px;
+-  color: #ccc;
+-  margin-bottom: 6px;
++.control-section:not(:first-child) {
++  margin-top: 8px;
+ }
+ 
+-/* 绌洪棿鍗曞厓 Toggle */
+-.unit-toggle {
++.section-label {
++  position: relative;
++  font-size: 14px;
++  font-weight: 700;
++  color: rgba(255, 255, 255, 0.9);
++  text-transform: uppercase;
++  letter-spacing: 1px;
++  padding-left: 12px;
+   display: flex;
+-  background: rgba(0, 0, 0, 0.3);
+-  border-radius: 6px;
+-  overflow: hidden;
+-  border: 1px solid #444;
++  align-items: center;
+ }
+ 
+-.unit-toggle button {
++.section-label::before {
++  content: '';
++  position: absolute;
++  left: 0;
++  top: 50%;
++  transform: translateY(-50%);
++  width: 3px;
++  height: 14px;
++  background: #3B76E1;
++  border-radius: 2px;
++  box-shadow: 0 0 8px rgba(59, 118, 225, 0.5);
++}
++
++.segmented-control {
++  display: flex;
++  background: rgba(0, 0, 0, 0.25);
++  padding: 4px;
++  border-radius: 10px;
++  border: 1px solid rgba(255, 255, 255, 0.05);
++}
++
++.segmented-control button {
+   flex: 1;
+-  padding: 6px 0;
++  padding: 8px 0;
+   background: transparent;
+   border: none;
+-  color: #999;
++  color: #94A3B8;
+   font-size: 13px;
++  font-weight: 600;
+   cursor: pointer;
+-  transition: all 0.25s ease;
++  border-radius: 7px;
++  font-family: inherit;
++  transition: all 0.3s;
+ }
+ 
+-.unit-toggle button.active {
+-  background: linear-gradient(135deg, rgba(0, 229, 255, 0.25), rgba(41, 121, 255, 0.25));
+-  color: #00E5FF;
+-  font-weight: 600;
++.segmented-control button.active {
++  background: #3B76E1;
++  color: white;
++  box-shadow: 0 4px 12px rgba(59, 118, 225, 0.3);
+ }
+ 
+-.unit-toggle button:hover:not(.active) {
+-  color: #ccc;
+-  background: rgba(255, 255, 255, 0.05);
++.year-range-picker {
++  display: flex;
++  align-items: center;
++  background: rgba(0, 0, 0, 0.2);
++  border-radius: 12px;
++  border: 1px solid rgba(255, 255, 255, 0.1);
++  padding: 8px 12px;
++}
++
++.range-field {
++  flex: 1;
++  display: flex;
++  flex-direction: column;
++  align-items: center;
++  justify-content: center;
++  gap: 4px;
++}
++
++.field-tag {
++  font-size: 12px;
++  color: rgba(255, 255, 255, 0.75);
++  font-weight: 500;
++  letter-spacing: 1px;
++  text-align: center;
++}
++
++.range-field input {
++  width: 100%;
++  background: transparent;
++  border: none;
++  color: #F1F5F9;
++  font-size: 16px;
++  font-weight: 700;
++  text-align: center;
++  font-family: inherit;
++  outline: none;
++}
++
++.range-field input[type="number"]::-webkit-inner-spin-button,
++.range-field input[type="number"]::-webkit-outer-spin-button {
++  -webkit-appearance: none;
++  margin: 0;
++}
++
++.range-field input[type="number"] {
++  -moz-appearance: textfield;
++  appearance: textfield;
+ }
+ 
+-.year-inputs {
++.range-divider {
++  padding: 0 12px;
++}
++
++.divider-line {
++  width: 1px;
++  height: 20px;
++  background: rgba(255, 255, 255, 0.1);
++}
++
++.transfer-box {
+   display: flex;
+   align-items: center;
+-  gap: 8px;
++  gap: 10px;
+ }
+ 
+-.year-input {
++.select-wrapper {
+   flex: 1;
+-  background: rgba(0,0,0,0.3);
+-  border: 1px solid #444;
+-  color: white;
++  position: relative;
++  background: rgba(255, 255, 255, 0.04);
++  border: 1px solid rgba(255, 255, 255, 0.1);
++  border-radius: 8px;
++  padding: 6px 12px;
++  transition: all 0.3s;
++}
++
++.select-wrapper:hover {
++  border-color: rgba(255, 255, 255, 0.2);
++  background: rgba(255, 255, 255, 0.06);
++}
++
++.select-wrapper.open {
++  border-color: #3B76E1;
++  background: rgba(59, 118, 225, 0.05);
++  box-shadow: 0 0 0 2px rgba(59, 118, 225, 0.2);
++}
++
++.select-hint {
++  display: block;
++  font-size: 12px;
++  color: rgba(255, 255, 255, 0.75);
++  font-weight: 500;
++  margin-bottom: 4px;
++  letter-spacing: 1px;
++}
++
++.select-trigger {
++  display: flex;
++  align-items: center;
++  justify-content: space-between;
++  cursor: pointer;
++  min-height: 24px;
++}
++
++.selected-text {
++  font-size: 14px;
++  font-weight: 600;
++  color: #F1F5F9;
++}
++
++.chevron {
++  color: #64748B;
++  transition: transform 0.3s;
++}
++
++.open .chevron {
++  transform: rotate(180deg);
++  color: #3B76E1;
++}
++
++.select-options {
++  position: absolute;
++  top: calc(100% + 8px);
++  left: 0;
++  right: 0;
++  background: rgba(30, 40, 50, 0.95);
++  backdrop-filter: blur(12px);
++  border: 1px solid rgba(255, 255, 255, 0.12);
++  border-radius: 10px;
++  margin: 0;
+   padding: 6px;
++  list-style: none;
++  z-index: 2100;
++  box-shadow: 0 10px 25px rgba(0, 0, 0, 0.5);
++  max-height: 220px;
++  overflow-y: auto;
++  overflow-x: hidden;
++}
++
++/* 鑷畾涔夋粴鍔ㄦ潯鏍峰紡 */
++.select-options::-webkit-scrollbar {
++  width: 4px;
++}
++
++.select-options::-webkit-scrollbar-track {
++  background: transparent;
++}
++
++.select-options::-webkit-scrollbar-thumb {
++  background: rgba(255, 255, 255, 0.15);
+   border-radius: 4px;
+-  text-align: center;
+ }
+ 
+-.transfer-flow {
++.select-options::-webkit-scrollbar-thumb:hover {
++  background: rgba(255, 255, 255, 0.3);
++}
++
++.select-options li {
++  padding: 10px 12px;
++  border-radius: 6px;
++  font-size: 13px;
++  font-weight: 500;
++  color: #94A3B8;
++  cursor: pointer;
+   display: flex;
+   align-items: center;
+   justify-content: space-between;
++  transition: all 0.2s;
+ }
+ 
+-.class-select-group {
+-  flex: 1;
++.select-options li:hover {
++  background: rgba(255, 255, 255, 0.08);
++  color: white;
+ }
+ 
+-.class-select {
+-  width: 100%;
+-  background: rgba(0,0,0,0.3);
+-  border: 1px solid #444;
++.select-options li.active {
++  background: #3B76E1;
+   color: white;
+-  padding: 6px;
+-  border-radius: 4px;
+ }
+ 
+-.arrow-icon {
+-  margin: 0 10px;
+-  color: #888;
+-  font-weight: bold;
+-  padding-top: 18px;
++.dropdown-fade-enter-active, .dropdown-fade-leave-active {
++  transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
++}
++.dropdown-fade-enter-from, .dropdown-fade-leave-to {
++  opacity: 0;
++  transform: translateY(-10px);
+ }
+ 
+-.action-buttons {
++.transfer-arrow {
+   display: flex;
+-  gap: 8px;
++  align-items: center;
+ }
+ 
+-.run-btn {
+-  background: linear-gradient(90deg, #00E5FF, #2979FF);
++.footer-actions {
++  display: flex;
++  align-items: center;
++  gap: 8px; 
++  margin-top: 4px;
++}
++
++.execute-btn {
++  flex: 1;
++  height: 44px;
++  background: #3B76E1;
+   border: none;
+-  padding: 10px;
+-  border-radius: 4px;
++  border-radius: 12px;
+   color: white;
+-  font-weight: 600;
++  font-weight: 700;
++  font-size: 14px;
++  letter-spacing: 2px;
+   cursor: pointer;
+-  transition: opacity 0.2s;
++  font-family: inherit;
++  transition: all 0.3s;
++  box-shadow: 0 4px 15px rgba(59, 118, 225, 0.3);
+   display: flex;
+   align-items: center;
+   justify-content: center;
+ }
+ 
+-.run-btn.primary {
+-  flex: 1;
++.execute-btn:hover:not(:disabled) {
++  transform: translateY(-2px);
++  filter: brightness(1.1);
+ }
+ 
+-.run-btn.secondary {
+-  width: 40px;
+-  background: rgba(255, 255, 255, 0.1);
+-  border: 1px solid rgba(255, 255, 255, 0.2);
++.swap-btn-container {
++  display: flex;
++  align-items: center;
++  justify-content: center;
++  cursor: pointer;
++  padding: 4px;
++  border-radius: 50%;
++  transition: all 0.3s ease;
++  z-index: 10;
+ }
+ 
+-.run-btn.secondary:hover {
+-  background: rgba(255, 255, 255, 0.2);
++.swap-btn-container:hover {
++  filter: brightness(1.1);
++  transform: scale(1.15);
+ }
+ 
+-.run-btn:hover {
+-  opacity: 0.9;
++.swap-btn {
++  display: flex;
++  align-items: center;
++  justify-content: center;
++  transition: transform 0.6s cubic-bezier(0.34, 1.56, 0.64, 1);
+ }
+ 
+-.run-btn:disabled {
+-  background: #555;
++.execute-btn:disabled {
++  background: #334155;
++  box-shadow: none;
+   cursor: not-allowed;
++  opacity: 0.6;
++}
++
++.reset-icon-btn {
++  width: 44px;
++  height: 44px; 
++  background: rgba(255, 255, 255, 0.05);
++  border: 1px solid rgba(255, 255, 255, 0.1);
++  border-radius: 12px;
++  color: #94A3B8;
++  display: flex;
++  align-items: center;
++  justify-content: center;
++  cursor: pointer;
++  transition: all 0.2s;
++}
++
++.reset-icon-btn:hover {
++  background: rgba(255, 255, 255, 0.1);
++  color: white;
+ }
+ 
+-.error-msg {
+-  color: #ff5252;
++.validation-error {
++  color: #FB7185;
+   font-size: 12px;
+-  margin-top: 8px;
++  text-align: center;
++  padding: 8px;
++  background: rgba(225, 29, 72, 0.1);
++  border-radius: 8px;
+ }
+ 
+-.spinner {
++.spinner-small {
+   display: inline-block;
+-  width: 16px;
+-  height: 16px;
+-  border: 2px solid rgba(255,255,255,0.3);
++  width: 18px;
++  height: 18px;
++  border: 2px solid rgba(255, 255, 255, 0.3);
+   border-radius: 50%;
+   border-top-color: white;
+-  animation: spin 1s ease-in-out infinite;
++  animation: spin 0.8s linear infinite;
+ }
+ 
+ @keyframes spin {
+   to { transform: rotate(360deg); }
+ }
++
++.err-fade-enter-active, .err-fade-leave-active {
++  transition: all 0.3s ease;
++}
++.err-fade-enter-from, .err-fade-leave-to {
++  opacity: 0;
++  transform: translateY(-5px);
++}
+ </style>
+diff --git a/src/components/controls/LandUseTrendControl.vue b/src/components/controls/LandUseTrendControl.vue
+index 9cc9daa..c7b7365 100644
+--- a/src/components/controls/LandUseTrendControl.vue
++++ b/src/components/controls/LandUseTrendControl.vue
+@@ -10,7 +10,7 @@
+ 
+     <Teleport to="body">
+       <transition name="fade">
+-        <div v-if="isVisible" class="modal-backdrop" @click="toggleChart"></div>
++        <div v-if="isVisible" class="modal-backdrop" @click="closeChart"></div>
+       </transition>
+ 
+       <transition name="slide-fade">
+@@ -18,7 +18,7 @@
+           <div class="modal-header">
+             <div class="header-placeholder"></div>
+             <span class="modal-title">鍏ㄧ渷鍦熷湴鍒╃敤鍔ㄦ€佺洃娴嬩腑蹇?/span>
+-            <button class="close-btn" @click.stop="toggleChart">鉁?/button>
++            <button class="close-btn" @click.stop="closeChart">鉁?/button>
+           </div>
+           <div class="chart-wrapper">
+             <!-- AI 鎮诞鐞?(宸︿笂瑙? -->
+@@ -51,11 +51,15 @@
+ </template>
+ 
+ <script setup>
+-import { ref, onMounted } from 'vue';
++import { ref, computed } from 'vue';
+ import LandUseTrendChart from '../charts/LandUseTrendChart.vue';
+ import { clcdApi } from '../../api/index.js';
+ import AIAnalysisModal from '../ui/AIAnalysisModal.vue';
+ import ChatGptIcon from '../icons/ChatGptIcon.vue';
++import { useGlobalStore } from '../../stores/global';
++
++const globalStore = useGlobalStore();
++const panelName = 'trend';
+ 
+ const props = defineProps({
+   seriesData: {
+@@ -64,7 +68,7 @@ const props = defineProps({
+   }
+ });
+ 
+-const isVisible = ref(false);
++const isVisible = computed(() => globalStore.activePanel === panelName);
+ const localSeriesData = ref([]);
+ const isLoading = ref(false);
+ const hasError = ref(false);
+@@ -90,12 +94,16 @@ async function fetchTrendData() {
+ }
+ 
+ function toggleChart() {
+-  isVisible.value = !isVisible.value;
+-  if (isVisible.value) {
++  globalStore.setActivePanel(panelName);
++  if (globalStore.activePanel === panelName) {
+     fetchTrendData();
+   }
+ }
+ 
++function closeChart() {
++  globalStore.setActivePanel(null);
++}
++
+ // 鎵撳紑 AI 鍒嗘瀽寮圭獥
+ const openAIAnalysis = () => {
+   showAIModal.value = true;
+@@ -140,10 +148,10 @@ const openAIAnalysis = () => {
+ }
+ 
+ .control-btn.active {
+-  background: #3b82f6;
+-  border-color: #60a5fa;
++  background: #3B76E1 !important;
++  border-color: #3B76E1;
+   color: #ffffff;
+-  box-shadow: 0 0 15px rgba(59, 130, 246, 0.5);
++  box-shadow: 0 4px 10px rgba(59, 118, 225, 0.3);
+ }
+ 
+ .icon-img {
+diff --git a/src/components/controls/RegionalAnalysisPanel.vue b/src/components/controls/RegionalAnalysisPanel.vue
+index b0096f5..e6337f4 100644
+--- a/src/components/controls/RegionalAnalysisPanel.vue
++++ b/src/components/controls/RegionalAnalysisPanel.vue
+@@ -1,7 +1,7 @@
+ <template>
+   <div class="regional-analysis-panel">
+     <!-- 鍏ュ彛鎸夐挳 -->
+-    <button @click="openPanel" class="control-btn" title="鍖哄煙妫€娴嬪垎鏋?>
++    <button @click="openPanel" class="control-btn" :class="{ active: isVisible }" title="鍖哄煙妫€娴嬪垎鏋?>
+       <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+         <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z" />
+         <circle cx="12" cy="10" r="3" />
+@@ -94,10 +94,14 @@ import * as Cesium from 'cesium';
+ import { clcdApi } from '../../api/index.js';
+ import AnalysisLegend from '../ui/AnalysisLegend.vue';
+ import { useMapStore } from '../../stores/map.ts';
++import { useGlobalStore } from '../../stores/global';
++
++const globalStore = useGlobalStore();
++const panelName = 'regionalAnalysis';
+ 
+ const mapStore = useMapStore();
+ 
+-const isVisible = ref(false);
++const isVisible = computed(() => globalStore.activePanel === panelName);
+ const isLoading = ref(false);
+ const spatialUnit = ref('county');
+ const selectedAttribute = ref('cropland');
+@@ -130,7 +134,7 @@ const currentAttributeLabel = computed(() => {
+ });
+ 
+ function openPanel() {
+-  isVisible.value = true;
++  globalStore.setActivePanel(panelName);
+   
+   // 閫氱煡鐖剁粍浠堕殣钘忓叾浠栨帶浠?   const viewer = mapStore.viewer;
+@@ -144,7 +148,7 @@ function openPanel() {
+ }
+ 
+ function closePanel() {
+-  isVisible.value = false;
++  globalStore.setActivePanel(null);
+   
+   // 娓呯悊鍒嗘瀽鏁版嵁
+   const viewer = mapStore.viewer;
+@@ -286,6 +290,13 @@ onUnmounted(() => {
+   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+ }
+ 
++.control-btn.active {
++  background: #3B76E1 !important;
++  border-color: #3B76E1;
++  color: #ffffff;
++  box-shadow: 0 4px 10px rgba(59, 118, 225, 0.3);
++}
++
+ .control-btn:hover {
+   background: rgba(30, 58, 138, 0.6);
+   border-color: rgba(59, 130, 246, 0.5);
+@@ -406,9 +417,9 @@ onUnmounted(() => {
+ }
+ 
+ .btn-group button.active {
+-  background: #3b82f6;
+-  border-color: #3b82f6;
+-  color: #fff;
++  background: #3B76E1;
++  border-color: #3B76E1;
++  color: #ffffff;
+ }
+ 
+ .btn-group button:disabled {
+@@ -418,7 +429,7 @@ onUnmounted(() => {
+ 
+ .load-btn {
+   padding: 10px 24px;
+-  background: linear-gradient(135deg, #3b82f6, #1d4ed8);
++  background: #3B76E1;
+   border: none;
+   border-radius: 8px;
+   color: #fff;
+diff --git a/src/components/controls/RegionalTrendControl.vue b/src/components/controls/RegionalTrendControl.vue
+index 88f64e4..d1c28a0 100644
+--- a/src/components/controls/RegionalTrendControl.vue
++++ b/src/components/controls/RegionalTrendControl.vue
+@@ -1,7 +1,7 @@
+ <template>
+     <div class="regional-trend-control">
+         <!-- 鍏ュ彛鎸夐挳 -->
+-        <button @click="openModal" class="control-btn" title="鍖哄煙瓒嬪娍娣卞害鐩戞祴">
++        <button @click="openModal" class="control-btn" :class="{ active: isVisible }" title="鍖哄煙瓒嬪娍娣卞害鐩戞祴">
+             <svg class="region-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                 <path d="M3 17l4-4 3 3 5-5 4 4" stroke-linecap="round" stroke-linejoin="round"/>
+                 <circle cx="18" cy="6" r="3" fill="none"/>
+@@ -125,8 +125,12 @@
+ import { ref, computed, watch, onMounted, onUnmounted } from 'vue';
+ import RegionalTrendChart from '../charts/RegionalTrendChart.vue';
+ import { regionApi, clcdApi } from '../../api/index.js';
++import { useGlobalStore } from '../../stores/global';
+ 
+-const isVisible = ref(false);
++const globalStore = useGlobalStore();
++const panelName = 'regionalTrend';
++
++const isVisible = computed(() => globalStore.activePanel === panelName);
+ const selectedRegion = ref({ name: '', level: '' });
+ const hierarchy = ref([]); // 瀹屾暣鐨勫眰绾ф暟鎹? const trendData = ref([]);
+@@ -298,14 +302,14 @@ async function fetchTrendData() {
+ }
+ 
+ function openModal() {
+-    isVisible.value = true;
++    globalStore.setActivePanel(panelName);
+     if (hierarchy.value.length === 0) {
+         fetchHierarchy();
+     }
+ }
+ 
+ function closeModal() {
+-    isVisible.value = false;
++    globalStore.setActivePanel(null);
+ }
+ 
+ watch(selectedRegion, (newVal) => {
+@@ -345,6 +349,13 @@ onMounted(() => {
+     gap: 2px;
+ }
+ 
++.control-btn.active {
++    background: #3B76E1 !important;
++    border-color: #3B76E1;
++    color: #ffffff;
++    box-shadow: 0 4px 10px rgba(59, 118, 225, 0.3);
++}
++
+ .control-btn:hover {
+     background: rgba(30, 58, 138, 0.6);
+     border-color: rgba(59, 130, 246, 0.5);
+diff --git a/src/components/controls/SciMonitoringPanel.vue b/src/components/controls/SciMonitoringPanel.vue
+index 25a10cd..e7c8f04 100644
+--- a/src/components/controls/SciMonitoringPanel.vue
++++ b/src/components/controls/SciMonitoringPanel.vue
+@@ -114,7 +114,7 @@ function togglePanel() {
+   height: 64px;
+   border-radius: 14px;
+   border: 1px solid rgba(148, 163, 184, 0.2);
+-  background: linear-gradient(135deg, #0f172a 0%, #1e293b 100%);
++  background: rgba(13, 25, 48, 0.4);
+   cursor: pointer;
+   display: flex;
+   flex-direction: column;
+@@ -134,9 +134,10 @@ function togglePanel() {
+ }
+ 
+ .control-btn.active {
+-  background: #3b82f6;
++  background: #3B76E1 !important;
+   color: #fff;
+-  border-color: #60a5fa;
++  border-color: #3B76E1;
++  box-shadow: 0 4px 10px rgba(59, 118, 225, 0.3);
+ }
+ 
+ .icon {
+@@ -237,7 +238,7 @@ function togglePanel() {
+ }
+ 
+ .tab-btn.active {
+-  background: #3b82f6;
++  background: #3B76E1;
+   color: #fff;
+ }
+ 
+diff --git a/src/components/controls/SpatialLayerSelector.vue b/src/components/controls/SpatialLayerSelector.vue
+index 644f3e7..9fdaf25 100644
+--- a/src/components/controls/SpatialLayerSelector.vue
++++ b/src/components/controls/SpatialLayerSelector.vue
+@@ -1,6 +1,6 @@
+ <template>
+   <div class="spatial-layer-selector">
+-    <div class="selector-header" @click="toggleDropdown">
++    <div class="selector-header" @click="toggleDropdown" :class="{ active: isOpen }">
+       <span class="selected-layer">绌洪棿鍥惧眰</span>
+       <svg class="dropdown-icon" :class="{ open: isOpen }" width="12" height="12" viewBox="0 0 12 12">
+         <path d="M2 4l4 4 4-4" stroke="currentColor" stroke-width="2" fill="none" />
+@@ -80,6 +80,18 @@ onUnmounted(() => {
+   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+ }
+ 
++.selector-header.active {
++  background: #3B76E1 !important;
++  border-color: #3B76E1;
++  color: #ffffff;
++  box-shadow: 0 4px 10px rgba(59, 118, 225, 0.3);
++}
++
++.selector-header.active .selected-layer,
++.selector-header.active .dropdown-icon {
++  color: #ffffff;
++}
++
+ .selector-header:hover {
+   background: rgba(30, 58, 138, 0.4);
+   border-color: rgba(255, 255, 255, 0.15);
+diff --git a/src/components/controls/TimePlayer.vue b/src/components/controls/TimePlayer.vue
+index df036d1..26feab3 100644
+--- a/src/components/controls/TimePlayer.vue
++++ b/src/components/controls/TimePlayer.vue
+@@ -180,12 +180,16 @@ function shouldShowStaticLabel(index) {
+   return index % step === 0;
+ }
+ 
+-// Popup State
+-const isOpen = ref(false);
++// Popup State managed by global store
++import { useGlobalStore } from '../../stores/global'
++
++const globalStore = useGlobalStore()
++const panelName = 'time'
+ const containerRef = ref(null);
++const isOpen = computed(() => globalStore.activePanel === panelName);
+ 
+ function toggleOpen() {
+-  isOpen.value = !isOpen.value;
++  globalStore.setActivePanel(panelName);
+ }
+ 
+ // Stop playback
+@@ -231,7 +235,7 @@ function handleClickOutside(event) {
+     const isSegment = target.closest && target.closest('.segmented-control');
+     
+     if (!isToolbar && !isHeader && !isDropdown && !isSegment) {
+-      isOpen.value = false;
++      globalStore.setActivePanel(null);
+     }
+   }
+ }
+@@ -284,10 +288,10 @@ function handleClickOutside(event) {
+ }
+ 
+ .time-toggle-btn.active {
+-  background: #3b82f6;
+-  border-color: #60a5fa;
++  background: #3B76E1 !important;
++  border-color: #3B76E1;
+   color: #ffffff;
+-  box-shadow: 0 0 15px rgba(59, 130, 246, 0.5);
++  box-shadow: 0 4px 10px rgba(59, 118, 225, 0.3);
+ }
+ 
+ .time-toggle-btn.active:hover {
+diff --git a/src/components/controls/TransferMatrixControl.vue b/src/components/controls/TransferMatrixControl.vue
+index 9056a0f..00dc0a9 100644
+--- a/src/components/controls/TransferMatrixControl.vue
++++ b/src/components/controls/TransferMatrixControl.vue
+@@ -1,7 +1,7 @@
+ <template>
+     <div class="transfer-matrix-control">
+         <!-- 鍏ュ彛鎸夐挳 -->
+-        <button @click="openModal" class="control-btn" title="鍦熷湴鍒╃敤杞Щ鍒嗘瀽">
++        <button @click="openModal" class="control-btn" :class="{ active: isLayerActive || isVisible }" title="鍦熷湴鍒╃敤杞Щ鍒嗘瀽">
+             <!-- 鍦熷湴娴佽浆鍥炬爣 -->
+             <svg width="28" height="28" viewBox="0 0 1024 1024" fill="none">
+                 <defs>
+@@ -25,7 +25,7 @@
+                 <LandTransferControl 
+                     ref="innerControlRef"
+                     v-if="isVisible" 
+-                    @close="isVisible = false" 
++                    @close="closeModal" 
+                     @transfer-query="$emit('transfer-query', $event)"
+                     @reset="$emit('reset-map')"
+                 />
+@@ -35,15 +35,24 @@
+ </template>
+ 
+ <script setup>
+-import { ref } from 'vue';
++import { ref, computed } from 'vue';
+ import LandTransferControl from './LandTransferControl.vue';
++import { useGlobalStore } from '../../stores/global';
++
++const globalStore = useGlobalStore();
++const panelName = 'transfer';
+ 
+ const emit = defineEmits(['transfer-query', 'reset-map']);
+-const isVisible = ref(false);
++const isVisible = computed(() => globalStore.activePanel === panelName);
++const isLayerActive = computed(() => globalStore.activeLayer === 'land_transfer');
+ const innerControlRef = ref(null);
+ 
+ function openModal() {
+-    isVisible.value = !isVisible.value;
++    globalStore.setActivePanel(panelName);
++}
++
++function closeModal() {
++    globalStore.setActivePanel(null);
+ }
+ 
+ // 閫忎紶鏂规硶缁?Workbench 璋冪敤
+@@ -81,6 +90,13 @@ defineExpose({ setLoading, setError });
+     gap: 2px;
+ }
+ 
++.control-btn.active {
++    background: #3B76E1 !important;
++    border-color: #3B76E1;
++    color: #ffffff;
++    box-shadow: 0 4px 10px rgba(59, 118, 225, 0.3);
++}
++
+ .control-btn:hover {
+     background: rgba(30, 58, 138, 0.6);
+     border-color: rgba(59, 130, 246, 0.5);
+@@ -183,7 +199,7 @@ defineExpose({ setLoading, setError });
+ 
+ .slide-fade-enter-from,
+ .slide-fade-leave-to {
+-    transform: translate(-50%, -50%) scale(0.8);
++    transform: translateX(-20px);
+     opacity: 0;
+ }
+ 
+diff --git a/src/components/controls/YearRangeSelector.vue b/src/components/controls/YearRangeSelector.vue
+index 9abcc59..2c3c963 100644
+--- a/src/components/controls/YearRangeSelector.vue
++++ b/src/components/controls/YearRangeSelector.vue
+@@ -228,9 +228,14 @@ onUnmounted(() => {
+ }
+ 
+ .display-button.active {
+-  border-color: #3b82f6;
+-  background: rgba(30, 58, 138, 0.6);
+-  box-shadow: 0 0 15px rgba(59, 130, 246, 0.3);
++  background: #3B76E1 !important;
++  border-color: #3B76E1;
++  color: #ffffff;
++  box-shadow: 0 4px 10px rgba(59, 118, 225, 0.3);
++}
++
++.display-button.active .icon {
++  color: #ffffff;
+ }
+ 
+ .icon {
+diff --git a/src/components/ui/AnalysisLegend.vue b/src/components/ui/AnalysisLegend.vue
+index 6cff63d..b1204f2 100644
+--- a/src/components/ui/AnalysisLegend.vue
++++ b/src/components/ui/AnalysisLegend.vue
+@@ -1,13 +1,12 @@
+ <template>
+-  <div class="analysis-legend">
+-    <div class="legend-header">
+-      <span class="legend-title">{{ title }}</span>
+-      <span class="legend-unit">{{ unit }}</span>
++  <div v-if="legendItems && legendItems.length > 0" class="vibe-legend-container">
++    <div class="vibe-legend-header">
++      <div class="vibe-legend-title">{{ displayTitle }}</div>
+     </div>
+-    <div class="legend-items">
+-      <div v-for="(item, index) in legendItems" :key="index" class="legend-item">
+-        <span class="color-box" :style="{ background: item.color }"></span>
+-        <span class="range-text">{{ item.label }}</span>
++    <div class="vibe-legend-list">
++      <div v-for="(item, index) in legendItems" :key="index" class="vibe-legend-item">
++        <span class="vibe-legend-swatch" :style="{ background: item.color }"></span>
++        <span class="vibe-legend-text">{{ formatLegendLabel(item.label) }}</span>
+       </div>
+     </div>
+   </div>
+@@ -15,89 +14,51 @@
+ 
+ <script setup>
+ import { computed } from 'vue';
++import { useGlobalStore } from '../../stores/global.ts';
++
++const globalStore = useGlobalStore();
+ 
+ const props = defineProps({
+-  title: { type: String, default: '鍥句緥' },
+-  unit: { type: String, default: 'km虏' },
+-  breaks: { type: Array, default: () => [] },
+-  colors: { type: Array, default: () => ['#2ecc71', '#a8d080', '#f1c40f', '#e67e22', '#e74c3c'] }
++  title: { type: String, default: '' },
++  items: { type: Array, default: null } 
+ });
+ 
++const displayTitle = computed(() => props.title || globalStore.legendData?.title || '鍒嗘瀽鍥句緥');
++
+ const legendItems = computed(() => {
+-  if (!props.breaks || props.breaks.length < 2) return [];
+-  
+-  const items = [];
+-  for (let i = 0; i < props.breaks.length - 1; i++) {
+-    const min = formatNumber(props.breaks[i]);
+-    const max = formatNumber(props.breaks[i + 1]);
+-    items.push({
+-      color: props.colors[i] || props.colors[props.colors.length - 1],
+-      label: `${min} - ${max}`
+-    });
++  if (props.items) return props.items;
++  if (globalStore.legendData?.items) {
++    return globalStore.legendData.items;
+   }
+-  return items.reverse(); // 浠庨珮鍒颁綆鏄剧ず
++  return [];
+ });
+ 
+-function formatNumber(num) {
+-  if (num >= 10000) {
+-    return (num / 10000).toFixed(1) + '涓?;
++/**
++ * 鏍煎紡鍖栨暟鍊硷細鏄暣鏁颁笉甯﹀皬鏁扮偣
++ */
++function formatValue(val) {
++  const num = parseFloat(val);
++  if (isNaN(num)) return val;
++  return Number.isInteger(num) ? num.toString() : num.toFixed(2);
++}
++
++/**
++ * 鏍煎紡鍖栧浘渚嬫爣绛?+ */
++function formatLegendLabel(label) {
++  if (!label || typeof label !== 'string') return label;
++  
++  if (label.includes('-')) {
++    const parts = label.split('-');
++    if (parts.length === 2) {
++      return `${formatValue(parts[0].trim())} - ${formatValue(parts[1].trim())}`;
++    }
+   }
+-  return num.toFixed(0);
++  
++  return formatValue(label);
+ }
+ </script>
+ 
+ <style scoped>
+-.analysis-legend {
+-  background: rgba(13, 25, 48, 0.8);
+-  backdrop-filter: blur(12px);
+-  border: 1px solid rgba(255, 255, 255, 0.1);
+-  border-radius: 12px;
+-  padding: 16px;
+-  min-width: 160px;
+-}
+-
+-.legend-header {
+-  display: flex;
+-  justify-content: space-between;
+-  align-items: center;
+-  margin-bottom: 12px;
+-  padding-bottom: 8px;
+-  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+-}
+-
+-.legend-title {
+-  color: #fff;
+-  font-size: 14px;
+-  font-weight: 600;
+-}
+-
+-.legend-unit {
+-  color: rgba(255, 255, 255, 0.5);
+-  font-size: 12px;
+-}
+-
+-.legend-items {
+-  display: flex;
+-  flex-direction: column;
+-  gap: 8px;
+-}
+-
+-.legend-item {
+-  display: flex;
+-  align-items: center;
+-  gap: 10px;
+-}
+-
+-.color-box {
+-  width: 20px;
+-  height: 14px;
+-  border-radius: 3px;
+-  flex-shrink: 0;
+-}
+-
+-.range-text {
+-  color: rgba(255, 255, 255, 0.8);
+-  font-size: 12px;
+-  font-family: 'Inter', monospace;
+-}
++/* 浣跨敤鍏ㄥ眬 vibe-legend 鏍峰紡锛屾澶勪笉鍐嶅畾涔夊啑浣?CSS */
+ </style>
+diff --git a/src/stores/global.ts b/src/stores/global.ts
+index 762fd8f..a10a8ef 100644
+--- a/src/stores/global.ts
++++ b/src/stores/global.ts
+@@ -10,6 +10,13 @@ export const useGlobalStore = defineStore('global', () => {
+     const yearsAll = ref([1985, ...Array.from({ length: 2023 - 1990 + 1 }, (_, i) => 1990 + i)])
+     const selectedClasses = ref(['Cropland', 'Forest', 'Shrub', 'Grassland', 'Water', 'Snow/Ice', 'Barren', 'Impervious', 'Wetland'])
+     const metricMode = ref('absolute') // 'absolute' | 'percent'
++    const activePanel = ref<string | null>(null) // Used to track which exclusive panel is open ('transfer', 'time', etc.)
++    const legendData = ref<any>(null) // Used for analysis legend
++
++    // 鏂板锛氬叏灞€鍥惧眰浜掓枼鐘舵€?+    const activeLayer = ref<string>('clcd') // 'clcd' | 'county' | 'grid' | 'land_transfer'
++    const previousLayer = ref<string>('clcd') // 璁板綍杩涘叆鍒嗘瀽鍓嶇殑鍥惧眰
++
+ 
+     // Actions
+     function setYear(y: number) {
+@@ -24,6 +31,10 @@ export const useGlobalStore = defineStore('global', () => {
+         scope.value = { level, code }
+     }
+ 
++    function setActivePanel(panel: string | null) {
++        activePanel.value = activePanel.value === panel ? null : panel
++    }
++
+     function toggleMetric() {
+         metricMode.value = metricMode.value === 'absolute' ? 'percent' : 'absolute'
+     }
+@@ -32,6 +43,29 @@ export const useGlobalStore = defineStore('global', () => {
+         yearsAll.value = arr
+     }
+ 
++    function updateLegend(data: any) {
++        legendData.value = data
++    }
++
++    function clearLegend() {
++        legendData.value = null
++    }
++
++    // 鏂板锛氬浘灞傜姸鎬佹帶鍒?+    function setActiveLayer(layer: string) {
++        if (layer === 'land_transfer' && activeLayer.value !== 'land_transfer') {
++            previousLayer.value = activeLayer.value
++        }
++        activeLayer.value = layer
++    }
++
++    function restorePreviousLayer() {
++        if (activeLayer.value === 'land_transfer') {
++            activeLayer.value = previousLayer.value
++        }
++    }
++
++
+     return {
+         scope,
+         timeMode,
+@@ -40,10 +74,19 @@ export const useGlobalStore = defineStore('global', () => {
+         yearsAll,
+         selectedClasses,
+         metricMode,
++        activePanel,
++        legendData,
++        activeLayer,
++        previousLayer,
+         setYear,
+         setRange,
+         setScope,
++        setActivePanel,
+         toggleMetric,
+-        setYearsAll
++        setYearsAll,
++        updateLegend,
++        clearLegend,
++        setActiveLayer,
++        restorePreviousLayer
+     }
+ })
+diff --git a/src/style.css b/src/style.css
+index a461c50..456a19d 100644
+--- a/src/style.css
++++ b/src/style.css
+@@ -1 +1,75 @@
+-@import "tailwindcss";
+\ No newline at end of file
++@import "tailwindcss";
++
++/* ==========================================================================
++   VIBE GLOBAL LEGEND SYSTEM 
++   ========================================================================== */
++
++/* 鍏ㄥ眬瀹氬瀹瑰櫒 */
++.vibe-legend-container {
++  width: 190px;
++  padding: 16px;
++  box-sizing: border-box;
++  background: rgba(23, 35, 46, 0.85);
++  backdrop-filter: blur(20px) saturate(180%);
++  border: 1px solid rgba(255, 255, 255, 0.12);
++  border-radius: 12px;
++  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.4);
++  font-family: inherit;
++  pointer-events: auto;
++}
++
++/* 澶撮儴鎺掔増 */
++.vibe-legend-header {
++  display: flex;
++  justify-content: center;
++  align-items: center;
++  padding-bottom: 8px;
++  border-bottom: 1px solid rgba(255, 255, 255, 0.12);
++  margin-bottom: 12px;
++}
++
++/* 鍔ㄦ€佹弿杩版€ф爣棰?*/
++.vibe-legend-title {
++  font-size: 14px;
++  font-weight: 700;
++  color: rgba(255, 255, 255, 0.9);
++  text-align: center;
++  line-height: 1.4;
++  white-space: normal;
++  /* 鍏佽瓒呭嚭鏃舵崲琛?*/
++  word-break: break-all;
++}
++
++/* 绱у噾鍒楄〃瀹瑰櫒 */
++.vibe-legend-list {
++  display: flex;
++  flex-direction: column;
++  gap: 6px;
++}
++
++/* 鍗曡鍥句緥椤?*/
++.vibe-legend-item {
++  display: flex;
++  align-items: center;
++  height: 20px;
++  gap: 10px;
++}
++
++/* 淇暱鑹插潡 */
++.vibe-legend-swatch {
++  width: 24px;
++  height: 12px;
++  border-radius: 2px;
++  flex-shrink: 0;
++  border: 1px solid rgba(255, 255, 255, 0.15);
++}
++
++/* 鏁版嵁鍖洪棿鏂囧瓧 */
++.vibe-legend-text {
++  color: rgba(255, 255, 255, 0.85);
++  font-size: 13px;
++  font-weight: 500;
++  font-variant-numeric: tabular-nums;
++  letter-spacing: 0.3px;
++  white-space: nowrap;
++}
+\ No newline at end of file
+diff --git a/src/views/RegionalAnalysis.vue b/src/views/RegionalAnalysis.vue
+index f6c9678..37b6cb2 100644
+--- a/src/views/RegionalAnalysis.vue
++++ b/src/views/RegionalAnalysis.vue
+@@ -73,17 +73,19 @@
+     </div>
+ 
+     <!-- 鍥句緥 -->
+-    <div class="legend-container">
+-      <div class="legend-title">{{ currentAttributeLabel }} ({{ selectedYear }}骞?</div>
+-      <div class="legend-items">
+-        <div v-for="(color, index) in currentColorScale" :key="index" class="legend-item">
+-          <span class="legend-color" :style="{ background: color }"></span>
+-          <span class="legend-label">{{ currentLegendLabels[index] }}</span>
++    <div class="vibe-legend-container" style="position: fixed; bottom: 40px; right: 30px; z-index: 1000;">
++      <div class="vibe-legend-header">
++        <div class="vibe-legend-title">{{ selectedYear }}骞磠{ currentAttributeLabel }}闈㈢Н(km虏)</div>
++      </div>
++      <div class="vibe-legend-list">
++        <div v-for="(color, index) in currentColorScale" :key="index" class="vibe-legend-item">
++          <span class="vibe-legend-swatch" :style="{ background: color }"></span>
++          <span class="vibe-legend-text">{{ currentLegendLabels[index] }}</span>
+         </div>
+       </div>
+-      <div class="legend-unit">鍗曚綅: km虏</div>
+     </div>
+ 
++
+     <!-- 鏃堕棿杞存帶鍒跺櫒 -->
+     <div class="time-player-container" v-if="years.length > 0">
+       <!-- 鏋佺畝妯″紡鎾斁鍣?-->
+@@ -574,12 +576,17 @@ async function loadWMSLayer(targetYear = null, visible = true) {
+ 
+   const year = targetYear || selectedYear.value;
+ 
+-  // 1. 濡傛灉闇€瑕佹樉绀猴紝涓斿凡鍦ㄧ紦瀛樹腑瀛樺湪锛岀洿鎺ュ垏鎹㈠彲瑙佹€?+  // 1. 濡傛灉闇€瑕佹樉绀猴紝涓斿凡鍦ㄧ紦瀛樹腑瀛樺湪锛岄獙璇佹湁鏁堟€у悗鐩存帴鍒囨崲鍙鎬?   if (wmsLayerCache.has(year)) {
+-    if (visible) {
+-      updateLayerVisibility(year);
++    const cachedLayer = wmsLayerCache.get(year);
++    if (cachedLayer && typeof cachedLayer.isDestroyed === 'function' && cachedLayer.isDestroyed()) {
++        wmsLayerCache.delete(year);
++    } else {
++        if (visible) {
++            updateLayerVisibility(year);
++        }
++        return;
+     }
+-    return;
+   }
+ 
+   // 2. 濡傛灉鏄綋鍓嶅勾浠戒笖闇€瑕佹樉绀猴紝涓斿綋鍓嶆棤鍥惧眰锛堥娆″姞杞斤級锛屽紑鍚姞杞藉姩鐢?@@ -1077,72 +1084,7 @@ onUnmounted(() => {
+ }
+ 
+ /* 鍥句緥 */
+-/* 鍥句緥 */
+-.legend-container {
+-  position: fixed;
+-  bottom: 40px; /* Slightly higher */
+-  right: 30px;
+-  background: rgba(15, 23, 42, 0.6); /* Same as TimePlayer */
+-  backdrop-filter: blur(20px);
+-  -webkit-backdrop-filter: blur(20px);
+-  border: 1px solid rgba(255, 255, 255, 0.1);
+-  border-radius: 16px;
+-  padding: 20px;
+-  z-index: 1000;
+-  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.2);
+-  transition: all 0.3s ease;
+-  min-width: 180px;
+-}
+-
+-.legend-container:hover {
+-  background: rgba(15, 23, 42, 0.8);
+-  box-shadow: 0 12px 40px rgba(0, 0, 0, 0.4);
+-}
+-
+-.legend-title {
+-  font-size: 14px;
+-  font-weight: 600;
+-  color: #fff;
+-  margin-bottom: 16px;
+-  padding-bottom: 8px;
+-  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+-  letter-spacing: 0.5px;
+-}
+-
+-.legend-items {
+-  display: flex;
+-  flex-direction: column;
+-  gap: 10px; /* Increased gap */
+-}
+-
+-.legend-item {
+-  display: flex;
+-  align-items: center;
+-  gap: 12px;
+-}
+-
+-.legend-color {
+-  width: 16px;
+-  height: 16px;
+-  border-radius: 4px;
+-  border: 1px solid rgba(255, 255, 255, 0.2);
+-  box-shadow: 0 2px 4px rgba(0,0,0,0.2);
+-}
+-
+-.legend-label {
+-  font-size: 13px;
+-  color: rgba(255, 255, 255, 0.9);
+-  font-family: "PingFang SC", "Microsoft YaHei", "Helvetica Neue", Arial, sans-serif;
+-  font-weight: 500;
+-}
+-
+-.legend-unit {
+-  font-size: 11px;
+-  color: rgba(255, 255, 255, 0.6);
+-  margin-top: 16px;
+-  text-align: right;
+-  font-family: "PingFang SC", "Microsoft YaHei", sans-serif;
+-}
++/* 绉婚櫎浜嗛珮鑰﹀悎鍥句緥鏍峰紡 */
+ 
+ /* 淇℃伅寮圭獥 */
+ /* 鎮诞鎻愮ず妗?*/
+diff --git a/src/views/Workbench.vue b/src/views/Workbench.vue
+index 1fff14e..ac5e2f8 100644
+--- a/src/views/Workbench.vue
++++ b/src/views/Workbench.vue
+@@ -95,59 +95,64 @@
+       </div>
+     </div>
+ 
+-    <!-- 鍖哄煙鍒嗘瀽涓撳睘鍥句緥 -->
+-    <div v-if="!isDashboardMode && spatialUnit !== 'clcd'" class="floating-legend glass-panel">
+-      <div class="legend-header">
+-        <div class="legend-title">{{ currentAttributeLabel }}</div>
+-        <div class="legend-subtitle">{{ selectedYear }}骞?(鍗曚綅: km虏)</div>
+-      </div>
+-      <div class="legend-list">
+-        <div v-for="(color, index) in currentColorScale" :key="index" class="legend-row">
+-          <span class="legend-color-box" :style="{ background: color }"></span>
+-          <!-- 闃叉瓒婄晫璁块棶 -->
+-          <span class="legend-value">{{ currentLegendLabels[index] || '' }}</span>
+-        </div>
+-      </div>
+-    </div>
++    <!-- 鍖哄煙鍒嗘瀽涓撳睘鍥句緥 (宸茬粺涓€涓?AnalysisLegend 缁勪欢) -->
++    <AnalysisLegend 
++      v-if="!isDashboardMode && spatialUnit !== 'clcd' && !globalStore.legendData" 
++      class="floating-legend"
++      :title="selectedYear + '骞? + currentAttributeLabel + '闈㈢Н(km虏)'"
++      :items="areaLegendItems"
++    />
++
++    <!-- 鍏ㄥ眬涓氬姟鍥句緥 (鍩轰簬 Store 椹卞姩锛岄€氬父鐢ㄤ簬娴佽浆鍒嗘瀽绛? -->
++    <AnalysisLegend 
++      v-if="!isDashboardMode && globalStore.legendData" 
++      class="global-analysis-legend" 
++    />
++
+     <!-- 椤堕儴缁熶竴宸ュ叿鏍?Container -->
+     <div v-if="!isDashboardMode" class="main-toolbar">
+       
+-      <!-- 鍥惧眰绫诲瀷閫夋嫨鍣?(鏀惧湪绗竴浣嶄互闃插竷灞€璺冲姩) -->
+-      <DropdownSelector 
+-        v-model="spatialUnit" 
+-        :options="[ 
+-          { label: 'CLCD 鍦熷湴瑕嗙洊', value: 'clcd' },
+-          { label: '鍘跨骇缁熻', value: 'county' },
+-          { label: '缃戞牸缁熻', value: 'grid' }
+-        ]"
+-        :width="150"
+-        title="鍒囨崲鍥惧眰绫诲瀷"
+-      >
+-        <template #icon>
+-           <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+-            <path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5" />
+-           </svg>
+-        </template>
+-      </DropdownSelector>
++      <div class="theme-group" style="display: flex; gap: 8px; align-items: center;">
++        <!-- 灞炴€ч€夋嫨鍣? 閿氬畾鍙充晶鐖剁骇锛屽悜宸﹀欢浼?-->
++        <transition name="expand-fade-left">
++          <div v-if="spatialUnit !== 'clcd'" class="anim-wrapper">
++            <DropdownSelector 
++              v-model="selectedAttribute" 
++              :options="attributes"
++              :width="160"
++              placeholder="閫夋嫨鍒嗘瀽鎸囨爣"
++            >
++              <template #icon>
++                 <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
++                  <path d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
++                </svg>
++              </template>
++            </DropdownSelector>
++          </div>
++        </transition>
++
++        <!-- 鍥惧眰绫诲瀷閫夋嫨鍣?(鎿嶄綔鐐归敋瀹? -->
++        <DropdownSelector 
++          v-model="spatialUnit" 
++          :options="[ 
++            { label: 'CLCD 鍦熷湴瑕嗙洊', value: 'clcd' },
++            { label: '鍘跨骇缁熻', value: 'county' },
++            { label: '缃戞牸缁熻', value: 'grid' }
++          ]"
++          :width="150"
++          placeholder="娴佽浆鍒嗘瀽鎬?
++          title="鍒囨崲鍥惧眰绫诲瀷"
++        >
++          <template #icon>
++             <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
++              <path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5" />
++             </svg>
++          </template>
++        </DropdownSelector>
++      </div>
+ 
+       <!-- 骞翠唤閫夋嫨鍣?(鐜板湪鎵€鏈夋ā寮忛兘鏄剧ず锛屼笌搴曢儴鎾斁鍣ㄥ叡瀛樻垨浜掕ˉ) -->
+       <YearRangeSelector v-model:selectedYear="selectedYear" :width="200" />
+-
+-    
+-      <!-- 灞炴€ч€夋嫨鍣?-->
+-      <DropdownSelector 
+-        v-if="spatialUnit !== 'clcd'"
+-        v-model="selectedAttribute" 
+-        :options="attributes"
+-        :width="160"
+-        placeholder="閫夋嫨鍒嗘瀽鎸囨爣"
+-      >
+-        <template #icon>
+-           <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+-            <path d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
+-          </svg>
+-        </template>
+-      </DropdownSelector>
+       
+       <!-- BaseMap Selector (Moved into toolbar) -->
+       <BaseMapSelector @change="handleBaseMapChange" />
+@@ -195,11 +200,15 @@
+ 
+     <!-- 鍙充晶鍥捐〃闈㈡澘鍖哄煙锛圖ashboard妯″紡涓嬮殣钘?涓?鍙湪CLCD妯″紡涓嬫樉绀猴級 -->
+     <div v-if="!isDashboardMode && spatialUnit === 'clcd'" class="right-panels">
+-      <div class="panel-card legend-panel">
+-        <div class="legend-grid">
+-          <div v-for="(color, name) in clcdColors" :key="name" class="legend-item">
+-            <span class="legend-color" :style="{ background: color }"></span>
+-            <span class="legend-name">{{ legendNames[name] }}</span>
++      <div class="vibe-legend-container" style="position: fixed; bottom: 24px; right: 24px; z-index: 1000;">
++        <div class="vibe-legend-header">
++          <span class="vibe-legend-title">鍏ㄥ浗鍦熷湴瑕嗙洊 (CLCD)</span>
++          <span class="vibe-legend-unit">鍒嗙被</span>
++        </div>
++        <div class="vibe-legend-list">
++          <div v-for="(color, name) in clcdColors" :key="name" class="vibe-legend-item">
++            <span class="vibe-legend-swatch" :style="{ background: color }"></span>
++            <span class="vibe-legend-text">{{ legendNames[name] }}</span>
+           </div>
+         </div>
+       </div>
+@@ -234,11 +243,13 @@ import TransferMatrixControl from '../components/controls/TransferMatrixControl.
+ import SpatialLayerSelector from '../components/controls/SpatialLayerSelector.vue';
+ import TimePlayer from '../components/controls/TimePlayer.vue';
+ import DashboardOverlay from './DashboardOverlay.vue';
++import AnalysisLegend from '../components/ui/AnalysisLegend.vue';
+ import { useMapStore } from '../stores/map.ts';
+ import { useGlobalStore } from '../stores/index.ts'; // New Import
+ import { clcdApi, authApi, analysisApi } from '../api/index.js';
+ import logoutIcon from '../assets/icons/logout.png';
+ import dashboardIcon from '../assets/icons/dashboard.png';
++import { addExclusiveAnalysisLayer, clearAllAnalysisLayers } from '../utils/cesiumUtils.js';
+ 
+ const router = useRouter();
+ const mapStore = useMapStore();
+@@ -259,7 +270,10 @@ const isDashboardMode = ref(false);
+ const isRegionalAnalysisMode = ref(false); // Can be removed or ignored
+ const isLoading = ref(false); 
+ const currentStatsField = ref(''); 
+-const spatialUnit = ref('clcd'); // Default to CLCD
++const spatialUnit = computed({
++  get: () => globalStore.activeLayer,
++  set: (val) => globalStore.setActiveLayer(val)
++});
+ const selectedAttribute = ref('cropland');
+ const wmsLayerCache = new Map(); // Map<cacheKey, Cesium.ImageryLayer>
+ const MAX_WMS_CACHE_SIZE = 15; // LRU 缂撳瓨涓婇檺锛岄槻姝㈠唴瀛樻孩鍑?@@ -288,8 +302,6 @@ function addToCache(key, layer) {
+ const years = ref([]); // will be populated
+ const currentLegendLabels = ref([]); // Dynamic labels for WMS layer
+ 
+-const showRegionalTrendControl = ref(false);
+-const showLandTransferControl = ref(false); // New: 鍦熷湴娴佽浆鎺у埗闈㈡澘
+ const yunnanDataSource = shallowRef(null);
+ const provinceDataSource = shallowRef(null);
+ const highlightedEntity = shallowRef(null);
+@@ -431,6 +443,15 @@ const playerYears = computed(() => {
+   return globalStore.yearsAll || [1985, ...Array.from({ length: 2023 - 1990 + 1 }, (_, i) => 1990 + i)];
+ });
+ 
++// 缁熶竴鏋勫缓鍥句緥椤逛紶缁欑粍浠讹紝纭繚鍏ㄥ钩鍙拌瑙変竴鑷?+const areaLegendItems = computed(() => {
++  if (!currentColorScale.value || !currentLegendLabels.value) return [];
++  return currentColorScale.value.map((color, index) => ({
++    color: color,
++    label: currentLegendLabels.value[index] || ''
++  })).filter(item => item.label);
++});
++
+ // ... (Colors and Attribute definitions remain same)
+ 
+ // 鍝嶅簲骞翠唤鍙樺寲锛岃嚜鍔ㄦ洿鏂板浘灞傦紙宸茶onTimePlayerYearChange鍜屾墜鍔ㄨЕ鍙戝彇浠ｏ級
+@@ -575,8 +596,35 @@ function cleanupDistantCache(centerYear) {
+ 
+ // 鍝嶅簲鍖哄煙鍒嗘瀽鍙傛暟鍙樺寲 (鍥惧眰鍒囨崲 & 灞炴€у垏鎹?
+ watch([spatialUnit, selectedAttribute], ([newUnit, newAttr], [oldUnit, oldAttr]) => {
+-  // 娴佽浆妯″紡鐢?handleTransferQuery 鐙珛绠＄悊锛屼笉璧?WMS 娴佺▼
+-  if (newAttr === 'transfer') return;
++  // 1. 濡傛灉褰撳墠鏄?land_transfer 涓旂敤鎴峰皾璇曞垏鎹㈠埌鍏朵粬鍗曚綅锛堥€氳繃涓嬫媺妗嗭級锛屼富鍔ㄦ竻鐞嗘祦杞浘灞傚拰鍥句緥
++  if (oldUnit === 'land_transfer' && newUnit !== 'land_transfer') {
++     console.log('[Workbench] User switched away from land_transfer, clearing transfer layer');
++     if (transferWmsLayer && viewer.value && !viewer.value.isDestroyed()) {
++        viewer.value.imageryLayers.remove(transferWmsLayer, true);
++        transferWmsLayer = null;
++     }
++     globalStore.clearLegend();
++  }
++
++  // 2. 鐐瑰嚮鍘垮煙鎴栨牸缃戠粺璁℃椂锛岄粯璁ゅ洖鍒?1985 骞寸殑鑰曞湴鍥惧眰锛堣劚绂?transfer 绛夋棫鐘舵€侊級
++  if (oldUnit !== newUnit && ['county', 'grid'].includes(newUnit)) {
++    let needsUpdate = false;
++    if (selectedYear.value !== 1985) {
++      selectedYear.value = 1985;
++      needsUpdate = true;
++    }
++    if (selectedAttribute.value !== 'cropland') {
++      selectedAttribute.value = 'cropland';
++      needsUpdate = true;
++    }
++    // 濡傛灉鏈夌姸鎬佷慨鏀癸紝鎻愬墠杩斿洖锛屼氦鐢辨柊鐨勫搷搴斿紡鍊艰Е鍙戜笅涓€娆?watch 鍛ㄦ湡鍘绘墽琛屾渶缁堝姞杞?+    if (needsUpdate) return; 
++  }
++
++  // 3. 娴佽浆妯″紡鐙珛绠＄悊锛屽鏋滃湪姝ゅ埢灞炴€ц繕鏄?transfer 鎴栧崟浣嶆槸 land_transfer锛屼笉瑙﹀彂鍩虹 WMS
++  if (selectedAttribute.value === 'transfer' || newUnit === 'land_transfer') {
++      return;
++  }
+ 
+   // 1. Handle Pause
+   if (timePlayerRef.value && typeof timePlayerRef.value.pause === 'function') {
+@@ -635,6 +683,43 @@ watch([spatialUnit, selectedAttribute], ([newUnit, newAttr], [oldUnit, oldAttr])
+ const transferControlRef = ref(null);
+ let transferWmsLayer = null; // 褰撳墠鐨勬祦杞?WMS 鍥惧眰寮曠敤
+ 
++// 澶勭悊閲嶇疆/娓呯悊鍒嗘瀽鍥惧眰
++function handleResetMap() {
++  console.log('[Workbench] handleResetMap called, clearing analysis layers');
++  // 1. 鎭㈠涔嬪墠鐨勫熀纭€鍥惧眰鐘舵€?+  globalStore.restorePreviousLayer();
++  
++  // 2. 娓呯悊娴佽浆鍥惧眰鍜屽叾浠栦笓灞濽I
++  clearAllAnalysisLayers(viewer.value);
++  transferWmsLayer = null;
++  
++  if (transferDataSource.value && viewer.value && !viewer.value.isDestroyed()) {
++    viewer.value.dataSources.remove(transferDataSource.value, true);
++    transferDataSource.value = null;
++  }
++
++  globalStore.clearLegend();
++  if (selectedAttribute.value === 'transfer') {
++    selectedAttribute.value = 'cropland';
++  }
++  
++  // 3. 瑙﹀彂褰撳墠 activeLayer 鎵€瀵瑰簲鍥惧眰鐨勯噸鏂版樉绀猴紙濡傛灉琚殣钘忎簡鐨勮瘽锛?+  if (globalStore.activeLayer === 'clcd' && clcdLayer.value) {
++     clcdLayer.value.show = true;
++  } else {
++     // 瀵逛簬 grid/county锛屾仮澶嶅畠浠敱浜?transferWmsLayer 鏄剧ず瀵艰嚧琚殣钘忕殑鐘舵€?+     const cacheKey = `${selectedYear.value}_${globalStore.activeLayer}_${selectedAttribute.value}`;
++     const layer = wmsLayerCache.get(cacheKey);
++     if (layer) {
++       layer.show = true;
++       layer.alpha = 1;
++     } else {
++       // 闃叉缂撳瓨琚竻锛岄噸鏂板姞杞?+       loadWMSLayer(selectedYear.value, true);
++     }
++  }
++}
++
+ // transfer_dynamic.sld 鐨?10 绾х孩钃濊壊甯︼紙涓?SLD 涓€鑷达級
+ const transferColors = [
+   '#053061', '#2166ac', '#4393c3', '#92c5de', '#d1e5f0',
+@@ -654,10 +739,10 @@ async function handleTransferQuery(params) {
+   }
+ 
+   try {
+-    const { yearStart, yearEnd, fromClass, toClass, unit } = params;
++    const { yearStart, yearEnd, fromClass, toClass, unit, legendTitle } = params;
+ 
+-    // 1. 娓呯悊鏃х殑娴佽浆鍥惧眰
+-    clearTransferLayer();
++    // 1. 璁板綍鏃у浘灞傚紩鐢ㄧ敤浜庡钩婊戣繃娓?(Double Buffering)
++    const oldLayer = transferWmsLayer;
+ 
+     // 1b. 闅愯棌鐜版湁鐨勯潰绉?WMS 鍥惧眰鍜?CLCD 鍥惧眰锛岄伩鍏嶉伄鎸?     wmsLayerCache.forEach((layer) => { layer.show = false; layer.alpha = 0; });
+@@ -754,15 +839,24 @@ async function handleTransferQuery(params) {
+       }
+     });
+ 
+-    const newLayer = viewer.value.imageryLayers.addImageryProvider(wmsProvider);
++    const newLayer = new Cesium.ImageryLayer(wmsProvider);
+     newLayer.alpha = 1;
+     newLayer.show = true;
+-    viewer.value.imageryLayers.raiseToTop(newLayer);
++    
++    // 浣跨敤浜掓枼绛栫暐娣诲姞
++    addExclusiveAnalysisLayer(viewer.value, newLayer);
++    
++    // 鏇存柊褰撳墠寮曠敤
+     transferWmsLayer = newLayer;
+ 
++    // 寤惰繜閿€姣侀€昏緫鍦ㄤ簰鏂ユā寮忎笅宸茬敱 addExclusiveAnalysisLayer 鑷姩澶勭悊锛堝嵆鍒绘竻鐞嗘棫鍥惧眰锛?+    // 濡傛灉鐢变簬鎬ц兘鍘熷洜浠嶉渶淇濈暀 oldLayer 鍋氬钩婊戣繃娓★紝鍙互鎵嬪姩鍦?addExclusiveAnalysisLayer 涓烦杩囨竻鐞嗘垨缁存寔褰撳墠鍙岀紦鍐查€昏緫
++    // 浣嗘牴鎹€滃叏灞€鍗曚緥鈥濊姹傦紝姝ゅ鍥炲綊鏍囧噯浜掓枼璋冪敤銆?+
+     // 7. 鏇存柊鍥句緥
+     const formatKm2 = (num) => {
+       if (num === 0) return '0';
++      if (Number.isInteger(num)) return num.toString();
+       const abs = Math.abs(num);
+       if (abs >= 100) return Math.round(num).toString();
+       if (abs >= 1) return num.toFixed(1);
+@@ -780,6 +874,16 @@ async function handleTransferQuery(params) {
+     // 鏍囪涓?transfer 妯″紡锛堝浘渚嬩娇鐢級
+     selectedAttribute.value = 'transfer';
+ 
++    // 7. 鍚屾鏇存柊鍏ㄥ眬鍥句緥 Store
++    globalStore.updateLegend({
++      title: legendTitle,
++      type: unit === 'grid' ? 'categorical' : 'continuous',
++      items: labels.map((l, i) => ({
++        label: l,
++        color: transferColors[i]
++      }))
++    });
++
+     console.log('[Transfer] WMS layer rendered successfully.');
+ 
+   } catch (err) {
+@@ -793,40 +897,7 @@ async function handleTransferQuery(params) {
+   }
+ }
+ 
+-/**
+- * 娓呴櫎娴佽浆 WMS 鍥惧眰
+- */
+-function clearTransferLayer() {
+-  if (transferWmsLayer && viewer.value && !viewer.value.isDestroyed()) {
+-    viewer.value.imageryLayers.remove(transferWmsLayer, true);
+-    transferWmsLayer = null;
+-  }
+-  // 鍏煎鏃х殑 DataSource 鏂瑰紡锛堝鏈夋畫鐣欙級
+-  if (transferDataSource.value && viewer.value && !viewer.value.isDestroyed()) {
+-    viewer.value.dataSources.remove(transferDataSource.value, true);
+-    transferDataSource.value = null;
+-  }
+-}
+-
+-/**
+- * 閲嶇疆鍦板浘锛氭竻闄ゆ祦杞浘灞傦紝鎭㈠鍘熸湁鍥惧眰
+- */
+-function handleResetMap() {
+-  clearTransferLayer();
+-
+-  if (selectedAttribute.value === 'transfer') {
+-    selectedAttribute.value = 'cropland';
+-  }
+-
+-  // 鎭㈠姝ｅ父鍥惧眰锛堟牴鎹綋鍓嶇┖闂村崟鍏冩ā寮忥級
+-  if (spatialUnit.value === 'clcd') {
+-    loadStandardLayer(selectedYear.value);
+-  } else {
+-    // 鎭㈠鍘跨骇/鏍肩綉闈㈢Н鍥惧眰
+-    loadWMSLayer(selectedYear.value, true);
+-  }
+-  console.log('[Transfer] Map reset complete.');
+-}
++// 娓呯悊鍥惧眰閫昏緫宸叉尓鍒颁笂鏂圭殑 handleResetMap
+ 
+ 
+ function setupClickHandler() {
+@@ -1285,28 +1356,24 @@ function handleBaseMapChange(mapType) {
+ function loadStandardLayer(year) {
+   if (!viewer.value) return;
+ 
+-  const oldLayer = clcdLayer.value;
+-
+   try {
+-    const newLayer = viewer.value.imageryLayers.addImageryProvider(
+-      new Cesium.WebMapServiceImageryProvider({
+-        url: 'http://localhost:8080/geoserver/WebGIS/wms',
+-        layers: `WebGIS:${year}_yunnan_CLCD_raster`,
+-        parameters: {
+-          service: 'WMS',
+-          version: '1.1.0',
+-          request: 'GetMap',
+-          format: 'image/png',
+-          transparent: true
+-        }
+-      })
+-    );
++    const provider = new Cesium.WebMapServiceImageryProvider({
++      url: 'http://localhost:8080/geoserver/WebGIS/wms',
++      layers: `WebGIS:${year}_yunnan_CLCD_raster`,
++      parameters: {
++        service: 'WMS',
++        version: '1.1.0',
++        request: 'GetMap',
++        format: 'image/png',
++        transparent: true
++      }
++    });
+ 
++    // 浣跨敤浜掓枼绛栫暐娣诲姞鍥惧眰
++    const newLayer = new Cesium.ImageryLayer(provider);
++    addExclusiveAnalysisLayer(viewer.value, newLayer);
++    
+     clcdLayer.value = newLayer;
+-
+-    if (oldLayer) {
+-      viewer.value.imageryLayers.remove(oldLayer, true);
+-    }
+   } catch (e) {
+     console.error(`鍔犺浇 ${year} 骞?CLCD 鍥惧眰澶辫触:`, e);
+   }
+@@ -1331,11 +1398,17 @@ async function loadWMSLayer(targetYear = null, visible = true) {
+     ? `change_${changeYearFrom.value}_${changeYearTo.value}_${spatialUnit.value}_${selectedAttribute.value}`
+     : `${year}_${spatialUnit.value}_${selectedAttribute.value}`;
+ 
+-  // 1. 濡傛灉缂撳瓨涓瓨鍦紝鐩存帴鍒囨崲鍙鎬?+  // 1. 濡傛灉缂撳瓨涓瓨鍦紝楠岃瘉鍏舵槸鍚﹁澶栭儴寮哄埗閿€姣佷互闃插穿婧?   if (wmsLayerCache.has(cacheKey)) {
+-    console.log('[Workbench] Cache HIT for:', cacheKey);
+-    if (visible) updateLayerVisibility(cacheKey);
+-    return;
++    const cachedLayer = wmsLayerCache.get(cacheKey);
++    if (cachedLayer && typeof cachedLayer.isDestroyed === 'function' && cachedLayer.isDestroyed()) {
++      console.log('[Workbench] Cache STALE (destroyed) for:', cacheKey);
++      wmsLayerCache.delete(cacheKey);
++    } else {
++      console.log('[Workbench] Cache HIT for:', cacheKey);
++      if (visible) updateLayerVisibility(cacheKey);
++      return;
++    }
+   }
+ 
+   console.log('[Workbench] Cache MISS for:', cacheKey, '- Loading new layer');
+@@ -1385,6 +1458,7 @@ async function loadWMSLayer(targetYear = null, visible = true) {
+     // km虏 鑷€傚簲绮惧害鏍煎紡鍖?     const formatKm2 = (num) => {
+       if (num === 0) return '0';
++      if (Number.isInteger(num)) return num.toString();
+       const abs = Math.abs(num);
+       if (abs >= 100) return Math.round(num).toString();
+       if (abs >= 1) return num.toFixed(1);
+@@ -1466,10 +1540,11 @@ async function loadWMSLayer(targetYear = null, visible = true) {
+       parameters: wmsParameters
+     });
+ 
+-    const newLayer = viewer.value.imageryLayers.addImageryProvider(wmsProvider);
++    const newLayer = new Cesium.ImageryLayer(wmsProvider);
+     newLayer.alpha = 0; 
+     newLayer.show = true;
+ 
++    // 缂撳瓨渚濈劧淇濈暀锛屼絾瀹為檯鍔犺浇鍒板湴鍥炬椂浼氳Е鍙戜簰鏂?     addToCache(cacheKey, newLayer);
+ 
+     if (visible) {
+@@ -1492,11 +1567,11 @@ function updateLayerVisibility(targetKey) {
+     // 1. 璁剧疆褰撳墠灞傚彲瑙?     const targetLayer = wmsLayerCache.get(targetKey);
+     if (targetLayer) {
++        // 浣跨敤浜掓枼绛栫暐鍔犺浇
++        addExclusiveAnalysisLayer(viewer.value, targetLayer);
++        
+         targetLayer.alpha = 1;
+         targetLayer.show = true;
+-        if (viewer.value && !viewer.value.isDestroyed()) {
+-             viewer.value.imageryLayers.raiseToTop(targetLayer);
+-        }
+         spatialLayer.value = targetLayer; 
+     }
+ 
+@@ -1962,64 +2037,13 @@ html {
+ 
+ 
+ 
+-/* 娴姩鍥句緥 (Regional Only) */
++/* 缁熶竴鍥句緥娴姩浣嶇疆 */
+ .floating-legend {
+   position: fixed;
+   bottom: 24px;
+-  right: 24px; /* 鍙充笅瑙?*/
+-  left: auto;
+-  background: rgba(15, 23, 42, 0.6); 
+-  backdrop-filter: blur(20px);
+-  -webkit-backdrop-filter: blur(20px);
+-  border: 1px solid rgba(255, 255, 255, 0.1);
+-  border-radius: 16px;
+-  padding: 16px;
+-  z-index: 900;
+-  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.2);
+-  min-width: 200px;
+-}
+-
+-.floating-legend .legend-title {
+-  font-size: 14px;
+-  font-weight: 600;
+-  color: #fff;
+-  margin-bottom: 4px;
+-  border: none;
+-  padding: 0;
+-  text-align: center; /* Center Title */
+-}
+-
+-.floating-legend .legend-subtitle {
+-  font-size: 12px;
+-  color: rgba(255,255,255,0.5);
+-  margin-bottom: 12px;
+-  text-align: center; /* Center Subtitle */
+-}
+-
+-.legend-list {
+-  display: flex;
+-  flex-direction: column;
+-  gap: 4px;
+-}
+-
+-.legend-row {
+-  display: flex;
+-  align-items: center;
+-  gap: 8px;
+-}
+-
+-.legend-color-box {
+-  width: 20px;
+-  height: 12px;
+-  border-radius: 2px;
+-  border: 1px solid rgba(255,255,255,0.3);
+-}
+-
+-.legend-value {
+-  font-size: 11px;
+-  color: rgba(255,255,255,0.9);
+-  /* Use same font as TimePlayer Year Selector: "PingFang SC", "Microsoft YaHei", sans-serif */
+-  font-family: "PingFang SC", "Microsoft YaHei", sans-serif; 
++  right: 24px;
++  z-index: 1000;
++  box-shadow: 0 8px 32px rgba(0,0,0,0.4);
+ }
+ 
+ 
+@@ -2134,9 +2158,9 @@ html {
+ }
+ 
+ .change-mode-toggle.active {
+-  background: linear-gradient(135deg, rgba(59, 130, 246, 0.3), rgba(37, 99, 235, 0.4));
+-  border-color: rgba(59, 130, 246, 0.5);
+-  color: #93c5fd;
++  background: #3B76E1 !important;
++  border-color: #3B76E1;
++  color: #ffffff;
+ }
+ 
+ .change-year-selector {
+@@ -2169,4 +2193,36 @@ html {
+   font-size: 16px;
+ }
+ 
++.global-analysis-legend {
++  position: fixed;
++  bottom: 24px;
++  right: 24px;
++  z-index: 1000;
++  transition: all 0.3s ease;
++}
++
++/* 宸ュ叿鏍忓乏鍚戦敋瀹氳繃娓″姩鐢?(浠庡彸鍚戝乏鎶芥媺) */
++.expand-fade-left-enter-active,
++.expand-fade-left-leave-active {
++  transition: all 0.45s cubic-bezier(0.23, 1, 0.32, 1);
++  overflow: hidden;
++  white-space: nowrap;
++  transform-origin: right center; /* 閿氬畾鍙充晶鍥惧眰閫夋嫨鍣?*/
++}
++
++.expand-fade-left-enter-from,
++.expand-fade-left-leave-to {
++  max-width: 0;
++  opacity: 0;
++  margin-right: -8px; /* 鎶垫秷 gap锛岀‘淇濆彸渚ф寜閽潤姝?*/
++  transform: scaleX(0.8) translateX(15px);
++}
++
++.expand-fade-left-enter-to,
++.expand-fade-left-leave-from {
++  max-width: 200px;
++  opacity: 1;
++  margin-right: 0;
++  transform: scaleX(1) translateX(0);
++}
+ </style>

@@ -10,7 +10,7 @@
 
     <Teleport to="body">
       <transition name="fade">
-        <div v-if="isVisible" class="modal-backdrop" @click="toggleChart"></div>
+        <div v-if="isVisible" class="modal-backdrop" @click="closeChart"></div>
       </transition>
 
       <transition name="slide-fade">
@@ -18,7 +18,7 @@
           <div class="modal-header">
             <div class="header-placeholder"></div>
             <span class="modal-title">全省土地利用动态监测中心</span>
-            <button class="close-btn" @click.stop="toggleChart">✕</button>
+            <button class="close-btn" @click.stop="closeChart">✕</button>
           </div>
           <div class="chart-wrapper">
             <!-- AI 悬浮球 (左上角) -->
@@ -51,11 +51,15 @@
 </template>
 
 <script setup>
-import { ref, onMounted } from 'vue';
+import { ref, computed } from 'vue';
 import LandUseTrendChart from '../charts/LandUseTrendChart.vue';
 import { clcdApi } from '../../api/index.js';
 import AIAnalysisModal from '../ui/AIAnalysisModal.vue';
 import ChatGptIcon from '../icons/ChatGptIcon.vue';
+import { useGlobalStore } from '../../stores/global';
+
+const globalStore = useGlobalStore();
+const panelName = 'trend';
 
 const props = defineProps({
   seriesData: {
@@ -64,7 +68,7 @@ const props = defineProps({
   }
 });
 
-const isVisible = ref(false);
+const isVisible = computed(() => globalStore.activePanel === panelName);
 const localSeriesData = ref([]);
 const isLoading = ref(false);
 const hasError = ref(false);
@@ -90,10 +94,14 @@ async function fetchTrendData() {
 }
 
 function toggleChart() {
-  isVisible.value = !isVisible.value;
-  if (isVisible.value) {
+  globalStore.setActivePanel(panelName);
+  if (globalStore.activePanel === panelName) {
     fetchTrendData();
   }
+}
+
+function closeChart() {
+  globalStore.setActivePanel(null);
 }
 
 // 打开 AI 分析弹窗
@@ -140,10 +148,10 @@ const openAIAnalysis = () => {
 }
 
 .control-btn.active {
-  background: #3b82f6;
-  border-color: #60a5fa;
+  background: #3B76E1 !important;
+  border-color: #3B76E1;
   color: #ffffff;
-  box-shadow: 0 0 15px rgba(59, 130, 246, 0.5);
+  box-shadow: 0 4px 10px rgba(59, 118, 225, 0.3);
 }
 
 .icon-img {

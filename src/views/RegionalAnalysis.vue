@@ -73,16 +73,18 @@
     </div>
 
     <!-- 图例 -->
-    <div class="legend-container">
-      <div class="legend-title">{{ currentAttributeLabel }} ({{ selectedYear }}年)</div>
-      <div class="legend-items">
-        <div v-for="(color, index) in currentColorScale" :key="index" class="legend-item">
-          <span class="legend-color" :style="{ background: color }"></span>
-          <span class="legend-label">{{ currentLegendLabels[index] }}</span>
+    <div class="vibe-legend-container" style="position: fixed; bottom: 40px; right: 30px; z-index: 1000;">
+      <div class="vibe-legend-header">
+        <div class="vibe-legend-title">{{ selectedYear }}年{{ currentAttributeLabel }}面积(km²)</div>
+      </div>
+      <div class="vibe-legend-list">
+        <div v-for="(color, index) in currentColorScale" :key="index" class="vibe-legend-item">
+          <span class="vibe-legend-swatch" :style="{ background: color }"></span>
+          <span class="vibe-legend-text">{{ currentLegendLabels[index] }}</span>
         </div>
       </div>
-      <div class="legend-unit">单位: km²</div>
     </div>
+
 
     <!-- 时间轴控制器 -->
     <div class="time-player-container" v-if="years.length > 0">
@@ -574,12 +576,17 @@ async function loadWMSLayer(targetYear = null, visible = true) {
 
   const year = targetYear || selectedYear.value;
 
-  // 1. 如果需要显示，且已在缓存中存在，直接切换可见性
+  // 1. 如果需要显示，且已在缓存中存在，验证有效性后直接切换可见性
   if (wmsLayerCache.has(year)) {
-    if (visible) {
-      updateLayerVisibility(year);
+    const cachedLayer = wmsLayerCache.get(year);
+    if (cachedLayer && typeof cachedLayer.isDestroyed === 'function' && cachedLayer.isDestroyed()) {
+        wmsLayerCache.delete(year);
+    } else {
+        if (visible) {
+            updateLayerVisibility(year);
+        }
+        return;
     }
-    return;
   }
 
   // 2. 如果是当前年份且需要显示，且当前无图层（首次加载），开启加载动画
@@ -1077,72 +1084,7 @@ onUnmounted(() => {
 }
 
 /* 图例 */
-/* 图例 */
-.legend-container {
-  position: fixed;
-  bottom: 40px; /* Slightly higher */
-  right: 30px;
-  background: rgba(15, 23, 42, 0.6); /* Same as TimePlayer */
-  backdrop-filter: blur(20px);
-  -webkit-backdrop-filter: blur(20px);
-  border: 1px solid rgba(255, 255, 255, 0.1);
-  border-radius: 16px;
-  padding: 20px;
-  z-index: 1000;
-  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.2);
-  transition: all 0.3s ease;
-  min-width: 180px;
-}
-
-.legend-container:hover {
-  background: rgba(15, 23, 42, 0.8);
-  box-shadow: 0 12px 40px rgba(0, 0, 0, 0.4);
-}
-
-.legend-title {
-  font-size: 14px;
-  font-weight: 600;
-  color: #fff;
-  margin-bottom: 16px;
-  padding-bottom: 8px;
-  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
-  letter-spacing: 0.5px;
-}
-
-.legend-items {
-  display: flex;
-  flex-direction: column;
-  gap: 10px; /* Increased gap */
-}
-
-.legend-item {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-}
-
-.legend-color {
-  width: 16px;
-  height: 16px;
-  border-radius: 4px;
-  border: 1px solid rgba(255, 255, 255, 0.2);
-  box-shadow: 0 2px 4px rgba(0,0,0,0.2);
-}
-
-.legend-label {
-  font-size: 13px;
-  color: rgba(255, 255, 255, 0.9);
-  font-family: "PingFang SC", "Microsoft YaHei", "Helvetica Neue", Arial, sans-serif;
-  font-weight: 500;
-}
-
-.legend-unit {
-  font-size: 11px;
-  color: rgba(255, 255, 255, 0.6);
-  margin-top: 16px;
-  text-align: right;
-  font-family: "PingFang SC", "Microsoft YaHei", sans-serif;
-}
+/* 移除了高耦合图例样式 */
 
 /* 信息弹窗 */
 /* 悬浮提示框 */
