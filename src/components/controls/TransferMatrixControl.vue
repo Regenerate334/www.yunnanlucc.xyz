@@ -1,7 +1,7 @@
 <template>
     <div class="transfer-matrix-control">
         <!-- 入口按钮 -->
-        <button @click="openModal" class="control-btn" title="土地利用转移分析">
+        <button @click="openModal" class="control-btn" :class="{ active: isLayerActive || isVisible }" title="土地利用转移分析">
             <!-- 土地流转图标 -->
             <svg width="28" height="28" viewBox="0 0 1024 1024" fill="none">
                 <defs>
@@ -25,7 +25,7 @@
                 <LandTransferControl 
                     ref="innerControlRef"
                     v-if="isVisible" 
-                    @close="isVisible = false" 
+                    @close="closeModal" 
                     @transfer-query="$emit('transfer-query', $event)"
                     @reset="$emit('reset-map')"
                 />
@@ -35,15 +35,24 @@
 </template>
 
 <script setup>
-import { ref } from 'vue';
+import { ref, computed } from 'vue';
 import LandTransferControl from './LandTransferControl.vue';
+import { useGlobalStore } from '../../stores/global';
+
+const globalStore = useGlobalStore();
+const panelName = 'transfer';
 
 const emit = defineEmits(['transfer-query', 'reset-map']);
-const isVisible = ref(false);
+const isVisible = computed(() => globalStore.activePanel === panelName);
+const isLayerActive = computed(() => globalStore.activeLayer === 'land_transfer');
 const innerControlRef = ref(null);
 
 function openModal() {
-    isVisible.value = !isVisible.value;
+    globalStore.setActivePanel(panelName);
+}
+
+function closeModal() {
+    globalStore.setActivePanel(null);
 }
 
 // 透传方法给 Workbench 调用
@@ -79,6 +88,13 @@ defineExpose({ setLoading, setError });
     box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
     flex-direction: column;
     gap: 2px;
+}
+
+.control-btn.active {
+    background: #3B76E1 !important;
+    border-color: #3B76E1;
+    color: #ffffff;
+    box-shadow: 0 4px 10px rgba(59, 118, 225, 0.3);
 }
 
 .control-btn:hover {
@@ -183,7 +199,7 @@ defineExpose({ setLoading, setError });
 
 .slide-fade-enter-from,
 .slide-fade-leave-to {
-    transform: translate(-50%, -50%) scale(0.8);
+    transform: translateX(-20px);
     opacity: 0;
 }
 

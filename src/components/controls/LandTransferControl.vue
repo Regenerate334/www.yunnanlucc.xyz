@@ -1,92 +1,194 @@
 <template>
-  <div class="land-transfer-control panel-card">
+  <div class="land-transfer-control panel-card" ref="containerRef">
     <div class="panel-header">
-      <div class="header-icon">
-        <svg viewBox="0 0 24 24" width="18" height="18" stroke="currentColor" stroke-width="2" fill="none">
-          <path d="M8 7h12m0 0l-4-4m4 4l-4 4m0 6H4m0 0l4 4m-4-4l4-4" />
+      <h1 class="header-title">土地流转动态监测</h1>
+      <button class="close-btn" @click="$emit('close')" title="关闭面板">
+        <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2.5">
+          <path d="M18 6L6 18M6 6l12 12" />
         </svg>
-      </div>
-      <span class="header-title">土地流转分析</span>
-      <button class="close-btn" @click="$emit('close')">×</button>
+      </button>
     </div>
 
     <div class="control-body">
       <!-- 空间单元选择 -->
-      <div class="control-row">
-        <label>空间单元</label>
-        <div class="unit-toggle">
+      <div class="control-section">
+        <div class="section-label">空间统计单元</div>
+        <div class="segmented-control">
           <button 
             :class="{ active: unit === 'county' }" 
-            @click="unit = 'county'"
-          >县级</button>
+            @click.stop="unit = 'county'"
+          >县级区域</button>
           <button 
             :class="{ active: unit === 'grid' }" 
-            @click="unit = 'grid'"
-          >格网</button>
+            @click.stop="unit = 'grid'"
+          >空间格网</button>
         </div>
       </div>
 
-      <!-- 时间选择 -->
-      <div class="control-row">
-        <label>时间区间</label>
-        <div class="year-inputs">
-          <input type="number" v-model.number="yearStart" :min="1985" :max="2022" class="year-input" />
-          <span class="separator">-</span>
-          <input type="number" v-model.number="yearEnd" :min="1986" :max="2023" class="year-input" />
+      <!-- 监测时段选择 -->
+      <div class="control-section">
+        <div class="section-label">监测时段</div>
+        <div class="year-range-picker">
+          <div class="range-field">
+            <span class="field-tag">起始年份</span>
+            <input type="number" v-model.number="yearStart" :min="MIN_YEAR" :max="MAX_YEAR" @blur="validateYear" />
+          </div>
+          <div class="range-divider">
+            <div class="divider-line"></div>
+          </div>
+          <div class="range-field">
+            <span class="field-tag">截止年份</span>
+            <input type="number" v-model.number="yearEnd" :min="MIN_YEAR" :max="MAX_YEAR" @blur="validateYear" />
+          </div>
         </div>
       </div>
 
-      <!-- 地类流转 -->
-      <div class="control-row transfer-flow">
-        <div class="class-select-group">
-          <label>转出 (From)</label>
-          <select v-model="fromClass" class="class-select">
-            <option v-for="opt in landClasses" :key="opt.value" :value="opt.value">{{ opt.label }}</option>
-          </select>
-        </div>
-        <div class="arrow-icon">→</div>
-        <div class="class-select-group">
-          <label>转入 (To)</label>
-          <select v-model="toClass" class="class-select">
-            <option v-for="opt in landClasses" :key="opt.value" :value="opt.value">{{ opt.label }}</option>
-          </select>
+      <!-- 流转方向 -->
+      <div class="control-section">
+        <div class="section-label">流转方向</div>
+        <div class="transfer-box">
+          <div class="select-wrapper custom-select" :class="{ open: fromOpen }">
+            <span class="select-hint">转出</span>
+            <div class="select-trigger" @click.stop="toggleDropdown('from')">
+              <span class="selected-text">{{ landClasses.find(c => c.value === fromClass)?.label }}</span>
+              <svg class="chevron" viewBox="0 0 24 24" width="14" height="14" stroke="currentColor" stroke-width="3" fill="none">
+                <path d="M6 9l6 6 6-6" />
+              </svg>
+            </div>
+            <transition name="dropdown-fade">
+              <ul v-if="fromOpen" class="select-options">
+                <li 
+                  v-for="opt in landClasses" 
+                  :key="opt.value" 
+                  :class="{ active: fromClass === opt.value }"
+                  @click="selectOption('from', opt.value)"
+                >
+                  {{ opt.label }}
+                  <svg v-if="fromClass === opt.value" viewBox="0 0 24 24" width="12" height="12" stroke="currentColor" stroke-width="3" fill="none">
+                    <path d="M20 6L9 17l-5-5" />
+                  </svg>
+                </li>
+              </ul>
+            </transition>
+          </div>
+
+          <div class="swap-btn-container" @click.stop="swapLandTypes" title="点击互换方向">
+            <div class="swap-btn" :style="{ transform: `rotate(${rotateDeg}deg)` }">
+              <svg viewBox="0 0 1024 1024" width="32" height="32">
+                <!-- 圆形底板 -->
+                <path d="M512 114.3c219.9 0 398.8 178.9 398.8 398.8s-178.9 398.8-398.8 398.8S113.2 733 113.2 513.1c0-219.9 178.9-398.8 398.8-398.8z" fill="#BDD2EF"></path>
+                <!-- 箭头 (默认旋转180度指向右侧) -->
+                <g transform="rotate(180 512 512)">
+                  <path d="M281.9 512.2l164.1 164.1c12.5 12.5 32.8 12.5 45.3 0s12.5-32.8 0-45.3L371.1 511.9l120.2-161.5c12.5-12.5 12.5-32.8 0-45.3s-32.8-12.5-45.3 0L281.9 466.9c-12.5 12.5-12.5 32.8 0 45.3" fill="#2867CE"></path>
+                  <path d="M727.1 480.2H350v63.9h377.1v-63.9z" fill="#2867CE"></path>
+                </g>
+              </svg>
+            </div>
+          </div>
+
+          <div class="select-wrapper custom-select" :class="{ open: toOpen }">
+            <span class="select-hint">转入</span>
+            <div class="select-trigger" @click.stop="toggleDropdown('to')">
+              <span class="selected-text">{{ landClasses.find(c => c.value === toClass)?.label }}</span>
+              <svg class="chevron" viewBox="0 0 24 24" width="14" height="14" stroke="currentColor" stroke-width="3" fill="none">
+                <path d="M6 9l6 6 6-6" />
+              </svg>
+            </div>
+            <transition name="dropdown-fade">
+              <ul v-if="toOpen" class="select-options">
+                <li 
+                  v-for="opt in landClasses" 
+                  :key="opt.value" 
+                  :class="{ active: toClass === opt.value }"
+                  @click="selectOption('to', opt.value)"
+                >
+                  {{ opt.label }}
+                  <svg v-if="toClass === opt.value" viewBox="0 0 24 24" width="12" height="12" stroke="currentColor" stroke-width="3" fill="none">
+                    <path d="M20 6L9 17l-5-5" />
+                  </svg>
+                </li>
+              </ul>
+            </transition>
+          </div>
         </div>
       </div>
 
       <!-- 执行按钮 -->
-      <div class="action-buttons">
-          <button class="run-btn primary" @click="handleQuery" :disabled="loading">
-            <span v-if="loading" class="spinner"></span>
-            <span v-else>生成流转图谱</span>
-          </button>
-          
-          <button class="run-btn secondary" @click="$emit('reset')" title="清除分析结果并还原底图">
-            <svg viewBox="0 0 24 24" width="16" height="16" stroke="currentColor" stroke-width="2" fill="none">
-              <path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8" />
-              <path d="M3 3v5h5" />
-            </svg>
+      <div class="footer-actions">
+          <button class="execute-btn" @click.stop="handleQuery" :disabled="loading">
+            <span v-if="loading" class="spinner-small"></span>
+            <span v-else>土地流转空间格局</span>
           </button>
       </div>
       
-      <div v-if="errorMsg" class="error-msg">{{ errorMsg }}</div>
+      <transition name="err-fade">
+        <div v-if="errorMsg" class="validation-error">{{ errorMsg }}</div>
+      </transition>
     </div>
   </div>
 </template>
 
 <script setup>
-import { ref } from 'vue';
+import { ref, computed, onMounted, onUnmounted } from 'vue';
+import { useGlobalStore } from '../../stores/global.ts';
 
 const emit = defineEmits(['close', 'transfer-query', 'reset']);
 
+const containerRef = ref(null);
+const globalStore = useGlobalStore();
+const MIN_YEAR = 1985;
+const MAX_YEAR = 2023;
+
 const unit = ref('county');
-const yearStart = ref(1990);
-const yearEnd = ref(2000);
-const fromClass = ref(2); // Forest
-const toClass = ref(7);   // Impervious
+const yearStart = ref(1985);
+const yearEnd = ref(1990);
+const fromClass = ref(1); // 耕地
+const toClass = ref(2);   // 林地
 const loading = ref(false);
 const errorMsg = ref('');
+const fromOpen = ref(false);
+const toOpen = ref(false);
+const rotateDeg = ref(0);
 
-// 1-8 地类映射（灌木已合并到林地）
+const swapLandTypes = () => {
+  const temp = fromClass.value;
+  fromClass.value = toClass.value;
+  toClass.value = temp;
+  rotateDeg.value += 360;
+};
+
+const toggleDropdown = (type) => {
+  if (type === 'from') {
+    fromOpen.value = !fromOpen.value;
+    toOpen.value = false;
+  } else {
+    toOpen.value = !toOpen.value;
+    fromOpen.value = false;
+  }
+};
+
+const selectOption = (type, val) => {
+  if (type === 'from') {
+    fromClass.value = val;
+    fromOpen.value = false;
+  } else {
+    toClass.value = val;
+    toOpen.value = false;
+  }
+};
+
+const validateYear = () => {
+  if (yearStart.value < MIN_YEAR) yearStart.value = MIN_YEAR;
+  if (yearStart.value > MAX_YEAR) yearStart.value = MAX_YEAR;
+  if (yearEnd.value < MIN_YEAR) yearEnd.value = MIN_YEAR;
+  if (yearEnd.value > MAX_YEAR) yearEnd.value = MAX_YEAR;
+
+  // 交叉校验：起始不可大于截止
+  if (yearStart.value > yearEnd.value) {
+    yearStart.value = yearEnd.value;
+  }
+};
+
 const landClasses = [
   { label: '耕地', value: 1 },
   { label: '林地', value: 2 },
@@ -98,34 +200,63 @@ const landClasses = [
   { label: '湿地', value: 8 },
 ];
 
+const dynamicTitle = computed(() => {
+  const fromName = landClasses.find(c => c.value === fromClass.value)?.label || '';
+  const toName = landClasses.find(c => c.value === toClass.value)?.label || '';
+  return `${yearStart.value}-${yearEnd.value}年${fromName}转为${toName}面积(km²)`;
+});
+
 const handleQuery = () => {
   if (yearStart.value >= yearEnd.value) {
     errorMsg.value = '起始年份必须小于结束年份';
     return;
   }
   if (fromClass.value === toClass.value) {
-    errorMsg.value = '转出地类与转入地类不能相同';
+    errorMsg.value = '地类不能相同';
     return;
   }
-  
   errorMsg.value = '';
   loading.value = true;
   
-  // 纯参数提交，由父组件 Workbench 驱动 WMS 加载
+  // 状态自动接管：切换至专门的流转分析态
+  globalStore.setActiveLayer('land_transfer');
+
   emit('transfer-query', {
     yearStart: yearStart.value,
     yearEnd: yearEnd.value,
     fromClass: fromClass.value,
     toClass: toClass.value,
-    unit: unit.value
+    unit: unit.value,
+    legendTitle: dynamicTitle.value
   });
 };
 
-// 父组件加载完成后调用
-const setLoading = (val) => {
-  loading.value = val;
+const handleClickOutside = (event) => {
+  const path = event.composedPath();
+  const isInside = containerRef.value && path.includes(containerRef.value);
+  const isTrigger = path.some(el => el.classList && el.classList.contains('transfer-matrix-control'));
+  
+  if (!isInside && !isTrigger) {
+    emit('close');
+  }
+  
+  // Close dropdowns if clicking outside the custom select boxes
+  if (!path.some(el => el.classList && el.classList.contains('custom-select'))) {
+    fromOpen.value = false;
+    toOpen.value = false;
+  }
 };
 
+onMounted(() => {
+  setTimeout(() => window.addEventListener('click', handleClickOutside), 0);
+});
+
+onUnmounted(() => {
+  window.removeEventListener('click', handleClickOutside);
+  // 不要在这里回滚！流转图层应当持久保留，直到用户主动在下拉框中选择其它基础图层。
+});
+
+const setLoading = (val) => { loading.value = val; };
 const setError = (msg) => {
   errorMsg.value = msg;
   loading.value = false;
@@ -134,196 +265,437 @@ const setError = (msg) => {
 defineExpose({ setLoading, setError });
 </script>
 
-
 <style scoped>
 .land-transfer-control {
   position: fixed;
-  top: 120px;
-  right: 20px;
-  width: 340px;
-  background: rgba(15, 23, 42, 0.95);
-  backdrop-filter: blur(16px);
-  border: 1px solid rgba(56, 189, 248, 0.3);
-  border-radius: 12px;
-  color: white;
+  bottom: calc(50% - 272px);
+  left: 100px;
+  width: 360px;
+  background: rgba(23, 35, 46, 0.85);
+  backdrop-filter: blur(20px) saturate(180%);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 20px;
+  color: #E2E8F0;
   z-index: 2000;
   display: flex;
   flex-direction: column;
-  box-shadow: 0 8px 32px rgba(0,0,0,0.5);
-  transition: all 0.3s ease;
+  box-shadow: 0 12px 40px rgba(0, 0, 0, 0.4);
+  transition: all 0.4s cubic-bezier(0.16, 1, 0.3, 1);
+  font-family: "PingFang SC", "Microsoft YaHei", sans-serif;
 }
 
 .panel-header {
+  position: relative;
   display: flex;
   align-items: center;
-  padding: 12px 16px;
-  background: rgba(255, 255, 255, 0.05);
-  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+  justify-content: center;
+  height: 54px;
+  background: transparent;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
 }
 
 .header-title {
-  flex: 1;
-  margin-left: 8px;
-  font-weight: 600;
-  font-size: 14px;
+  font-weight: 700;
+  font-size: 20px;
+  letter-spacing: 2px;
+  color: #fff;
+  margin: 0;
+  text-shadow: 0 2px 10px rgba(0,0,0,0.5);
 }
 
 .close-btn {
-  background: none;
-  border: none;
-  color: #aaa;
-  font-size: 20px;
-  cursor: pointer;
-}
-.close-btn:hover { color: white; }
-
-.control-body {
-  padding: 16px;
-}
-
-.control-row {
-  margin-bottom: 16px;
-}
-
-.control-row label {
-  display: block;
-  font-size: 12px;
-  color: #ccc;
-  margin-bottom: 6px;
-}
-
-/* 空间单元 Toggle */
-.unit-toggle {
-  display: flex;
-  background: rgba(0, 0, 0, 0.3);
-  border-radius: 6px;
-  overflow: hidden;
-  border: 1px solid #444;
-}
-
-.unit-toggle button {
-  flex: 1;
-  padding: 6px 0;
+  position: absolute;
+  right: 16px;
+  top: 50%;
+  transform: translateY(-50%);
   background: transparent;
   border: none;
-  color: #999;
-  font-size: 13px;
+  color: #94A3B8;
   cursor: pointer;
-  transition: all 0.25s ease;
-}
-
-.unit-toggle button.active {
-  background: linear-gradient(135deg, rgba(0, 229, 255, 0.25), rgba(41, 121, 255, 0.25));
-  color: #00E5FF;
-  font-weight: 600;
-}
-
-.unit-toggle button:hover:not(.active) {
-  color: #ccc;
-  background: rgba(255, 255, 255, 0.05);
-}
-
-.year-inputs {
+  padding: 8px;
   display: flex;
   align-items: center;
-  gap: 8px;
+  justify-content: center;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  border-radius: 50%;
 }
 
-.year-input {
-  flex: 1;
-  background: rgba(0,0,0,0.3);
-  border: 1px solid #444;
+.close-btn:hover {
   color: white;
-  padding: 6px;
-  border-radius: 4px;
+  background: rgba(255, 255, 255, 0.1);
+  transform: translateY(-50%) rotate(90deg);
+}
+
+.control-body {
+  padding: 24px;
+  display: flex;
+  flex-direction: column;
+  gap: 16px; 
+}
+
+.control-section {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.control-section:not(:first-child) {
+  margin-top: 8px;
+}
+
+.section-label {
+  position: relative;
+  font-size: 14px;
+  font-weight: 700;
+  color: rgba(255, 255, 255, 0.9);
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  padding-left: 12px;
+  display: flex;
+  align-items: center;
+}
+
+.section-label::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 3px;
+  height: 14px;
+  background: #3B76E1;
+  border-radius: 2px;
+  box-shadow: 0 0 8px rgba(59, 118, 225, 0.5);
+}
+
+.segmented-control {
+  display: flex;
+  background: rgba(0, 0, 0, 0.25);
+  padding: 4px;
+  border-radius: 10px;
+  border: 1px solid rgba(255, 255, 255, 0.05);
+}
+
+.segmented-control button {
+  flex: 1;
+  padding: 8px 0;
+  background: transparent;
+  border: none;
+  color: #94A3B8;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  border-radius: 7px;
+  font-family: inherit;
+  transition: all 0.3s;
+}
+
+.segmented-control button.active {
+  background: #3B76E1;
+  color: white;
+  box-shadow: 0 4px 12px rgba(59, 118, 225, 0.3);
+}
+
+.year-range-picker {
+  display: flex;
+  align-items: center;
+  background: rgba(0, 0, 0, 0.2);
+  border-radius: 12px;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  padding: 8px 12px;
+}
+
+.range-field {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+}
+
+.field-tag {
+  font-size: 12px;
+  color: rgba(255, 255, 255, 0.75);
+  font-weight: 500;
+  letter-spacing: 1px;
   text-align: center;
 }
 
-.transfer-flow {
+.range-field input {
+  width: 100%;
+  background: transparent;
+  border: none;
+  color: #F1F5F9;
+  font-size: 16px;
+  font-weight: 700;
+  text-align: center;
+  font-family: inherit;
+  outline: none;
+}
+
+.range-field input[type="number"]::-webkit-inner-spin-button,
+.range-field input[type="number"]::-webkit-outer-spin-button {
+  -webkit-appearance: none;
+  margin: 0;
+}
+
+.range-field input[type="number"] {
+  -moz-appearance: textfield;
+  appearance: textfield;
+}
+
+.range-divider {
+  padding: 0 12px;
+}
+
+.divider-line {
+  width: 1px;
+  height: 20px;
+  background: rgba(255, 255, 255, 0.1);
+}
+
+.transfer-box {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.select-wrapper {
+  flex: 1;
+  position: relative;
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 8px;
+  padding: 6px 12px;
+  transition: all 0.3s;
+}
+
+.select-wrapper:hover {
+  border-color: rgba(255, 255, 255, 0.2);
+  background: rgba(255, 255, 255, 0.06);
+}
+
+.select-wrapper.open {
+  border-color: #3B76E1;
+  background: rgba(59, 118, 225, 0.05);
+  box-shadow: 0 0 0 2px rgba(59, 118, 225, 0.2);
+}
+
+.select-hint {
+  display: block;
+  font-size: 12px;
+  color: rgba(255, 255, 255, 0.75);
+  font-weight: 500;
+  margin-bottom: 4px;
+  letter-spacing: 1px;
+}
+
+.select-trigger {
   display: flex;
   align-items: center;
   justify-content: space-between;
-}
-
-.class-select-group {
-  flex: 1;
-}
-
-.class-select {
-  width: 100%;
-  background: rgba(0,0,0,0.3);
-  border: 1px solid #444;
-  color: white;
-  padding: 6px;
-  border-radius: 4px;
-}
-
-.arrow-icon {
-  margin: 0 10px;
-  color: #888;
-  font-weight: bold;
-  padding-top: 18px;
-}
-
-.action-buttons {
-  display: flex;
-  gap: 8px;
-}
-
-.run-btn {
-  background: linear-gradient(90deg, #00E5FF, #2979FF);
-  border: none;
-  padding: 10px;
-  border-radius: 4px;
-  color: white;
-  font-weight: 600;
   cursor: pointer;
-  transition: opacity 0.2s;
+  min-height: 24px;
+}
+
+.selected-text {
+  font-size: 14px;
+  font-weight: 600;
+  color: #F1F5F9;
+}
+
+.chevron {
+  color: #64748B;
+  transition: transform 0.3s;
+}
+
+.open .chevron {
+  transform: rotate(180deg);
+  color: #3B76E1;
+}
+
+.select-options {
+  position: absolute;
+  top: calc(100% + 8px);
+  left: 0;
+  right: 0;
+  background: rgba(30, 40, 50, 0.95);
+  backdrop-filter: blur(12px);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 10px;
+  margin: 0;
+  padding: 6px;
+  list-style: none;
+  z-index: 2100;
+  box-shadow: 0 10px 25px rgba(0, 0, 0, 0.5);
+  max-height: 220px;
+  overflow-y: auto;
+  overflow-x: hidden;
+}
+
+/* 自定义滚动条样式 */
+.select-options::-webkit-scrollbar {
+  width: 4px;
+}
+
+.select-options::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.select-options::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.15);
+  border-radius: 4px;
+}
+
+.select-options::-webkit-scrollbar-thumb:hover {
+  background: rgba(255, 255, 255, 0.3);
+}
+
+.select-options li {
+  padding: 10px 12px;
+  border-radius: 6px;
+  font-size: 13px;
+  font-weight: 500;
+  color: #94A3B8;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  transition: all 0.2s;
+}
+
+.select-options li:hover {
+  background: rgba(255, 255, 255, 0.08);
+  color: white;
+}
+
+.select-options li.active {
+  background: #3B76E1;
+  color: white;
+}
+
+.dropdown-fade-enter-active, .dropdown-fade-leave-active {
+  transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+}
+.dropdown-fade-enter-from, .dropdown-fade-leave-to {
+  opacity: 0;
+  transform: translateY(-10px);
+}
+
+.transfer-arrow {
+  display: flex;
+  align-items: center;
+}
+
+.footer-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px; 
+  margin-top: 4px;
+}
+
+.execute-btn {
+  flex: 1;
+  height: 44px;
+  background: #3B76E1;
+  border: none;
+  border-radius: 12px;
+  color: white;
+  font-weight: 700;
+  font-size: 14px;
+  letter-spacing: 2px;
+  cursor: pointer;
+  font-family: inherit;
+  transition: all 0.3s;
+  box-shadow: 0 4px 15px rgba(59, 118, 225, 0.3);
   display: flex;
   align-items: center;
   justify-content: center;
 }
 
-.run-btn.primary {
-  flex: 1;
+.execute-btn:hover:not(:disabled) {
+  transform: translateY(-2px);
+  filter: brightness(1.1);
 }
 
-.run-btn.secondary {
-  width: 40px;
-  background: rgba(255, 255, 255, 0.1);
-  border: 1px solid rgba(255, 255, 255, 0.2);
+.swap-btn-container {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  padding: 4px;
+  border-radius: 50%;
+  transition: all 0.3s ease;
+  z-index: 10;
 }
 
-.run-btn.secondary:hover {
-  background: rgba(255, 255, 255, 0.2);
+.swap-btn-container:hover {
+  filter: brightness(1.1);
+  transform: scale(1.15);
 }
 
-.run-btn:hover {
-  opacity: 0.9;
+.swap-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: transform 0.6s cubic-bezier(0.34, 1.56, 0.64, 1);
 }
 
-.run-btn:disabled {
-  background: #555;
+.execute-btn:disabled {
+  background: #334155;
+  box-shadow: none;
   cursor: not-allowed;
+  opacity: 0.6;
 }
 
-.error-msg {
-  color: #ff5252;
+.reset-icon-btn {
+  width: 44px;
+  height: 44px; 
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 12px;
+  color: #94A3B8;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.reset-icon-btn:hover {
+  background: rgba(255, 255, 255, 0.1);
+  color: white;
+}
+
+.validation-error {
+  color: #FB7185;
   font-size: 12px;
-  margin-top: 8px;
+  text-align: center;
+  padding: 8px;
+  background: rgba(225, 29, 72, 0.1);
+  border-radius: 8px;
 }
 
-.spinner {
+.spinner-small {
   display: inline-block;
-  width: 16px;
-  height: 16px;
-  border: 2px solid rgba(255,255,255,0.3);
+  width: 18px;
+  height: 18px;
+  border: 2px solid rgba(255, 255, 255, 0.3);
   border-radius: 50%;
   border-top-color: white;
-  animation: spin 1s ease-in-out infinite;
+  animation: spin 0.8s linear infinite;
 }
 
 @keyframes spin {
   to { transform: rotate(360deg); }
+}
+
+.err-fade-enter-active, .err-fade-leave-active {
+  transition: all 0.3s ease;
+}
+.err-fade-enter-from, .err-fade-leave-to {
+  opacity: 0;
+  transform: translateY(-5px);
 }
 </style>
