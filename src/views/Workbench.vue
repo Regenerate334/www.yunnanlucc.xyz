@@ -201,7 +201,7 @@
     <!-- 右侧图表面板区域（Dashboard模式下隐藏 且 只在CLCD模式下显示） -->
     <div v-if="!isDashboardMode && spatialUnit === 'clcd'" class="right-panels">
       <AnalysisLegend 
-        title="全国土地覆盖 (CLCD) 分类"
+        title="土地利用分类"
         :items="clcdLegendItems"
         style="position: fixed; bottom: 24px; right: 24px; z-index: 1000;"
       />

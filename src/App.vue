@@ -6,6 +6,8 @@
 </template>
 
 <style>
+@import "tailwindcss";
+
 html,
 body,
 #app {
