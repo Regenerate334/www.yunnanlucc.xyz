@@ -25,6 +25,11 @@ import { authMiddleware } from './middleware/auth.js';
 // 导入模块化路由
 import apiRoutes from './routes/index.js';
 
+// ==================== 数据源插件注册 ====================
+// 每新增一种数据类型，只需在这里新加一行 import
+import './utils/dataSources/transferSource.js';   // 土地流转转移矩阵
+// import './utils/dataSources/weatherSource.js';  // 气象数据（为了未来掩展）
+
 const app = express();
 app.use(cors());
 app.use(express.json());
