@@ -17,8 +17,8 @@
     <transition name="pop-fade">
       <div v-if="isOpen" class="time-player-panel" :class="{ vertical: layout === 'vertical' }">
         <div class="controls-row">
-          <!-- 播放/暂停按钮 -->
-          <button class="play-btn" @click="togglePlay" :title="isPlaying ? '暂停' : '播放'">
+          <!-- 播放/暂停按钮 (添加 .stop 防止事件冒泡导致面板意外关闭) -->
+          <button class="play-btn" @click.stop="togglePlay" :title="isPlaying ? '暂停' : '播放'">
             <svg v-if="!isPlaying" viewBox="0 0 24 24" fill="currentColor">
               <path d="M8 5v14l11-7z" />
             </svg>
@@ -27,8 +27,8 @@
             </svg>
           </button>
 
-          <!-- 倍速控制 -->
-          <div v-if="showSpeedControl" class="speed-control" @click="toggleSpeed" :title="'当前速度: ' + currentSpeedLabel">
+          <!-- 倍速控制 (添加 .stop 防止冒泡) -->
+          <div v-if="showSpeedControl" class="speed-control" @click.stop="toggleSpeed" :title="'当前速度: ' + currentSpeedLabel">
             <span>{{ currentSpeedLabel }}</span>
           </div>
           
@@ -41,6 +41,7 @@
               :step="1" 
               :value="currentIndex" 
               @input="onInput"
+              @click.stop
               class="timeline-slider"
             />
             <!-- 刻度点与年份标签 -->
