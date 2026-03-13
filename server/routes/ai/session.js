@@ -5,9 +5,10 @@
 import express from 'express';
 import pool from '../../config/db.js';
 import { authMiddleware } from '../../middleware/auth.js';
-import ollama from 'ollama';
+import { Ollama } from 'ollama';
 
 const router = express.Router();
+const ollama = new Ollama({ host: process.env.OLLAMA_URL || 'http://127.0.0.1:11434' });
 
 /**
  * 使用 AI 生成简洁的对话标题（异步执行）
@@ -15,7 +16,7 @@ const router = express.Router();
 async function generateSessionTitle(sessionId, userMessage) {
     try {
         const response = await ollama.chat({
-            model: 'deepseek-r1:8b',
+            model: process.env.OLLAMA_MODEL || 'deepseek-r1:8b',
             messages: [
                 {
                     role: 'system',
