@@ -76,7 +76,12 @@ export async function analyzeDataStream({ messages, year, landData, componentCon
         });
 
         if (!response.ok) {
-            throw new Error(`HTTP ${response.status}`);
+            let errMsg = `HTTP ${response.status}`;
+            try { const b = await response.json(); errMsg = b?.error || b?.message || errMsg; } catch { }
+            if (response.status === 503) errMsg = 'AI 模型当前暂不可用（可能正在加载），请稍后重试。';
+            else if (response.status === 401) errMsg = '登录已过期，请重新登录。';
+            else if (response.status >= 500) errMsg = `服务器错误（${response.status}），请稍后重试。`;
+            throw new Error(errMsg);
         }
 
         const reader = response.body.getReader();
@@ -98,8 +103,8 @@ export async function analyzeDataStream({ messages, year, landData, componentCon
 
                 try {
                     const data = JSON.parse(line.slice(6));
-                    if (data.content) {
-                        onChunk(data.content);
+                    if (data.content || data.thinking) {
+                        onChunk(data);
                     }
                     if (data.done) {
                         onDone?.();
@@ -117,7 +122,7 @@ export async function analyzeDataStream({ messages, year, landData, componentCon
         if (buffer.startsWith('data: ')) {
             try {
                 const data = JSON.parse(buffer.slice(6));
-                if (data.content) onChunk(data.content);
+                if (data.content || data.thinking) onChunk(data);
                 if (data.done) onDone?.();
             } catch (e) { }
         }

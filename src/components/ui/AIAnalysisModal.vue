@@ -144,7 +144,7 @@
                 <div class="bubble-wrapper">
                   <!-- 思考过程 (仅 AI) -->
                   <div
-                    v-if="msg.role === 'assistant' && (parseMessage(msg.content).thinking || (loading && index === messages.length - 1))"
+                    v-if="msg.role === 'assistant' && (parseMessage(msg).thinking || (loading && index === messages.length - 1))"
                     class="thinking-process">
                     <div class="thinking-header" @click="toggleThinking(index)">
                       <div class="thinking-title">
@@ -171,25 +171,45 @@
                     </div>
                     <transition name="fade">
                       <div v-if="expandedThinking[index]" class="thinking-content">
-                        {{ parseMessage(msg.content).thinking }}
+                        {{ parseMessage(msg).thinking }}
                       </div>
                     </transition>
                   </div>
 
                   <!-- 消息正文 -->
-                  <div class="bubble" v-if="parseMessage(msg.content).content">
+                  <div class="bubble" v-if="parseMessage(msg).content">
                     <div v-if="msg.role === 'assistant'" class="markdown-body"
-                      v-html="renderMarkdown(parseMessage(msg.content).content)"></div>
+                      v-html="renderMarkdown(parseMessage(msg).content)"></div>
                     <div v-else>{{ msg.content }}</div>
                   </div>
 
                   <!-- 操作按钮 (仅 AI) -->
-                  <div v-if="msg.role === 'assistant' && parseMessage(msg.content).content" class="message-actions">
+                  <div v-if="msg.role === 'assistant' && parseMessage(msg).content" class="message-actions">
                     <button class="action-btn" @click="copyMessage(msg.content)" title="复制内容">
                       <svg class="copy-icon-svg" width="16" height="16" viewBox="0 0 24 24" fill="none"
                         stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                         <rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect>
                         <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path>
+                      </svg>
+                    </button>
+                    <!-- 生成报告按钮 -->
+                    <button
+                      class="action-btn report-btn"
+                      @click="generateReport(messages.slice(0, index + 1))"
+                      :disabled="reportLoading"
+                      title="基于此对话生成 PDF 报告"
+                    >
+                      <svg v-if="!reportLoading" width="16" height="16" viewBox="0 0 24 24" fill="none"
+                        stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
+                        <polyline points="14 2 14 8 20 8"/>
+                        <line x1="16" y1="13" x2="8" y2="13"/>
+                        <line x1="16" y1="17" x2="8" y2="17"/>
+                        <polyline points="10 9 9 9 8 9"/>
+                      </svg>
+                      <svg v-else class="spin" width="16" height="16" viewBox="0 0 24 24" fill="none"
+                        stroke="currentColor" stroke-width="2">
+                        <path d="M21 12a9 9 0 1 1-6.219-8.56"/>
                       </svg>
                     </button>
                   </div>
@@ -249,6 +269,72 @@
       </div>
     </transition>
   </Teleport>
+
+  <!-- 报告预览弹窗 -->
+  <Teleport to="body">
+    <transition name="report-fade">
+      <div v-if="reportVisible" class="report-overlay" @click.self="closeReport">
+        <div class="report-modal">
+          <!-- 报告弹窗头部 -->
+          <div class="report-modal-header">
+            <span class="report-modal-title">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+                stroke-linecap="round" stroke-linejoin="round" style="margin-right:6px;vertical-align:middle">
+                <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
+                <polyline points="14 2 14 8 20 8"/>
+              </svg>
+              AI 分析报告
+            </span>
+            <div class="report-header-actions">
+              <button class="report-action-btn" @click="printReport" title="打印 / 另存为 PDF">
+                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+                  stroke-linecap="round" stroke-linejoin="round">
+                  <polyline points="6 9 6 2 18 2 18 9"/>
+                  <path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"/>
+                  <rect x="6" y="14" width="12" height="8"/>
+                </svg>
+                打印
+              </button>
+              <button class="report-action-btn" @click="openReportNewTab" title="在新标签页打开">
+                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+                  stroke-linecap="round" stroke-linejoin="round">
+                  <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/>
+                  <polyline points="15 3 21 3 21 9"/>
+                  <line x1="10" y1="14" x2="21" y2="3"/>
+                </svg>
+                新标签
+              </button>
+              <button class="report-close-btn" @click="closeReport" title="关闭">×</button>
+            </div>
+          </div>
+          <!-- 报告内容区 -->
+          <div class="report-modal-body">
+            <div v-if="reportLoading" class="report-loading">
+              <div class="report-loading-spinner"></div>
+              <p>AI 正在生成报告，请稍候...<br><small>使用 {{ reportModelName }} 分析中</small></p>
+            </div>
+            <iframe
+              v-else-if="reportHtmlUrl"
+              ref="reportIframe"
+              :src="reportHtmlUrl"
+              class="report-iframe"
+              sandbox="allow-same-origin allow-scripts"
+              frameborder="0"
+            />
+            <div v-else-if="reportError" class="report-error">
+              <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="#ef4444" stroke-width="2">
+                <circle cx="12" cy="12" r="10"/>
+                <line x1="12" y1="8" x2="12" y2="12"/>
+                <line x1="12" y1="16" x2="12.01" y2="16"/>
+              </svg>
+              <p>{{ reportError }}</p>
+              <button class="report-retry-btn" @click="retryReport">重试</button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </transition>
+  </Teleport>
 </template>
 
 <script setup>
@@ -286,20 +372,28 @@ const md = new MarkdownIt({
 const parseCache = new Map();
 const renderCache = new Map();
 
-const getParsedMessage = (content) => {
-  if (!content) return { thinking: '', content: '' };
-  if (parseCache.has(content)) return parseCache.get(content);
+const getParsedMessage = (msg) => {
+  if (!msg) return { thinking: '', content: '' };
+  
+  let thinking = msg.thinking || '';
+  let content = msg.content || '';
+  const cacheKey = typeof msg === 'string' ? msg : msg.content + msg.thinking;
 
-  const thinkMatch = content.match(/<think>([\s\S]*?)(?:<\/think>|$)/i);
-  const thinking = thinkMatch ? thinkMatch[1].trim() : '';
+  if (parseCache.has(cacheKey)) return parseCache.get(cacheKey);
 
-  let cleanContent = content.replace(/<think>[\s\S]*?<\/think>/gi, '')
-    .replace(/<think>[\s\S]*/gi, '')
-    .trim();
+  if (content.includes('<think>')) {
+    const thinkMatch = content.match(/<think>([\s\S]*?)(?:<\/think>|$)/i);
+    if (thinkMatch) {
+      thinking = (thinking ? thinking + '\n' : '') + thinkMatch[1].trim();
+      content = content.replace(/<think>[\s\S]*?<\/think>/gi, '')
+        .replace(/<think>[\s\S]*/gi, '')
+        .trim();
+    }
+  }
 
-  const result = { thinking, content: cleanContent };
+  const result = { thinking, content };
   if (parseCache.size > 100) parseCache.clear();
-  parseCache.set(content, result);
+  parseCache.set(cacheKey, result);
   return result;
 };
 
@@ -451,8 +545,13 @@ const saveMessage = async (role, content) => {
   }
 };
 
-// 深度思考配置
-const deepThinking = ref(true);
+// 深度思考配置（改为自动识别）
+const THINKING_MODELS = ['deepseek-r1', 'gpt-oss:120b', 'gpt-oss:20b', 'r1'];
+const isReasoningModel = computed(() => {
+  return THINKING_MODELS.some(m => selectedModel.value.toLowerCase().includes(m));
+});
+
+const deepThinking = computed(() => isReasoningModel.value);
 
 // 模型选择
 const isFullscreen = ref(false);
@@ -581,10 +680,11 @@ const sendMessage = async (text) => {
   messages.value.push({
     role: 'assistant',
     content: '',
+    thinking: '',
     thinkTime: 0
   });
 
-  expandedThinking.value[assistantMsgIndex] = false;
+  expandedThinking.value[assistantMsgIndex] = true;
 
   try {
     // 发送前保存用户消息
@@ -606,13 +706,24 @@ const sendMessage = async (text) => {
         landData: props.landData,
         componentContext: props.componentContext,
         region: props.region,
-        deepThinking: deepThinking.value,
+        deepThinking: isReasoningModel.value,
         model: selectedModel.value
       },
-      (chunk) => {
-        messages.value[assistantMsgIndex].content += chunk;
+      (chunkObj) => {
+        if (chunkObj.content) {
+          messages.value[assistantMsgIndex].content += chunkObj.content;
+          // 如果内容中包含思考标签，确保展开思考框
+          if (chunkObj.content.includes('<think>')) {
+            expandedThinking.value[assistantMsgIndex] = true;
+          }
+        }
+        if (chunkObj.thinking) {
+          messages.value[assistantMsgIndex].thinking += chunkObj.thinking;
+          // 收到推理分块，确保展开思考框
+          expandedThinking.value[assistantMsgIndex] = true;
+        }
 
-        const parsed = parseMessage(messages.value[assistantMsgIndex].content);
+        const parsed = parseMessage(messages.value[assistantMsgIndex]);
         if (parsed.content && !messages.value[assistantMsgIndex].thinkTime) {
           messages.value[assistantMsgIndex].thinkTime = ((Date.now() - startTime) / 1000).toFixed(1);
         }
@@ -622,12 +733,23 @@ const sendMessage = async (text) => {
       async () => {
         loading.value = false;
         abortController.value = null;
+        
+        const lastMsg = messages.value[assistantMsgIndex];
+        const parsed = parseMessage(lastMsg);
+        
+        // 如果回复为空，提供友好提示
+        if (!parsed.content && !parsed.thinking) {
+          lastMsg.content = "> 模型响应结束，但未产生有效内容。这可能是由于：\n1. 上下文窗口超限\n2. AI 模型运行异常\n3. 系统提示词过长导致小模型无法理解\n\n建议尝试切换更强的模型（如 DeepSeek-R1 8B）或刷新重试。";
+        }
+
         // 完成后保存 AI 消息
-        await saveMessage('assistant', messages.value[assistantMsgIndex].content);
+        await saveMessage('assistant', lastMsg.content);
+        
         // 延迟 2 秒刷新会话列表，确保后端 AI 已完成标题生成
         setTimeout(() => {
           loadSessions();
         }, 2000);
+        scrollToBottom();
       },
       (error) => {
         if (error !== 'The user aborted a request.') {
@@ -675,11 +797,109 @@ watch(messages, (newMsgs) => {
   if (newMsgs.length > 0) {
     const lastIndex = newMsgs.length - 1;
     const lastMsg = newMsgs[lastIndex];
-    if (lastMsg.role === 'assistant' && parseMessage(lastMsg.content).thinking && expandedThinking.value[lastIndex] === undefined) {
-      expandedThinking.value[lastIndex] = false;
+    if (lastMsg.role === 'assistant' && parseMessage(lastMsg).thinking && expandedThinking.value[lastIndex] === undefined) {
+      expandedThinking.value[lastIndex] = true;
     }
   }
 }, { deep: true });
+
+// ── 报告生成逻辑 ──────────────────────────────────────────────────────────────
+
+const reportVisible  = ref(false);
+const reportLoading  = ref(false);
+const reportHtmlUrl  = ref('');   // Blob URL
+const reportError    = ref('');
+const reportIframe   = ref(null);
+const lastReportParams = ref(null); // 用于重试
+
+const reportModelName = computed(() => {
+  const m = availableModels.find(x => x.value === selectedModel.value);
+  return m ? m.label : selectedModel.value;
+});
+
+/**
+ * 核心：调用 /api/ai/report/html 生成报告
+ * @param {Array} msgSlice - 截至当前消息的对话记录
+ */
+const generateReport = async (msgSlice) => {
+  // 从对话记录中提取最后一条用户问题作为报告问题
+  const lastUserMsg = [...msgSlice].reverse().find(m => m.role === 'user');
+  if (!lastUserMsg) return;
+
+  const question = lastUserMsg.content.trim();
+  lastReportParams.value = { question, msgSlice };
+
+  reportVisible.value = true;
+  reportLoading.value = true;
+  reportError.value   = '';
+
+  // 清除旧 Blob URL
+  if (reportHtmlUrl.value) {
+    URL.revokeObjectURL(reportHtmlUrl.value);
+    reportHtmlUrl.value = '';
+  }
+
+  try {
+    const token = localStorage.getItem('auth_token');
+    const res = await fetch('/api/ai/report/html', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${token}`
+      },
+      body: JSON.stringify({
+        question,
+        year:             props.year,
+        componentContext: props.componentContext,
+        model:            selectedModel.value,
+        think:            deepThinking.value
+      })
+    });
+
+    if (!res.ok) {
+      const errData = await res.json().catch(() => ({}));
+      throw new Error(errData.error || `HTTP ${res.status}`);
+    }
+
+    const htmlText = await res.text();
+    const blob = new Blob([htmlText], { type: 'text/html;charset=utf-8' });
+    reportHtmlUrl.value = URL.createObjectURL(blob);
+    console.log('[Report] 报告生成成功，Blob URL:', reportHtmlUrl.value);
+
+  } catch (err) {
+    console.error('[Report] 生成失败:', err);
+    reportError.value = `报告生成失败：${err.message}`;
+  } finally {
+    reportLoading.value = false;
+  }
+};
+
+const closeReport = () => {
+  reportVisible.value = false;
+  // 延迟释放 Blob URL，避免 iframe 内容消失
+  setTimeout(() => {
+    if (reportHtmlUrl.value) {
+      URL.revokeObjectURL(reportHtmlUrl.value);
+      reportHtmlUrl.value = '';
+    }
+  }, 500);
+};
+
+const printReport = () => {
+  reportIframe.value?.contentWindow?.print();
+};
+
+const openReportNewTab = () => {
+  if (reportHtmlUrl.value) {
+    window.open(reportHtmlUrl.value, '_blank');
+  }
+};
+
+const retryReport = () => {
+  if (lastReportParams.value) {
+    generateReport(lastReportParams.value.msgSlice);
+  }
+};
 </script>
 
 <style scoped>
@@ -1553,5 +1773,185 @@ watch(messages, (newMsgs) => {
 
 .ai-modal-container {
   transition: all 0.4s cubic-bezier(0.16, 1, 0.3, 1);
+}
+/* ── 生成报告按钮 ─────────────────────────────────────────────────────────── */
+
+.report-btn {
+  color: #60a5fa;
+}
+
+.report-btn:hover:not(:disabled) {
+  color: #93c5fd;
+  background: rgba(96, 165, 250, 0.1);
+}
+
+.report-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+@keyframes spin {
+  from { transform: rotate(0deg); }
+  to   { transform: rotate(360deg); }
+}
+.spin { animation: spin 1s linear infinite; }
+
+/* ── 报告弹窗 ─────────────────────────────────────────────────────────────── */
+
+.report-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.6);
+  backdrop-filter: blur(6px);
+  z-index: 10000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 20px;
+}
+
+.report-modal {
+  width: min(900px, 96vw);
+  height: min(88vh, 900px);
+  background: #1a2035;
+  border-radius: 14px;
+  border: 1px solid rgba(96, 165, 250, 0.25);
+  box-shadow: 0 30px 80px rgba(0, 0, 0, 0.6);
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.report-modal-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 14px 18px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.07);
+  background: rgba(15, 23, 42, 0.7);
+  flex-shrink: 0;
+}
+
+.report-modal-title {
+  font-size: 14px;
+  font-weight: 600;
+  color: #e2e8f0;
+  display: flex;
+  align-items: center;
+}
+
+.report-header-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.report-action-btn {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  color: #94a3b8;
+  padding: 5px 10px;
+  border-radius: 6px;
+  font-size: 12px;
+  cursor: pointer;
+  transition: all 0.15s;
+}
+
+.report-action-btn:hover {
+  background: rgba(96, 165, 250, 0.15);
+  color: #93c5fd;
+  border-color: rgba(96, 165, 250, 0.3);
+}
+
+.report-close-btn {
+  background: transparent;
+  border: none;
+  color: #64748b;
+  font-size: 22px;
+  line-height: 1;
+  padding: 2px 6px;
+  cursor: pointer;
+  border-radius: 4px;
+  transition: color 0.15s;
+}
+
+.report-close-btn:hover { color: #e2e8f0; }
+
+.report-modal-body {
+  flex: 1;
+  overflow: hidden;
+  position: relative;
+}
+
+.report-iframe {
+  width: 100%;
+  height: 100%;
+  border: none;
+  background: #ffffff;
+}
+
+.report-loading {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  height: 100%;
+  gap: 20px;
+  color: #94a3b8;
+  font-size: 14px;
+  text-align: center;
+  line-height: 1.8;
+}
+
+.report-loading small { color: #60a5fa; font-size: 12px; }
+
+.report-loading-spinner {
+  width: 40px;
+  height: 40px;
+  border: 3px solid rgba(96, 165, 250, 0.2);
+  border-top-color: #60a5fa;
+  border-radius: 50%;
+  animation: spin 0.8s linear infinite;
+}
+
+.report-error {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  height: 100%;
+  gap: 14px;
+  color: #94a3b8;
+  font-size: 14px;
+}
+
+.report-retry-btn {
+  background: rgba(96, 165, 250, 0.15);
+  border: 1px solid rgba(96, 165, 250, 0.3);
+  color: #60a5fa;
+  padding: 8px 20px;
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 13px;
+  transition: all 0.15s;
+}
+
+.report-retry-btn:hover {
+  background: rgba(96, 165, 250, 0.25);
+}
+
+/* 弹窗入场动画 */
+.report-fade-enter-active,
+.report-fade-leave-active {
+  transition: opacity 0.2s ease, transform 0.2s ease;
+}
+
+.report-fade-enter-from,
+.report-fade-leave-to {
+  opacity: 0;
+  transform: scale(0.96);
 }
 </style>

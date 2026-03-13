@@ -276,7 +276,8 @@ const spatialUnit = computed({
 });
 const selectedAttribute = ref('cropland');
 const wmsLayerCache = new Map(); // Map<cacheKey, Cesium.ImageryLayer>
-const MAX_WMS_CACHE_SIZE = 15; // LRU 缓存上限，防止内存溢出
+const breaksCache = new Map(); // 缓存 API 返回的分级断点，消除请求延迟
+const MAX_WMS_CACHE_SIZE = 25; // 增加缓存上限
 
 // LRU 缓存管理：添加图层到缓存，超限自动淘汰最旧图层
 function addToCache(key, layer) {
@@ -311,7 +312,7 @@ const transferDataSource = shallowRef(null);
 // Time Player Ref
 const timePlayerRef = ref(null);
 const isPreloading = ref(false);
-const PRELOAD_RANGE = 3; // 预加载前后各3年
+const PRELOAD_RANGE = 5; // 增加预加载范围
 
 // Hover Tooltip State
 const selectedEntity = ref(null);
@@ -493,26 +494,32 @@ async function switchToYearWithTransition(targetYear) {
   }
 }
 
-// 平滑图层过渡动画
+// 平滑图层过渡动画 (Double Buffering)
 function smoothLayerTransition(targetKey) {
   const targetLayer = wmsLayerCache.get(targetKey);
-  if (!targetLayer) return;
+  if (!targetLayer || !viewer.value) return;
   
-  // 立即显示目标图层
-  targetLayer.show = true;
-  targetLayer.alpha = 1;
-  
-  if (viewer.value && !viewer.value.isDestroyed()) {
-    viewer.value.imageryLayers.raiseToTop(targetLayer);
+  // 1. 确保目标图层已在 Viewer 中 (如果是由于某种原因没在里面的话)
+  if (!viewer.value.imageryLayers.contains(targetLayer)) {
+      targetLayer.isAnalysisLayer = true;
+      viewer.value.imageryLayers.add(targetLayer);
   }
   
+  // 2. 置顶并将透明度设为 1 (瞬间呈现)
+  // 如果想要更极致的丝滑，可以使用 alpha 动画，但 100ms 左右的延迟通常已足够
+  viewer.value.imageryLayers.raiseToTop(targetLayer);
+  targetLayer.show = true;
+  targetLayer.alpha = 1;
   spatialLayer.value = targetLayer;
   
-  // 隐藏其他图层
+  // 3. 延迟隐藏之前的旧图层 (缓冲区保留)，给新图层渲染预留时间，防止闪烁
   wmsLayerCache.forEach((layer, key) => {
     if (key !== targetKey) {
+      // 这里的关键：不立即 remove，先透明，这样切回时无需重载瓦片
       layer.alpha = 0;
-      layer.show = false;
+      setTimeout(() => {
+        if (layer.alpha === 0) layer.show = false;
+      }, 500); // 500ms 缓冲
     }
   });
 }
@@ -637,7 +644,8 @@ watch([spatialUnit, selectedAttribute], ([newUnit, newAttr], [oldUnit, oldAttr])
 
   // 3. Manage Data Source Visibility immediately
   if (yunnanDataSource.value) {
-      yunnanDataSource.value.show = (newUnit === 'city' || newUnit === 'county');
+      // 只要不是全省大样（clcd），就允许显示县级矢量用于拾取和高亮
+      yunnanDataSource.value.show = (newUnit !== 'clcd');
   }
   if (provinceDataSource.value) {
       provinceDataSource.value.show = (newUnit === 'clcd');
@@ -645,6 +653,7 @@ watch([spatialUnit, selectedAttribute], ([newUnit, newAttr], [oldUnit, oldAttr])
 
   // 4. Clear Cache & Switch Layers
   clearWMSCache(); 
+  breaksCache.clear(); // 清理断点缓存
 
   if (newUnit === 'clcd') {
     // Switch to Standard
@@ -661,16 +670,15 @@ watch([spatialUnit, selectedAttribute], ([newUnit, newAttr], [oldUnit, oldAttr])
     
     // Auto-fix Shrub for Grid
     if (newUnit === 'grid' && selectedAttribute.value === 'shrub') {
-         // This will trigger watcher again? No, checks at top might prevent loops or we should set it carefully.
-         // But allowMultiple calls is acceptable if guarded. 
-         // Better to just notify user or let it switch. 
-         // Let's just set it.
          selectedAttribute.value = 'grassland';
-         return; // Let the next watcher firing handle everything.
+         return; 
     }
 
-    loadWMSLayer(selectedYear.value, true).then(() => {
-      preloadNearbyYears(selectedYear.value);
+    // 后台预取断点数据，然后加载首个图层
+    preFetchAllBreaks().then(() => {
+        loadWMSLayer(selectedYear.value, true).then(() => {
+           preloadNearbyYears(selectedYear.value);
+        });
     });
   }
 });
@@ -904,16 +912,16 @@ function setupClickHandler() {
   if (!viewer.value) return;
   
   clickHandler = new Cesium.ScreenSpaceEventHandler(viewer.value.scene.canvas);
+  
+  // 1. 左键点击：高亮并弹出信息
   clickHandler.setInputAction((movement) => {
     const position = movement.position;
     
-    // 如果测量工具正在使用，不处理点击事件（避免与测距/测面积冲突）
-    if (mapStore.activeMeasurementTool) {
-        return;
-    }
+    // 如果测量工具正在使用，不处理点击事件
+    if (mapStore.activeMeasurementTool) return;
     
-    // 仅在县域模式下展示标注
-    if (spatialUnit.value !== 'county') {
+    // 支持县域和格网模式下的点击（CLCD模式暂时屏蔽）
+    if (spatialUnit.value === 'clcd') {
         selectedEntity.value = null;
         clearHighlight();
         return;
@@ -922,6 +930,7 @@ function setupClickHandler() {
     const ray = viewer.value.camera.getPickRay(position);
     if (!ray) return;
     
+    // 从 ImageryLayers 中拾取 WMS 特征
     const featurePromise = viewer.value.scene.imageryLayers.pickImageryLayerFeatures(ray, viewer.value.scene);
     
     if (Cesium.defined(featurePromise)) {
@@ -930,32 +939,31 @@ function setupClickHandler() {
                 const feature = features[0];
                 const props = feature.properties || feature.data?.properties || {};
                 
-                // 尝试获取地名
-                const regionName = props['地名'] || props['地级'] || props['省级'] || '未知区域';
+                // 更加宽容的地名提取逻辑
+                const regionName = props['地名'] || props['name'] || props['NAME'] || props['county'] || props['地级'] || props['省级'] || '未知区域';
                 const displayProps = {};
                 
+                // 提取数值属性
                 if (currentStatsField.value && props[currentStatsField.value] !== undefined) {
                     const rawVal = Number(props[currentStatsField.value]);
+                    // 假设单位为平方米，转为平方公里
                     const valKm2 = (rawVal / 1000000).toFixed(2);
                     displayProps[currentAttributeLabel.value] = `${valKm2} km²`;
                 }
                 
-                if (Object.keys(displayProps).length > 0) {
-                   selectedEntity.value = {
-                       name: regionName,
-                       properties: displayProps
-                   };
-                   // 确保位置在鼠标点击处上方
-                   popupStyle.value = {
-                        left: position.x + 'px',
-                        top: position.y - 20 + 'px'
-                   };
-                   // 高亮区域
-                   highlightRegion(regionName);
-                } else {
-                    selectedEntity.value = null;
-                    clearHighlight();
-                }
+                // 即使没有数值属性，也要显示地名并高亮
+                selectedEntity.value = {
+                    name: regionName,
+                    properties: displayProps
+                };
+                
+                popupStyle.value = {
+                    left: position.x + 'px',
+                    top: position.y - 20 + 'px'
+                };
+                
+                // 执行高亮
+                highlightRegion(regionName);
             } else {
                 selectedEntity.value = null;
                 clearHighlight();
@@ -969,6 +977,27 @@ function setupClickHandler() {
         clearHighlight();
     }
   }, Cesium.ScreenSpaceEventType.LEFT_CLICK);
+
+  // 2. 鼠标移动：切换手型指针
+  clickHandler.setInputAction((movement) => {
+    if (mapStore.activeMeasurementTool) return;
+    
+    const ray = viewer.value.camera.getPickRay(movement.endPosition);
+    if (!ray) {
+        viewer.value.scene.canvas.style.cursor = 'default';
+        return;
+    }
+    
+    // 这里简单判定：如果是县域或格网模式，且鼠标在要素上方，则变手型
+    // 注意：pickImageryLayerFeatures 是异步的，这里不宜频繁调用 API
+    // 我们可以结合 scene.pick 快速判定背景矢量
+    const pickedObject = viewer.value.scene.pick(movement.endPosition);
+    if (Cesium.defined(pickedObject) && pickedObject.id && (spatialUnit.value === 'county' || spatialUnit.value === 'grid')) {
+        viewer.value.scene.canvas.style.cursor = 'pointer';
+    } else {
+        viewer.value.scene.canvas.style.cursor = 'default';
+    }
+  }, Cesium.ScreenSpaceEventType.MOUSE_MOVE);
 
   // 右键清除高亮和标注
   clickHandler.setInputAction(() => {
@@ -1222,10 +1251,21 @@ function setupViewLock() {
     const viewRect = viewer.value.camera.computeViewRectangle();
     const isIntersecting = viewRect ? Cesium.Rectangle.intersection(viewRect, Cesium.Rectangle.fromDegrees(YUNNAN_RECT.west, YUNNAN_RECT.south, YUNNAN_RECT.east, YUNNAN_RECT.north)) : true;
 
-    const isCompletelyGone = !anyPointVisible && (allLeft || allRight || allTop || allBottom || !isIntersecting);
+    // 新增：高度限制判断（防止缩放过小）
+    // 默认高度约 1.9M，超过 5M (5000km) 则判定为缩放过小
+    const currentHeight = viewer.value.camera.positionCartographic.height;
+    const MAX_ALTITUDE = 5000000; 
+    const isTooFar = currentHeight > MAX_ALTITUDE;
 
-    if (isCompletelyGone) {
-      console.warn('[ViewLock] 云南已移出视野，启动复位倒计时...');
+    const isOutOfControl = (!anyPointVisible && (allLeft || allRight || allTop || allBottom || !isIntersecting)) || isTooFar;
+
+    if (isOutOfControl) {
+      if (isTooFar) {
+         console.warn('[ViewLock] 缩放跨度过大，即将自动复位...');
+      } else {
+         console.warn('[ViewLock] 云南已移出视野，启动复位倒计时...');
+      }
+      
       if (!outOfBoundsTimer) {
         outOfBoundsTimer = setTimeout(() => {
           console.log('[ViewLock] 执行视角复位');
@@ -1234,7 +1274,7 @@ function setupViewLock() {
             duration: 1.5
           });
           outOfBoundsTimer = null;
-        }, BUFFER_TIME);
+        }, isTooFar ? 500 : BUFFER_TIME); // 如果缩得太小，缩短等待时间
       }
     } else {
       if (outOfBoundsTimer) {
@@ -1402,93 +1442,61 @@ async function loadWMSLayer(targetYear = null, visible = true) {
   if (wmsLayerCache.has(cacheKey)) {
     const cachedLayer = wmsLayerCache.get(cacheKey);
     if (cachedLayer && typeof cachedLayer.isDestroyed === 'function' && cachedLayer.isDestroyed()) {
-      console.log('[Workbench] Cache STALE (destroyed) for:', cacheKey);
       wmsLayerCache.delete(cacheKey);
     } else {
-      console.log('[Workbench] Cache HIT for:', cacheKey);
-      if (visible) updateLayerVisibility(cacheKey);
+      if (visible) {
+          // 哪怕命中缓存，如果是当前主年份，也要刷新一下图例标签
+          const cachedBreaks = breaksCache.get(cacheKey);
+          if (cachedBreaks && year === selectedYear.value) {
+              updateLegendLabelsFromBreaks(cachedBreaks.breaks);
+          }
+          updateLayerVisibility(cacheKey);
+      }
       return;
     }
   }
 
-  console.log('[Workbench] Cache MISS for:', cacheKey, '- Loading new layer');
-
+  // 1b. 检查 Breaks 缓存，如果命中则跳过 API 请求
+  let breaksData = breaksCache.get(cacheKey);
+  
   const layerNameMap = {
     county: 'WebGIS:spatial_county_yunnan_stats',
     grid: 'WebGIS:spatial_grid_yunnan_stats'
   };
   
   const layerName = layerNameMap[spatialUnit.value];
-  if (!layerName) {
-    console.warn('[Workbench] Invalid spatialUnit:', spatialUnit.value);
-    return;
-  }
-  
+  if (!layerName) return;
+
   try {
-    // 统一使用自然断点法 (Jenks) 进行分级
-    const method = 'jenks';
-    const numClasses = 10; // SLD 样式需要 10 级 (th1-th9)
-    
-    const token = localStorage.getItem('auth_token');
-    
-    // 构建 API URL - 变化模式使用 yearFrom/yearTo
-    let url;
-    if (isChangeMode.value) {
-      url = `/api/clcd/breaks?attr=${selectedAttribute.value}&yearFrom=${changeYearFrom.value}&yearTo=${changeYearTo.value}&method=${method}&classes=${numClasses}&unit=${spatialUnit.value}`;
-    } else {
-      url = `/api/clcd/breaks?attr=${selectedAttribute.value}&year=${year}&method=${method}&classes=${numClasses}&unit=${spatialUnit.value}`;
-    }
-    
-    const response = await fetch(url, {
-        headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' }
-    });
+    if (!breaksData) {
+        const method = 'jenks';
+        const numClasses = 10;
+        const token = localStorage.getItem('auth_token');
+        
+        let url;
+        if (isChangeMode.value) {
+          url = `/api/clcd/breaks?attr=${selectedAttribute.value}&yearFrom=${changeYearFrom.value}&yearTo=${changeYearTo.value}&method=${method}&classes=${numClasses}&unit=${spatialUnit.value}`;
+        } else {
+          url = `/api/clcd/breaks?attr=${selectedAttribute.value}&year=${year}&method=${method}&classes=${numClasses}&unit=${spatialUnit.value}`;
+        }
+        
+        const response = await fetch(url, {
+            headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' }
+        });
 
-    if (!response.ok) {
-        console.error('[Workbench] Breaks API failed:', response.status, response.statusText);
-        throw new Error(`API error: ${response.status}`);
+        if (!response.ok) throw new Error(`API error: ${response.status}`);
+        breaksData = await response.json();
+        breaksCache.set(cacheKey, breaksData);
     }
-
-    const breaksData = await response.json();
-    console.log('[Workbench] Breaks Data:', breaksData);
     
     const dynamicAttr = breaksData.field;
     currentStatsField.value = dynamicAttr;
     let breaks = breaksData.breaks;
+    const numClasses = 10;
 
-    // km² 自适应精度格式化
-    const formatKm2 = (num) => {
-      if (num === 0) return '0';
-      if (Number.isInteger(num)) return num.toString();
-      const abs = Math.abs(num);
-      if (abs >= 100) return Math.round(num).toString();
-      if (abs >= 1) return num.toFixed(1);
-      if (abs >= 0.01) return num.toFixed(3);
-      if (abs >= 0.001) return num.toFixed(4);
-      return num.toFixed(5);
-    };
-
-    // 如果返回的断点数量不足，进行线性插值
-    if (breaks.length > 1 && breaks.length < numClasses + 1) {
-      const lastVal = breaks[breaks.length - 1];
-      const firstVal = breaks[0];
-      const step = (lastVal - firstVal) / numClasses;
-      const newBreaks = [];
-      for (let i = 0; i <= numClasses; i++) {
-        newBreaks.push(firstVal + i * step);
-      }
-      breaks = newBreaks;
-    } else {
-      while (breaks.length < numClasses + 1) breaks.push(breaks[breaks.length - 1]);
-    }
-
-    // 图例标签
+    // 更新图例 (仅针对主显示年份)
     if (year === selectedYear.value) {
-      const labels = [];
-      for (let i = 0; i < numClasses; i++) {
-        if (i > 0 && breaks[i] === breaks[breaks.length - 1]) break;
-        labels.push(`${formatKm2(breaks[i])}-${formatKm2(breaks[i + 1])}`);
-      }
-      currentLegendLabels.value = labels;
+        updateLegendLabelsFromBreaks(breaks);
     }
 
     // 生成 SLD 环境变量参数
@@ -1541,8 +1549,14 @@ async function loadWMSLayer(targetYear = null, visible = true) {
     });
 
     const newLayer = new Cesium.ImageryLayer(wmsProvider);
+    // 关键改变：预加载时就加入地图（alpha=0），以便 Cesium 开始提前拉取并渲染瓦片
     newLayer.alpha = 0; 
     newLayer.show = true;
+    newLayer.isAnalysisLayer = true; // 打上分析图层标记，防止被误删
+
+    if (viewer.value && !viewer.value.isDestroyed()) {
+        viewer.value.imageryLayers.add(newLayer);
+    }
 
     // 缓存依然保留，但实际加载到地图时会触发互斥
     addToCache(cacheKey, newLayer);
@@ -1559,30 +1573,104 @@ async function loadWMSLayer(targetYear = null, visible = true) {
 
 
 function updateLayerVisibility(targetKey) {
-    // console.log('[Workbench] updateLayerVisibility called for:', targetKey);
-    
-    // Ensure CLCD layer is gone (Brute Force Check)
     cleanupCLCDLayer();
 
-    // 1. 设置当前层可见
     const targetLayer = wmsLayerCache.get(targetKey);
-    if (targetLayer) {
-        // 使用互斥策略加载
-        addExclusiveAnalysisLayer(viewer.value, targetLayer);
-        
-        targetLayer.alpha = 1;
-        targetLayer.show = true;
-        spatialLayer.value = targetLayer; 
+    if (!targetLayer || !viewer.value) return;
+
+    // 确保它已经在地图上
+    if (!viewer.value.imageryLayers.contains(targetLayer)) {
+        targetLayer.isAnalysisLayer = true;
+        viewer.value.imageryLayers.add(targetLayer);
+    }
+    
+    // 丝滑策略：将新图层置顶
+    viewer.value.imageryLayers.raiseToTop(targetLayer);
+    targetLayer.show = true;
+    targetLayer.alpha = 1;
+    spatialLayer.value = targetLayer; 
+
+    // 重要：延迟隐藏其他图层
+    // 因为 WMS 瓦片渲染需要时间（GeoServer 吐图延迟），立即隐藏会导致瞬间白屏。
+    // 我们保留旧图层至少 600ms，直到新瓦片大概率已经覆盖了旧图块。
+    setTimeout(() => {
+        wmsLayerCache.forEach((layer, key) => {
+            if (key !== targetKey) {
+              layer.alpha = 0;
+              // 再额外延迟关闭 show，确保显存释放和渲染停止
+              setTimeout(() => {
+                 if (layer.alpha === 0) layer.show = false;
+              }, 400);
+            }
+        });
+    }, 600); // 600ms 缓冲期
+}
+
+// 提取图例标签更新函数
+function updateLegendLabelsFromBreaks(breaks) {
+    const numClasses = 10;
+    const formatKm2 = (num) => {
+      if (num === 0) return '0';
+      if (Number.isInteger(num)) return num.toString();
+      const abs = Math.abs(num);
+      if (abs >= 100) return Math.round(num).toString();
+      if (abs >= 1) return num.toFixed(1);
+      if (abs >= 0.01) return num.toFixed(3);
+      if (abs >= 0.001) return num.toFixed(4);
+      return num.toFixed(5);
+    };
+
+    let processedBreaks = [...breaks];
+    if (processedBreaks.length > 1 && processedBreaks.length < numClasses + 1) {
+      const lastVal = processedBreaks[processedBreaks.length - 1];
+      const firstVal = processedBreaks[0];
+      const step = (lastVal - firstVal) / numClasses;
+      processedBreaks = [];
+      for (let i = 0; i <= numClasses; i++) {
+        processedBreaks.push(firstVal + i * step);
+      }
+    } else {
+      while (processedBreaks.length < numClasses + 1) processedBreaks.push(processedBreaks[processedBreaks.length - 1]);
     }
 
-    // 2. 隐藏其他层
-    wmsLayerCache.forEach((layer, key) => {
-        if (key !== targetKey) {
-          layer.alpha = 0;
-          layer.show = false;
-        }
-    });
+    const labels = [];
+    for (let i = 0; i < numClasses; i++) {
+      if (i > 0 && processedBreaks[i] === processedBreaks[processedBreaks.length - 1]) break;
+      labels.push(`${formatKm2(processedBreaks[i])}-${formatKm2(processedBreaks[i + 1])}`);
+    }
+    currentLegendLabels.value = labels;
 }
+
+// 预取所有年份的 Breaks 数据，消除播放时的 API 等待
+async function preFetchAllBreaks() {
+    if (spatialUnit.value === 'clcd' || spatialUnit.value === 'transfer') return;
+    
+    const attr = selectedAttribute.value;
+    const unit = spatialUnit.value;
+    const allYears = playerYears.value;
+    
+    console.log('[Pre-fetch] Background loading breaks for all years...');
+    
+    // 并行请求所有年份断点
+    const promises = allYears.map(year => {
+        const cacheKey = `${year}_${unit}_${attr}`;
+        if (breaksCache.has(cacheKey)) return Promise.resolve();
+        
+        const method = 'jenks';
+        const numClasses = 10;
+        const url = `/api/clcd/breaks?attr=${attr}&year=${year}&method=${method}&classes=${numClasses}&unit=${unit}`;
+        
+        return fetch(url, {
+            headers: { 'Authorization': `Bearer ${localStorage.getItem('auth_token')}`, 'Content-Type': 'application/json' }
+        }).then(res => res.json())
+          .then(data => breaksCache.set(cacheKey, data))
+          .catch(() => {});
+    });
+    
+    await Promise.all(promises);
+    console.log('[Pre-fetch] Breaks data cached.');
+}
+
 
 function cleanupCLCDLayer() {
    if (viewer.value && !viewer.value.isDestroyed()) {
