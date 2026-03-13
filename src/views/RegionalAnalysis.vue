@@ -742,19 +742,28 @@ function clearWMSCache() {
 
 // 核心切换逻辑：只显示目标年份，隐藏其他，清理过期
 function updateLayerVisibility(targetYear) {
-    // 1. 设置当前层可见
     const targetLayer = wmsLayerCache.get(targetYear);
-    if (targetLayer) {
-        targetLayer.alpha = 1;
-        spatialLayer.value = targetLayer; 
-    }
+    if (!targetLayer || !viewer.value) return;
 
-    // 2. 隐藏其他层
-    wmsLayerCache.forEach((layer, yr) => {
-        if (yr !== targetYear) {
-            layer.alpha = 0;
-        }
-    });
+    // 1. 确保目标图层置顶并显示
+    viewer.value.imageryLayers.raiseToTop(targetLayer);
+    targetLayer.show = true;
+    targetLayer.alpha = 1;
+    spatialLayer.value = targetLayer; 
+
+    // 2. 缓冲延迟隐藏其他层 (Double Buffering)
+    // 延迟 800ms 隐藏旧图层，确保新年份的瓦片已下载并渲染完毕
+    setTimeout(() => {
+        wmsLayerCache.forEach((layer, yr) => {
+            if (yr !== targetYear) {
+                layer.alpha = 0;
+                // 进一步延迟关闭 show 以彻底停止渲染，节省性能
+                setTimeout(() => {
+                    if (layer.alpha === 0) layer.show = false;
+                }, 400);
+            }
+        });
+    }, 800);
 
     // 3. 预加载未来 2 年
     const allYears = years.value;

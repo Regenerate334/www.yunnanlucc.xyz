@@ -500,29 +500,32 @@ function smoothLayerTransition(targetKey) {
   const targetLayer = wmsLayerCache.get(targetKey);
   if (!targetLayer || !viewer.value) return;
   
-  // 1. 确保目标图层已在 Viewer 中 (如果是由于某种原因没在里面的话)
+  // 1. 确保目标图层已在 Viewer 中
   if (!viewer.value.imageryLayers.contains(targetLayer)) {
       targetLayer.isAnalysisLayer = true;
       viewer.value.imageryLayers.add(targetLayer);
   }
   
-  // 2. 置顶并将透明度设为 1 (瞬间呈现)
-  // 如果想要更极致的丝滑，可以使用 alpha 动画，但 100ms 左右的延迟通常已足够
+  // 2. 将目标图层置顶并完全显示
+  // 使用 raiseToTop 确保它在视觉最上方， alpha=1 让它立即可见（即便瓦片还在加载中）
   viewer.value.imageryLayers.raiseToTop(targetLayer);
   targetLayer.show = true;
   targetLayer.alpha = 1;
   spatialLayer.value = targetLayer;
   
-  // 3. 延迟隐藏之前的旧图层 (缓冲区保留)，给新图层渲染预留时间，防止闪烁
-  wmsLayerCache.forEach((layer, key) => {
-    if (key !== targetKey) {
-      // 这里的关键：不立即 remove，先透明，这样切回时无需重载瓦片
-      layer.alpha = 0;
-      setTimeout(() => {
-        if (layer.alpha === 0) layer.show = false;
-      }, 500); // 500ms 缓冲
-    }
-  });
+  // 3. 缓冲延迟隐藏旧图层
+  // 核心优化：不立即隐藏旧图层，而是保留 600ms 给新图层的瓦片渲染预留时间
+  setTimeout(() => {
+    wmsLayerCache.forEach((layer, key) => {
+      if (key !== targetKey) {
+        // 先透明，后关闭 show，双保险防止闪烁
+        layer.alpha = 0;
+        setTimeout(() => {
+          if (layer.alpha === 0) layer.show = false;
+        }, 400); 
+      }
+    });
+  }, 600); // 600ms 缓冲策略
 }
 
 // 预加载附近年份的图层
@@ -1574,37 +1577,36 @@ async function loadWMSLayer(targetYear = null, visible = true) {
 
 
 function updateLayerVisibility(targetKey) {
+    // 处理 CLCD 图层的互斥
     cleanupCLCDLayer();
 
     const targetLayer = wmsLayerCache.get(targetKey);
     if (!targetLayer || !viewer.value) return;
 
-    // 确保它已经在地图上
+    // 1. 确保目标图层在地图上并置顶
     if (!viewer.value.imageryLayers.contains(targetLayer)) {
         targetLayer.isAnalysisLayer = true;
         viewer.value.imageryLayers.add(targetLayer);
     }
     
-    // 丝滑策略：将新图层置顶
+    // 强制置顶并开启显示
     viewer.value.imageryLayers.raiseToTop(targetLayer);
     targetLayer.show = true;
     targetLayer.alpha = 1;
     spatialLayer.value = targetLayer; 
 
-    // 重要：延迟隐藏其他图层
-    // 因为 WMS 瓦片渲染需要时间（GeoServer 吐图延迟），立即隐藏会导致瞬间白屏。
-    // 我们保留旧图层至少 600ms，直到新瓦片大概率已经覆盖了旧图块。
+    // 2. 缓冲延迟隐藏所有其他已缓存图层
+    // 这是防止“黑屏/白屏闪烁”的核心：新瓦片在后台加载时，继续显示旧瓦片
     setTimeout(() => {
         wmsLayerCache.forEach((layer, key) => {
             if (key !== targetKey) {
               layer.alpha = 0;
-              // 再额外延迟关闭 show，确保显存释放和渲染停止
               setTimeout(() => {
                  if (layer.alpha === 0) layer.show = false;
               }, 400);
             }
         });
-    }, 600); // 600ms 缓冲期
+    }, 800); // 800ms 缓冲，应对 GeoServer 复杂的渲染计算
 }
 
 // 提取图例标签更新函数
