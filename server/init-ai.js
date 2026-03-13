@@ -41,10 +41,10 @@ function promptOllamaStart() {
     console.log('\x1b[33m╔════════════════════════════════════════════════════╗\x1b[0m');
     console.log('\x1b[33m║  Ollama 未运行，请手动启动 Ollama 后再继续       ║\x1b[0m');
     console.log('\x1b[33m╚════════════════════════════════════════════════════╝\x1b[0m');
-    console.log('\x1b[36m启动方法:\x1b[0m');
-    console.log('  1. 点击桌面或开始菜单的 Ollama 图标');
-    console.log('  2. 或在命令行运行: ollama serve');
-    console.log('\x1b[36m下载地址: https://ollama.com\x1b[0m');
+    console.log('\x1b[36m提示:\x1b[0m');
+    console.log('  1. 通常，npm run dev 会自动拉起 Ollama 服务。');
+    console.log('  2. 如果您看到此消息，说明端口有冲突或尚未拉起。');
+    console.log('  3. 您可以直接点击桌面上的 Ollama 图标手动启动它。');
     console.log('');
 }
 
