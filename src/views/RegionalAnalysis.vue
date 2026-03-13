@@ -72,18 +72,12 @@
       </div>
     </div>
 
-    <!-- 图例 -->
-    <div class="vibe-legend-container" style="position: fixed; bottom: 40px; right: 30px; z-index: 1000;">
-      <div class="vibe-legend-header">
-        <div class="vibe-legend-title">{{ selectedYear }}年{{ currentAttributeLabel }}面积(km²)</div>
-      </div>
-      <div class="vibe-legend-list">
-        <div v-for="(color, index) in currentColorScale" :key="index" class="vibe-legend-item">
-          <span class="vibe-legend-swatch" :style="{ background: color }"></span>
-          <span class="vibe-legend-text">{{ currentLegendLabels[index] }}</span>
-        </div>
-      </div>
-    </div>
+    <!-- 图例 (统一使用组件) -->
+    <AnalysisLegend 
+      :title="selectedYear + '年' + currentAttributeLabel + '面积(km²)'"
+      :items="analysisLegendItems"
+      style="position: fixed; bottom: 40px; right: 30px; z-index: 1000;"
+    />
 
 
     <!-- 时间轴控制器 -->
@@ -121,6 +115,7 @@ import { clcdApi } from '../api/index.js';
 import TimePlayer from '../components/controls/TimePlayer.vue';
 import { useGlobalStore } from '../stores/index.ts';
 import 'cesium/Build/Cesium/Widgets/widgets.css';
+import AnalysisLegend from '../components/ui/AnalysisLegend.vue';
 
 const router = useRouter();
 const store = useGlobalStore();
@@ -232,6 +227,14 @@ const attributes = [
 const currentAttributeLabel = computed(() => {
   const attr = attributes.find(a => a.value === selectedAttribute.value);
   return attr ? attr.label : '';
+});
+
+// 统一图例项转换
+const analysisLegendItems = computed(() => {
+  return currentColorScale.value.map((color, index) => ({
+    color: color,
+    label: currentLegendLabels.value[index] || ''
+  })).filter(item => item.label);
 });
 
 function goBack() {

@@ -200,18 +200,11 @@
 
     <!-- 右侧图表面板区域（Dashboard模式下隐藏 且 只在CLCD模式下显示） -->
     <div v-if="!isDashboardMode && spatialUnit === 'clcd'" class="right-panels">
-      <div class="vibe-legend-container" style="position: fixed; bottom: 24px; right: 24px; z-index: 1000;">
-        <div class="vibe-legend-header">
-          <span class="vibe-legend-title">全国土地覆盖 (CLCD)</span>
-          <span class="vibe-legend-unit">分类</span>
-        </div>
-        <div class="vibe-legend-list">
-          <div v-for="(color, name) in clcdColors" :key="name" class="vibe-legend-item">
-            <span class="vibe-legend-swatch" :style="{ background: color }"></span>
-            <span class="vibe-legend-text">{{ legendNames[name] }}</span>
-          </div>
-        </div>
-      </div>
+      <AnalysisLegend 
+        title="全国土地覆盖 (CLCD) 分类"
+        :items="clcdLegendItems"
+        style="position: fixed; bottom: 24px; right: 24px; z-index: 1000;"
+      />
     </div>
 
 
@@ -451,6 +444,14 @@ const areaLegendItems = computed(() => {
     color: color,
     label: currentLegendLabels.value[index] || ''
   })).filter(item => item.label);
+});
+
+// CLCD 专用图例项
+const clcdLegendItems = computed(() => {
+  return Object.keys(clcdColors).map(name => ({
+    color: clcdColors[name],
+    label: legendNames[name]
+  }));
 });
 
 // ... (Colors and Attribute definitions remain same)
