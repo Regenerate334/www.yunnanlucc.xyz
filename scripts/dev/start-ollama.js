@@ -1,69 +1,60 @@
 import { spawn } from 'child_process';
-import fs from 'fs';
-import path from 'path';
-import { fileURLToPath } from 'url';
+import http from 'http';
 
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = path.dirname(__filename);
+const checkOllama = () => new Promise(resolve => {
+    http.get('http://127.0.0.1:11434/api/tags', res => resolve(res.statusCode === 200))
+        .on('error', () => resolve(false));
+});
 
-// Define log directory and file
-const logDir = path.join(__dirname, '../server/logs');
-if (!fs.existsSync(logDir)) {
-    fs.mkdirSync(logDir, { recursive: true });
+let ollamaProcess = null;
+
+async function start() {
+    const isRunning = await checkOllama();
+    if (isRunning) {
+        console.log('\x1b[35m[OLLAMA]\x1b[0m 检测到您的电脑已经运行了 Ollama (例如托盘图标)。直接复用现有服务安全连接。');
+        // 保持占位，不让 concurrently 认为任务崩溃了
+        setInterval(() => { }, 3600000);
+        return;
+    }
+
+    console.log('\x1b[35m[OLLAMA]\x1b[0m 正在自动启动 Ollama 服务...');
+
+    // 直接启动标准 serve，不做过度隐藏
+    ollamaProcess = spawn('ollama', ['serve'], {
+        shell: process.platform === 'win32'
+    });
+
+    ollamaProcess.stdout.on('data', data => {
+        if (data.toString().includes('Listening on')) {
+            console.log('\x1b[35m[OLLAMA]\x1b[0m 服务已启动就绪！');
+        }
+    });
+
+    ollamaProcess.stderr.on('data', data => {
+        if (data.toString().includes('Error:')) {
+            console.error(`\x1b[31m[OLLAMA-ERR]\x1b[0m ${data}`);
+        }
+    });
+
+    ollamaProcess.on('close', code => {
+        console.log(`\x1b[35m[OLLAMA]\x1b[0m Ollama 进程正常退出。`);
+        process.exit(0);
+    });
 }
 
-const logFile = path.join(logDir, 'ollama.log');
-
-// Log rotation: if file exceeds 10MB, rotate it to .bak
-const MAX_LOG_SIZE = 10 * 1024 * 1024; // 10MB
-
-try {
-    if (fs.existsSync(logFile)) {
-        const stats = fs.statSync(logFile);
-        if (stats.size > MAX_LOG_SIZE) {
-            const sizeMB = (stats.size / 1024 / 1024).toFixed(2);
-            console.log(`\x1b[33m[OLLAMA] Log file size (${sizeMB} MB) exceeds limit. Rotating log...\x1b[0m`);
-
-            const backupFile = path.join(logDir, 'ollama.log.bak');
-            // Remove old backup if exists
-            if (fs.existsSync(backupFile)) {
-                fs.unlinkSync(backupFile);
-            }
-            // Rename current log to backup
-            fs.renameSync(logFile, backupFile);
+function cleanup() {
+    if (ollamaProcess) {
+        console.log('\n\x1b[35m[OLLAMA]\x1b[0m 正在关闭由 npm 启动的 Ollama 进程...');
+        if (process.platform === 'win32') {
+            spawn('taskkill', ['/pid', ollamaProcess.pid, '/T', '/F']);
+        } else {
+            ollamaProcess.kill('SIGTERM');
         }
     }
-} catch (err) {
-    console.error(`\x1b[31m[OLLAMA] Failed to rotate log file: ${err.message}\x1b[0m`);
+    process.exit(0);
 }
 
-const logStream = fs.createWriteStream(logFile, { flags: 'a' });
+process.on('SIGINT', cleanup);
+process.on('SIGTERM', cleanup);
 
-console.log('\x1b[36m[OLLAMA] Starting Ollama service...\x1b[0m');
-console.log(`\x1b[90m[OLLAMA] Logs are being redirected to ${logFile}\x1b[0m`);
-
-const ollama = spawn('ollama', ['serve'], {
-    shell: true
-});
-
-// Redirect stdout and stderr to the log file
-ollama.stdout.pipe(logStream);
-ollama.stderr.pipe(logStream);
-
-ollama.on('error', (err) => {
-    console.error(`\x1b[31m[OLLAMA] Failed to start process: ${err.message}\x1b[0m`);
-});
-
-ollama.on('close', (code) => {
-    console.log(`\x1b[33m[OLLAMA] Service stopped (exit code: ${code})\x1b[0m`);
-    logStream.end();
-});
-
-// Handle termination signals to stop the child process
-process.on('SIGINT', () => {
-    ollama.kill('SIGINT');
-});
-
-process.on('SIGTERM', () => {
-    ollama.kill('SIGTERM');
-});
+start();
