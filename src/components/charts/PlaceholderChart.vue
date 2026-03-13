@@ -1,6 +1,6 @@
 <template>
   <div class="placeholder-chart">
-    <div class="placeholder-icon">📊</div>
+    <div class="placeholder-icon-ring"></div>
     <div class="placeholder-text">{{ message }}</div>
     <div class="placeholder-subtitle">{{ subtitle }}</div>
   </div>
@@ -31,10 +31,18 @@ defineProps({
   border-radius: 8px;
 }
 
-.placeholder-icon {
-  font-size: 48px;
+.placeholder-icon-ring {
+  width: 48px;
+  height: 48px;
+  border: 2px dashed rgba(255, 255, 255, 0.2);
+  border-radius: 50%;
   margin-bottom: 16px;
-  opacity: 0.5;
+  animation: rotate 20s linear infinite;
+}
+
+@keyframes rotate {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
 }
 
 .placeholder-text {

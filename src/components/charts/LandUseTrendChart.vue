@@ -82,11 +82,11 @@ const updateChart = () => {
 
   const rows = 3;
   const cols = 3;
-  const leftMargin = 5;
-  const topMargin = 8;
-  const bottomMargin = 10;
-  const hGap = 5;
-  const vGap = 10;
+  const leftMargin = 3;
+  const topMargin = 5;
+  const bottomMargin = 8;
+  const hGap = 4;
+  const vGap = 8;
 
   const gridWidth = (100 - leftMargin * 2 - hGap * (cols - 1)) / cols;
   const gridHeight = (100 - topMargin - bottomMargin - vGap * (rows - 1)) / rows;
@@ -118,7 +118,7 @@ const updateChart = () => {
       textAlign: 'center',
       textStyle: {
         color: '#a5ccff',
-        fontSize: 12,
+        fontSize: 14,
         fontWeight: '600',
         textShadowBlur: 5,
         textShadowColor: 'rgba(0,0,0,0.5)'
@@ -133,7 +133,7 @@ const updateChart = () => {
       axisLabel: {
         show: r === rows - 1,
         color: 'rgba(255,255,255,0.6)',
-        fontSize: 10,
+        fontSize: 12,
         margin: 8,
         interval: 4,
         formatter: '{value}'
@@ -149,7 +149,7 @@ const updateChart = () => {
       max: yAxisBounds[key].max,
       axisLabel: {
         color: 'rgba(165, 204, 255, 0.6)',
-        fontSize: 9,
+        fontSize: 11,
         formatter: (value) => value.toLocaleString('en-US')
       },
       splitLine: { lineStyle: { color: 'rgba(255,255,255,0.03)' } },
@@ -157,7 +157,7 @@ const updateChart = () => {
       name: index % cols === 0 ? 'km²' : '',
       nameTextStyle: {
         color: 'rgba(165, 204, 255, 0.4)',
-        fontSize: 10,
+        fontSize: 12,
         align: 'left',
         padding: [0, 0, -10, 0]
       }
@@ -181,7 +181,7 @@ const updateChart = () => {
       endLabel: {
         show: true,
         color: '#ffffff',
-        fontSize: 10,
+        fontSize: 12,
         fontWeight: 'bold',
         distance: 8,
         formatter: (params) => params.value.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })

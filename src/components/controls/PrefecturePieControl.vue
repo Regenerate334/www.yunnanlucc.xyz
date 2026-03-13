@@ -1,7 +1,10 @@
 <template>
     <div class="prefecture-pie-control">
         <button @click="togglePrefecturePie" class="control-btn" :class="{ active: isActive }" title="各州市土地利用结构">
-            <span class="icon">📊</span>
+            <svg class="icon-svg" viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M21.21 15.89A10 10 0 1 1 8 2.83" />
+                <path d="M22 12A10 10 0 0 0 12 2v10z" />
+            </svg>
         </button>
     </div>
 </template>

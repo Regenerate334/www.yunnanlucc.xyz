@@ -226,17 +226,20 @@ onUnmounted(() => {
 function handleClickOutside(event) {
   if (!isOpen.value || !event.target) return;
   
-  if (containerRef.value && !containerRef.value.contains(event.target)) {
-    // Exception: Do not close if clicking on main toolbar or analysis header components
-    const target = event.target;
-    const isToolbar = target.closest && target.closest('.main-toolbar');
-    const isHeader = target.closest && target.closest('.analysis-header');
-    const isDropdown = target.closest && target.closest('.dropdown-selector'); // Corrected class name
-    const isSegment = target.closest && target.closest('.segmented-control');
-    
-    if (!isToolbar && !isHeader && !isDropdown && !isSegment) {
-      globalStore.setActivePanel(null);
-    }
+  // 如果点击的是组件内部（包括按钮、滑块等），则不关闭
+  if (containerRef.value && containerRef.value.contains(event.target)) {
+    return;
+  }
+  
+  // 仅在点击外部时执行关闭逻辑
+  const target = event.target;
+  const isToolbar = target.closest && target.closest('.main-toolbar');
+  const isHeader = target.closest && target.closest('.analysis-header');
+  const isDropdown = target.closest && target.closest('.dropdown-selector');
+  const isSegment = target.closest && target.closest('.segmented-control');
+  
+  if (!isToolbar && !isHeader && !isDropdown && !isSegment) {
+    globalStore.setActivePanel(null);
   }
 }
 

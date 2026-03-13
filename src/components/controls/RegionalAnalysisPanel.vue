@@ -50,7 +50,7 @@
 
             <div class="control-group">
               <label>年份</label>
-              <select v-model="selectedYear">
+              <select v-model="selectedAttribute">
                 <option v-for="year in years" :key="year" :value="year">{{ year }}</option>
               </select>
             </div>
@@ -275,10 +275,11 @@ onUnmounted(() => {
 .control-btn {
   width: 64px;
   height: 64px;
-  border-radius: 14px;
-  border: 1px solid rgba(255, 255, 255, 0.08);
-  background: rgba(13, 25, 48, 0.4);
-  backdrop-filter: blur(12px);
+  border-radius: 12px;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  background: rgba(15, 23, 34, 0.6);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
   cursor: pointer;
   display: flex;
   flex-direction: column;
@@ -287,7 +288,7 @@ onUnmounted(() => {
   gap: 4px;
   transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
   color: #a5ccff;
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
 }
 
 .control-btn.active {
@@ -324,9 +325,10 @@ onUnmounted(() => {
   align-items: center;
   gap: 24px;
   padding: 12px 24px;
-  background: rgba(13, 25, 48, 0.9);
-  backdrop-filter: blur(16px);
-  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+  background: rgba(13, 25, 48, 0.85);
+  backdrop-filter: blur(24px);
+  -webkit-backdrop-filter: blur(24px);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
   z-index: 2000;
 }
 
@@ -372,8 +374,8 @@ onUnmounted(() => {
 }
 
 .control-group select {
-  background: rgba(255, 255, 255, 0.1);
-  border: 1px solid rgba(255, 255, 255, 0.2);
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.1);
   border-radius: 6px;
   color: #fff;
   padding: 8px 12px;

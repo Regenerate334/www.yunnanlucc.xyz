@@ -1,26 +1,7 @@
 <template>
     <div class="regional-trend-container">
-        <!-- 顶部智能诊断面板 -->
-        <div class="insight-panel" v-if="insights">
-            <div class="insight-card main">
-                <div class="insight-title">区域监测诊断: {{ regionName }}</div>
-                <div class="insight-content">{{ insights.summary }}</div>
-            </div>
-            <div class="insight-grid">
-                <div class="insight-card mini">
-                    <div class="label">变化最剧烈地类</div>
-                    <div class="value">{{ insights.mostChangedType }}</div>
-                </div>
-                <div class="insight-card mini">
-                    <div class="label">年均扩张/收缩率</div>
-                    <div class="value" :class="insights.rate >= 0 ? 'up' : 'down'">
-                        {{ (insights.rate * 100).toFixed(2) }}%
-                    </div>
-                </div>
-            </div>
-        </div>
+        <!-- 移除诊断面板和次级标题，已提升至主标题 -->
 
-        <!-- 图表容器 -->
         <div ref="chartContainer" class="chart-container"></div>
     </div>
 </template>
@@ -40,6 +21,12 @@ const props = defineProps({
 
 const chartContainer = shallowRef(null)
 const chartInstance = shallowRef(null)
+const aiProcessing = ref(false)
+
+// 恢复原始诊断状态
+const mainFluctuationType = ref('')
+const averageChangeRate = ref(0)
+const synthesisJudgement = ref('')
 
 const landTypeMap = {
     'cropland': '耕地',
@@ -74,35 +61,40 @@ const policyMarkers = [
     { year: '2021', name: '退林还耕/耕地保护', color: '#f5222d' }
 ];
 
-const insights = computed(() => {
-    if (!props.seriesData || props.seriesData.length < 2) return null;
-
-    const first = props.seriesData[0];
-    const last = props.seriesData[props.seriesData.length - 1];
-    const years = last.year - first.year;
-
-    const changes = Object.keys(landTypeMap).map(key => {
-        const diff = last[key] - first[key];
-        const rate = first[key] > 0 ? (diff / first[key]) / years : 0;
-        return { key, diff, rate, name: landTypeMap[key] };
-    });
-
-    const mostChanged = [...changes].sort((a, b) => Math.abs(b.diff) - Math.abs(a.diff))[0];
-
-    let summary = "";
-    if (changes.find(c => c.key === 'impervious').diff > 0) {
-        summary = `${props.regionName}在监测期内呈现明显的城市化扩张特征，建设用地持续增长。`;
-    }
-    if (changes.find(c => c.key === 'forest').diff > 0) {
-        summary += "同时，林地覆盖率有所提升，体现了良好的生态修复趋势。";
-    }
-
-    return {
-        summary,
-        mostChangedType: mostChanged.name,
-        rate: mostChanged.rate
-    };
-});
+// 恢复本地诊断逻辑
+const performLocalAnalysis = () => {
+    if (!props.seriesData.length) return;
+    
+    aiProcessing.value = true;
+    
+    setTimeout(() => {
+        const first = props.seriesData[0];
+        const last = props.seriesData[props.seriesData.length - 1];
+        const years = props.seriesData.length;
+        
+        let maxChange = 0;
+        let mainType = '';
+        
+        Object.keys(landTypeMap).forEach(key => {
+            const diff = Math.abs(last[key] - first[key]);
+            if (diff > maxChange) {
+                maxChange = diff;
+                mainType = landTypeMap[key];
+            }
+        });
+        
+        mainFluctuationType.value = mainType;
+        averageChangeRate.value = maxChange / (first.cropland + first.forest + 1) / years;
+        
+        if (averageChangeRate.value > 0.01) {
+            synthesisJudgement.value = '地类转换剧烈，生态格局发生显著偏移';
+        } else {
+            synthesisJudgement.value = '结构相对稳定，呈现良性演化趋势';
+        }
+        
+        aiProcessing.value = false;
+    }, 1500);
+}
 
 const initChart = () => {
     if (!chartContainer.value) return
@@ -135,11 +127,11 @@ const updateChart = () => {
 
     const rows = 3;
     const cols = 3;
-    const leftMargin = 5;
-    const topMargin = 8;
-    const bottomMargin = 10;
-    const hGap = 5;
-    const vGap = 10;
+    const leftMargin = 3;
+    const topMargin = 5;
+    const bottomMargin = 8;
+    const hGap = 4;
+    const vGap = 8;
 
     const gridWidth = (100 - leftMargin * 2 - hGap * (cols - 1)) / cols;
     const gridHeight = (100 - topMargin - bottomMargin - vGap * (rows - 1)) / rows;
@@ -171,7 +163,7 @@ const updateChart = () => {
             textAlign: 'center',
             textStyle: {
                 color: '#a5ccff',
-                fontSize: 12,
+                fontSize: 14,
                 fontWeight: '600',
                 textShadowBlur: 5,
                 textShadowColor: 'rgba(0,0,0,0.5)'
@@ -186,7 +178,7 @@ const updateChart = () => {
             axisLabel: {
                 show: r === rows - 1,
                 color: 'rgba(255,255,255,0.6)',
-                fontSize: 10,
+                fontSize: 12,
                 margin: 8,
                 interval: 4,
                 formatter: '{value}'
@@ -202,7 +194,7 @@ const updateChart = () => {
             max: yAxisBounds[key].max,
             axisLabel: {
                 color: 'rgba(165, 204, 255, 0.6)',
-                fontSize: 9,
+                fontSize: 11,
                 formatter: (value) => value.toLocaleString('en-US')
             },
             splitLine: { lineStyle: { color: 'rgba(255,255,255,0.03)' } },
@@ -210,7 +202,7 @@ const updateChart = () => {
             name: index % cols === 0 ? 'km²' : '',
             nameTextStyle: {
                 color: 'rgba(165, 204, 255, 0.4)',
-                fontSize: 10,
+                fontSize: 12,
                 align: 'left',
                 padding: [0, 0, -10, 0]
             }
@@ -234,7 +226,7 @@ const updateChart = () => {
             endLabel: {
                 show: true,
                 color: '#ffffff',
-                fontSize: 10,
+                fontSize: 12,
                 fontWeight: 'bold',
                 distance: 8,
                 formatter: (params) => params.value.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
@@ -326,130 +318,63 @@ const updateChart = () => {
     chartInstance.value.setOption(option);
 }
 
-// resize 事件处理
 const handleResize = () => {
-    if (chartInstance.value) {
-        chartInstance.value.resize();
-    }
+    if (chartInstance.value) chartInstance.value.resize();
 };
 
 onMounted(() => {
     nextTick(() => {
         initChart();
         window.addEventListener('resize', handleResize);
+        performLocalAnalysis();
     });
 });
 
 onUnmounted(() => {
-    // 移除 resize 监听
     window.removeEventListener('resize', handleResize);
-    
-    // 销毁 ECharts 实例
-    if (chartInstance.value) {
-        try {
-            chartInstance.value.dispose();
-        } catch (e) {
-            console.warn('[RegionalTrendChart] Chart dispose warning:', e);
-        }
-        chartInstance.value = null;
-    }
+    if (chartInstance.value) chartInstance.value.dispose();
 });
 
-// 使用 shallowRef 监听避免深层响应开销
 watch(() => props.seriesData, () => {
     updateChart();
-}, { deep: false }); // 只监听引用变化，减少不必要的重新渲染
+    performLocalAnalysis();
+}, { deep: false });
 </script>
 
 <style scoped>
 .regional-trend-container {
-    width: 100%;
-    height: 100%;
-    display: flex;
-    flex-direction: column;
-    gap: 12px;
+    width: 100%; height: 100%;
+    display: flex; flex-direction: column; gap: 15px;
 }
 
-.insight-panel {
-    display: flex;
-    gap: 20px;
-    padding: 0 10px;
+.panel-header {
+    display: flex; justify-content: space-between; align-items: center;
+    padding-bottom: 10px; border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.title-group { font-size: 18px; font-weight: 600; color: #fff; }
+.region-name { color: #3b82f6; background: rgba(59, 130, 246, 0.1); padding: 2px 10px; border-radius: 6px; }
+
+.ai-status { font-size: 12px; color: #60a5fa; display: flex; align-items: center; gap: 8px; }
+.pulse-dot { width: 8px; height: 8px; background: #3b82f6; border-radius: 50%; box-shadow: 0 0 10px #3b82f6; animation: pulse 1.5s infinite; }
+@keyframes pulse { 0% { transform: scale(1); opacity: 1; } 50% { transform: scale(1.5); opacity: 0.5; } 100% { transform: scale(1); opacity: 1; } }
+
+.insight-grid {
+    display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px;
 }
 
 .insight-card {
-    background: rgba(255, 255, 255, 0.03);
-    border: 1px solid rgba(255, 255, 255, 0.08);
-    border-radius: 12px;
-    padding: 16px 20px;
-    backdrop-filter: blur(10px);
-    transition: all 0.3s ease;
+    background: rgba(255, 255, 255, 0.03); border: 1px solid rgba(255, 255, 255, 0.05);
+    padding: 12px; border-radius: 10px;
 }
+.insight-card.highlight { background: rgba(59, 130, 246, 0.05); border-color: rgba(59, 130, 246, 0.2); }
 
-.insight-card:hover {
-    background: rgba(255, 255, 255, 0.05);
-    border-color: rgba(255, 255, 255, 0.15);
-}
-
-.insight-card.main {
-    flex: 2;
-    border-left: 4px solid #3b82f6;
-}
-
-.insight-grid {
-    flex: 1;
-    display: grid;
-    grid-template-columns: 1fr 1fr;
-    gap: 15px;
-}
-
-.insight-card.mini {
-    display: flex;
-    flex-direction: column;
-    justify-content: center;
-    align-items: center;
-    text-align: center;
-}
-
-.insight-title {
-    color: #a5ccff;
-    font-weight: 600;
-    margin-bottom: 10px;
-    font-size: 14px;
-    letter-spacing: 0.02em;
-}
-
-.insight-content {
-    color: rgba(255, 255, 255, 0.7);
-    font-size: 13px;
-    line-height: 1.6;
-}
-
-.label {
-    color: rgba(255, 255, 255, 0.4);
-    font-size: 11px;
-    text-transform: uppercase;
-    letter-spacing: 0.05em;
-    margin-bottom: 6px;
-}
-
-.value {
-    color: #fff;
-    font-weight: 700;
-    font-size: 18px;
-    font-family: 'JetBrains Mono', monospace;
-}
-
-.value.up {
-    color: #fca5a5;
-}
-
-.value.down {
-    color: #86efac;
-}
+.card-label { font-size: 11px; color: rgba(255, 255, 255, 0.5); margin-bottom: 4px; }
+.card-value { font-size: 15px; font-weight: 700; color: #a5ccff; }
+.status-text { color: #60a5fa; }
 
 .chart-container {
-    flex: 1;
-    width: 100%;
-    min-height: 600px;
+    flex: 1; min-height: 500px;
+    background: rgba(0, 0, 0, 0.1); border-radius: 12px; border: 1px solid rgba(255, 255, 255, 0.03);
 }
 </style>

@@ -17,7 +17,7 @@
         <div v-if="isVisible" class="modal-window" @click.stop>
           <div class="modal-header">
             <div class="header-placeholder"></div>
-            <span class="modal-title">全省土地利用动态监测中心</span>
+            <span class="modal-title">云南省各地类土地利用长时序变化监测</span>
             <button class="close-btn" @click.stop="closeChart">✕</button>
           </div>
           <div class="chart-wrapper">
@@ -32,7 +32,7 @@
             </div>
             <div v-if="isLoading" class="loading-container">
               <div class="spinner"></div>
-              <span>正在从数据库加载趋势数据...</span>
+              <span>正在从数据库加载序列数据...</span>
             </div>
             <div v-else-if="hasError && localSeriesData.length === 0" class="error-container">
               <span>数据加载失败，请检查后端服务。</span>
@@ -195,8 +195,8 @@ const openAIAnalysis = () => {
   top: 50%;
   left: 50%;
   transform: translate(-50%, -50%);
-  width: 90vw;
-  height: 85vh;
+  width: 98vw;
+  height: 96vh;
   background: rgba(13, 25, 48, 0.6);
   border: 1px solid rgba(255, 255, 255, 0.08);
   border-radius: 16px;
@@ -210,7 +210,7 @@ const openAIAnalysis = () => {
 }
 
 .modal-header {
-  padding: 16px 24px;
+  padding: 8px 24px;
   background: rgba(30, 58, 138, 0.3);
   color: white;
   display: flex;

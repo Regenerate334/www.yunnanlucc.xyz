@@ -17,7 +17,7 @@
                     <div class="modal-header">
                         <div class="header-placeholder"></div> <!-- 占位符用于平衡布局 -->
 
-                        <div class="modal-title">区域土地利用动态监测中心</div>
+                        <div class="modal-title">{{ selectedRegion.name }}多地类土地利用长时序变化监测</div>
 
                         <div class="header-right">
                             <!-- 区域选择器 -->
@@ -390,8 +390,8 @@ onMounted(() => {
     top: 50%;
     left: 50%;
     transform: translate(-50%, -50%);
-    width: 95vw;
-    height: 90vh;
+    width: 98vw;
+    height: 96vh;
     background: rgba(13, 25, 48, 0.6);
     border: 1px solid rgba(255, 255, 255, 0.08);
     border-radius: 16px;
@@ -404,7 +404,7 @@ onMounted(() => {
 }
 
 .modal-header {
-    padding: 15px 30px;
+    padding: 8px 30px;
     background: rgba(30, 58, 138, 0.3);
     border-bottom: 1px solid rgba(255, 255, 255, 0.08);
     display: flex;
