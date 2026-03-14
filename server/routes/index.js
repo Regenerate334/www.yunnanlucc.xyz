@@ -9,10 +9,16 @@ import aiRouter from './ai/index.js';
 import commonRouter from './common/index.js';
 import authRouter from './auth.js';
 
+// V1 标准化路由
+import v1LandUseRouter from './v1/landUse.js';
+
 const router = express.Router();
 
 // ==================== 路由注册 ====================
-// 土地覆盖数据
+// V1 API (新规范)
+router.use('/v1/land-use', v1LandUseRouter);
+
+// 旧版 API (保持兼容，内部将被重构为调用 Service)
 router.use('/clcd', clcdRouter);
 
 // 分析模块
