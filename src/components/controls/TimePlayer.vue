@@ -13,11 +13,11 @@
       <span class="btn-label">时间轴</span>
     </button>
 
-    <!-- 弹出面板 (原时间播放器内容) -->
+    <!-- 弹出面板  -->
     <transition name="pop-fade">
       <div v-if="isOpen" class="time-player-panel" :class="{ vertical: layout === 'vertical' }">
         <div class="controls-row">
-          <!-- 播放/暂停按钮 (添加 .stop 防止事件冒泡导致面板意外关闭) -->
+          <!-- 播放/暂停按钮，添加 .stop 防止事件冒泡导致面板意外关闭 -->
           <button class="play-btn" @click.stop="togglePlay" :title="isPlaying ? '暂停' : '播放'">
             <svg v-if="!isPlaying" viewBox="0 0 24 24" fill="currentColor">
               <path d="M8 5v14l11-7z" />
@@ -27,10 +27,7 @@
             </svg>
           </button>
 
-          <!-- 倍速控制 (添加 .stop 防止冒泡) -->
-          <div v-if="showSpeedControl" class="speed-control" @click.stop="toggleSpeed" :title="'当前速度: ' + currentSpeedLabel">
-            <span>{{ currentSpeedLabel }}</span>
-          </div>
+
           
           <!-- 时间滑块 (基于索引) -->
           <div class="slider-container">
@@ -99,7 +96,7 @@ const props = defineProps({
   },
   showSpeedControl: {
     type: Boolean,
-    default: true
+    default: false // 默认关闭，由 interval 直接控制
   }
 });
 
@@ -110,13 +107,6 @@ const isPlaying = ref(false);
 const currentIndex = ref(0);
 let timer = null;
 
-const speedOptions = [
-  { label: '1x', val: 1 },
-  { label: '2x', val: 2 },
-  { label: '0.5x', val: 0.5 }
-];
-const currentSpeedIndex = ref(0);
-const currentSpeedLabel = computed(() => speedOptions[currentSpeedIndex.value].label);
 const maxIndex = computed(() => props.years.length - 1);
 
 // Sync local index with prop
@@ -139,10 +129,6 @@ function play() {
   if (isPlaying.value) return;
   isPlaying.value = true;
   
-  const speed = speedOptions[currentSpeedIndex.value].val;
-  // Higher speed value = Faster playback = Smaller interval
-  const effectiveInterval = props.interval / speed;
-  
   timer = setInterval(() => {
     let next = currentIndex.value + 1;
     if (next > maxIndex.value) {
@@ -150,15 +136,11 @@ function play() {
     }
     currentIndex.value = next;
     emit('update:modelValue', props.years[next]);
-  }, effectiveInterval);
+  }, props.interval); // 直接使用 interval
 }
 
 function toggleSpeed() {
-  currentSpeedIndex.value = (currentSpeedIndex.value + 1) % speedOptions.length;
-  if (isPlaying.value) {
-    stop();
-    play();
-  }
+  // 速度已固定为 0.5x，禁用切换逻辑
 }
 
 function onInput(e) {

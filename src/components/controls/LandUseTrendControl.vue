@@ -21,15 +21,6 @@
             <button class="close-btn" @click.stop="closeChart">✕</button>
           </div>
           <div class="chart-wrapper">
-            <!-- AI 悬浮球 (左上角) -->
-            <div class="ai-floating-ball-container">
-              <button class="ai-floating-ball" @click.stop="openAIAnalysis">
-                <div class="ball-content">
-                  <ChatGptIcon :size="28" color="#ffffff" class="ai-ball-logo" />
-                  <span class="ai-ball-text">AI 趋势分析</span>
-                </div>
-              </button>
-            </div>
             <div v-if="isLoading" class="loading-container">
               <div class="spinner"></div>
               <span>正在从数据库加载序列数据...</span>
@@ -43,10 +34,6 @@
         </div>
       </transition>
     </Teleport>
-
-    <!-- AI 分析弹窗 -->
-    <AIAnalysisModal v-model:visible="showAIModal" :year="2023" region="云南省" analysis-type="trend"
-      :component-context="{ type: 'province_trend' }" />
   </div>
 </template>
 
@@ -54,8 +41,6 @@
 import { ref, computed } from 'vue';
 import LandUseTrendChart from '../charts/LandUseTrendChart.vue';
 import { clcdApi } from '../../api/index.js';
-import AIAnalysisModal from '../ui/AIAnalysisModal.vue';
-import ChatGptIcon from '../icons/ChatGptIcon.vue';
 import { useGlobalStore } from '../../stores/global';
 
 const globalStore = useGlobalStore();
@@ -72,7 +57,6 @@ const isVisible = computed(() => globalStore.activePanel === panelName);
 const localSeriesData = ref([]);
 const isLoading = ref(false);
 const hasError = ref(false);
-const showAIModal = ref(false);
 
 async function fetchTrendData() {
   if (localSeriesData.value.length > 0) return; // 避免重复加载
@@ -80,8 +64,8 @@ async function fetchTrendData() {
   isLoading.value = true;
   hasError.value = false;
   try {
-    const data = await clcdApi.getProvinceTrend();
-    localSeriesData.value = data;
+    const res = await clcdApi.getProvinceTrend();
+    localSeriesData.value = res.data;
   } catch (error) {
     console.error('Error fetching trend data:', error);
     hasError.value = true;
@@ -103,11 +87,6 @@ function toggleChart() {
 function closeChart() {
   globalStore.setActivePanel(null);
 }
-
-// 打开 AI 分析弹窗
-const openAIAnalysis = () => {
-  showAIModal.value = true;
-};
 </script>
 
 <style scoped>
@@ -337,71 +316,4 @@ const openAIAnalysis = () => {
   transform: translate(-50%, -50%) scale(0.8);
 }
 
-/* AI 悬浮球样式 */
-.ai-floating-ball-container {
-  position: absolute;
-  top: 20px;
-  right: 30px;
-  z-index: 100;
-}
-
-.ai-floating-ball {
-  display: flex;
-  align-items: center;
-  justify-content: flex-start;
-  width: 56px;
-  /* 初始圆形宽度 */
-  height: 56px;
-  padding: 0 14px;
-  background: rgba(30, 58, 138, 0.6);
-  backdrop-filter: blur(12px);
-  border: 1px solid rgba(59, 130, 246, 0.5);
-  border-radius: 28px;
-  color: #ffffff;
-  cursor: pointer;
-  transition: all 0.5s cubic-bezier(0.4, 0, 0.2, 1);
-  overflow: hidden;
-  box-shadow: 0 4px 15px rgba(0, 0, 0, 0.3);
-  white-space: nowrap;
-}
-
-.ai-floating-ball:hover {
-  width: 160px;
-  /* 展开后的宽度 */
-  background: rgba(30, 58, 138, 0.8);
-  border-color: rgba(59, 130, 246, 0.8);
-  box-shadow: 0 8px 25px rgba(0, 0, 0, 0.4);
-}
-
-.ball-content {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  min-width: 140px;
-  /* 确保文字不换行 */
-}
-
-.ai-ball-logo {
-  width: 28px;
-  height: 28px;
-  flex-shrink: 0;
-  transition: transform 0.3s ease;
-}
-
-.ai-floating-ball:hover .ai-ball-logo {
-  transform: scale(1.1) rotate(5deg);
-}
-
-.ai-ball-text {
-  font-size: 14px;
-  font-weight: 600;
-  opacity: 0;
-  transform: translateX(-10px);
-  transition: all 0.4s ease 0.1s;
-}
-
-.ai-floating-ball:hover .ai-ball-text {
-  opacity: 1;
-  transform: translateX(0);
-}
 </style>

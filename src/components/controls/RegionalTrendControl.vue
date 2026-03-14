@@ -107,8 +107,13 @@
                         <RegionalTrendChart v-else-if="trendData.length > 0" :regionName="selectedRegion.name"
                             :level="selectedRegion.level" :seriesData="trendData" />
                         <div v-else class="empty-state">
-                            <div class="empty-icon">📊</div>
-                            <span>请选择左上角区域查看数据</span>
+                            <div class="empty-icon">
+                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="64" height="64" style="opacity: 0.2">
+                                    <path d="M3 3v18h18" />
+                                    <path d="M18 9l-5 5-2-2-5 5" />
+                                </svg>
+                            </div>
+                            <span>请选择右上角区域查看数据</span>
                         </div>
                     </div>
                 </div>
@@ -291,8 +296,8 @@ async function fetchTrendData() {
     isLoading.value = true;
     try {
         console.log(`Fetching trend data for: ${selectedRegion.value.level} -> ${selectedRegion.value.name}`);
-        const data = await clcdApi.getRegionalTrend(selectedRegion.value.level, selectedRegion.value.name);
-        trendData.value = data;
+        const res = await clcdApi.getRegionalTrend(selectedRegion.value.level, selectedRegion.value.name);
+        trendData.value = res.data;
     } catch (e) {
         console.error('Failed to fetch trend:', e);
         trendData.value = [];
