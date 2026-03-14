@@ -22,24 +22,11 @@
                         </div>
                     </div>
                     <div class="chart-container-wrapper">
-                        <!-- AI 悬浮球 (左上角) -->
-                        <div class="ai-floating-ball-container">
-                            <button class="ai-floating-ball" @click.stop="openAIAnalysis">
-                                <div class="ball-content">
-                                    <ChatGptIcon :size="24" color="#ffffff" class="ai-ball-logo" />
-                                    <span class="ai-ball-text">AI 一键分析</span>
-                                </div>
-                            </button>
-                        </div>
                         <div ref="chartContainer" class="chart-container"></div>
                     </div>
                 </div>
             </transition>
         </Teleport>
-
-        <!-- AI 分析弹窗 -->
-        <AIAnalysisModal v-model:visible="showAIModal" :year="props.year" :region="'云南省各地级市'" analysis-type="pie"
-            :component-context="{ type: 'prefecture_pie' }" />
     </div>
 </template>
 
@@ -49,8 +36,6 @@ import * as echarts from 'echarts';
 import { centroid, area } from '@turf/turf';
 import { clcdApi } from '../../api/index.js';
 import { useGlobalStore } from '../../stores/global';
-import AIAnalysisModal from '../ui/AIAnalysisModal.vue';
-import ChatGptIcon from '../icons/ChatGptIcon.vue';
 
 import prefecturePieIcon from '../../assets/icons/prefecture_pie.png';
 const iconUrl = prefecturePieIcon;
@@ -63,7 +48,6 @@ const globalStore = useGlobalStore();
 const panelName = 'prefecturePie';
 
 const isVisible = computed(() => globalStore.activePanel === panelName);
-const showAIModal = ref(false);
 const chartContainer = shallowRef(null);
 const chartInstance = shallowRef(null);
 let citiesGeoJSON = null;
@@ -395,11 +379,6 @@ onUnmounted(() => {
   citiesData = null;
   landUseData = null;
 });
-
-// 打开 AI 分析弹窗
-const openAIAnalysis = () => {
-  showAIModal.value = true;
-};
 </script>
 
 <style scoped>
@@ -580,72 +559,4 @@ const openAIAnalysis = () => {
     transform: translate(-50%, -50%) scale(0.8);
 }
 
-/* AI 悬浮球样式 */
-.ai-floating-ball-container {
-  position: absolute;
-  top: 20px;
-  right: 30px;
-  z-index: 100;
-}
-
-.ai-floating-ball {
-  display: flex;
-  align-items: center;
-  justify-content: flex-start;
-  width: 48px;
-  /* 初始圆形宽度 */
-  height: 48px;
-  padding: 0 12px;
-  background: rgba(30, 58, 138, 0.6);
-  backdrop-filter: blur(12px);
-  border: 1px solid rgba(59, 130, 246, 0.5);
-  border-radius: 24px;
-  color: #ffffff;
-  cursor: pointer;
-  transition: all 0.5s cubic-bezier(0.4, 0, 0.2, 1);
-  overflow: hidden;
-  box-shadow: 0 4px 15px rgba(0, 0, 0, 0.3);
-  white-space: nowrap;
-}
-
-.ai-floating-ball:hover {
-  width: 160px;
-  /* 展开后的宽度 */
-  background: rgba(30, 58, 138, 0.8);
-  border-color: rgba(59, 130, 246, 0.8);
-  box-shadow: 0 8px 25px rgba(0, 0, 0, 0.4);
-}
-
-.ball-content {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  min-width: 140px;
-  /* 确保文字不换行 */
-}
-
-.ai-ball-logo {
-  width: 24px;
-  height: 24px;
-  object-fit: contain;
-  flex-shrink: 0;
-  transition: transform 0.3s ease;
-}
-
-.ai-floating-ball:hover .ai-ball-logo {
-  transform: scale(1.1) rotate(5deg);
-}
-
-.ai-ball-text {
-  font-size: 14px;
-  font-weight: 600;
-  opacity: 0;
-  transform: translateX(-10px);
-  transition: all 0.4s ease 0.1s;
-}
-
-.ai-floating-ball:hover .ai-ball-text {
-  opacity: 1;
-  transform: translateX(0);
-}
 </style>

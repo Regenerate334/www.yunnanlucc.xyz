@@ -115,7 +115,7 @@
       <div class="theme-group" style="display: flex; gap: 8px; align-items: center;">
         <!-- 属性选择器: 锚定右侧父级，向左延伸 -->
         <transition name="expand-fade-left">
-          <div v-if="spatialUnit !== 'clcd'" class="anim-wrapper">
+          <div v-if="spatialUnit !== 'clcd' && selectedAttribute !== 'transfer'" class="anim-wrapper">
             <DropdownSelector 
               v-model="selectedAttribute" 
               :options="attributes"
@@ -166,6 +166,7 @@
       <ViewResetControl />
       <DistanceMeasureButton />
       <AreaMeasureButton />
+      <AIAnalysisControl />
       <EChartsPrefecturePie :year="selectedYear" />
       <EChartsCountyPie :year="selectedYear" />
       <LandUseTrendControl :seriesData="cachedClcdData" />
@@ -176,13 +177,12 @@
         @reset-map="handleResetMap" 
       />
       
-      <!-- 时间轴播放器 (moved here) -->
+      <!-- 时间轴播放器  -->
       <TimePlayer 
         ref="timePlayerRef"
         v-model="selectedYear" 
         :years="playerYears" 
-        :interval="spatialUnit === 'clcd' ? 10000 : 800"
-        :show-speed-control="spatialUnit !== 'clcd'"
+        :interval="spatialUnit === 'clcd' ? 15000 : 2000"
         layout="vertical"
         @update:modelValue="onTimePlayerYearChange"
       />
@@ -234,11 +234,12 @@ import LandUseTrendControl from '../components/controls/LandUseTrendControl.vue'
 import RegionalTrendControl from '../components/controls/RegionalTrendControl.vue';
 import TransferMatrixControl from '../components/controls/TransferMatrixControl.vue';
 import SpatialLayerSelector from '../components/controls/SpatialLayerSelector.vue';
+import AIAnalysisControl from '../components/controls/AIAnalysisControl.vue';
 import TimePlayer from '../components/controls/TimePlayer.vue';
 import DashboardOverlay from './DashboardOverlay.vue';
 import AnalysisLegend from '../components/ui/AnalysisLegend.vue';
 import { useMapStore } from '../stores/map.ts';
-import { useGlobalStore } from '../stores/index.ts'; // New Import
+import { useGlobalStore } from '../stores/index.ts'; 
 import { clcdApi, authApi, analysisApi } from '../api/index.js';
 import logoutIcon from '../assets/icons/logout.png';
 import dashboardIcon from '../assets/icons/dashboard.png';
@@ -270,7 +271,7 @@ const spatialUnit = computed({
 const selectedAttribute = ref('cropland');
 const wmsLayerCache = new Map(); // Map<cacheKey, Cesium.ImageryLayer>
 const breaksCache = new Map(); // 缓存 API 返回的分级断点，消除请求延迟
-const MAX_WMS_CACHE_SIZE = 25; // 增加缓存上限
+const MAX_WMS_CACHE_SIZE = 2; // 只保留当前和上一个图层以消除闪烁，最大程度节省显存
 
 // LRU 缓存管理：添加图层到缓存，超限自动淘汰最旧图层
 function addToCache(key, layer) {
@@ -305,7 +306,7 @@ const transferDataSource = shallowRef(null);
 // Time Player Ref
 const timePlayerRef = ref(null);
 const isPreloading = ref(false);
-const PRELOAD_RANGE = 5; // 增加预加载范围
+const PRELOAD_RANGE = 0; // 关闭预加载，仅在切换时按需加载
 
 // Hover Tooltip State
 const selectedEntity = ref(null);
@@ -961,13 +962,15 @@ function setupClickHandler() {
                     properties: displayProps
                 };
                 
-                popupStyle.value = {
-                    left: position.x + 'px',
-                    top: position.y - 20 + 'px'
-                };
-                
                 // 执行高亮
                 highlightRegion(regionName);
+
+                // 记录地理位置用于实时投影（实现“依比例”锚定）
+                // 优先使用面中心或拾取点
+                const cartesian = viewer.value.camera.pickEllipsoid(position);
+                if (cartesian) {
+                    lastPickPosition = cartesian;
+                }
             } else {
                 selectedEntity.value = null;
                 clearHighlight();
@@ -1098,8 +1101,16 @@ onMounted(async () => {
     viewer.value = viewerInstance;
 
     viewer.value.scene.postProcessStages.fxaa.enabled = true;
-    viewer.value.scene.highDynamicRange = true;
-    viewer.value.resolutionScale = window.devicePixelRatio || 1.0;
+    viewer.value.scene.highDynamicRange = true; // 恢复 HDR
+    viewer.value.resolutionScale = window.devicePixelRatio || 1.0; // 恢复分辨率倍数
+    
+    // 渲染精度优化 (保留瓦片缓存限制)
+    viewer.value.scene.globe.maximumScreenSpaceError = 2.0; // 恢复默认精度
+    viewer.value.scene.globe.tileCacheSize = 50; // 保留较小的瓦片缓存以节省基础显存
+    
+    // 监听渲染事件，实时更新提示框位置与比例
+    viewer.value.scene.postRender.addEventListener(updatePopupPosition);
+
     viewer.value.cesiumWidget.creditContainer.style.display = "none";
     viewer.value.scene.screenSpaceCameraController.enableTilt = false;
 
@@ -1606,7 +1617,7 @@ function updateLayerVisibility(targetKey) {
               }, 400);
             }
         });
-    }, 800); // 800ms 缓冲，应对 GeoServer 复杂的渲染计算
+    }, 500); // 缩短缓冲至 500ms，更快释放旧渲染资源
 }
 
 // 提取图例标签更新函数
@@ -1825,9 +1836,58 @@ onUnmounted(() => {
       clickHandler = null;
   }
   
+  if (viewer.value) {
+    viewer.value.scene.postRender.removeEventListener(updatePopupPosition);
+  }
+
   console.log('[Workbench] Cleanup complete');
 });
 
+/**
+ * 核心逻辑：实时计算提示框的屏幕位置与缩放比例
+ * 实现“依比例符号”视觉效果，且锚定在地理坐标上
+ */
+function updatePopupPosition() {
+    if (!selectedEntity.value || !lastPickPosition || !viewer.value) return;
+
+    const scene = viewer.value.scene;
+    const camera = viewer.value.camera;
+
+    // 1. 地理坐标转屏幕坐标
+    const canvasPosition = Cesium.SceneTransforms.worldToWindowCoordinates(scene, lastPickPosition);
+    
+    if (Cesium.defined(canvasPosition)) {
+        // 2. 检查是否在视口内（处理背面隐藏）
+        const occluder = new Cesium.EllipsoidalOccluder(scene.globe.ellipsoid, camera.position);
+        const isVisible = occluder.isPointVisible(lastPickPosition);
+
+        if (!isVisible) {
+            popupStyle.value.display = 'none';
+            return;
+        }
+
+        // 3. 计算缩放比例 (基于相机距离)
+        // 设定一个基准距离 (比如 100km)，在该距离下比例为 1.0
+        const distance = Cesium.Cartesian3.distance(camera.position, lastPickPosition);
+        const refDist = 100000; // 100km
+        
+        // 缩放算法：使用对数或线性衰减，并限制最小/最大值
+        // 兼顾“看不清”和“太大遮挡”
+        let scale = Math.sqrt(refDist / distance);
+        scale = Math.min(Math.max(scale, 0.4), 1.2); // 限制在 0.4x 到 1.2x 之间
+
+        popupStyle.value = {
+            left: Math.round(canvasPosition.x) + 'px',
+            top: Math.round(canvasPosition.y - 20 * scale) + 'px',
+            transform: `translate(-50%, -100%) scale(${scale.toFixed(3)})`,
+            transformOrigin: 'bottom center',
+            display: 'flex',
+            opacity: 0.95
+        };
+    } else {
+        popupStyle.value.display = 'none';
+    }
+}
 
 // 空间图层逻辑已迁移
 </script>
@@ -2138,64 +2198,68 @@ html {
 }
 
 
-/* 悬浮提示框 - 样式调整为与 DropdownSelector 一致 */
+/* 悬浮提示框 - Glassmorphism Pro Max */
 .info-tooltip {
   position: fixed;
-  background: rgba(13, 25, 48, 0.4); /* 调整为 0.4 与按钮一致 */
-  backdrop-filter: blur(20px);
-  -webkit-backdrop-filter: blur(20px);
-  border-radius: 12px;
-  border: 1px solid rgba(255, 255, 255, 0.08);
-  box-shadow: 0 12px 40px rgba(0, 0, 0, 0.2); /* 阴影稍微淡一点适配高透明度 */
+  background: rgba(13, 25, 48, 0.45);
+  backdrop-filter: blur(24px) saturate(180%);
+  -webkit-backdrop-filter: blur(24px) saturate(180%);
+  border-radius: 16px;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  box-shadow: 
+    0 12px 40px rgba(0, 0, 0, 0.4),
+    inset 0 0 0 1px rgba(255, 255, 255, 0.05);
   z-index: 2000;
   pointer-events: none;
-  min-width: 180px;
-  padding: 12px;
-  transform: translate(-50%, -100%);
-  animation: tooltipFadeIn 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+  min-width: 220px;
+  padding: 16px;
+  /* transform 与 left/top 现在由 JS 驱动实现由地理锚定的依比例缩放 */
+  will-change: transform, left, top;
   display: flex;
   flex-direction: column;
-  gap: 8px;
-}
-
-@keyframes tooltipFadeIn {
-  from { opacity: 0; transform: translate(-50%, -90%); }
-  to { opacity: 1; transform: translate(-50%, -100%); }
+  gap: 12px;
+  color: #ffffff;
 }
 
 .tooltip-title {
-  font-size: 20px; /* Increased from 16px */
-  font-weight: 600;
-  color: #fff;
-  margin-bottom: 6px; /* Adjusted spacing */
-  padding-bottom: 8px;
-  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
-  text-align: center;
-  letter-spacing: 0.5px;
+  font-size: 22px;
+  font-weight: 800;
+  color: #ffffff;
+  padding-bottom: 12px;
+  border-bottom: 1px dashed rgba(255, 255, 255, 0.15);
+  text-align: left;
+  letter-spacing: 1px;
+  text-shadow: 0 2px 4px rgba(0,0,0,0.3);
+  font-family: 'PingFang SC', 'Microsoft YaHei', sans-serif;
 }
 
 .tooltip-row {
   display: flex;
   justify-content: space-between;
-  align-items: center;
+  align-items: baseline;
   gap: 16px;
-  padding: 4px 4px; 
-  font-size: 16px; /* Increased from 14px */
+  padding: 2px 0;
 }
 
 .tooltip-label {
-  color: rgba(255, 255, 255, 0.7);
-  white-space: nowrap;
+  color: rgba(255, 255, 255, 0.65);
+  font-size: 15px;
   font-weight: 500;
 }
 
 .tooltip-value {
-  color: #60a5fa; /* Blue accent for value */
-  font-weight: 600;
-  font-size: 18px; /* Explicitly larger for values */
+  color: #60a5fa;
+  font-weight: 700;
+  font-size: 20px;
   text-align: right;
-  font-family: 'Consolas', 'Monaco', monospace;
+  font-family: 'Dosis', 'Orbitron', 'Consolas', sans-serif;
+  background: linear-gradient(135deg, #60a5fa 0%, #3b82f6 100%);
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
+  filter: drop-shadow(0 2px 4px rgba(59, 130, 246, 0.3));
 }
+
 
 /* 时间轴播放器容器 - 放置在右侧 */
 .time-player-container {
