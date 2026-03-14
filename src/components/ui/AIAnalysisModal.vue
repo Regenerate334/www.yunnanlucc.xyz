@@ -2,7 +2,7 @@
   <Teleport to="body">
     <transition name="modal-fade">
       <div v-if="visible" class="ai-modal-overlay" @click.self="handleClose">
-        <div class="ai-modal-container" :class="{ fullscreen: isFullscreen }">
+        <div class="ai-modal-container">
           <!-- Sidebar -->
           <div class="sidebar">
             <div class="sidebar-header">
@@ -38,18 +38,6 @@
           <div class="main-content">
             <!-- Header (Close Button Only) -->
             <div class="ai-modal-header">
-              <button class="fullscreen-btn" @click="toggleFullscreen" :title="isFullscreen ? '退出全屏' : '全屏'">
-                <svg v-if="!isFullscreen" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor"
-                  stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                  <path
-                    d="M8 3H5a2 2 0 0 0-2 2v3m18 0V5a2 2 0 0 0-2-2h-3m0 18h3a2 2 0 0 0 2-2v-3M3 16v3a2 2 0 0 0 2 2h3" />
-                </svg>
-                <svg v-else width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor"
-                  stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                  <path
-                    d="M8 3v3a2 2 0 0 1-2 2H3m18 0h-3a2 2 0 0 1-2-2V3m0 18v-3a2 2 0 0 1 2-2h3M3 16h3a2 2 0 0 1 2 2v3" />
-                </svg>
-              </button>
               <button class="close-btn" @click="handleClose" title="关闭">×</button>
             </div>
 
@@ -95,9 +83,8 @@
                       </div>
 
                       <button v-if="loading" class="stop-btn-pill" @click="stopGeneration" title="停止生成">
-                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor"
-                          stroke-width="2">
-                          <rect x="6" y="6" width="12" height="12" rx="2" />
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor">
+                          <rect x="5" y="5" width="14" height="14" rx="2" />
                         </svg>
                       </button>
                       <button v-else class="send-btn-pill" @click="sendMessage(inputText)"
@@ -165,8 +152,8 @@
                             d="M12 2a7 7 0 0 0-7 7c0 2.38 1.19 4.47 3 5.74V17a1 1 0 0 0 1 1h6a1 1 0 0 0 1-1v-2.26c1.81-1.27 3-3.36 3-5.74a7 7 0 0 0-7-7z">
                           </path>
                         </svg>
-                        <span v-if="loading && index === messages.length - 1">Thinking...</span>
-                        <span v-else>Thought for {{ msg.thinkTime || 'a few' }} seconds</span>
+                        <span v-if="loading && index === messages.length - 1">AI 正在深度思考...</span>
+                        <span v-else>耗时 {{ msg.thinkTime || '几' }} 秒完成分析</span>
                       </div>
                     </div>
                     <transition name="fade">
@@ -176,10 +163,26 @@
                     </transition>
                   </div>
 
+                  <!-- 工业级状态步进器 (Industrial Progress Stepper) -->
+                  <div v-if="msg.role === 'assistant' && parseMessage(msg).statuses.length > 0" class="industrial-stepper">
+                    <div v-for="(status, sIdx) in parseMessage(msg).statuses" :key="sIdx"
+                      :class="['step-item', status.type, status.done ? 'done' : 'active']">
+                      <div class="step-line" v-if="sIdx < parseMessage(msg).statuses.length - 1"></div>
+                      <div class="step-indicator">
+                        <div class="step-icon" v-html="status.icon"></div>
+                        <div class="step-pulse" v-if="!status.done"></div>
+                      </div>
+                      <div class="step-content">
+                        <div class="step-label">{{ status.label }}</div>
+                        <div class="step-detail" v-if="status.detail">{{ status.detail }}</div>
+                      </div>
+                    </div>
+                  </div>
+
                   <!-- 消息正文 -->
                   <div class="bubble" v-if="parseMessage(msg).content">
                     <div v-if="msg.role === 'assistant'" class="markdown-body"
-                      v-html="renderMarkdown(parseMessage(msg).content)"></div>
+                      v-html="renderMarkdown(parseMessage(msg).content, loading && index === messages.length - 1)"></div>
                     <div v-else>{{ msg.content }}</div>
                   </div>
 
@@ -249,8 +252,8 @@
                   </div>
 
                   <button v-if="loading" class="stop-btn-pill" @click="stopGeneration" title="停止生成">
-                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                      <rect x="6" y="6" width="12" height="12" rx="2" />
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor">
+                      <rect x="5" y="5" width="14" height="14" rx="2" />
                     </svg>
                   </button>
                   <button v-else class="send-btn-pill" @click="sendMessage(inputText)"
@@ -311,7 +314,7 @@
           <div class="report-modal-body">
             <div v-if="reportLoading" class="report-loading">
               <div class="report-loading-spinner"></div>
-              <p>AI 正在生成报告，请稍候...<br><small>使用 {{ reportModelName }} 分析中</small></p>
+              <p>正在排版报告，请稍候...</p>
             </div>
             <iframe
               v-else-if="reportHtmlUrl"
@@ -372,15 +375,16 @@ const md = new MarkdownIt({
 const parseCache = new Map();
 const renderCache = new Map();
 
-const getParsedMessage = (msg) => {
-  if (!msg) return { thinking: '', content: '' };
+const _parseMessage = (msg) => {
+  if (!msg) return { thinking: '', content: '', statuses: [] };
   
   let thinking = msg.thinking || '';
   let content = msg.content || '';
-  const cacheKey = typeof msg === 'string' ? msg : msg.content + msg.thinking;
+  const cacheKey = typeof msg === 'string' ? msg : (msg.content || '') + (msg.thinking || '');
 
   if (parseCache.has(cacheKey)) return parseCache.get(cacheKey);
 
+  // 1. 解析 <think> 标签
   if (content.includes('<think>')) {
     const thinkMatch = content.match(/<think>([\s\S]*?)(?:<\/think>|$)/i);
     if (thinkMatch) {
@@ -391,7 +395,62 @@ const getParsedMessage = (msg) => {
     }
   }
 
-  const result = { thinking, content };
+  // 2. 解析 [SEARCH] 和 [ANALYSIS] 状态标签 (工业级去重解析)
+  const statuses = [];
+  const checkIcon = `<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg>`;
+  const searchIcon = `<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>`;
+  const analysisIcon = `<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z"></path><path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z"></path></svg>`;
+
+  const hasAnalysis = content.includes('[ANALYSIS]');
+  const isSearchDone = hasAnalysis || !loading.value;
+  
+  // 使用 Set 记录已处理的 detail，防止流式输出中的正则重复匹配导致的 UI 抽搐
+  const seenDetails = new Set();
+
+  // 匹配 [SEARCH]
+  const searchMatches = content.match(/\[SEARCH\].*?(\n|$)/g);
+  if (searchMatches) {
+    searchMatches.forEach(match => {
+      const detail = match.replace(/\[SEARCH\]\s*/, '').trim();
+      if (detail && !seenDetails.has(detail)) {
+        statuses.push({
+          type: 'search',
+          done: isSearchDone,
+          label: isSearchDone ? '检索完成' : '智能检索中',
+          detail,
+          icon: isSearchDone ? checkIcon : searchIcon
+        });
+        seenDetails.add(detail);
+      }
+    });
+  }
+
+  // 匹配 [ANALYSIS]
+  const analysisMatches = content.match(/\[ANALYSIS\].*?(\n|$)/g);
+  if (analysisMatches) {
+    analysisMatches.forEach(match => {
+      const detail = match.replace(/\[ANALYSIS\]\s*/, '').trim();
+      if (detail && !seenDetails.has(detail)) {
+        const isDone = !loading.value;
+        statuses.push({
+          type: 'analysis',
+          done: isDone,
+          label: isDone ? '分析完成' : '深度分析中',
+          detail,
+          icon: isDone ? checkIcon : analysisIcon
+        });
+        seenDetails.add(detail);
+      }
+    });
+  }
+
+  // 3. 从正文中移除这些标签
+  const cleanContent = content
+    .replace(/\[SEARCH\].*?(\n|$)/g, '')
+    .replace(/\[ANALYSIS\].*?(\n|$)/g, '')
+    .trim();
+
+  const result = { thinking, content: cleanContent, statuses };
   if (parseCache.size > 100) parseCache.clear();
   parseCache.set(cacheKey, result);
   return result;
@@ -399,11 +458,16 @@ const getParsedMessage = (msg) => {
 
 const getRenderedMarkdown = (text) => {
   if (!text) return '';
-  if (renderCache.has(text)) return renderCache.get(text);
+  const cacheKey = text;
+  if (renderCache.has(cacheKey)) return renderCache.get(cacheKey);
 
-  const result = md.render(text);
-  if (renderCache.size > 100) renderCache.clear();
-  renderCache.set(text, result);
+  let result = md.render(text);
+  
+  // 给 table 增加包装层
+  result = result.replace(/<table>/g, '<div class="table-container"><table>').replace(/<\/table>/g, '</table></div>');
+
+  if (renderCache.size > 200) renderCache.clear();
+  renderCache.set(cacheKey, result);
   return result;
 };
 
@@ -470,6 +534,7 @@ const createNewSession = async () => {
       console.log('[Sessions] Created:', data.session.id);
       currentSessionId.value = data.session.id;
       messages.value = [];
+      expandedThinking.value = {}; // 重置折叠状态
       await loadSessions();
     }
   } catch (err) {
@@ -481,6 +546,8 @@ const selectSession = async (sessionId) => {
   if (currentSessionId.value === sessionId) return;
   console.log('[Sessions] Selecting session:', sessionId);
   currentSessionId.value = sessionId;
+  messages.value = [];
+  expandedThinking.value = {}; // 清空之前的展开状态，防止索引错乱
   loading.value = false;
   stopGeneration();
 
@@ -554,12 +621,7 @@ const isReasoningModel = computed(() => {
 const deepThinking = computed(() => isReasoningModel.value);
 
 // 模型选择
-const isFullscreen = ref(false);
-const selectedModel = ref('gpt-oss:20b');
-
-const toggleFullscreen = () => {
-  isFullscreen.value = !isFullscreen.value;
-};
+const selectedModel = ref('gpt-oss:120b-cloud');
 const showModelDropdown = ref(false);
 const availableModels = [
   { value: 'gpt-oss:120b-cloud', label: 'GPT-OSS 120B (Cloud)', desc: '云端超大模型 · 最强推理能力' },
@@ -684,7 +746,9 @@ const sendMessage = async (text) => {
     thinkTime: 0
   });
 
+  // 初始自动展开
   expandedThinking.value[assistantMsgIndex] = true;
+  const userInteractedThinking = ref(false); // 追踪用户是否手动调整过折叠状态
 
   try {
     // 发送前保存用户消息
@@ -712,19 +776,23 @@ const sendMessage = async (text) => {
       (chunkObj) => {
         if (chunkObj.content) {
           messages.value[assistantMsgIndex].content += chunkObj.content;
-          // 如果内容中包含思考标签，确保展开思考框
-          if (chunkObj.content.includes('<think>')) {
+          // 只有用户没动过，我们才根据内容自动控制展开
+          if (chunkObj.content.includes('<think>') && !userInteractedThinking.value) {
             expandedThinking.value[assistantMsgIndex] = true;
           }
         }
         if (chunkObj.thinking) {
           messages.value[assistantMsgIndex].thinking += chunkObj.thinking;
-          // 收到推理分块，确保展开思考框
-          expandedThinking.value[assistantMsgIndex] = true;
+          // 收到推理分块，且用户没动过，确保展开
+          if (!userInteractedThinking.value) {
+            expandedThinking.value[assistantMsgIndex] = true;
+          }
         }
 
         const parsed = parseMessage(messages.value[assistantMsgIndex]);
-        if (parsed.content && !messages.value[assistantMsgIndex].thinkTime) {
+        // 只有当存在真正的回答正文（非 [SEARCH]/[ANALYSIS] 标签）时，才锁定耗时统计
+        const hasRealContent = parsed.content.replace(/\[SEARCH\].*?(\n|$)|\[ANALYSIS\].*?(\n|$)/g, '').trim().length > 0;
+        if (hasRealContent && !messages.value[assistantMsgIndex].thinkTime) {
           messages.value[assistantMsgIndex].thinkTime = ((Date.now() - startTime) / 1000).toFixed(1);
         }
 
@@ -735,6 +803,10 @@ const sendMessage = async (text) => {
         abortController.value = null;
         
         const lastMsg = messages.value[assistantMsgIndex];
+        // 如果结束还没统计到时间（可能是极短的回答或只有状态标签），则补全总耗时
+        if (!lastMsg.thinkTime) {
+          lastMsg.thinkTime = ((Date.now() - startTime) / 1000).toFixed(1);
+        }
         const parsed = parseMessage(lastMsg);
         
         // 如果回复为空，提供友好提示
@@ -779,11 +851,21 @@ const scrollToBottom = async (force = false) => {
   }
 };
 
+
+
 const toggleThinking = (index) => {
+  if (expandedThinking.value[index] === undefined) {
+    expandedThinking.value[index] = true;
+  }
   expandedThinking.value[index] = !expandedThinking.value[index];
+  
+  // 如果是当前正在生成的 AI 消息，记录用户交互
+  if (loading.value && index === messages.value.length - 1) {
+    userInteractedThinking.value = true;
+  }
 };
 
-const parseMessage = getParsedMessage;
+const parseMessage = _parseMessage;
 const renderMarkdown = getRenderedMarkdown;
 
 const copyMessage = (text) => {
@@ -803,32 +885,281 @@ watch(messages, (newMsgs) => {
   }
 }, { deep: true });
 
-// ── 报告生成逻辑 ──────────────────────────────────────────────────────────────
+// ── 报告生成逻辑（纯前端，无二次AI调用）─────────────────────────────────────
 
 const reportVisible  = ref(false);
 const reportLoading  = ref(false);
 const reportHtmlUrl  = ref('');   // Blob URL
 const reportError    = ref('');
 const reportIframe   = ref(null);
-const lastReportParams = ref(null); // 用于重试
-
-const reportModelName = computed(() => {
-  const m = availableModels.find(x => x.value === selectedModel.value);
-  return m ? m.label : selectedModel.value;
-});
+const lastReportMsgSlice = ref(null);
 
 /**
- * 核心：调用 /api/ai/report/html 生成报告
+ * 将 Markdown 文本转为完整优化排版的 HTML 报告字符串。
+ * 无需任何后端调用。
+ */
+const buildDirectReportHtml = (title, markdownContent, meta) => {
+  // 把已有的 renderMarkdown 转换Markdown → HTML
+  const bodyHtml = renderMarkdown(markdownContent);
+  const now = new Date().toLocaleString('zh-CN', { hour12: false });
+  const regionInfo = [meta.region, meta.year ? `${meta.year}年` : ''].filter(Boolean).join(' · ');
+
+  return `<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>${title}</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Noto+Serif+SC:wght@400;600;700&family=Noto+Sans+SC:wght@400;500;600&display=swap" rel="stylesheet">
+  <style>
+    /* ── 全局重置 ── */
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: 'Noto Sans SC', 'PingFang SC', 'Microsoft YaHei', sans-serif;
+      font-size: 14px;
+      line-height: 1.8;
+      color: #1a202c;
+      background: #f7f8fa;
+    }
+
+    /* ── 页面容器 ── */
+    .report-page {
+      max-width: 860px;
+      margin: 40px auto;
+      background: #fff;
+      border-radius: 8px;
+      box-shadow: 0 4px 24px rgba(0,0,0,0.08);
+      overflow: hidden;
+    }
+
+    /* ── 页眉 ── */
+    .report-header {
+      background: linear-gradient(135deg, #1a365d 0%, #2a4a8a 100%);
+      color: #fff;
+      padding: 40px 52px 36px;
+    }
+    .report-header .tag {
+      font-size: 11px;
+      font-weight: 600;
+      letter-spacing: 3px;
+      text-transform: uppercase;
+      color: rgba(255,255,255,0.55);
+      margin-bottom: 16px;
+    }
+    .report-header h1 {
+      font-family: 'Noto Serif SC', serif;
+      font-size: 28px;
+      font-weight: 700;
+      line-height: 1.3;
+      color: #fff;
+      margin-bottom: 12px;
+    }
+    .report-header .meta {
+      font-size: 12px;
+      color: rgba(255,255,255,0.5);
+      display: flex;
+      gap: 20px;
+      flex-wrap: wrap;
+    }
+    .report-header .meta span::before {
+      content: '▪ ';
+      opacity: 0.4;
+    }
+
+    /* ── 主体内容 ── */
+    .report-body {
+      padding: 44px 52px 52px;
+    }
+
+    /* ── Markdown 内容排版 ── */
+    .md-content h1, .md-content h2, .md-content h3,
+    .md-content h4, .md-content h5, .md-content h6 {
+      font-family: 'Noto Serif SC', serif;
+      color: #1a365d;
+      margin-top: 2em;
+      margin-bottom: 0.6em;
+      line-height: 1.4;
+    }
+    .md-content h1 { font-size: 22px; border-bottom: 2px solid #2a4a8a; padding-bottom: 8px; }
+    .md-content h2 { font-size: 18px; border-bottom: 1px solid #e2e8f0; padding-bottom: 6px; }
+    .md-content h3 { font-size: 16px; }
+    .md-content h4, .md-content h5, .md-content h6 { font-size: 14px; }
+
+    .md-content p {
+      margin-bottom: 1em;
+      text-align: justify;
+      color: #2d3748;
+    }
+
+    /* ── 强调文字 ── */
+    .md-content strong { color: #1a365d; font-weight: 600; }
+    .md-content em { color: #4a5568; font-style: italic; }
+
+    /* ── 列表 ── */
+    .md-content ul, .md-content ol {
+      padding-left: 1.6em;
+      margin-bottom: 1em;
+    }
+    .md-content li {
+      margin-bottom: 0.4em;
+      color: #2d3748;
+    }
+    .md-content li > ul, .md-content li > ol {
+      margin-top: 0.3em;
+      margin-bottom: 0;
+    }
+
+    /* ── 表格容器（对应 getRenderedMarkdown 生成的 .table-container 包装层）── */
+    .md-content .table-container {
+      overflow-x: auto;
+      margin: 1.4em 0;
+      border-radius: 6px;
+      border: 1px solid #e2e8f0;
+    }
+
+    /* ── 表格（核心优化）── */
+    .md-content table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 13px;
+      margin: 0;
+    }
+    .md-content thead tr {
+      background: #1a365d;
+      color: #fff;
+    }
+    .md-content th {
+      padding: 10px 14px;
+      font-weight: 600;
+      text-align: left;
+      white-space: nowrap;
+    }
+    .md-content td {
+      padding: 9px 14px;
+      border-bottom: 1px solid #e2e8f0;
+      color: #2d3748;
+    }
+    .md-content tbody tr:nth-child(even) {
+      background: #f7f8fa;
+    }
+    .md-content tbody tr:hover {
+      background: #ebf4ff;
+    }
+
+    /* ── 引用块 ── */
+    .md-content blockquote {
+      border-left: 4px solid #2a4a8a;
+      background: #ebf4ff;
+      margin: 1.2em 0;
+      padding: 12px 18px;
+      border-radius: 0 6px 6px 0;
+      color: #2c5282;
+    }
+    .md-content blockquote p { margin: 0; color: inherit; }
+
+    /* ── 代码 ── */
+    .md-content code {
+      background: #edf2f7;
+      padding: 2px 6px;
+      border-radius: 3px;
+      font-size: 12px;
+      font-family: 'JetBrains Mono', 'Consolas', monospace;
+      color: #c53030;
+    }
+    .md-content pre {
+      background: #1a202c;
+      color: #e2e8f0;
+      padding: 16px 20px;
+      border-radius: 6px;
+      overflow-x: auto;
+      margin: 1.2em 0;
+      font-size: 12px;
+      line-height: 1.6;
+    }
+    .md-content pre code {
+      background: none;
+      padding: 0;
+      color: inherit;
+      font-size: inherit;
+    }
+
+    /* ── 分割线 ── */
+    .md-content hr {
+      border: none;
+      border-top: 1px solid #e2e8f0;
+      margin: 2em 0;
+    }
+
+    /* ── 页脚 ── */
+    .report-footer {
+      border-top: 1px solid #e2e8f0;
+      padding: 18px 52px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      font-size: 11px;
+      color: #a0aec0;
+      background: #fafbfc;
+    }
+
+    /* ── 打印样式 ── */
+    @media print {
+      body { background: #fff; }
+      .report-page {
+        margin: 0;
+        box-shadow: none;
+        border-radius: 0;
+        max-width: 100%;
+      }
+      .report-header { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+      .md-content thead tr { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+      .md-content tbody tr:nth-child(even) { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+      .md-content h1, .md-content h2 { page-break-after: avoid; }
+      .md-content table, .md-content pre { page-break-inside: avoid; }
+    }
+  </style>
+</head>
+<body>
+  <div class="report-page">
+    <div class="report-header">
+      <div class="tag">AI 分析报告 · GIS Intelligence Platform</div>
+      <h1>${title}</h1>
+      <div class="meta">
+        ${regionInfo ? `<span>${regionInfo}</span>` : ''}
+        <span>生成时间：${now}</span>
+      </div>
+    </div>
+    <div class="report-body">
+      <div class="md-content">${bodyHtml}</div>
+    </div>
+    <div class="report-footer">
+      <span>© GIS 智能分析平台</span>
+      <span>${now}</span>
+    </div>
+  </div>
+</body>
+</html>`;
+};
+
+/**
+ * 核心：直接从已有AI对话提取内容生成报告，无需二次调用AI。
  * @param {Array} msgSlice - 截至当前消息的对话记录
  */
-const generateReport = async (msgSlice) => {
-  // 从对话记录中提取最后一条用户问题作为报告问题
-  const lastUserMsg = [...msgSlice].reverse().find(m => m.role === 'user');
-  if (!lastUserMsg) return;
+const generateReport = (msgSlice) => {
+  const lastUserMsg      = [...msgSlice].reverse().find(m => m.role === 'user');
+  const lastAssistantMsg = [...msgSlice].reverse().find(m => m.role === 'assistant');
 
-  const question = lastUserMsg.content.trim();
-  lastReportParams.value = { question, msgSlice };
+  if (!lastUserMsg || !lastAssistantMsg) return;
 
+  // 标题：取用户问题前 40 字
+  const title = lastUserMsg.content.trim().slice(0, 40) + (lastUserMsg.content.trim().length > 40 ? '...' : '');
+
+  // 内容：AI 回复的纯 Markdown（去掉 <think> 思考块）
+  const markdownContent = parseMessage(lastAssistantMsg).content;
+
+  lastReportMsgSlice.value = msgSlice;
   reportVisible.value = true;
   reportLoading.value = true;
   reportError.value   = '';
@@ -840,34 +1171,14 @@ const generateReport = async (msgSlice) => {
   }
 
   try {
-    const token = localStorage.getItem('auth_token');
-    const res = await fetch('/api/ai/report/html', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${token}`
-      },
-      body: JSON.stringify({
-        question,
-        year:             props.year,
-        componentContext: props.componentContext,
-        model:            selectedModel.value,
-        think:            deepThinking.value
-      })
+    const html = buildDirectReportHtml(title, markdownContent, {
+      region: props.region,
+      year:   props.year
     });
-
-    if (!res.ok) {
-      const errData = await res.json().catch(() => ({}));
-      throw new Error(errData.error || `HTTP ${res.status}`);
-    }
-
-    const htmlText = await res.text();
-    const blob = new Blob([htmlText], { type: 'text/html;charset=utf-8' });
+    const blob = new Blob([html], { type: 'text/html;charset=utf-8' });
     reportHtmlUrl.value = URL.createObjectURL(blob);
-    console.log('[Report] 报告生成成功，Blob URL:', reportHtmlUrl.value);
-
   } catch (err) {
-    console.error('[Report] 生成失败:', err);
+    console.error('[Report] 本地排版失败:', err);
     reportError.value = `报告生成失败：${err.message}`;
   } finally {
     reportLoading.value = false;
@@ -876,7 +1187,6 @@ const generateReport = async (msgSlice) => {
 
 const closeReport = () => {
   reportVisible.value = false;
-  // 延迟释放 Blob URL，避免 iframe 内容消失
   setTimeout(() => {
     if (reportHtmlUrl.value) {
       URL.revokeObjectURL(reportHtmlUrl.value);
@@ -886,7 +1196,18 @@ const closeReport = () => {
 };
 
 const printReport = () => {
-  reportIframe.value?.contentWindow?.print();
+  if (!reportHtmlUrl.value) return;
+  const win = window.open(reportHtmlUrl.value, '_blank');
+  if (!win) {
+    // 被浏览器拦截弹窗时降级提示
+    alert('请允许弹窗，或使用"新标签"按钮打开后手动打印（Ctrl+P）。');
+    return;
+  }
+  win.addEventListener('load', () => {
+    win.print();
+    // 打印完成（或用户取消）后自动关闭该窗口
+    win.addEventListener('afterprint', () => win.close());
+  });
 };
 
 const openReportNewTab = () => {
@@ -896,8 +1217,8 @@ const openReportNewTab = () => {
 };
 
 const retryReport = () => {
-  if (lastReportParams.value) {
-    generateReport(lastReportParams.value.msgSlice);
+  if (lastReportMsgSlice.value) {
+    generateReport(lastReportMsgSlice.value);
   }
 };
 </script>
@@ -915,65 +1236,22 @@ const retryReport = () => {
 }
 
 .ai-modal-container {
-  width: 60vw;
-  max-width: 1200px;
-  height: 85vh;
-  background: rgba(13, 25, 48, 0.75);
-  backdrop-filter: blur(20px);
-  border-radius: 16px;
-  display: flex;
-  overflow: visible;
-  box-shadow: 0 25px 80px -12px rgba(0, 0, 0, 0.6);
-  position: relative;
-  border: 1px solid rgba(59, 130, 246, 0.2);
-  transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
-}
-
-.ai-modal-container.fullscreen {
   width: 95vw;
-  height: 95vh;
-  max-width: none;
+  height: 90vh;
+  max-width: 1600px; /* 恢复 1600px 大尺寸窗口 */
+  background: #0f172a;
+  border-radius: 24px;
+  display: flex;
+  overflow: hidden;
+  box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  position: relative;
+  transition: all 0.3s ease;
 }
 
 /* 全屏模式下的响应式调整 */
 .ai-modal-container.fullscreen .welcome-container {
   max-width: 900px;
-}
-
-.ai-modal-container.fullscreen .message {
-  max-width: 1100px;
-}
-
-.ai-modal-container.fullscreen .markdown-body :deep(table) {
-  max-width: 100%;
-}
-
-.ai-modal-container.fullscreen .input-pill {
-  max-width: 900px;
-  margin: 0 auto;
-}
-
-.ai-modal-container.fullscreen .ai-modal-footer .input-pill {
-  max-width: 1000px;
-}
-
-.fullscreen-btn {
-  background: transparent;
-  border: none;
-  color: #94a3b8;
-  padding: 4px;
-  cursor: pointer;
-  margin-right: 12px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  transition: color 0.2s;
-  border-radius: 4px;
-}
-
-.fullscreen-btn:hover {
-  color: #e2e8f0;
-  background: rgba(255, 255, 255, 0.05);
 }
 
 .sidebar {
@@ -1124,9 +1402,44 @@ const retryReport = () => {
   flex-direction: column;
   height: 100%;
   position: relative;
-  background: rgba(13, 25, 48, 0.3);
-  border-top-right-radius: 16px;
-  border-bottom-right-radius: 16px;
+  background: #0d1930;
+  overflow: hidden;
+}
+
+/* ── 自定义滚动条样式 (Premium Scrollbar) ──────────────────────────────────── */
+
+.ai-modal-container ::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+.ai-modal-container ::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.ai-modal-container ::-webkit-scrollbar-thumb {
+  background: rgba(59, 130, 246, 0.15);
+  border-radius: 10px;
+  transition: all 0.3s ease;
+}
+
+.ai-modal-container ::-webkit-scrollbar-thumb:hover {
+  background: rgba(59, 130, 246, 0.4);
+}
+
+/* 针对消息区域的特定优化 */
+.messages-container::-webkit-scrollbar-thumb {
+  background: rgba(59, 130, 246, 0.2);
+}
+
+/* 针对表格容器（横向滚动条）的特定优化 - 确保在暗色背景下清晰可见 */
+.markdown-body :deep(.table-container)::-webkit-scrollbar-thumb {
+  background: rgba(59, 130, 246, 0.3);
+}
+
+.markdown-body :deep(.table-container)::-webkit-scrollbar-thumb:hover {
+  background: rgba(59, 130, 246, 0.6);
+  box-shadow: 0 0 12px rgba(59, 130, 246, 0.4);
 }
 
 .ai-modal-header {
@@ -1253,6 +1566,8 @@ const retryReport = () => {
 }
 
 .input-pill {
+  max-width: 850px; /* 限制输入框宽度，防止在宽屏上过度伸展 */
+  margin: 0 auto;
   background: rgba(30, 41, 59, 0.5);
   border: 1px solid rgba(59, 130, 246, 0.2);
   border-radius: 16px;
@@ -1320,8 +1635,9 @@ const retryReport = () => {
 .model-dropdown-menu {
   position: absolute;
   bottom: calc(100% + 12px);
-  left: 0;
-  min-width: 200px;
+  right: 0;
+  left: auto;
+  min-width: 240px;
   background: #1e293b;
   border: 1px solid rgba(59, 130, 246, 0.5);
   border-radius: 12px;
@@ -1335,6 +1651,8 @@ const retryReport = () => {
 .welcome-container .model-dropdown-menu {
   bottom: auto;
   top: calc(100% + 8px);
+  right: 0;
+  left: auto;
 }
 
 .model-dropdown-item {
@@ -1409,8 +1727,24 @@ const retryReport = () => {
 }
 
 .stop-btn-pill {
-  background: #ef4444;
+  background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%);
   color: white;
+  box-shadow: 0 0 12px rgba(239, 68, 68, 0.3);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.stop-btn-pill:hover {
+  transform: scale(1.1);
+  box-shadow: 0 0 20px rgba(239, 68, 68, 0.5);
+  background: linear-gradient(135deg, #f87171 0%, #ef4444 100%);
+}
+
+.stop-btn-pill:active {
+  transform: scale(0.92);
 }
 
 .questions-scroll-wrapper {
@@ -1512,7 +1846,9 @@ const retryReport = () => {
 }
 
 .bubble-wrapper {
+  max-width: 1000px; /* 恢复 1000px 的消息输出宽度 */
   width: 100%;
+  margin: 0 auto;
 }
 
 .message.user .bubble-wrapper {
@@ -1558,7 +1894,7 @@ const retryReport = () => {
 }
 
 .thinking-header {
-  padding: 4px 0;
+  padding: 6px 0;
   display: flex;
   justify-content: flex-start;
   align-items: center;
@@ -1566,6 +1902,19 @@ const retryReport = () => {
   font-size: 14px;
   color: #94a3b8;
   user-select: none;
+  background: transparent;
+  border-radius: 0;
+  margin-bottom: 4px;
+  transition: color 0.2s ease;
+  border: none;
+}
+
+.thinking-header:hover {
+  color: #e2e8f0;
+}
+
+.thinking-header:active {
+  transform: scale(0.98);
 }
 
 .thinking-title {
@@ -1671,6 +2020,31 @@ const retryReport = () => {
   line-height: 1.6;
 }
 
+.thinking-expand-mask:hover {
+  height: 80px;
+  background: linear-gradient(to bottom, transparent, rgba(30, 41, 59, 0.98));
+}
+
+.expand-hint {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  color: #60a5fa;
+  font-size: 12px;
+  font-weight: 500;
+  padding: 4px 12px;
+  background: rgba(59, 130, 246, 0.1);
+  border-radius: 20px;
+  border: 1px solid rgba(59, 130, 246, 0.2);
+  transition: all 0.2s ease;
+}
+
+.thinking-expand-mask:hover .expand-hint {
+  transform: translateY(-2px);
+  background: rgba(59, 130, 246, 0.2);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+}
+
 .ai-modal-footer {
   position: absolute;
   bottom: 0;
@@ -1681,6 +2055,7 @@ const retryReport = () => {
   border-top: none;
   background: linear-gradient(to top, rgba(13, 25, 48, 1) 70%, rgba(13, 25, 48, 0) 100%);
   z-index: 10;
+  overflow: visible !important;
 }
 
 .footer-hint {
@@ -1728,31 +2103,168 @@ const retryReport = () => {
   color: #60a5fa;
 }
 
-.markdown-body :deep(table) {
-  border-collapse: collapse;
+/* 表格容器：支持居中与滚动 */
+.markdown-body :deep(.table-container) {
   width: 100%;
-  margin: 20px 0;
-  background: rgba(30, 41, 59, 0.3);
-  border-radius: 8px;
-  overflow: hidden;
-  border: 1px solid rgba(255, 255, 255, 0.1);
+  display: flex;
+  justify-content: center;
+  overflow-x: auto;
+  margin: 24px 0;
+  padding: 4px; /* 给阴影留点空间 */
+}
+
+.markdown-body :deep(table) {
+  border-collapse: separate;
+  border-spacing: 0;
+  width: auto;
+  min-width: 300px;
+  background: rgba(15, 23, 42, 0.6);
+  backdrop-filter: blur(8px);
+  border-radius: 12px;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
 }
 
 .markdown-body :deep(th),
 .markdown-body :deep(td) {
-  border: 1px solid rgba(255, 255, 255, 0.1);
-  padding: 12px 16px;
-  text-align: left;
+  border: 0.5px solid rgba(255, 255, 255, 0.05);
+  padding: 8px 16px;
+  text-align: center;
+  font-size: 14px;
+  white-space: normal;
+  word-wrap: break-word;
+  word-break: break-all;
+  min-width: 80px;
+  max-width: 400px; /* 适当放宽单元格限制，但在 1000px 容器内依然强制换行 */
 }
 
 .markdown-body :deep(th) {
-  background: rgba(59, 130, 246, 0.1);
+  background: rgba(59, 130, 246, 0.15);
   color: #93c5fd;
   font-weight: 600;
+  border-bottom: 1px solid rgba(59, 130, 246, 0.3);
 }
 
+.markdown-body :deep(tr:last-child td:first-child) { border-bottom-left-radius: 12px; }
+.markdown-body :deep(tr:last-child td:last-child) { border-bottom-right-radius: 12px; }
+
 .markdown-body :deep(tr:hover) {
-  background: rgba(255, 255, 255, 0.02);
+  background: rgba(255, 255, 255, 0.03);
+}
+
+/* ── AI 步进器 (Industrial Progress Stepper) ────────────────────────────────── */
+.industrial-stepper {
+  margin: 12px 0 20px 4px;
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+  position: relative;
+}
+
+.step-item {
+  display: flex;
+  gap: 16px;
+  position: relative;
+  padding-bottom: 20px;
+  opacity: 0;
+  transform: translateX(-10px);
+  animation: stepAppear 0.4s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+@keyframes stepAppear {
+  to { opacity: 1; transform: translateX(0); }
+}
+
+.step-item:last-child {
+  padding-bottom: 0;
+}
+
+.step-line {
+  position: absolute;
+  left: 11px;
+  top: 24px;
+  bottom: -4px;
+  width: 2px;
+  background: rgba(255, 255, 255, 0.08);
+  z-index: 1;
+}
+
+.step-indicator {
+  position: relative;
+  width: 24px;
+  height: 24px;
+  flex-shrink: 0;
+  z-index: 2;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.step-icon {
+  width: 100%;
+  height: 100%;
+  background: #1e293b;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #94a3b8;
+  transition: all 0.3s ease;
+}
+
+.step-item.done .step-icon {
+  background: rgba(16, 185, 129, 0.1);
+  border-color: rgba(16, 185, 129, 0.4);
+  color: #10b981;
+  box-shadow: 0 0 12px rgba(16, 185, 129, 0.2);
+}
+
+.step-item.active .step-icon {
+  background: rgba(59, 130, 246, 0.1);
+  border-color: rgba(59, 130, 246, 0.4);
+  color: #60a5fa;
+  box-shadow: 0 0 12px rgba(59, 130, 246, 0.2);
+}
+
+.step-pulse {
+  position: absolute;
+  inset: -4px;
+  border-radius: 50%;
+  border: 2px solid rgba(59, 130, 246, 0.3);
+  animation: stepPulse 2s infinite;
+}
+
+@keyframes stepPulse {
+  0% { transform: scale(0.8); opacity: 0; }
+  50% { opacity: 0.5; }
+  100% { transform: scale(1.5); opacity: 0; }
+}
+
+.step-content {
+  padding-top: 2px;
+}
+
+.step-label {
+  font-size: 14px;
+  font-weight: 600;
+  color: #e2e8f0;
+  margin-bottom: 4px;
+  font-family: "PingFang SC", sans-serif;
+}
+
+.step-item.done .step-label {
+  color: #10b981;
+}
+
+.step-detail {
+  font-size: 13px;
+  color: #64748b;
+  font-family: "JetBrains Mono", monospace;
+  background: rgba(0, 0, 0, 0.15);
+  padding: 4px 10px;
+  border-radius: 6px;
+  border: 1px solid rgba(255, 255, 255, 0.05);
 }
 
 .modal-fade-enter-active,
@@ -1762,12 +2274,6 @@ const retryReport = () => {
 
 .modal-fade-enter-from,
 .modal-fade-leave-to {
-  opacity: 0;
-}
-
-.modal-fade-enter-from .ai-modal-container,
-.modal-fade-leave-to .ai-modal-container {
-  transform: scale(0.92) translateY(20px);
   opacity: 0;
 }
 
