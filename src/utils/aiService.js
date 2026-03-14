@@ -154,8 +154,8 @@ export const ANALYSIS_TEMPLATES = {
     regionalCompare: (year) => `对比云南省各地级市${year}年的土地利用差异`,
 
     // 综合评价
-    ecologicalAssess: (region, year) => `评估${region}${year}年的生态环境状况`,
-    policyAdvice: (region) => `针对${region}的土地利用现状，提供政策建议`
+    ecologicalAssess: (region, year) => `评估${region}${year}年的生态环境状况及土地利用合理性`,
+    policyAdvice: (region) => `针对${region}的土地利用现状，提出可持续发展的政策建议`
 };
 
 /**
@@ -168,11 +168,11 @@ export function generateQuickQuestions(type, params = {}) {
         case 'pie':
             return [
                 ANALYSIS_TEMPLATES.pieStructure(region, year),
-                ANALYSIS_TEMPLATES.pieChange(region, year),
-                ANALYSIS_TEMPLATES.ecologicalAssess(region, year),
-                `${region}哪种地类占比最大？`,
-                `${region}的建设用地占比是多少？`,
-                `分析${region}的林地保护现状`
+                `${region}哪种地类占比最大？请结合空间分布详细说明`,
+                `分析${region}建设用地的占比，并评价其城市化水平`,
+                `${region}${year}年是否存在某类地类面积异常波动？`,
+                `计算${region}的生态用地总占比（林地+草地+水域）`,
+                ANALYSIS_TEMPLATES.ecologicalAssess(region, year)
             ];
         case 'trend':
             return [
@@ -188,20 +188,20 @@ export function generateQuickQuestions(type, params = {}) {
         case 'regional':
             return [
                 ANALYSIS_TEMPLATES.regionalCompare(year),
-                `分析各地级市土地利用动态度排名`,
-                `哪些地区建设用地扩张最快？`,
-                `边境地区土地利用特点`,
-                `城市化率最高的地级市是哪个？`,
-                `经济发展与土地利用的关系`
+                `对比 ${region || '昆明和曲靖'} 的土地利用动态度排名`,
+                `找出 ${year} 年建设用地扩张最快的前三个地区`,
+                `分析云南省边境地区（如西双版纳、德宏）的土地利用特点`,
+                `评价各地地级市的耕地保有量达成情况`,
+                `研究区域生产总值与建设用地扩张的关联性`
             ];
         default:
             return [
-                '分析当前土地利用结构',
-                '耕地变化趋势分析',
-                '建设用地扩张特点',
-                '生态环境质量评估',
-                '土地利用政策建议',
-                '未来发展趋势预测'
+                '分析当前玉溪市土地利用结构',
+                '对比昆明和曲靖的耕地变化趋势',
+                '分析西双版纳建设用地扩张特点',
+                '评估全省生态环境质量演变情况',
+                '针对滇中城市群提出土地利用政策建议',
+                '预测云南省 2030 年土地利用空间格局'
             ];
     }
 }
