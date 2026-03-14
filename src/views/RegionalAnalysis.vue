@@ -86,7 +86,7 @@
       <TimePlayer 
         :years="years"
         v-model="selectedYear"
-        :interval="500"
+        :interval="2000"
       />
     </div>
 
