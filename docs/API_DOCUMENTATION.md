@@ -208,6 +208,24 @@ data: {"content": "分析结果..."}
 data: {"done": true}
 ```
 
+#### POST /api/report/html
+
+生成高保定 Pro Max 级 HTML 报告接口。
+
+**特性**
+- **Hybrid Analysis**: 如果数据上下文长度 > 300 字符，自动触发 Python 深度分析引擎.
+- **Evidence-Based**: 报告包含经过 Python 验证的统计证据。
+- **Viz-Embedded**: 包含由 Python 引擎生成的专业图表。
+
+**请求参数**
+
+| 参数名 | 类型 | 必填 | 说明 |
+|--------|------|------|------|
+| question | string | 是 | 分析问题 |
+| year | number | 否 | 默认 2023 |
+| reportTitle | string | 否 | 自定义标题 |
+| chatContext | string | 否 | 已有的对话历史 |
+
 #### GET /api/ai/suggestions
 
 获取 AI 建议问题列表。
@@ -267,10 +285,20 @@ data: {"done": true}
 
 | 模型 | 参数量 | 说明 |
 |------|--------|------|
+| gpt-oss:120b-cloud | 120B | 最强推理，建议用于报告生成 |
 | gpt-oss:20b | 20B | 默认，性能平衡 |
 | deepseek-r1:8b | 8B | 标准模式 |
 | gemma3:4b | 4B | 快速模式 |
 | deepseek-r1:1.5b | 1.5B | 极速模式 |
+
+### 深度分析引擎 (Python Engine)
+
+| 模块 | 职责 | 实现技术 |
+|------|------|----------|
+| **CodeGenerator** | 动态编写分析代码 | LangChain + Gemini |
+| **CodeExecutor** | 执行 Python 统计环境 | Subprocess + Pandas |
+| **CodeFixer** | 自动修复执行错误 | Self-Healing AI |
+| **VisionAudit** | 多模态图表审计 | Gemini-1.5-Pro/Flash |
 
 ### 云南省地级行政区划
 
@@ -306,3 +334,20 @@ data: {"done": true}
 - [交互式文档](./index.html)
 - [OpenAPI 3.0 规范](./openapi.yaml)
 - [Postman 测试集合](./postman_collection.json)
+
+---
+
+## 客户端直出报告引擎 (v2.0)
+
+自 2026-03-14 起，平台引入了全新的**客户端直出报告引擎 (Direct Report Engine)**。
+
+**工作原理**:
+- 引擎不再依赖后端 `/api/ai/report/html` 接口。
+- 直接利用 `renderMarkdown` 功能在用户的浏览器中将 AI 分析的实时 Markdown 文本转换为结构化 HTML。
+- 使用 **Blob URL** 技术生成临时报告页面，支持在 iframe 中即时预览。
+
+**关键优势**:
+- **零延迟**: 报告生成时间从秒级降至毫秒级。
+- **离线友好**: 只要 AI 回复已完成，即使网络断开也可生成完整报告。
+- **隐私保护**: 敏感的分析上下文不再需要二次传输至后端。
+- **排版优化**: 针对 A4 打印进行了像素级优化，支持自动导出 PDF 并保留原始对话标题。

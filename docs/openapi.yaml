@@ -488,6 +488,7 @@ paths:
                   description: 组件上下文
                 model:
                   type: string
+                  enum: ["gpt-oss:120b-cloud", "gpt-oss:20b", "deepseek-r1:8b", "gemma3:4b", "deepseek-r1:1.5b"]
                   default: "gpt-oss:20b"
                   description: AI 模型名称
       responses:
@@ -497,6 +498,39 @@ paths:
             text/event-stream:
               schema:
                 type: string
+
+  /api/report/html:
+    post:
+      tags: [智能分析]
+      summary: 生成专题报告 (Pro Max)
+      description: |
+        生成高保真、证据驱动的土地利用分析报告。
+        支持混合引擎分析（Node.js + Python Data Science）。
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [question]
+              properties:
+                question:
+                  type: string
+                  description: 分析问题
+                year:
+                  type: integer
+                  example: 2023
+                reportTitle:
+                  type: string
+                  description: 自定义标题
+                chatContext:
+                  type: string
+                  description: 已有对话历史
+      responses:
+        '200':
+          description: 成功返回 HTML 报告内容或结构化数据
 
   /api/ai/suggestions:
     get:
