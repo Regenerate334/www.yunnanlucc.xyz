@@ -12,23 +12,19 @@ dotenv.config({ path: path.resolve(__dirname, '../.env') });
 const logDir = path.join(__dirname, '../logs');
 const logLevel = process.env.LOG_LEVEL || 'info';
 
-// Custom format for console logging with colors
+// Custom format for console logging with colors and alignment
 const consoleFormat = winston.format.combine(
     winston.format.timestamp({ format: 'YYYY-MM-DD HH:mm:ss' }),
     winston.format.colorize(),
     winston.format.printf(({ timestamp, level, message, stack, ...meta }) => {
-        let logMsg = `[${timestamp}] ${level}: ${message}`;
+        // 让等级固定宽度对齐，并转换为大写增加专业感
+        const levelTag = level.toUpperCase().padEnd(7);
+        let logMsg = `[${timestamp}] ${levelTag}: ${message}`;
 
-        // If there is a stack trace (e.g. error), append it
-        if (stack) {
-            logMsg += `\n${stack}`;
-        }
-
-        // If there are other metadata properties, pretty print them
+        if (stack) logMsg += `\n${stack}`;
         if (Object.keys(meta).length > 0) {
             logMsg += `\n${JSON.stringify(meta, null, 2)}`;
         }
-
         return logMsg;
     })
 );
@@ -45,7 +41,8 @@ const fileFormat = winston.format.combine(
 );
 
 const logger = winston.createLogger({
-    level: logLevel,
+    level: logLevel === 'silent' ? 'error' : logLevel,
+    silent: logLevel === 'silent',
     transports: [
         // Console transport
         new winston.transports.Console({

@@ -25,14 +25,17 @@ import { authMiddleware } from './middleware/auth.js';
 // 导入模块化路由
 import apiRoutes from './routes/index.js';
 
-// ==================== 数据源插件注册 ====================
-// 每新增一种数据类型，只需在这里新加一行 import
-import './utils/dataSources/transferSource.js';   // 土地流转转移矩阵
-// import './utils/dataSources/weatherSource.js';  // 气象数据（为了未来掩展）
+// ==================== 智能数据工具注册 ====================
+import './utils/tools/clcdTool.js';       // 核心地类分析工具
+import './utils/tools/transferTool.js';   // 土地流转分析工具
 
 const app = express();
 app.use(cors());
 app.use(express.json());
+
+// 注册统一响应处理中间件
+import { responseHandler } from './middleware/responseHandler.js';
+app.use(responseHandler);
 app.use(requestLogger);
 
 // 健康检查（无需认证）
@@ -77,7 +80,7 @@ initChatTables();
 
 let port = Number(process.env.PORT || 3000);
 if (port === 5173 || port === 5174) {
-  console.warn(`[server] Detected Vite port ${port}, forcing port 3000`);
+  logger.warn(`[server] Detected Vite port ${port}, forcing port 3000`);
   port = 3000;
 }
 
