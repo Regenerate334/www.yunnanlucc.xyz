@@ -30,7 +30,7 @@ async function addTransferFields() {
         console.log('=== 开始添加土地利用变化字段 ===\n');
 
         for (const table of ['spatial_county_yunnan_stats', 'spatial_grid_yunnan_stats']) {
-            console.log(`\n📊 处理表: ${table}`);
+            console.log(`[TABLE] 处理表: ${table}`);
 
             // 1. 添加变化量字段
             for (const yearPair of yearPairs) {
@@ -44,7 +44,7 @@ async function addTransferFields() {
 
                     try {
                         await client.query(addColSQL);
-                        console.log(`  ✅ 添加字段: ${fieldName}`);
+                        console.log(`  [OK] 添加字段: ${fieldName}`);
                     } catch (err) {
                         if (err.code === '42701') {
                             console.log(`  ⏭️ 字段已存在: ${fieldName}`);
@@ -56,7 +56,7 @@ async function addTransferFields() {
             }
 
             // 2. 计算并填充变化量 (Year2 - Year1)
-            console.log(`\n📈 计算变化量数据...`);
+            console.log(`\n[CALC] 计算变化量数据...`);
 
             for (const yearPair of yearPairs) {
                 const updates = landTypes.map(lt =>
@@ -70,9 +70,9 @@ async function addTransferFields() {
 
                 try {
                     const result = await client.query(updateSQL);
-                    console.log(`  ✅ 更新 ${yearPair.suffix} 变化量: ${result.rowCount} 行`);
+                    console.log(`  [OK] 更新 ${yearPair.suffix} 变化量: ${result.rowCount} 行`);
                 } catch (err) {
-                    console.error(`  ❌ 更新失败 ${yearPair.suffix}:`, err.message);
+                    console.error(`  [ERROR] 更新失败 ${yearPair.suffix}:`, err.message);
                 }
             }
         }
@@ -95,10 +95,10 @@ async function addTransferFields() {
         console.log('建设用地增长 TOP10 县市:');
         console.table(rows);
 
-        console.log('\n✅ 所有字段添加和数据填充完成!');
+        console.log('\n[DONE] 所有字段添加和数据填充完成!');
 
     } catch (err) {
-        console.error('❌ 执行失败:', err);
+        console.error('[ERROR] 执行失败:', err);
     } finally {
         client.release();
         await pool.end();
