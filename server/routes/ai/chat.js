@@ -2,11 +2,9 @@ import express from 'express';
 import ollama from 'ollama';
 import fs from 'fs';
 import path from 'path';
-import { DataRouter } from '../../utils/dataRouter.js';
-
-
+import { AgenticRouter } from '../../utils/agenticRouter.js';
+const agenticRouter = new AgenticRouter();
 const router = express.Router();
-const dataRouter = new DataRouter();
 const DEBUG_LOG = path.join(process.cwd(), 'tmp', 'ollama_debug.log');
 
 // 确保目录存在
@@ -16,7 +14,7 @@ if (!fs.existsSync(path.dirname(DEBUG_LOG))) {
 
 // 动态获取配置（防止 ESM 提升导致 dotenv 加载前就初始化了常量）
 const getOllamaUrl = () => process.env.OLLAMA_URL || 'http://localhost:11434';
-const getDefaultModel = () => process.env.OLLAMA_MODEL || 'gpt-oss:20b';
+const getDefaultModel = () => process.env.OLLAMA_MODEL || 'gpt-oss:120b-cloud';
 
 // ── 模型特性识别 ──────────────────────────────────────────────────────────
 // 只有在白名单内的模型才会显式传递 think: true 参数。
@@ -49,30 +47,24 @@ const SECURITY_RULES = `
 5. 安全边界：你是一个纯粹的数据分析助手，拒绝生成任何 shell 脚本、系统命令或可执行脚本代码。
 `;
 
-const SYSTEM_PROMPT = `你是一位专业的地理信息分析助手，专注于云南省 1985-2023 年土地利用变化（CLCD 数据）的深度解读。
+const SYSTEM_PROMPT = `你是一位卓越的【云南省 LUCC 土地利用首席分析师】。你拥有深厚的地理信息科学 (GIS) 背景，擅长从复杂的土地变化数据中提取深度洞见、评估生态风险并提出具有前瞻性的政策建议。
 
-### 🚨 严格领域限制（拒绝跨界）
-1. **仅限 LUCC/GIS 领域**：你**只回答**关于云南省土地利用、地理、生态环境和数据分析的话题。
-2. **拒绝回答非业务话题**：
-   - 严禁回答编程开发（如 npm、git、JavaScript、Node.js、部署运维等）、IT 技术支持、生活百科、翻译或通用闲聊。
-   - 如果用户提到此类话题，必须礼貌地回应：“抱歉，我是一个专门的土地利用数据分析助手，不便回答编程或非业务相关的问题。请问您需要分析云南省哪个地区的数据？”
+### 🚀 核心使命
+1. **深度洞察**：不满足于简单的数值汇报。请结合地理学原理、社会经济因素和政策背景，深入剖析土地变化背后的“为什么”。
+2. **专业权威**：你可以自由使用专业的学术术语（如：马尔科夫转移矩阵、空间自相关、重心偏移、生态敏感度评价等）来增强论证的严谨性。
+3. **事实导向**：所有结论必须植根于提供的【数据背景】。对于已知的事实，请大胆、自信地进行多度、综合性的解读。
+4. **灵活表达**：保持专业、客观的语调。除非必要，不再对 Emoji 使用做硬性限制，但应确保整体风格符合专业报告标准。
 
-### 核心行为准则
-1. **数据绝对真实性（最高优先级）**：
-   - **数据源隔离**：所有带【Verified Facts】标记的指标是后端精确计算的结果，必须**100% 原始引用**。
-   - **禁止抽稀采样**：除非用户要求总结，否则必须展示完整的年际演变序列。
-   - **拒绝虚构**：严禁猜测数据。
-
-2. **分析风格与限制**：
-   - **结论先行**：首段给出核心发现。
-   - **数据驱动**：分析必须紧扣面积数值、百分比或 CAGR 指标。
-   - **输出限制**：优先使用 Markdown 表格，避免冗长寒暄，字数控制在 400 字内。
+### 分析流要求
+1. **核心发现**：开篇明义，直接揭示最具影响力的变化特征。
+2. **多维关联**：将不同年份、不同地类的变化联系起来，形成闭环的逻辑链条。
+3. **前瞻建议**：基于历史趋势，为未来的土地资源管理提供具体的、可操作的专家建议。
 `;
 
-const SIMPLE_SYSTEM_PROMPT = `你是一位高效的地理数据助手。
-1. **严格领域**：仅回答云南省土地利用相关问题，拒答编程、IT、部署、运维等无关话题。
-2. **真实第一**：数值必须来源提供的表格，禁止造假。
-3. **极简输出**：直给结论和数据，不废话。
+const SIMPLE_SYSTEM_PROMPT = `你是云南土地利用分析专家。
+1. **专业深度**：基于 CLCD 数据提供严谨、有深度的地理学解读。
+2. **逻辑支撑**：结论必须有数值支持，鼓励进行趋势对比和成因分析。
+3. **直接高效**：去除冗余套话，直击问题核心。
 `;
 
 /**
@@ -96,12 +88,15 @@ function checkSecurity(text) {
  */
 function isOffTopic(text) {
     if (!text) return false;
+    // 只有当问题完全脱离项目语境（如纯粹询问编程、生活琐事等）时才判定为 OffTopic
+    // 如果问题中包含“土地”、“GIS”、“地图”、“分析”、“云南”等业务词汇，则不拦截
+    const businessContext = /土地|耕地|林地|草地|水域|城镇|建设|流转|分析|GIS|地图|云南|行政|统计|县|市|格网|预测|演变/;
+    if (businessContext.test(text)) return false;
+
     const keywords = [
-        /\bnpm\b/i, /\byarn\b/i, /\bgit\b/i, /\brun\b\s+dev\b/i,
-        /\binstall\b/i, /\bdeploy\b/i, /\bserver\b/i, /\bcmd\b/i,
-        /\bjavascript\b/i, /\bpython\b/i, /\bnode\.?js\b/i,
-        /\bvscode\b/i, /\bterminal\b/i, /\bcommand\b/i, /\bbash\b/i, /\bshell\b/i,
-        /编程/, /开发/, /部署/, /下载/, /安装/, /脚本/, /调试/
+        /\bnpm\b/i, /\byarn\b/i, /\bgit\b/i,
+        /\binstall\b/i, /\bvscode\b/i,
+        /通用编程/, /恶搞/, /政治敏感/
     ];
     return keywords.some(p => p.test(text));
 }
@@ -138,7 +133,7 @@ async function handleAIStream(req, res) {
         // 领域拦截 (针对小模型绕过提示词的兜底硬拦截)
         if (isOffTopic(lastUserMsg)) {
             console.log(`[AI / Chat] 触发领域拦截: "${lastUserMsg}"`);
-            const cannedResponse = "抱歉，我是一个专门专注于 **云南省土地利用变化 (LUCC)** 的地理信息分析助手。我不具备编程开发、系统运维或通用 IT 技术支持方面的知识。\n\n**我的核心能力包括：**\n1. 云南省年度土地覆盖数据统计分析\n2. 1985-2023 土地地类转移趋势追踪\n3. 区域性政策建议与生态评估\n\n请问您需要分析云南省哪个地区的数据？";
+            const cannedResponse = "抱歉，我是专注于【云南省土地利用变化 (LUCC)】的地理信息分析助手，不便回答编程开发或通用 IT 技术支持等领域的问题。\n\n您是否想分析以下相关内容：\n1. 某地区的耕地流失情况与原因分析？\n2. 1985 年以来城镇化对林地的占用趋势？\n3. 区域性生态评估与土地利用政策建议？\n\n请问您需要分析云南省哪个地区的数据？";
 
             // 模拟流式输出，确保前端渲染一致
             res.write(`data: ${JSON.stringify({ content: cannedResponse })}\n\n`);
@@ -162,10 +157,18 @@ async function handleAIStream(req, res) {
         const startTime = Date.now();
         let richContext = '';
         try {
-            console.log(`[AI / Chat] 开始执行数据路由...`);
-            richContext = await dataRouter.route(lastUserMsg, componentContext, year || 2023);
+            console.log(`[AI / Chat] 开始执行智能数据检索...`);
+            // 向前端发送状态反馈
+            res.write(`data: ${JSON.stringify({ content: '[SEARCH] 正在智能检索项目数据背景...' })} \n\n`);
+
+            richContext = await agenticRouter.route(lastUserMsg, componentContext, year || 2023, history);
+
             const duration = (Date.now() - startTime) / 1000;
-            console.log(`[AI / Chat] 数据路由完成, 耗时: ${duration} s, 长度: ${richContext.length} `);
+            console.log(`[AI / Chat] 数据检索完成, 耗时: ${duration} s, 长度: ${richContext.length} `);
+
+            if (richContext) {
+                res.write(`data: ${JSON.stringify({ content: '\n\n[ANALYSIS] 已获取最新数据上文，正在进行深度分析...\n\n' })} \n\n`);
+            }
         } catch (routeErr) {
             console.error(`[AI / Chat] 数据路由失败: `, routeErr);
             richContext = `> 数据预加载失败: ${routeErr.message} `;
@@ -244,7 +247,8 @@ async function callOllamaStream(model, messages, res, ctxWindow = 8192, thinkEna
                 model,
                 messages,
                 stream: true,
-                keep_alive: 0,
+                // 防止频繁装载/卸载模型 (VRAM Keep-Alive)
+                keep_alive: '5m',
                 // 根据 Ollama 0.5.7+ 官方文档，显式设为 true 可激活结构化推理字段输出
                 think: thinkEnabled,
                 options: {
@@ -257,8 +261,7 @@ async function callOllamaStream(model, messages, res, ctxWindow = 8192, thinkEna
             console.log(`[AI / Chat] 连接成功，流数据推送中...`);
             let hasOutput = false;
             for await (const part of response) {
-                // 1. 优先提取官方标准结构化字段 message.thinking (部分 R1 模型会先填充此字段)
-                // 2. 兼容各种其他推理字段名称 (reasoning_content, reasoning, part.thinking)
+                // 1. 优先提取官方标准结构化字段 message.thinking
                 const thinking = part.message?.thinking
                     || part.reasoning_content
                     || part.message?.reasoning_content
@@ -266,20 +269,21 @@ async function callOllamaStream(model, messages, res, ctxWindow = 8192, thinkEna
                     || (part.thinking && typeof part.thinking === 'string' ? part.thinking : '');
 
                 if (thinking) {
-                    fs.appendFileSync(DEBUG_LOG, `[THINK] ${thinking} \n`);
-                    res.write(`data: ${JSON.stringify({ thinking })} \n\n`);
+                    // 使用异步 I/O 写入日志，避免阻塞吐字循环
+                    fs.appendFile(DEBUG_LOG, `[THINK] ${thinking}\n`, () => { });
+                    res.write(`data: ${JSON.stringify({ thinking })}\n\n`);
                 }
 
-                // 3. 处理最终回答内容
+                // 2. 处理最终回答内容
                 if (part.message?.content) {
-                    fs.appendFileSync(DEBUG_LOG, `[CONTENT] ${part.message.content} \n`);
-                    res.write(`data: ${JSON.stringify({ content: part.message.content })} \n\n`);
+                    fs.appendFile(DEBUG_LOG, `[CONTENT] ${part.message.content}\n`, () => { });
+                    res.write(`data: ${JSON.stringify({ content: part.message.content })}\n\n`);
                     hasOutput = true;
                 }
 
                 if (part.done) {
-                    fs.appendFileSync(DEBUG_LOG, `-- - DONE-- -\n\n`);
-                    res.write(`data: ${JSON.stringify({ done: true })} \n\n`);
+                    fs.appendFile(DEBUG_LOG, `--- DONE ---\n\n`, () => { });
+                    res.write(`data: ${JSON.stringify({ done: true })}\n\n`);
                 }
             }
             return; // 成功结束
