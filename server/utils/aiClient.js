@@ -11,12 +11,13 @@
  */
 
 import ollama from 'ollama';
+import logger from '../config/logger.js';
 
 /**
  * 动态获取模型配置，确保在 dotenv 加载后读取最新值
  */
-export const getReportModel = () => process.env.REPORT_MODEL || process.env.OLLAMA_MODEL || 'gpt-oss:20b';
-export const getChatModel = () => process.env.OLLAMA_MODEL || 'gpt-oss:20b';
+export const getReportModel = () => process.env.REPORT_MODEL || process.env.OLLAMA_MODEL || 'gpt-oss:120b-cloud';
+export const getChatModel = () => process.env.OLLAMA_MODEL || 'gpt-oss:120b-cloud';
 
 /**
  * 非流式调用：让模型输出纯 JSON。
@@ -38,21 +39,23 @@ export async function generateText(messages, opts = {}) {
 
     for (let attempt = 1; attempt <= maxRetries; attempt++) {
         try {
-            console.log(`[aiClient] generateText 第 ${attempt} 次调用，模型: ${model}`);
+            logger.info(`[aiClient] generateText 第 ${attempt} 次调用，模型: ${model}`);
 
             const response = await ollama.chat({
                 model,
                 messages,
                 stream: false,
+                keep_alive: '5m',
                 options: {
                     temperature: 0.2,   // 进一步降低随机性，保证 JSON 稳健
                     num_ctx: numCtx,
-                    top_p: 0.9
+                    top_p: 0.9,
+                    num_gpu: -1          // 强制使用 GPU 加速
                 }
             });
 
             const content = response.message?.content || '';
-            console.log(`[aiClient] 调用成功，输出长度: ${content.length}`);
+            logger.info(`[aiClient] 调用成功，输出长度: ${content.length}`);
             return content;
 
         } catch (err) {
@@ -61,12 +64,12 @@ export async function generateText(messages, opts = {}) {
 
             if (isConnError && attempt < maxRetries) {
                 const delay = Math.pow(2, attempt) * 1000; // 2s, 4s, 8s...
-                console.warn(`[aiClient] 连接异常 (Attempt ${attempt}), ${delay}ms 后指数退避重试: ${err.message}`);
+                logger.warn(`[aiClient] 连接异常 (Attempt ${attempt}), ${delay}ms 后指数退避重试: ${err.message}`);
                 await new Promise(resolve => setTimeout(resolve, delay));
                 continue;
             }
 
-            console.error(`[aiClient] 第 ${attempt} 次调用失败:`, err.message);
+            logger.error(`[aiClient] 第 ${attempt} 次调用失败: ${err.message}`);
             if (attempt >= maxRetries) throw err;
         }
     }

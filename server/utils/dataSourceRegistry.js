@@ -26,6 +26,8 @@
  *   });
  */
 
+import logger from '../config/logger.js';
+
 class DataSourceRegistry {
     constructor() {
         /** @type {DataSourcePlugin[]} */
@@ -33,67 +35,87 @@ class DataSourceRegistry {
     }
 
     /**
-     * 注册一个数据源插件。
-     * @param {DataSourcePlugin} plugin
+     * 注册一个数据源插件（工具）。
+     * @param {Object} plugin
+     * @param {string} plugin.name         - 工具名
+     * @param {string} plugin.description  - 帮助 AI 理解该工具用途的描述
+     * @param {Object} [plugin.parameters] - 符合 JSON Schema 规范的参数定义
+     * @param {string[]} plugin.keywords   - (保留兼容) 触发关键词
+     * @param {Function} plugin.query     - 执行逻辑
      */
     register(plugin) {
-        if (!plugin.name || !plugin.keywords || !plugin.query) {
-            console.warn('[Registry] 插件注册失败，缺少必要字段 (name, keywords, query):', plugin.name);
+        if (!plugin.name || !plugin.query) {
+            logger.warn(`[Registry] 插件注册失败，缺少必要字段 (name, query): ${plugin.name}`);
             return;
         }
         // 去重：同名插件只保留最后注册的
         this._sources = this._sources.filter(s => s.name !== plugin.name);
         this._sources.push(plugin);
-        // 按优先级从高到低排序
+        // 按优先级排序，或者通过 agent 调度。目前简单排序。
         this._sources.sort((a, b) => (b.priority || 0) - (a.priority || 0));
-        console.log(`[Registry] 已注册数据源插件: "${plugin.name}" (关键词: ${plugin.keywords.join(', ')})`);
+        logger.info(`[Registry] 已注册数据工具: "${plugin.name}"`);
     }
 
     /**
-     * 查找匹配问题的第一个插件。
-     * @param {string} question
-     * @returns {DataSourcePlugin|null}
+     * 获取所有可供 AI 调出的工具描述列表。
+     * 这里的输出格式兼容主流 LLM 的 Tool Calling 定义。
      */
-    findMatch(question) {
-        if (!question) return null;
-        return this._sources.find(s =>
-            s.keywords.some(kw => question.includes(kw))
-        ) || null;
+    getToolSpecs() {
+        return this._sources.map(s => ({
+            type: 'function',
+            function: {
+                name: s.name,
+                description: s.description,
+                parameters: s.parameters || {
+                    type: "object",
+                    properties: {},
+                    required: []
+                }
+            }
+        }));
     }
 
     /**
-     * 如果问题命中某插件，执行其查询并返回 Markdown 上下文字符串。
-     * @param {string} question
-     * @param {object} entities   EntityExtractor 提取的实体
-     * @param {number} year
-     * @returns {Promise<string|null>}  null 表示没有插件命中
+     * 执行特定工具。
      */
-    async queryIfMatch(question, entities, year) {
-        const plugin = this.findMatch(question);
-        if (!plugin) return null;
+    async callTool(name, args, entities = {}, year = 2023) {
+        const source = this._sources.find(s => s.name === name);
+        if (!source) throw new Error(`工具 "${name}" 未找到`);
 
-        console.log(`[Registry] 命中插件: "${plugin.name}"`);
+        logger.info(`[Registry] 调用工具: "${name}", 参数: ${JSON.stringify(args)}`);
         try {
-            const data = await plugin.query(question, entities, year);
+            const data = await source.query(args, entities, year);
             if (!data) return null;
 
-            // 优先使用插件自身的格式化方法
-            if (typeof plugin.format === 'function') {
-                return plugin.format(data, entities);
+            // 格式化输出
+            if (typeof source.format === 'function') {
+                return source.format(data, entities);
             }
-
-            // 默认格式化：把 rows 转为 Markdown 表格
-            return defaultFormat(plugin.description || plugin.name, data);
-
+            return defaultFormat(source.description || source.name, data);
         } catch (err) {
-            console.error(`[Registry] 插件 "${plugin.name}" 查询失败:`, err.message);
-            return null;
+            logger.error(`[Registry] 工具 "${name}" 运行异常: ${err.message}`);
+            throw err;
         }
     }
 
     /**
-     * 列出所有已注册的插件（用于调试）。
+     * (保留旧逻辑兼容) 查找匹配问题的第一个插件。
      */
+    findMatch(question) {
+        if (!question) return null;
+        return this._sources.find(s =>
+            s.keywords && s.keywords.some(kw => question.includes(kw))
+        ) || null;
+    }
+
+    async queryIfMatch(question, entities, year) {
+        const plugin = this.findMatch(question);
+        if (!plugin) return null;
+
+        logger.info(`[Registry] 命中旧版插件匹配: "${plugin.name}"`);
+        return this.callTool(plugin.name, {}, entities, year);
+    }
+
     list() {
         return this._sources.map(s => ({
             name: s.name,
@@ -106,13 +128,10 @@ class DataSourceRegistry {
 
 /**
  * 默认表格格式化器。
- * @param {string} title
- * @param {{ rows: object[], type?: string, region?: string }} data
- * @returns {string}
  */
 function defaultFormat(title, data) {
-    const rows = data.rows || data;
-    if (!Array.isArray(rows) || rows.length === 0) {
+    const rows = data.rows || (Array.isArray(data) ? data : []);
+    if (rows.length === 0) {
         return `> ${title}：暂无相关数据。`;
     }
 
@@ -134,8 +153,10 @@ function defaultFormat(title, data) {
     });
 
     const extra = data.region ? `（区域：${data.region}）` : '';
+    const timeInfo = data.year ? `（年份：${data.year}）` : (data.period ? `（时段：${data.period}）` : '');
+
     return [
-        `## 数据背景：${title}${extra}`,
+        `## 数据背景：${title}${extra}${timeInfo}`,
         '',
         header,
         sep,
@@ -144,6 +165,6 @@ function defaultFormat(title, data) {
     ].join('\n');
 }
 
-// 全局单例，在整个服务端共享
+// 全局单例
 export const registry = new DataSourceRegistry();
 export default registry;
