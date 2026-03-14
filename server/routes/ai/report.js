@@ -24,7 +24,7 @@ const router = express.Router();
  *  - model            {string}  可选，指定 Ollama 模型名
  */
 router.post('/generate', async (req, res) => {
-    const { question, year, reportTitle, componentContext, model } = req.body;
+    const { question, year, reportTitle, componentContext, model, chatContext } = req.body;
 
     if (!question || typeof question !== 'string' || question.trim().length === 0) {
         return res.status(400).json({
@@ -42,7 +42,8 @@ router.post('/generate', async (req, res) => {
             year: Number(year) || 2023,
             reportTitle,
             componentContext,
-            model
+            model,
+            chatContext     // 新增：透传对话上下文
         });
 
         const elapsed = ((Date.now() - startTime) / 1000).toFixed(1);
@@ -71,7 +72,7 @@ router.post('/generate', async (req, res) => {
  * Body: 同 /generate
  */
 router.post('/html', async (req, res) => {
-    const { question, year, reportTitle, componentContext, model } = req.body;
+    const { question, year, reportTitle, componentContext, model, chatContext } = req.body;
 
     if (!question || typeof question !== 'string' || question.trim().length === 0) {
         return res.status(400).json({
@@ -88,7 +89,8 @@ router.post('/html', async (req, res) => {
             year: Number(year) || 2023,
             reportTitle,
             componentContext,
-            model
+            model,
+            chatContext     // 新增：透传对话上下文
         });
 
         const html = getReportTemplate(reportData);
