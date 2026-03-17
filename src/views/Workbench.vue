@@ -176,6 +176,14 @@
         @transfer-query="handleTransferQuery" 
         @reset-map="handleResetMap" 
       />
+      <RateControl
+        ref="rateControlRef"
+        @rate-query="handleRateQuery"
+        @reset-map="handleResetMap"
+      />
+
+      
+      <!-- 时间轴播放器  -->
       
       <!-- 时间轴播放器  -->
       <TimePlayer 
@@ -234,7 +242,9 @@ import LandUseTrendControl from '../components/controls/LandUseTrendControl.vue'
 import RegionalTrendControl from '../components/controls/RegionalTrendControl.vue';
 import TransferMatrixControl from '../components/controls/TransferMatrixControl.vue';
 import SpatialLayerSelector from '../components/controls/SpatialLayerSelector.vue';
+
 import AIAnalysisControl from '../components/controls/AIAnalysisControl.vue';
+import RateControl from '../components/controls/RateControl.vue';
 import TimePlayer from '../components/controls/TimePlayer.vue';
 import DashboardOverlay from './DashboardOverlay.vue';
 import AnalysisLegend from '../components/ui/AnalysisLegend.vue';
@@ -692,6 +702,101 @@ watch([spatialUnit, selectedAttribute], ([newUnit, newAttr], [oldUnit, oldAttr])
 
 // ...
 
+
+
+// ===== 垦殖率 / 转换率 WMS 渲染 =====
+const rateControlRef = ref(null);
+// 率分析颜色（绿→橙→红，与 rate_dynamic.sld 同步）
+const rateColors = ['#f7fcf5','#c7e9c0','#a1d99b','#74c476','#fed976','#feb24c','#fd8d3c','#e31a1c','#bd0026','#800026'];
+let rateWmsLayer = null;
+
+async function handleRateQuery(params) {
+  console.log('[Rate] Query params:', params);
+  isLoading.value = true;
+  if (rateControlRef.value?.setLoading) rateControlRef.value.setLoading(true);
+
+  try {
+    const token = localStorage.getItem('auth_token');
+    const { year, year_start, year_end, from_class, to_class, attribute, unit, legendTitle } = params;
+
+    // 1. 获取分级断点
+    let breaksUrl = `/api/clcd/breaks?mode=rate&attr=${attribute}&year=${year}&unit=${unit}&classes=10&method=jenks`;
+    if (attribute === 'conversion') {
+      breaksUrl += `&year_start=${year_start}&year_end=${year_end}`;
+      if (from_class !== '') breaksUrl += `&from_class=${from_class}`;
+      if (to_class   !== '') breaksUrl += `&to_class=${to_class}`;
+    }
+
+    const bResp = await fetch(breaksUrl, { headers: { 'Authorization': `Bearer ${token}` } });
+    if (!bResp.ok) throw new Error(`Breaks API error: ${bResp.status}`);
+    const breaksData = await bResp.json();
+    console.log('[Rate] Breaks data:', breaksData);
+
+    if (!breaksData.breaks || breaksData.breaks.length === 0) {
+      throw new Error('该参数下无有效计算数据，请检查年份或流转方向');
+    }
+
+    // 2. 隐藏现有图层
+    wmsLayerCache.forEach(layer => { layer.show = false; layer.alpha = 0; });
+    if (clcdLayer.value) clcdLayer.value.show = false;
+
+    // 3. 构建 env 参数
+    const numClasses = 10;
+    let breaks = [...breaksData.breaks];
+    while (breaks.length < numClasses + 1) breaks.push(breaks[breaks.length - 1]);
+
+    const dynamicAttr = breaksData.field; // '_rate_val'
+    let envParams = `attr:${dynamicAttr}`;
+    let lastThreshold = -Infinity;
+    for (let i = 1; i < numClasses; i++) {
+      let thVal = parseFloat(breaks[i].toFixed(6));
+      if (thVal <= lastThreshold) thVal = lastThreshold + 0.000001;
+      lastThreshold = thVal;
+      envParams += `;th${i}:${thVal}`;
+    }
+
+    // 4. 创建 WMS 图层
+    const wmsProvider = new Cesium.WebMapServiceImageryProvider({
+      url: 'http://localhost:8080/geoserver/WebGIS/wms',
+      layers: 'WebGIS:spatial_county_yunnan_stats',
+      enablePickFeatures: true,
+      parameters: {
+        service: 'WMS',
+        version: '1.1.0',
+        request: 'GetMap',
+        transparent: 'true',
+        format: 'image/png',
+        styles: 'rate_dynamic',
+        env: envParams,
+        info_format: 'application/json'
+      }
+    });
+
+    const newLayer = new Cesium.ImageryLayer(wmsProvider);
+    newLayer.alpha = 1;
+    newLayer.show = true;
+    addExclusiveAnalysisLayer(viewer.value, newLayer);
+    rateWmsLayer = newLayer;
+
+    // 5. 更新图例
+    globalStore.updateLegend({
+      title: legendTitle,
+      type: 'continuous',
+      items: rateColors.map((c, i) => ({
+        color: c,
+        label: `${(breaks[i] * 100).toFixed(2)}% - ${(breaks[i + 1] * 100).toFixed(2)}%`
+      }))
+    });
+
+  } catch (err) {
+    console.error('[Rate] Error:', err);
+    if (rateControlRef.value?.setError) rateControlRef.value.setError(err.message);
+  } finally {
+    isLoading.value = false;
+    if (rateControlRef.value?.setLoading) rateControlRef.value.setLoading(false);
+  }
+}
+
 // ===== 土地流转 WMS 渲染 =====
 const transferControlRef = ref(null);
 let transferWmsLayer = null; // 当前的流转 WMS 图层引用
@@ -705,7 +810,8 @@ function handleResetMap() {
   // 2. 清理流转图层和其他专属UI
   clearAllAnalysisLayers(viewer.value);
   transferWmsLayer = null;
-  
+  rateWmsLayer = null;
+
   if (transferDataSource.value && viewer.value && !viewer.value.isDestroyed()) {
     viewer.value.dataSources.remove(transferDataSource.value, true);
     transferDataSource.value = null;
@@ -945,11 +1051,20 @@ function setupClickHandler() {
                 const props = feature.properties || feature.data?.properties || {};
                 
                 // 更加宽容的地名提取逻辑
-                const regionName = props['地名'] || props['name'] || props['NAME'] || props['county'] || props['地级'] || props['省级'] || '未知区域';
+                const regionName = props['地名'] || props['name'] || props['NAME'] || props['county'] || props['region'] || props['REGION_NAME'] || props['地级'] || props['省级'] || '未知区域';
                 const displayProps = {};
                 
                 // 提取数值属性
-                if (currentStatsField.value && props[currentStatsField.value] !== undefined) {
+                if (spatialUnit.value === 'land_transfer' || selectedAttribute.value === 'transfer') {
+                    // 流转模式专用逻辑：寻找流转量字段
+                    const transferVal = props['_transfer_sum'] || props['_sum'] || props['transfer_sum'] || props['sum'];
+                    if (transferVal !== undefined) {
+                        const valKm2 = Number(transferVal).toFixed(2);
+                        // 使用当前属性标签或通用标签
+                        const label = currentAttributeLabel.value || '流转面积';
+                        displayProps[label] = `${valKm2} km²`;
+                    }
+                } else if (currentStatsField.value && props[currentStatsField.value] !== undefined) {
                     const rawVal = Number(props[currentStatsField.value]);
                     // 假设单位为平方米，转为平方公里
                     const valKm2 = (rawVal / 1000000).toFixed(2);
@@ -962,7 +1077,11 @@ function setupClickHandler() {
                     properties: displayProps
                 };
                 
-                // 执行高亮
+                // 执行高亮 (确保图层可见并在最上方)
+                if (yunnanDataSource.value) {
+                    yunnanDataSource.value.show = true;
+                    viewer.value.dataSources.raiseToTop(yunnanDataSource.value);
+                }
                 highlightRegion(regionName);
 
                 // 记录地理位置用于实时投影（实现“依比例”锚定）
@@ -1021,11 +1140,13 @@ function highlightRegion(name) {
     clearHighlight();
 
     const entities = yunnanDataSource.value.entities.values;
-    // 模糊匹配，尝试匹配名称
+    // 模糊匹配，尝试匹配名称（去掉可能的行政区划后缀，增加匹配度）
+    const cleanSearchName = name.replace(/(省|市|州|区|县|镇|乡)$/, '');
+    
     const target = entities.find(e => {
         const eName = e.properties.name ? e.properties.name.getValue() : '';
-        // 增加匹配容错，比如 WMS 返回 "五华区"，GeoJSON 可能是 "五华区" 或 "昆明市五华区"
-        return eName === name || eName.includes(name) || name.includes(eName);
+        const eNameClean = eName.replace(/(省|市|州|区|县|镇|乡)$/, '');
+        return eName === name || eName.includes(name) || name.includes(eName) || (cleanSearchName && eNameClean === cleanSearchName);
     });
 
     if (target) {

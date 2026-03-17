@@ -8,6 +8,7 @@ import pool from '../../config/db.js';
 import { handleError } from '../../middleware/logger.js';
 import { getTableColumns } from './utils.js';
 
+
 const router = express.Router();
 
 // 获取县级空间数据（GeoJSON格式）
@@ -102,6 +103,88 @@ router.get('/grid/:year', async (req, res) => {
         res.json({ type: 'FeatureCollection', features });
     } catch (err) {
         console.error('[spatial] Grid API Error:', err);
+        handleError(res, err);
+    }
+});
+
+// 获取垦殖率和转换率空间数据（GeoJSON格式）
+router.get('/rates/:unit/:year', async (req, res) => {
+    const { unit, year } = req.params;
+    const targetYear = Number(year);
+
+    if (!['county', 'grid'].includes(unit)) {
+        return res.status(400).json({ error: 'unit must be county or grid' });
+    }
+
+    try {
+        const fragments = await buildRateQueryFragments(unit, targetYear);
+        const {
+            spatialTable,
+            transferTable,
+            nameCol,
+            geomCol,
+            adcodeCol,
+            conversionExpr,
+            totalAreaExpr,
+            clcdJoin,
+            transferJoin,
+            conversionPeriod
+        } = fragments;
+
+        const selectFields = [
+            `s.${quoteIdentifier(nameCol)} as name`,
+            unit === 'county' && adcodeCol ? `s.${quoteIdentifier(adcodeCol)} as adcode` : null,
+            `ST_AsGeoJSON(s.${quoteIdentifier(geomCol)}) as geometry`,
+            `${conversionExpr} as conversion_sum`,
+            `${totalAreaExpr} as total_area`,
+            fragments.landUseSelect
+        ].filter(Boolean).join(', ');
+
+        const finalSql = `
+            SELECT ${selectFields}
+            FROM public.${spatialTable} s
+            ${fragments.hasStatsInSpatial ? '' : `LEFT JOIN public.clcd_county c ON ${clcdJoin}`}
+            LEFT JOIN public.${transferTable} t ON ${transferJoin}
+            WHERE s.${quoteIdentifier(geomCol)} IS NOT NULL
+        `;
+
+        const { rows } = await pool.query(finalSql, [targetYear]);
+        const features = rows
+            .map(row => {
+                if (!row.geometry) return null;
+                let geometry;
+                try {
+                    geometry = JSON.parse(row.geometry);
+                } catch (e) {
+                    console.warn('[spatial] Malformed geometry', e);
+                    return null;
+                }
+
+                const totalArea = Number(row.total_area) || 0;
+                const cropland = Number(row.cropland) || 0;
+                const conversionSum = Number(row.conversion_sum) || 0;
+                const reclamationRate = totalArea ? cropland / totalArea : 0;
+                const conversionRate = totalArea ? conversionSum / totalArea : 0;
+
+                return {
+                    type: 'Feature',
+                    geometry,
+                    properties: {
+                        name: row.name,
+                        adcode: row.adcode,
+                        total_area: totalArea,
+                        cropland,
+                        reclamation_rate: reclamationRate,
+                        conversion_rate: conversionRate,
+                        period: conversionPeriod
+                    }
+                };
+            })
+            .filter(Boolean);
+
+        res.json({ type: 'FeatureCollection', features });
+    } catch (err) {
+        console.error('[spatial] Rates API Error:', err);
         handleError(res, err);
     }
 });

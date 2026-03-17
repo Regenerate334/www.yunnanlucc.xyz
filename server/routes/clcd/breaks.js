@@ -37,6 +37,8 @@ router.get('/', async (req, res) => {
         to_class
     } = req.query;
 
+    console.log('[breaks] Incoming request:', { mode, attr, year, unit, method });
+
     // ===== 转移矩阵模式 =====
     if (mode === 'transfer') {
         try {
@@ -171,6 +173,183 @@ router.get('/', async (req, res) => {
 
         } catch (err) {
             console.error('[breaks] Transfer mode error:', err);
+            return handleError(res, err);
+        }
+    }
+
+    // ===== 垦殖率 / 转换率模式 =====
+    // 仅支持县域尺度（格网每个单元面积相同，率值无意义）
+    if (mode === 'rate') {
+        const STATS_TABLE = 'spatial_county_yunnan_stats';
+        const TRANSFER_TABLE = 'spatial_county_yunnan_transfer';
+        const RATE_COL = '_rate_val';           // 临时中间列
+        const numClasses = Math.min(Math.max(parseInt(classes || 10), 3), 12);
+
+        try {
+            // 1. 确保临时列已存在
+            await pool.query(`
+                ALTER TABLE public."${STATS_TABLE}"
+                ADD COLUMN IF NOT EXISTS "${RATE_COL}" double precision DEFAULT 0
+            `);
+
+            // ---- 垦殖率 ----
+            if (attr === 'reclamation') {
+                if (!year) {
+                    return res.status(400).json({ error: 'reclamation rate requires year param' });
+                }
+                const targetYear = parseInt(year);
+                const years = await getAvailableYears();
+                const dbCols = await getTableColumns(STATS_TABLE);
+                const prefix = ATTR_PREFIX_MAP['cropland'];
+
+                // 找出与目标年份对应的耕地面积列（按年份索引排序）
+                const croplandCols = dbCols
+                    .filter(c => c.startsWith(`${prefix}_sq_`))
+                    .sort((a, b) => parseInt(a.split('_').pop()) - parseInt(b.split('_').pop()));
+                const croplandCol = croplandCols[years.indexOf(targetYear)];
+
+                if (!croplandCol) {
+                    return res.status(400).json({ error: `Cannot find cropland column for year ${targetYear}` });
+                }
+
+                // 垦殖率 = 耕地面积(m²) / shape_area(m²)，结果为 0~1 小数
+                await pool.query(`
+                    UPDATE public."${STATS_TABLE}"
+                    SET "${RATE_COL}" = CASE
+                        WHEN "shape_area" > 0
+                        THEN "${croplandCol}" / "shape_area"
+                        ELSE 0
+                    END
+                `);
+
+                console.log(`[breaks/rate] Reclamation updated: col=${croplandCol}, year=${targetYear}`);
+
+                // ---- 转换率 ----
+            } else if (attr === 'conversion') {
+                const start = parseInt(year_start);
+                const end = parseInt(year_end);
+                const from = from_class !== undefined && from_class !== '' ? parseInt(from_class) : null;
+                const to = to_class !== undefined && to_class !== '' ? parseInt(to_class) : null;
+
+                if (!start || !end || start >= end) {
+                    return res.status(400).json({ error: 'conversion rate requires valid year_start and year_end' });
+                }
+
+                // 构建需要累加的转换列名（与 transfer 模式列名逻辑完全一致）
+                const columns = [];
+                if (from !== null && to !== null) {
+                    // 指定流转方向
+                    for (let y = start; y < end; y++) {
+                        if (y === 1985 && end >= 1990) { columns.push(`y8590_${from}${to}`); y = 1989; continue; }
+                        const yy1 = String(y % 100).padStart(2, '0');
+                        const yy2 = String((y + 1) % 100).padStart(2, '0');
+                        columns.push(`y${yy1}${yy2}_${from}${to}`);
+                    }
+                } else {
+                    // 全类型转换（排除自身到自身）
+                    const periods = [];
+                    for (let y = start; y < end; y++) {
+                        if (y === 1985 && end >= 1990) { periods.push('y8590'); y = 1989; continue; }
+                        const yy1 = String(y % 100).padStart(2, '0');
+                        const yy2 = String((y + 1) % 100).padStart(2, '0');
+                        periods.push(`y${yy1}${yy2}`);
+                    }
+                    const allTransferCols = await getTableColumns(TRANSFER_TABLE);
+                    const regex = new RegExp(`^(${periods.join('|')})_\\d{2}$`);
+                    allTransferCols.filter(c => {
+                        if (!regex.test(c)) return false;
+                        const ft = c.split('_').pop();
+                        return ft[0] !== ft[1]; // 排除同类转换
+                    }).forEach(c => columns.push(c));
+                }
+
+                if (columns.length === 0) {
+                    return res.json({ mode: 'rate', attr, breaks: [], message: 'No transfer columns found for the given range' });
+                }
+
+                // 验证列实际存在于转换表
+                const validRes = await pool.query(`
+                    SELECT column_name FROM information_schema.columns
+                    WHERE table_schema = 'public' AND table_name = $1 AND column_name = ANY($2)
+                `, [TRANSFER_TABLE, columns]);
+                const validCols = validRes.rows.map(r => r.column_name);
+
+                if (validCols.length === 0) {
+                    return res.json({ mode: 'rate', attr, breaks: [], message: 'No valid transfer columns found' });
+                }
+
+                // 转换面积累加：单位 m²（保持与 shape_area 一致）
+                const sumExpr = validCols.map(c => `COALESCE(t."${c}", 0)`).join(' + ');
+
+                // 转换率 = SUM(转换面积 m²) / shape_area(m²)，结果为 0~1 小数
+                // JOIN 条件与 transfer 模式一致（地名匹配）
+                await pool.query(`
+                    UPDATE public."${STATS_TABLE}" s
+                    SET "${RATE_COL}" = CASE
+                        WHEN s."shape_area" > 0
+                        THEN (${sumExpr}) / s."shape_area"
+                        ELSE 0
+                    END
+                    FROM public."${TRANSFER_TABLE}" t
+                    WHERE TRIM(CAST(s."地名" AS TEXT)) = TRIM(CAST(t."地名" AS TEXT))
+                `);
+
+                console.log(`[breaks/rate] Conversion updated: ${validCols.length} cols, ${start}-${end}, from=${from}, to=${to}`);
+
+            } else {
+                return res.status(400).json({ error: `Unknown rate attribute: ${attr}. Supported: reclamation, conversion` });
+            }
+
+            // 3. 读取写入结果，进行 Jenks 分级
+            const { rows: dataRows } = await pool.query(`
+                SELECT "${RATE_COL}" AS val
+                FROM public."${STATS_TABLE}"
+                WHERE "${RATE_COL}" > 0
+                ORDER BY "${RATE_COL}" ASC
+            `);
+
+            if (dataRows.length === 0) {
+                return res.json({ mode: 'rate', attr, breaks: [], stats: { min: 0, max: 0, count: 0 } });
+            }
+
+            let dataValues = dataRows.map(r => Number(r.val));
+
+            const stats = {
+                min: dataValues[0],
+                max: dataValues[dataValues.length - 1],
+                avg: dataValues.reduce((a, b) => a + b, 0) / dataValues.length,
+                count: dataValues.length
+            };
+
+            // 采样防内存溢出
+            if (dataValues.length > 3000) {
+                const step = Math.ceil(dataValues.length / 3000);
+                dataValues = dataValues.filter((_, i) => i % step === 0);
+            }
+
+            const rawBreaks = dataValues.length <= numClasses
+                ? dataValues
+                : getJenksBreaks(dataValues, numClasses);
+
+            // 保留 6 位小数精度
+            const breaks = rawBreaks.map(v => Math.round(v * 1000000) / 1000000);
+
+            console.log(`[breaks/rate] attr=${attr}, ${stats.count} rows, classes=${numClasses}, breaks:`, breaks);
+
+            return res.json({
+                mode: 'rate',
+                attr,
+                unit: 'county',
+                field: RATE_COL,
+                method: 'jenks',
+                classes: numClasses,
+                breaks,
+                stats,
+                unit_label: '%'
+            });
+
+        } catch (err) {
+            console.error('[breaks] Rate mode error:', err);
             return handleError(res, err);
         }
     }

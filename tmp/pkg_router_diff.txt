@@ -1,0 +1,35 @@
+﻿diff --git a/package.json b/package.json
+index 350063f..f291cc5 100644
+--- a/package.json
++++ b/package.json
+@@ -10,6 +10,7 @@
+     "stop": "taskkill /F /IM node.exe",
+     "build": "vite build",
+     "preview": "vite preview",
++    "sync:rate-layers": "node ./scripts/data/sync_rate_layers.js",
+     "ai:off": "node ./scripts/dev/ai-off.js"
+   },
+   "dependencies": {
+diff --git a/src/router/index.js b/src/router/index.js
+index ab9dcf5..780f5e4 100644
+--- a/src/router/index.js
++++ b/src/router/index.js
+@@ -8,7 +8,8 @@ import Analysis from '../views/Analysis.vue';
+ import RegionalAnalysis from '../views/RegionalAnalysis.vue';
+ 
+ const routes = [
+-	{ path: '/', component: Portal },
++	{ path: '/', redirect: '/portal' },
++	{ path: '/portal', component: Portal },
+ 	{ path: '/login', component: Login },
+ 	{ path: '/workbench', component: Workbench },
+ 	{ path: '/analysis', component: Analysis },
+@@ -28,7 +29,7 @@ router.beforeEach(async (to, from, next) => {
+ 	const token = localStorage.getItem('auth_token');
+ 
+ 	// public pages
+-	if (to.path === '/login' || to.path === '/') {
++	if (to.path === '/login' || to.path === '/portal') {
+ 		next();
+ 		return;
+ 	}

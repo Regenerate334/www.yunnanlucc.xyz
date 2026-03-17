@@ -362,6 +362,15 @@ PORT=3000
 OLLAMA_MODEL=gpt-oss:20b
 ```
 
+### 同步垦殖率/转换率空间图层
+由于垦殖率与转换率在渲染端需要像 County/GRID 等 `shp` 图层一样使用，项目提供了同步脚本（`scripts/data/sync_rate_layers.js`），它会：
+1. 在 `public` schema 创建 `spatial_rate_layer_county` 与 `spatial_rate_layer_grid` 两张 PostGIS 表；
+2. 依次遍历 `clcd_county` 的年份，重建每年的总面积、垦殖量、转换总量以及比例字段（`reclamation_rate` / `conversion_rate`）并保留几何；
+3. 建立 `year`、`geom` 索引，保证像加载普通 shp 一样快速响应；
+4. 可通过 `npm run sync:rate-layers` 执行，完成后前端直接调用 `/api/clcd/spatial/rates/:unit/:year` 读取 GeoJSON，即等价于“直接加载 SHP”。
+
+在发布前请确保数据库已有 `spatial_county_yunnan_stats`、`spatial_grid_yunnan_stats`、`clcd_county` 与转移表，并执行一次同步脚本，后续可按需重跑以刷新字段。
+
 ---
 
 ## 核心功能特性

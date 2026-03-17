@@ -8,7 +8,8 @@ import Analysis from '../views/Analysis.vue';
 import RegionalAnalysis from '../views/RegionalAnalysis.vue';
 
 const routes = [
-	{ path: '/', component: Portal },
+	{ path: '/', redirect: '/portal' },
+	{ path: '/portal', component: Portal },
 	{ path: '/login', component: Login },
 	{ path: '/workbench', component: Workbench },
 	{ path: '/analysis', component: Analysis },
@@ -28,7 +29,7 @@ router.beforeEach(async (to, from, next) => {
 	const token = localStorage.getItem('auth_token');
 
 	// public pages
-	if (to.path === '/login' || to.path === '/') {
+	if (to.path === '/login' || to.path === '/portal') {
 		next();
 		return;
 	}
