@@ -2,23 +2,26 @@
     <div class="rate-control">
         <!-- 侧边栏入口按钮 -->
         <button @click="openModal" class="control-btn" :class="{ active: isVisible }" title="垦殖与转换率分析">
-            <!-- 图标：饼图+增长箭头，寓意率值 -->
-            <svg width="28" height="28" viewBox="0 0 1024 1024" fill="none">
-                <defs>
-                    <linearGradient id="rateGradient" x1="0%" y1="0%" x2="100%" y2="100%">
-                        <stop offset="0%" stop-color="#34d399"/>
-                        <stop offset="100%" stop-color="#f59e0b"/>
-                    </linearGradient>
-                </defs>
-                <!-- 圆形底盘 -->
-                <circle cx="480" cy="500" r="340" fill="url(#rateGradient)" opacity="0.25"/>
-                <!-- 饼图扇形（约60%填充色） -->
-                <path d="M480 500 L480 160 A340 340 0 1 1 134 680 Z" fill="url(#rateGradient)" opacity="0.85"/>
-                <!-- 剩余扇形（轮廓） -->
-                <path d="M480 500 L134 680 A340 340 0 0 1 480 160 Z" fill="none" stroke="rgba(255,255,255,0.3)" stroke-width="10"/>
-                <!-- 右上角上升箭头 -->
-                <polyline points="700,220 820,100 820,200 920,200 920,100 820,100" 
-                    stroke="#ffffff" stroke-width="48" stroke-linecap="round" stroke-linejoin="round" fill="none"/>
+            <svg width="28" height="28" viewBox="0 0 100 100" fill="none">
+                <!-- 拼图式背景饼图，体现“统一图表风格” -->
+                <circle cx="50" cy="50" r="45" fill="rgba(255,255,255,0.05)" stroke="rgba(255,255,255,0.1)" stroke-width="1"/>
+                
+                <!-- 扇形1: 耕地颜色 -->
+                <path d="M50 50 L50 5 A45 45 0 0 1 95 50 Z" fill="#FAE39C" opacity="0.9"/>
+                <!-- 扇形2: 林地颜色 -->
+                <path d="M50 50 L95 50 A45 45 0 0 1 50 95 Z" fill="#446F33" opacity="0.9"/>
+                <!-- 扇形3: 水域颜色 -->
+                <path d="M50 50 L50 95 A45 45 0 0 1 5 50 Z" fill="#1E69B4" opacity="0.9"/>
+                <!-- 扇形4: 建设用地颜色 -->
+                <path d="M50 50 L5 50 A45 45 0 0 1 50 5 Z" fill="#E24290" opacity="0.9"/>
+
+                <!-- 中心孔洞，形成环状/现代感 -->
+                <circle cx="50" cy="50" r="18" fill="currentColor"/>
+                
+                <!-- 覆盖一个象征“率”的增长折线 -->
+                <polyline points="35,65 45,55 55,60 70,45" 
+                    stroke="white" stroke-width="6" stroke-linecap="round" stroke-linejoin="round" fill="none"
+                    style="filter: drop-shadow(0 2px 4px rgba(0,0,0,0.5))" />
             </svg>
             <span class="btn-label">垦殖转换</span>
         </button>
