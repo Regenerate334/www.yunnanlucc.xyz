@@ -31,14 +31,14 @@
         <div class="year-range-picker">
           <div class="range-field">
             <span class="field-tag">起始年份</span>
-            <input type="number" v-model.number="yearStart" :min="MIN_YEAR" :max="MAX_YEAR" @blur="validateYear" />
+            <input type="number" v-model.number="yearStart" />
           </div>
           <div class="range-divider">
             <div class="divider-line"></div>
           </div>
           <div class="range-field">
             <span class="field-tag">截止年份</span>
-            <input type="number" v-model.number="yearEnd" :min="MIN_YEAR" :max="MAX_YEAR" @blur="validateYear" />
+            <input type="number" v-model.number="yearEnd" />
           </div>
         </div>
       </div>
@@ -129,7 +129,7 @@
 </template>
 
 <script setup>
-import { ref, computed, onMounted, onUnmounted } from 'vue';
+import { ref, computed, onMounted, onUnmounted, watch, nextTick } from 'vue';
 import { useGlobalStore } from '../../stores/global.ts';
 
 const emit = defineEmits(['close', 'transfer-query', 'reset']);
@@ -149,6 +149,32 @@ const errorMsg = ref('');
 const fromOpen = ref(false);
 const toOpen = ref(false);
 const rotateDeg = ref(0);
+
+const availableYears = computed(() => globalStore.yearsAll);
+
+const reactSnap = (newVal, oldVal, updateFn) => {
+  const years = availableYears.value;
+  if (!years.includes(newVal)) {
+    const diff = newVal - oldVal;
+    if (Math.abs(diff) === 1) {
+      if (diff > 0) {
+        const target = years.find(y => y > oldVal) || years[years.length - 1];
+        nextTick(() => updateFn(target));
+      } else {
+        const target = [...years].reverse().find(y => y < oldVal) || years[0];
+        nextTick(() => updateFn(target));
+      }
+    } else {
+      const target = years.reduce((prev, curr) => 
+        Math.abs(curr - newVal) < Math.abs(prev - newVal) ? curr : prev
+      );
+      nextTick(() => updateFn(target));
+    }
+  }
+};
+
+watch(yearStart, (nv, ov) => reactSnap(nv, ov, v => { yearStart.value = v; validateYear(); }));
+watch(yearEnd, (nv, ov) => reactSnap(nv, ov, v => { yearEnd.value = v; validateYear(); }));
 
 const swapLandTypes = () => {
   const temp = fromClass.value;

@@ -27,7 +27,7 @@
           <div class="year-range-picker solo">
             <div class="range-field">
               <span class="field-tag">年份</span>
-              <input type="number" v-model.number="reclamYear" :min="MIN_YEAR" :max="MAX_YEAR" @blur="validateReclamYear" />
+              <input type="number" v-model.number="reclamYear" />
             </div>
           </div>
         </div>
@@ -40,14 +40,14 @@
           <div class="year-range-picker">
             <div class="range-field">
               <span class="field-tag">起始年份</span>
-              <input type="number" v-model.number="convYearStart" :min="MIN_YEAR" :max="MAX_YEAR" @blur="validateYear" />
+              <input type="number" v-model.number="convYearStart" />
             </div>
             <div class="range-divider">
               <div class="divider-line"></div>
             </div>
             <div class="range-field">
               <span class="field-tag">截止年份</span>
-              <input type="number" v-model.number="convYearEnd" :min="MIN_YEAR" :max="MAX_YEAR" @blur="validateYear" />
+              <input type="number" v-model.number="convYearEnd" />
             </div>
           </div>
         </div>
@@ -133,25 +133,55 @@
 </template>
 
 <script setup>
-import { ref, onMounted, onUnmounted } from 'vue';
+import { ref, onMounted, onUnmounted, computed, watch, nextTick } from 'vue';
+import { useGlobalStore } from '../../stores/global';
 
+const globalStore = useGlobalStore();
 const emit = defineEmits(['close', 'rate-query', 'reset']);
 
 const containerRef = ref(null);
-const MIN_YEAR = 1985;
-const MAX_YEAR = 2023;
+const availableYears = computed(() => globalStore.yearsAll);
 
 const mode          = ref('reclamation');
-const reclamYear    = ref(2023);
-const convYearStart = ref(1990);
+const reclamYear    = ref(1985);
+const convYearStart = ref(1985);
 const convYearEnd   = ref(2023);
 const fromClass     = ref(1);   // 耕地
 const toClass       = ref(2);   // 林地
+
 const loading       = ref(false);
 const errorMsg      = ref('');
 const fromOpen      = ref(false);
 const toOpen        = ref(false);
 const rotateDeg     = ref(0);
+
+const reactSnap = (newVal, oldVal, updateFn) => {
+  const years = availableYears.value;
+  if (!years.includes(newVal)) {
+    // 只有当新值偏离旧值且偏离了1（通常是点击箭头或滚动）时，才采用跳跃逻辑
+    // 否则直接计算最近年份
+    const diff = newVal - oldVal;
+    if (Math.abs(diff) === 1) {
+      if (diff > 0) {
+        const target = years.find(y => y > oldVal) || years[years.length - 1];
+        nextTick(() => updateFn(target));
+      } else {
+        const target = [...years].reverse().find(y => y < oldVal) || years[0];
+        nextTick(() => updateFn(target));
+      }
+    } else {
+      // 用于手动输入，如果是输入 1987，吸附到 1985 或 1990
+      const target = years.reduce((prev, curr) => 
+        Math.abs(curr - newVal) < Math.abs(prev - newVal) ? curr : prev
+      );
+      nextTick(() => updateFn(target));
+    }
+  }
+};
+
+watch(reclamYear, (nv, ov) => reactSnap(nv, ov, v => reclamYear.value = v));
+watch(convYearStart, (nv, ov) => reactSnap(nv, ov, v => { convYearStart.value = v; validateYear(); }));
+watch(convYearEnd, (nv, ov) => reactSnap(nv, ov, v => { convYearEnd.value = v; validateYear(); }));
 
 const landClasses = [
   { label: '耕地',   value: 1 },
@@ -183,16 +213,14 @@ const selectOption = (type, val) => {
 };
 
 const validateReclamYear = () => {
-  if (reclamYear.value < MIN_YEAR) reclamYear.value = MIN_YEAR;
-  if (reclamYear.value > MAX_YEAR) reclamYear.value = MAX_YEAR;
+  // Select handles bounds
 };
 
 const validateYear = () => {
-  if (convYearStart.value < MIN_YEAR) convYearStart.value = MIN_YEAR;
-  if (convYearStart.value > MAX_YEAR) convYearStart.value = MAX_YEAR;
-  if (convYearEnd.value   < MIN_YEAR) convYearEnd.value   = MIN_YEAR;
-  if (convYearEnd.value   > MAX_YEAR) convYearEnd.value   = MAX_YEAR;
-  if (convYearStart.value >= convYearEnd.value) convYearStart.value = convYearEnd.value - 1;
+  if (convYearStart.value >= convYearEnd.value) {
+    const startIndex = availableYears.value.indexOf(convYearEnd.value);
+    convYearStart.value = availableYears.value[Math.max(0, startIndex - 1)];
+  }
 };
 
 const handleQuery = () => {
@@ -232,6 +260,9 @@ const handleClickOutside = (event) => {
   if (!path.some(el => el.classList && el.classList.contains('custom-select'))) {
     fromOpen.value = false;
     toOpen.value   = false;
+    yearOpen.value = false;
+    startYearOpen.value = false;
+    endYearOpen.value = false;
   }
 };
 
@@ -463,6 +494,26 @@ defineExpose({ setLoading, setError });
 .swap-btn-container { display: flex; align-items: center; justify-content: center; cursor: pointer; padding: 4px; border-radius: 50%; transition: all 0.3s ease; z-index: 10; }
 .swap-btn-container:hover { filter: brightness(1.1); transform: scale(1.15); }
 .swap-btn { display: flex; align-items: center; justify-content: center; transition: transform 0.6s cubic-bezier(0.34, 1.56, 0.64, 1); }
+
+/* 年份选择器增强 */
+.dual-year-select {
+  display: flex;
+  align-items: flex-end;
+  gap: 8px;
+}
+
+.select-wrapper.small {
+  padding: 4px 10px;
+}
+
+.select-wrapper.small .selected-text {
+  font-size: 13px;
+}
+
+.year-select {
+  background: rgba(255, 255, 255, 0.06);
+  border-radius: 10px;
+}
 
 .footer-actions { display: flex; align-items: center; gap: 8px; margin-top: 4px; }
 .execute-btn {
