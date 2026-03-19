@@ -706,9 +706,11 @@ watch([spatialUnit, selectedAttribute], ([newUnit, newAttr], [oldUnit, oldAttr])
 
 // ===== 垦殖率 / 转换率 WMS 渲染 =====
 const rateControlRef = ref(null);
-// 率分析颜色（绿→橙→红，与 rate_dynamic.sld 同步）
-const rateColors = ['#f7fcf5','#c7e9c0','#a1d99b','#74c476','#fed976','#feb24c','#fd8d3c','#e31a1c','#bd0026','#800026'];
+// 率分析颜色
+const reclamationColors = ['#f7fcf5', '#c7e9c0', '#a1d99b', '#74c476', '#fed976', '#feb24c', '#fd8d3c', '#e31a1c', '#bd0026', '#800026'];
+const conversionColors  = ['#fffcf2', '#fff1ba', '#ffdc71', '#ffb63a', '#ff8e21', '#ff5a1d', '#e02d44', '#b31564', '#7e0a6d', '#4d0352'];
 let rateWmsLayer = null;
+let currentRateColors = []; // 用于共享给图例更新
 
 async function handleRateQuery(params) {
   console.log('[Rate] Query params:', params);
@@ -756,6 +758,9 @@ async function handleRateQuery(params) {
     }
 
     // 4. 创建 WMS 图层
+    const activeStyle = attribute === 'reclamation' ? 'reclamation_rate' : 'conversion_rate';
+    currentRateColors = attribute === 'reclamation' ? reclamationColors : conversionColors;
+
     const wmsProvider = new Cesium.WebMapServiceImageryProvider({
       url: 'http://localhost:8080/geoserver/WebGIS/wms',
       layers: 'WebGIS:spatial_county_yunnan_stats',
@@ -766,7 +771,7 @@ async function handleRateQuery(params) {
         request: 'GetMap',
         transparent: 'true',
         format: 'image/png',
-        styles: 'rate_dynamic',
+        styles: activeStyle,
         env: envParams,
         info_format: 'application/json'
       }
@@ -782,7 +787,7 @@ async function handleRateQuery(params) {
     globalStore.updateLegend({
       title: legendTitle,
       type: 'continuous',
-      items: rateColors.map((c, i) => ({
+      items: currentRateColors.map((c, i) => ({
         color: c,
         label: `${(breaks[i] * 100).toFixed(2)}% - ${(breaks[i + 1] * 100).toFixed(2)}%`
       }))
