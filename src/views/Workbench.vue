@@ -1233,7 +1233,14 @@ onMounted(async () => {
     viewer.value.scene.postRender.addEventListener(updatePopupPosition);
 
     viewer.value.cesiumWidget.creditContainer.style.display = "none";
+    
+    // 禁用双击缩放
+    viewer.value.screenSpaceEventHandler.removeInputAction(Cesium.ScreenSpaceEventType.LEFT_DOUBLE_CLICK);
+    
+    // 锁定相机：禁用倾斜和查看模式，确保护视角始终垂直向下
     viewer.value.scene.screenSpaceCameraController.enableTilt = false;
+    viewer.value.scene.screenSpaceCameraController.enableLook = false;
+
 
     loadBaseMap('imagery');
 
