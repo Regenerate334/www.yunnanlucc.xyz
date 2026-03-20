@@ -61,6 +61,7 @@ function resetView() {
   font-size: 10px;
   color: rgba(255, 255, 255, 0.9);
   font-weight: 600;
+  pointer-events: none;
 }
 
 .reset-btn:hover {
@@ -81,6 +82,7 @@ function resetView() {
   filter: brightness(0) invert(1);
   opacity: 0.8;
   transition: all 0.3s ease;
+  pointer-events: none;
 }
 
 .reset-btn:hover .reset-icon {
