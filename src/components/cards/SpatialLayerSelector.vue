@@ -7,7 +7,7 @@
 -->
 <template>
   <div class="spatial-layer-selector" ref="containerRef">
-    <!-- 原有微型入口按钮 -->
+    <!-- 入口按钮 -->
     <button 
       class="control-btn" 
       :class="{ active: isOpen || modelValue !== 'clcd' }" 
@@ -18,61 +18,72 @@
       <span class="btn-label">{{ currentLabelShort }}</span>
     </button>
 
-    <!-- 级联选择菜单 (向上弹出) -->
-    <transition name="dropdown-fade">
-      <div v-if="isOpen" class="cascading-menu">
-        <!-- 第一级：空间维度 -->
-        <div class="menu-column primary">
-          <div class="column-header">图层维度</div>
-          <div 
-            v-for="layer in layers" 
-            :key="layer.id" 
-            class="menu-item" 
-            :class="{ active: modelValue === layer.id, hovered: activeMainLayer === layer.id }"
-            @mouseenter="activeMainLayer = layer.id"
-            @click="selectMainLayer(layer.id)"
-          >
-            <span class="indicator primary" v-if="modelValue === layer.id"></span>
-            <span class="item-text">{{ layer.name }}</span>
-            <span class="chevron">›</span>
-          </div>
+    <!-- 卡片式选择面板 (向上弹出) -->
+    <transition name="panel-slide">
+      <div v-if="isOpen" class="layer-selector-panel panel-card">
+        <div class="panel-header">
+          <h1 class="header-title">统计图层选择</h1>
+          <button class="close-btn" @click="isOpen = false" title="关闭">
+            <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M18 6L6 18M6 6l12 12" />
+            </svg>
+          </button>
         </div>
 
-        <!-- 第二级：分析指标 / 数据显示 -->
-        <div class="menu-column secondary">
-          <div class="column-header">
-            {{ activeMainLayer === 'clcd' ? '数据显示' : '分析指标' }}
+        <div class="control-body">
+          <!-- 空间维度切换 -->
+          <div class="control-section">
+            <div class="section-label">图层维度</div>
+            <div class="segmented-control">
+              <button 
+                v-for="layer in layers" 
+                :key="layer.id"
+                :class="{ active: activeMainLayer === layer.id }" 
+                @click="selectMainLayer(layer.id)"
+              >
+                {{ layer.name.replace('统计', '') }}
+              </button>
+            </div>
           </div>
-          <div class="scroll-container">
-            <!-- 土地覆盖模式：显示全地类状态 -->
-            <template v-if="activeMainLayer === 'clcd'">
-              <div class="menu-item selected">
-                <span class="indicator"></span>
-                <span class="item-text">全部地类 (覆盖)</span>
-              </div>
-              <!-- 显示其余指标作为参考（不可选） -->
-              <div 
-                v-for="attr in attributes" 
-                :key="attr.value" 
-                class="menu-item disabled"
-              >
-                <span class="item-text dimmed">{{ attr.label }}</span>
-              </div>
-            </template>
-            
-            <!-- 县级/网格模式：正常选择指标 -->
-            <template v-else>
-              <div 
-                v-for="attr in filteredAttributes" 
-                :key="attr.value" 
-                class="menu-item" 
-                :class="{ selected: selectedAttribute === attr.value }"
-                @click="selectAttribute(attr.value)"
-              >
-                <span class="indicator" v-if="selectedAttribute === attr.value"></span>
-                <span class="item-text">{{ attr.label }}</span>
-              </div>
-            </template>
+
+          <!-- 指标选择列表 -->
+          <div class="control-section">
+            <div class="section-label">
+              {{ activeMainLayer === 'clcd' ? '数据显示' : '分析指标' }}
+            </div>
+            <div class="indicator-scroll-list">
+              <!-- 土地覆盖模式 -->
+              <template v-if="activeMainLayer === 'clcd'">
+                <div class="list-item selected disabled">
+                  <span class="indicator-dot"></span>
+                  <span class="item-text">全部地类 (覆盖)</span>
+                </div>
+                <div 
+                  v-for="attr in attributes" 
+                  :key="attr.value" 
+                  class="list-item disabled dimmed"
+                >
+                  <span class="item-text">{{ attr.label }}</span>
+                </div>
+              </template>
+              
+              <!-- 县级/网格模式 -->
+              <template v-else>
+                <div 
+                  v-for="attr in filteredAttributes" 
+                  :key="attr.value" 
+                  class="list-item" 
+                  :class="{ selected: selectedAttribute === attr.value }"
+                  @click="selectAttribute(attr.value)"
+                >
+                  <span class="indicator-dot" v-if="selectedAttribute === attr.value"></span>
+                  <span class="item-text">{{ attr.label }}</span>
+                  <svg v-if="selectedAttribute === attr.value" class="check-icon" viewBox="0 0 24 24" width="14" height="14" stroke="currentColor" stroke-width="2" fill="none">
+                    <path d="M20 6L9 17l-5-5" />
+                  </svg>
+                </div>
+              </template>
+            </div>
           </div>
         </div>
       </div>
@@ -141,23 +152,21 @@ function toggleDropdown() {
 }
 
 function selectMainLayer(layerId) {
-  emit('update:modelValue', layerId);
   activeMainLayer.value = layerId;
   
-  if (layerId === 'clcd') {
-    // 延迟自动关闭，给用户一点反馈感
-    setTimeout(() => {
-      if (activeMainLayer.value === 'clcd') isOpen.value = false;
-    }, 400);
+  // 优化：切换维度时立即触发更新，不再等待指标点击
+  if (props.modelValue !== layerId) {
+    emit('update:modelValue', layerId);
   }
 }
 
 function selectAttribute(attrValue) {
+  // 确保维度状态同步
   if (props.modelValue !== activeMainLayer.value) {
     emit('update:modelValue', activeMainLayer.value);
   }
   emit('update:selectedAttribute', attrValue);
-  isOpen.value = false;
+  // 不再自动关闭，由用户决定
 }
 
 const handleClickOutside = (e) => {
@@ -182,137 +191,217 @@ onUnmounted(() => {
   pointer-events: auto;
 }
 
-/* 级联菜单容器：完全固定宽高，消除任何抖动 */
-.cascading-menu {
+/* 卡片式面板容器 - 对齐 LandTransferControl 风格 */
+.layer-selector-panel {
   position: absolute;
   bottom: calc(100% + 15px);
   left: 50%;
   transform: translateX(-50%);
-  background: rgba(13, 25, 48, 0.96);
-  backdrop-filter: blur(24px);
-  border: 1px solid rgba(255, 255, 255, 0.15);
-  border-radius: 12px;
-  display: flex;
-  box-shadow: 0 10px 40px rgba(0, 0, 0, 0.8);
-  z-index: 2600;
-  overflow: hidden;
-  width: 300px; /* 固定总宽度 */
-  height: 380px; /* 固定总高度 */
-}
-
-.menu-column {
-  width: 150px;
-  padding: 8px;
+  width: 280px;
+  background: rgba(30, 45, 90, 0.95);
+  backdrop-filter: blur(20px) saturate(180%);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 20px;
+  color: #E2E8F0;
+  z-index: 3000;
   display: flex;
   flex-direction: column;
+  box-shadow: 0 12px 40px rgba(0, 0, 0, 0.4);
+  font-family: "PingFang SC", "Microsoft YaHei", sans-serif;
+  overflow: hidden;
 }
 
-.menu-column.primary {
-  border-right: 1px solid rgba(255, 255, 255, 0.1);
+/* 气泡尖角 */
+.layer-selector-panel::after {
+  content: '';
+  position: absolute;
+  bottom: -6px; 
+  left: 50%;
+  transform: translateX(-50%) rotate(45deg);
+  width: 12px;
+  height: 12px;
+  background: inherit; 
+  border-right: 1px solid rgba(255, 255, 255, 0.12);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.12);
+  z-index: -1; 
 }
 
-.menu-column.secondary {
-  background: rgba(255, 255, 255, 0.02);
+.panel-header {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 40px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+  position: relative;
 }
 
-.column-header {
-  font-size: 11px;
-  color: rgba(255, 255, 255, 0.4);
-  text-transform: uppercase;
-  padding: 6px 12px 10px;
+.header-title {
+  font-size: 14px;
+  font-weight: 600;
   letter-spacing: 1px;
+  color: #fff;
+  margin: 0;
 }
 
-.scroll-container {
-  flex-grow: 1;
+.close-btn {
+  position: absolute;
+  right: 10px;
+  background: transparent;
+  border: none;
+  color: rgba(255, 255, 255, 0.5);
+  cursor: pointer;
+  padding: 5px;
+  display: flex;
+  transition: all 0.2s;
+}
+
+.close-btn:hover {
+  color: #fff;
+  transform: rotate(90deg);
+}
+
+.control-body {
+  padding: 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 15px;
+}
+
+.control-section {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.section-label {
+  font-size: 11px;
+  font-weight: 700;
+  color: rgba(255, 255, 255, 0.5);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  padding-left: 10px;
+  position: relative;
+}
+
+.section-label::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 2px;
+  height: 10px;
+  background: #3B76E1;
+  border-radius: 1px;
+}
+
+/* 分段控制组件 */
+.segmented-control {
+  display: flex;
+  background: rgba(0, 0, 0, 0.25);
+  padding: 3px;
+  border-radius: 10px;
+  border: 1px solid rgba(255, 255, 255, 0.05);
+}
+
+.segmented-control button {
+  flex: 1;
+  padding: 6px 0;
+  background: transparent;
+  border: none;
+  color: #94A3B8;
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  border-radius: 7px;
+  transition: all 0.3s;
+}
+
+.segmented-control button.active {
+  background: #3B76E1;
+  color: white;
+  box-shadow: 0 4px 12px rgba(59, 118, 225, 0.25);
+}
+
+/* 指标滚动列表 */
+.indicator-scroll-list {
+  max-height: 200px;
   overflow-y: auto;
+  padding-right: 4px;
 }
 
-.scroll-container::-webkit-scrollbar {
+.indicator-scroll-list::-webkit-scrollbar {
   width: 4px;
 }
-.scroll-container::-webkit-scrollbar-track {
+.indicator-scroll-list::-webkit-scrollbar-track {
   background: transparent;
 }
-.scroll-container::-webkit-scrollbar-thumb {
+.indicator-scroll-list::-webkit-scrollbar-thumb {
   background: rgba(255, 255, 255, 0.1);
   border-radius: 2px;
 }
 
-.menu-item {
-  padding: 10px 12px;
+.list-item {
+  padding: 8px 12px;
   border-radius: 8px;
   cursor: pointer;
   display: flex;
   align-items: center;
-  justify-content: center; /* 确保文字绝对居中 */
   position: relative;
   transition: all 0.2s;
-  color: rgba(255, 255, 255, 0.85);
+  color: rgba(255, 255, 255, 0.8);
   margin-bottom: 2px;
 }
 
-/* 移除不再需要的 item-left 容器样式 */
-
-.menu-item:hover, .menu-item.hovered {
+.list-item:hover:not(.disabled) {
   background: rgba(255, 255, 255, 0.08);
   color: #fff;
 }
 
-.menu-item.active {
-  background: rgba(59, 130, 246, 0.1);
+.list-item.selected {
+  background: rgba(59, 130, 246, 0.15);
   color: #60a5fa;
+  font-weight: 600;
 }
 
-.menu-item.selected {
-  background: rgba(59, 130, 246, 0.25);
-  color: #60a5fa;
-}
-
-.menu-item.disabled {
+.list-item.disabled {
   cursor: default;
-  background: transparent !important;
-  pointer-events: none;
+  opacity: 0.5;
 }
 
-.dimmed {
-  opacity: 0.3;
-}
-
-.chevron {
-  position: absolute;
-  right: 12px;
-  font-size: 16px;
-  opacity: 0.4;
-  line-height: 1;
-}
-
-.indicator {
-  position: absolute;
-  left: 12px;
-  width: 5px;
-  height: 5px;
+.indicator-dot {
+  width: 6px;
+  height: 6px;
   background: #60a5fa;
   border-radius: 50%;
+  margin-right: 12px;
   box-shadow: 0 0 8px #60a5fa;
-  flex-shrink: 0;
 }
 
 .item-text {
   font-size: 13px;
-  font-weight: 500;
-  white-space: nowrap;
+  flex: 1;
 }
 
-/* 动画效果 */
-.dropdown-fade-enter-active,
-.dropdown-fade-leave-active {
+.check-icon {
+  margin-left: 8px;
+  opacity: 0.8;
+}
+
+.dimmed {
+  opacity: 0.2 !important;
+}
+
+/* 面板滑入动画 */
+.panel-slide-enter-active,
+.panel-slide-leave-active {
   transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
 }
 
-.dropdown-fade-enter-from,
-.dropdown-fade-leave-to {
+.panel-slide-enter-from,
+.panel-slide-leave-to {
   opacity: 0;
-  transform: translate(-50%, 15px);
+  transform: translate(-50%, 15px) scale(0.95);
 }
 </style>
+

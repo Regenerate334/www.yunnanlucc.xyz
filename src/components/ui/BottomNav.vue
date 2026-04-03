@@ -46,7 +46,7 @@
           :modelValue="selectedYear"
           @update:modelValue="(val) => $emit('update:selectedYear', val)"
         />
-        <ViewResetButton />
+        <ViewResetButton @reset-map="$emit('reset-map')" />
         <DistanceMeasureButton />
         <AreaMeasureButton />
       </div>

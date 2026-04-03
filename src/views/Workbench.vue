@@ -248,12 +248,12 @@ const currentAttributeLabel = computed(() => {
 const allAttributes = [
   { label: '耕地', value: 'cropland' },
   { label: '林地', value: 'forest' },
+  { label: '建设用地', value: 'impervious' },
   { label: '灌木', value: 'shrub' },
   { label: '草地', value: 'grassland' },
   { label: '水域', value: 'water' },
   { label: '冰雪', value: 'snow_ice' },
   { label: '裸地', value: 'barren' },
-  { label: '建设用地', value: 'impervious' },
   { label: '湿地', value: 'wetland' }
 ];
 
@@ -351,14 +351,7 @@ watch(
     // 如果是从分析模式切回 CLCD，或者切换了空间分辨率/属性，或者是进入/退出变化模式，清理 WMS 状态
     const needsCleanup = newUnit !== oldUnit || newAttr !== oldAttr || newIsChange !== oldIsChange;
     
-    // 如果空间分辨率从 CLCD 改变，执行默认跳转逻辑 (如 1985 耕地)
-    if (newUnit !== oldUnit && ['county', 'grid'].includes(newUnit) && oldUnit === 'clcd') {
-        let moved = false;
-        if (selectedYear.value !== 1985) { selectedYear.value = 1985; moved = true; }
-        if (selectedAttribute.value !== 'cropland') { selectedAttribute.value = 'cropland'; moved = true; }
-        if (moved) return; // 让 setter 触发下一次 watch
-    }
-
+    // 已移除：不再强制重置为 1985 耕地，以保持交互连贯性
     refreshMapLayer(needsCleanup);
   }, 
   { deep: false }
@@ -855,9 +848,11 @@ function cleanupThemeLayers(themeToClean) {
 
 // 处理重置/清理分析图层
 function handleResetMap() {
-  // console.log('[Workbench] handleResetMap called, clearing analysis layers');
-  // 1. 恢复之前的基础图层状态
-  globalStore.restorePreviousLayer();
+  // console.log('[Workbench] handleResetMap called, resetting to default CLCD');
+  
+  // 1. 强制回归默认图层状态
+  globalStore.setActiveLayer('clcd');
+  selectedAttribute.value = 'cropland';
   
   // 2. 清理流转图层和其他专属UI
   clearAllAnalysisLayers(viewer.value);
@@ -879,39 +874,27 @@ function handleResetMap() {
   }
 
   globalStore.clearLegend();
-  if (selectedAttribute.value === 'transfer') {
-    selectedAttribute.value = 'cropland';
-  }
   
-  // 3. 恢复行政边界原始样式 (针对之前开启了“空白背景”模式的情况)
+  // 3. 恢复行政边界原始样式
   if (yunnanDataSource.value) {
     const entities = yunnanDataSource.value.entities.values;
     entities.forEach(ent => {
         if (ent.polygon) {
             ent.polygon.material = Cesium.Color.WHITE.withAlpha(0.01);
-            ent.polygon.outline = false;
+            ent.polygon.outline = true;
+            ent.polygon.outlineColor = Cesium.Color.fromCssColorString('#00E5FF').withAlpha(0.3);
+            ent.polygon.outlineWidth = 1;
         }
     });
-    // 如果是 CLCD 模式，完全隐藏县级边界 DataSource；若是统计模式，则保持显示但变为透明
-    yunnanDataSource.value.show = (globalStore.activeLayer !== 'clcd');
+    // 强制显示县级边界，提供地理参照
+    yunnanDataSource.value.show = true;
   }
 
-  // 4. 触发当前 activeLayer 所对应图层的重新显示
-  if (globalStore.activeLayer === 'clcd' && clcdLayer.value) {
-     clcdLayer.value.show = true;
-  } else if (['county', 'grid'].includes(globalStore.activeLayer)) {
-     const cacheKey = `${selectedYear.value}_${globalStore.activeLayer}_${selectedAttribute.value}`;
-     const layer = wmsLayerCache.get(cacheKey);
-     if (layer) {
-       layer.show = true;
-       layer.alpha = 1;
-     } else {
-       loadWMSLayer(selectedYear.value, true);
-     }
-  }
-
-  // 5. 重置专题状态
+  // 4. 重置专题状态
   globalStore.setActiveTheme(null);
+
+  // 5. 触发当前 activeLayer 所对应图层的重新显示 (强制刷新)
+  refreshMapLayer(true);
 }
 
 // transfer_dynamic.sld 的 10 级红蓝色带（与 SLD 一致）
@@ -1345,8 +1328,8 @@ onMounted(async () => {
          }
          if (entity.polyline) entity.polyline.show = false;
        }
-       // Initial visibility check
-       dataSource.show = spatialUnit.value !== 'clcd'; 
+       // Initial visibility: Always show for reference
+       dataSource.show = true; 
     }).catch(e => {
         console.error('Failed to load cloud county data:', e);
     });

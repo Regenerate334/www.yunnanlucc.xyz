@@ -18,6 +18,8 @@
 import * as Cesium from 'cesium';
 import resetIcon from '@/assets/icons/map/reset.svg';
 
+const emit = defineEmits(['reset-map']);
+
 function resetView() {
   const viewer = window.cesiumViewer;
 
@@ -25,7 +27,10 @@ function resetView() {
     return;
   }
 
-  // 使用 flyTo 实现平滑飞行动画（2秒）
+  // 1. 发出重置图层信号
+  emit('reset-map');
+
+  // 2. 执行视角飞行
   viewer.camera.flyTo({
     destination: Cesium.Cartesian3.fromDegrees(101.8, 25.2, 1900000),
     orientation: {
