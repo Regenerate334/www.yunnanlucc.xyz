@@ -11,7 +11,7 @@
     <div class="panel-header">
       <h1 class="header-title">土地流转动态监测</h1>
       <button class="close-btn" @click="$emit('close')" title="关闭面板">
-        <svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="1.8">
+        <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2.2">
           <path d="M18 6L6 18M6 6l12 12" />
         </svg>
       </button>
@@ -361,23 +361,23 @@ defineExpose({ setLoading, setError });
   right: 12px;
   top: 50%;
   transform: translateY(-50%);
-  background: transparent;
+  background: rgba(245, 108, 108, 0.15); /* 默认开启半透明红 */
   border: none;
-  color: rgba(255, 255, 255, 0.6);
+  color: #F56C6C; /* 默认红色 */
   cursor: pointer;
-  width: 32px; 
-  height: 32px;
+  width: 34px; /* 放大一点 */
+  height: 34px;
   display: flex;
   align-items: center;
   justify-content: center;
-  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
   border-radius: 50%;
 }
 
 .close-btn:hover {
-  color: white;
-  background: rgba(255, 255, 255, 0.1);
-  transform: translateY(-50%) rotate(90deg);
+  background: rgba(245, 108, 108, 0.25);
+  color: #fff;
+  transform: translateY(-50%) rotate(90deg) scale(1.1);
 }
 
 .control-body {
@@ -736,10 +736,10 @@ defineExpose({ setLoading, setError });
   gap: 6px;
   padding: 0 12px;
   height: 36px;
-  background: rgba(255, 255, 255, 0.05);
-  border: 1px solid rgba(255, 255, 255, 0.15);
+  background: rgba(245, 108, 108, 0.1); /* 参考测量工具“清除”样式 */
+  border: 1px solid rgba(245, 108, 108, 0.3);
   border-radius: 8px;
-  color: rgba(255, 255, 255, 0.8);
+  color: #F56C6C;
   font-size: 13px;
   font-weight: 500;
   cursor: pointer;
@@ -748,9 +748,9 @@ defineExpose({ setLoading, setError });
 }
 
 .reset-btn-ghost:hover {
-  background: rgba(255, 255, 255, 0.1);
-  border-color: rgba(255, 255, 255, 0.3);
-  color: white;
+  background: rgba(245, 108, 108, 0.2);
+  border-color: rgba(245, 108, 108, 0.5);
+  color: #F56C6C;
   transform: translateY(-1px);
 }
 

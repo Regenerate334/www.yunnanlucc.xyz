@@ -24,7 +24,7 @@
         <div class="panel-header">
           <h1 class="header-title">统计图层选择</h1>
           <button class="close-btn" @click="isOpen = false" title="关闭">
-            <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2">
+            <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2.2">
               <path d="M18 6L6 18M6 6l12 12" />
             </svg>
           </button>
@@ -246,18 +246,23 @@ onUnmounted(() => {
 .close-btn {
   position: absolute;
   right: 10px;
-  background: transparent;
+  background: rgba(245, 108, 108, 0.15); /* 默认开启半透明红 */
   border: none;
-  color: rgba(255, 255, 255, 0.5);
+  color: #F56C6C; /* 默认红色 */
   cursor: pointer;
-  padding: 5px;
+  width: 34px; /* 统一放大一致 */
+  height: 34px;
   display: flex;
-  transition: all 0.2s;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+  border-radius: 50%;
 }
 
 .close-btn:hover {
+  background: rgba(245, 108, 108, 0.25);
   color: #fff;
-  transform: rotate(90deg);
+  transform: rotate(90deg) scale(1.1);
 }
 
 .control-body {

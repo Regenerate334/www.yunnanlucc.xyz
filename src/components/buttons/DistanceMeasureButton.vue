@@ -17,7 +17,7 @@
                 <div class="vibe-panel-header">
                     <h1 class="vibe-panel-title">测距结果</h1>
                     <button class="vibe-close-btn" @click="globalStore.setActivePanel(null)" title="关闭面板">
-                        <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="1.2">
+                        <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2.2">
                             <path d="M18 6L6 18M6 6l12 12" />
                         </svg>
                     </button>
@@ -281,23 +281,23 @@ onUnmounted(() => {
     right: 12px;
     top: 50%;
     transform: translateY(-50%);
-    background: transparent;
+    background: rgba(245, 108, 108, 0.15); /* 默认开启半透明红 */
     border: none;
-    color: rgba(255, 255, 255, 0.6);
+    color: #F56C6C; /* 默认红色 */
     cursor: pointer;
-    width: 30px;
-    height: 30px;
+    width: 34px; /* 放大一致 */
+    height: 34px;
     display: flex;
     align-items: center;
     justify-content: center;
-    transition: all 0.3s ease;
+    transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
     border-radius: 50%;
 }
 
 .vibe-close-btn:hover {
-    color: #F56C6C; /* 悬停变红 */
-    background: rgba(255, 255, 255, 0.1);
-    transform: translateY(-50%) rotate(90deg);
+    background: rgba(245, 108, 108, 0.25);
+    color: #fff;
+    transform: translateY(-50%) rotate(90deg) scale(1.1);
 }
 
 /* Body: 极限压缩间距 */
@@ -392,7 +392,7 @@ onUnmounted(() => {
 
 .vibe-select-options {
     position: absolute;
-    top: calc(100% + 4px); /* 适应极致压缩后的间距 */
+    bottom: calc(100% + 4px); /* 改为向上展开 */
     left: 0;
     right: 0;
     background: rgba(23, 35, 46, 0.98);
@@ -402,8 +402,8 @@ onUnmounted(() => {
     margin: 0;
     padding: 6px;
     list-style: none;
-    z-index: 2500; /* 确保层级高于一切，突破容器限制 */
-    box-shadow: 0 10px 25px rgba(0, 0, 0, 0.6);
+    z-index: 2500;
+    box-shadow: 0 -10px 25px rgba(0, 0, 0, 0.6);
     max-height: 180px;
     overflow-y: auto;
 }
