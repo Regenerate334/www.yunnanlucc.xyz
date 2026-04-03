@@ -27,6 +27,7 @@
 
 import pool from '../config/db.js';
 import registry from './dataSourceRegistry.js';
+import logger from '../config/logger.js';
 
 // ── 常量配置 ──────────────────────────────────────────────────────────────────
 
@@ -534,7 +535,7 @@ export class DataRouter {
     async route(question, componentContext, year = 2023) {
         try {
             const entities = this.extractor.extract(question);
-            console.log('[DataRouter] 提取实体:', JSON.stringify({
+            logger.info('[DataRouter] 提取实体:', {
                 prefectures: entities.prefectures,
                 counties: entities.counties,
                 years: entities.years,
@@ -545,7 +546,7 @@ export class DataRouter {
                 provinceLevel: entities.provinceLevel,
                 topN: entities.topN,
                 targetLandTypes: entities.targetLandTypes?.map(t => t.cn)
-            }));
+            });
 
             let contexts = [];
 
@@ -556,7 +557,7 @@ export class DataRouter {
                     const compCtx = this.builder.build(compData, entities, componentContext);
                     if (compCtx) {
                         contexts.push(`### 当前面板背景 (${componentContext.type})\n${compCtx}`);
-                        console.log('[DataRouter] 载入界面背景数据:', componentContext.type);
+                        logger.info(`[DataRouter] 载入界面背景数据: ${componentContext.type}`);
                     }
                 }
             }
@@ -569,7 +570,7 @@ export class DataRouter {
                     // 如果实体路由跟背景路由完全一致(比如前100字符相同)，则不重复添加
                     if (!contexts.some(c => c.includes(entityCtx.substring(0, 50)))) {
                         contexts.push(entityCtx);
-                        console.log('[DataRouter] 命中实体路由, type:', entityData.type);
+                        logger.info(`[DataRouter] 命中实体路由, type: ${entityData.type}`);
                     }
                 }
             }
@@ -578,14 +579,14 @@ export class DataRouter {
             const pluginCtx = await registry.queryIfMatch(question, entities, year);
             if (pluginCtx) {
                 contexts.push(pluginCtx);
-                console.log('[DataRouter] 命中插件路由');
+                logger.info('[DataRouter] 命中插件路由');
             }
 
             if (contexts.length > 0) {
                 return contexts.join('\n\n---\n\n');
             }
 
-            console.log('[DataRouter] 无路由命中，返回空上下文');
+            logger.info('[DataRouter] 无路由命中，返回空上下文');
             return '';
         } catch (err) {
             console.error('[DataRouter] 数据路由过程发生异常:', err);

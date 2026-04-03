@@ -15,6 +15,7 @@
  */
 
 import pool from '../config/db.js';
+import logger from '../config/logger.js';
 
 // ── 系统表/视图黑名单（这些表不暴露给 AI）────────────────────────────────────
 const SYSTEM_TABLE_PREFIXES = [
@@ -48,7 +49,7 @@ let _cache = {
  * @returns {Promise<void>}
  */
 async function refresh() {
-    console.log('[SchemaDiscovery] 开始扫描数据库 schema...');
+    logger.info('[SchemaDiscovery] 开始扫描数据库 schema...');
     const startAt = Date.now();
 
     try {
@@ -86,10 +87,10 @@ async function refresh() {
         };
 
         const elapsed = Date.now() - startAt;
-        console.log(`[SchemaDiscovery] 发现 ${tables.length} 张表，耗时 ${elapsed}ms`);
+        logger.info(`[SchemaDiscovery] 发现 ${tables.length} 张表，耗时 ${elapsed}ms`);
 
     } catch (err) {
-        console.error('[SchemaDiscovery] 扫描失败:', err.message);
+        logger.error(`[SchemaDiscovery] 扫描失败: ${err.message}`);
         // 不抛出，降级为空摘要——AI 仍可以照常工作，只是没有 schema 提示
     }
 }
@@ -159,7 +160,7 @@ async function inspectTable(tableName, tableComment) {
             sampleRows
         };
     } catch (err) {
-        console.warn(`[SchemaDiscovery] 表 ${tableName} 检查失败: ${err.message}`);
+        logger.warn(`[SchemaDiscovery] 表 ${tableName} 检查失败: ${err.message}`);
         return null;
     }
 }

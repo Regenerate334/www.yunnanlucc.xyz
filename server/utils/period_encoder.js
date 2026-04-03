@@ -12,6 +12,23 @@
  */
 
 /**
+ * 按照时间轴对 period 列表进行排序
+ * @param {string[]} periods 
+ * @returns {string[]}
+ */
+export function sortPeriods(periods) {
+    return [...periods].sort((a, b) => {
+        try {
+            const [startA] = decodePeriod(a);
+            const [startB] = decodePeriod(b);
+            return startA - startB;
+        } catch (e) {
+            return a.localeCompare(b);
+        }
+    });
+}
+
+/**
  * 获取数据库中所有可用的 period 前缀列表
  * 通过查询 information_schema 动态获取
  * @param {pg.Pool} pool
@@ -34,7 +51,7 @@ export async function getAvailablePeriods(pool, tableName) {
         if (match) periodsSet.add(match[1]);
     }
 
-    return Array.from(periodsSet).sort();
+    return sortPeriods(Array.from(periodsSet));
 }
 
 /**

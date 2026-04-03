@@ -5,7 +5,9 @@
  */
 import express from 'express';
 import pool from '../../config/db.js';
+import logger from '../../config/logger.js';
 import { handleError } from '../../middleware/logger.js';
+import { query, validationResult } from 'express-validator';
 import {
     ATTR_PREFIX_MAP,
     getAvailableYears,
@@ -20,7 +22,24 @@ const router = express.Router();
  * 单年模式: GET /breaks?attr=cropland&year=1990&unit=county
  * 变化模式: GET /breaks?attr=cropland&yearFrom=1985&yearTo=2023&unit=county
  */
-router.get('/', async (req, res) => {
+router.get('/', [
+    query('attr').optional().isIn(['cropland', 'forest', 'shrub', 'grassland', 'water', 'snow_ice', 'barren', 'impervious', 'wetland', 'reclamation', 'conversion']),
+    query('unit').optional().isIn(['county', 'grid', 'clcd']),
+    query('year').optional().isInt({ min: 1980, max: 2030 }),
+    query('yearFrom').optional().isInt({ min: 1980, max: 2030 }),
+    query('yearTo').optional().isInt({ min: 1980, max: 2030 }),
+    query('mode').optional().isIn(['transfer', 'rate']),
+    query('classes').optional().isInt({ min: 3, max: 12 }),
+    query('year_start').optional().isInt({ min: 1980, max: 2030 }),
+    query('year_end').optional().isInt({ min: 1980, max: 2030 }),
+    query('from_class').optional().isInt({ min: 1, max: 9 }),
+    query('to_class').optional().isInt({ min: 1, max: 9 })
+], async (req, res) => {
+    const errors = validationResult(req);
+    if (!errors.isEmpty()) {
+        return res.status(400).json({ error: 'Invalid parameters', details: errors.array() });
+    }
+
     const {
         attr = 'cropland',
         year,
@@ -37,7 +56,7 @@ router.get('/', async (req, res) => {
         to_class
     } = req.query;
 
-    console.log('[breaks] Incoming request:', { mode, attr, year, unit, method });
+    logger.info('[breaks] Incoming request:', { mode, attr, year, unit, method });
 
     // ===== 转移矩阵模式 =====
     if (mode === 'transfer') {
@@ -134,25 +153,11 @@ router.get('/', async (req, res) => {
 
             breaks = breaks.map(v => Math.round(v * 1000000) / 1000000);
 
-            console.log(`[breaks] Transfer mode: ${validCols.length} cols, ${stats.count} rows, breaks:`, breaks);
+            logger.info(`[breaks] Transfer mode: ${validCols.length} cols, ${stats.count} rows, breaks:`, breaks);
 
-            // 6. 将计算结果写入 _transfer_sum 列（供 GeoServer WMS 直接读取）
-            try {
-                // 确保列存在
-                await pool.query(`
-                    ALTER TABLE public."${tableName}" 
-                    ADD COLUMN IF NOT EXISTS _transfer_sum double precision DEFAULT 0
-                `);
-                // 写入计算值
-                await pool.query(`
-                    UPDATE public."${tableName}" 
-                    SET _transfer_sum = (${sumExpr}) / 1000000.0
-                `);
-                console.log(`[breaks] Updated _transfer_sum in ${tableName}`);
-            } catch (updateErr) {
-                console.error('[breaks] Failed to update _transfer_sum:', updateErr.message);
-                // 不中断响应，breaks 数据仍然有效
-            }
+            // [Security] 移除副作用：不再向物理表写入 _transfer_sum。
+            // WMS 渲染应通过 SLD 环境变量或 SQL 视图动态处理复杂表达式。
+            logger.info(`[breaks] Transfer mode computed: ${validCols.length} cols, ${stats.count} rows`);
 
             return res.json({
                 mode: 'transfer',
@@ -172,7 +177,7 @@ router.get('/', async (req, res) => {
             });
 
         } catch (err) {
-            console.error('[breaks] Transfer mode error:', err);
+            logger.error('[breaks] Transfer mode error:', err);
             return handleError(res, err);
         }
     }
@@ -212,17 +217,10 @@ router.get('/', async (req, res) => {
                     return res.status(400).json({ error: `Cannot find cropland column for year ${targetYear}` });
                 }
 
-                // 垦殖率 = 耕地面积(m²) / shape_area(m²)，结果为 0~1 小数
-                await pool.query(`
-                    UPDATE public."${STATS_TABLE}"
-                    SET "${RATE_COL}" = CASE
-                        WHEN "shape_area" > 0
-                        THEN "${croplandCol}" / "shape_area"
-                        ELSE 0
-                    END
-                `);
+                // [Security] 移除副作用：不再向物理表写入 _rate_val。
+                logger.info(`[breaks/rate] Reclamation calculated for col=${croplandCol}, year=${targetYear}`);
 
-                console.log(`[breaks/rate] Reclamation updated: col=${croplandCol}, year=${targetYear}`);
+                logger.info(`[breaks/rate] Reclamation updated: col=${croplandCol}, year=${targetYear}`);
 
                 // ---- 转换率 ----
             } else if (attr === 'conversion') {
@@ -294,7 +292,7 @@ router.get('/', async (req, res) => {
                     WHERE TRIM(CAST(s."地名" AS TEXT)) = TRIM(CAST(t."地名" AS TEXT))
                 `);
 
-                console.log(`[breaks/rate] Conversion updated: ${validCols.length} cols, ${start}-${end}, from=${from}, to=${to}`);
+                logger.info(`[breaks/rate] Conversion updated: ${validCols.length} cols, ${start}-${end}, from=${from}, to=${to}`);
 
             } else {
                 return res.status(400).json({ error: `Unknown rate attribute: ${attr}. Supported: reclamation, conversion` });
@@ -334,7 +332,7 @@ router.get('/', async (req, res) => {
             // 保留 6 位小数精度
             const breaks = rawBreaks.map(v => Math.round(v * 1000000) / 1000000);
 
-            console.log(`[breaks/rate] attr=${attr}, ${stats.count} rows, classes=${numClasses}, breaks:`, breaks);
+            logger.info(`[breaks/rate] attr=${attr}, ${stats.count} rows, classes=${numClasses}, breaks:`, breaks);
 
             return res.json({
                 mode: 'rate',
@@ -349,17 +347,30 @@ router.get('/', async (req, res) => {
             });
 
         } catch (err) {
-            console.error('[breaks] Rate mode error:', err);
+            logger.error('[breaks] Rate mode error:', err);
             return handleError(res, err);
         }
     }
 
     // ===== 原有面积/变化模式 =====
     const isChangeMode = yearFrom && yearTo;
-    const prefix = ATTR_PREFIX_MAP[attr];
+
+    // 关键修复：从复合属性名中提取核心地类 (如 "1985__land_transfer_cropland" -> "cropland")
+    let baseAttr = attr;
+    if (attr.includes('__')) {
+        const parts = attr.split('__');
+        baseAttr = parts[parts.length - 1].toLowerCase();
+        // 处理类似 "land_transfer_cropland" 的后缀
+        if (baseAttr.includes('_')) {
+            baseAttr = baseAttr.split('_').pop();
+        }
+    }
+
+    const prefix = ATTR_PREFIX_MAP[baseAttr];
 
     if (!prefix) {
-        return res.status(400).json({ error: `Invalid attribute: ${attr}` });
+        logger.warn(`[breaks] Unsupported attribute parsing: ${attr} -> ${baseAttr}`);
+        return res.status(400).json({ error: `Invalid attribute: ${attr} (Parsed as: ${baseAttr})` });
     }
 
     const tableName = unit === 'grid' ? 'spatial_grid_yunnan_stats' : 'spatial_county_yunnan_stats';
@@ -368,22 +379,16 @@ router.get('/', async (req, res) => {
         const dbCols = await getTableColumns(tableName);
         const years = await getAvailableYears();
 
-        // 年份到字段名的映射
-        const resolveField = (y) => {
-            const yInt = Number(y);
-            const idx = years.indexOf(yInt);
-            if (idx === -1) return null;
+        /**
+         * 将物理年份映射为标准化数据库字段 (方案: [地类]_[年份])
+         * 示例: 1985 -> wat_1985, 1990 -> wat_1990
+         */
+        const resolveStandardField = (targetYear) => {
+            const cleanYear = Number(targetYear);
+            const targetColumnName = `${prefix}_${cleanYear}`;
 
-            const relevantCols = dbCols
-                .filter(c => c.startsWith(`${prefix}_sq_`))
-                .sort((a, b) => {
-                    const numA = parseInt(a.split('_').pop());
-                    const numB = parseInt(b.split('_').pop());
-                    return numA - numB;
-                });
-
-            if (idx < relevantCols.length) return relevantCols[idx];
-            return null;
+            // 验证字段是否存在 (防止请求 2000, 2002 等空缺年份)
+            return dbCols.includes(targetColumnName) ? targetColumnName : null;
         };
 
         let breaks = [];
@@ -393,8 +398,8 @@ router.get('/', async (req, res) => {
 
         if (isChangeMode) {
             // ===== 变化分析模式 =====
-            field1 = resolveField(yearFrom);
-            field2 = resolveField(yearTo);
+            field1 = resolveStandardField(yearFrom);
+            field2 = resolveStandardField(yearTo);
 
             if (!field1 || !field2) {
                 return res.status(400).json({
@@ -402,7 +407,7 @@ router.get('/', async (req, res) => {
                 });
             }
 
-            console.log(`[breaks] Change mode: ${field1} → ${field2}`);
+            logger.info(`[breaks] Change mode: ${field1} → ${field2}`);
 
             // 计算差值统计
             const statsSql = `
@@ -446,22 +451,11 @@ router.get('/', async (req, res) => {
 
         } else {
             // ===== 单年面积模式 =====
-            const targetYear = year || 2023;
-            fieldName = resolveField(targetYear);
+            fieldName = resolveStandardField(isChangeMode ? yearTo : (year || 2023));
 
-            if (!fieldName) {
-                return res.json({
-                    breaks: [],
-                    min: 0,
-                    max: 0,
-                    unit: 'km²',
-                    message: 'No data column available'
-                });
-            }
+            logger.info(`[breaks] Single year mode: ${fieldName}`);
 
-            console.log(`[breaks] Single year mode: ${fieldName}`);
-
-            if (!dbCols.includes(fieldName)) {
+            if (!fieldName || !dbCols.includes(fieldName)) {
                 return res.status(400).json({ error: `Field ${fieldName} not found` });
             }
 
@@ -542,7 +536,7 @@ router.get('/', async (req, res) => {
             unit: 'km²'
         });
     } catch (err) {
-        console.error('[breaks] API Error:', err);
+        logger.error('[breaks] API Error:', err);
         handleError(res, err);
     }
 });

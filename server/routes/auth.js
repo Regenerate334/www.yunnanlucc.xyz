@@ -3,9 +3,32 @@ import bcrypt from 'bcryptjs';
 import jwt from 'jsonwebtoken';
 import { body, validationResult } from 'express-validator';
 import pool from '../config/db.js';
+import { getPublicKey, decrypt } from '../utils/cryptoHelper.js';
 
 const router = express.Router();
-const JWT_SECRET = process.env.JWT_SECRET || 'your_jwt_secret_key_here';
+const JWT_SECRET = process.env.JWT_SECRET;
+
+// [Security] 严格校验 JWT_SECRET，禁止在生产环境或未配置情况下启动核心认证
+if (!JWT_SECRET) {
+    if (process.env.NODE_ENV === 'production') {
+        console.error('FATAL ERROR: JWT_SECRET environment variable is missing in production!');
+        process.exit(1); // 生产环境缺密钥必须宕机保护
+    } else {
+        console.warn('WARNING: JWT_SECRET is missing. Authentication may be unstable.');
+    }
+}
+
+/**
+ * 获取传输加密用的公钥
+ */
+router.get('/public-key', (req, res) => {
+    try {
+        const publicKey = getPublicKey();
+        res.json({ success: true, publicKey });
+    } catch (err) {
+        res.status(500).json({ success: false, message: '无法获取加密密钥' });
+    }
+});
 
 // 登录接口
 router.post('/login', [
@@ -17,7 +40,14 @@ router.post('/login', [
         return res.status(400).json({ errors: errors.array() });
     }
 
-    const { username, password } = req.body;
+    let { username, password } = req.body;
+
+    try {
+        // [Security] 强制对传输过程中加密的密码进行 RSA 私钥解密，对齐前端 Web Crypto 加密协议
+        password = decrypt(password);
+    } catch (err) {
+        return res.status(400).json({ message: '传输协议加固异常，请刷新页面后重试' });
+    }
 
     try {
         const result = await pool.query('SELECT * FROM users WHERE username = $1', [username]);
@@ -54,6 +84,7 @@ router.post('/login', [
     }
 });
 
+/*
 // 注册接口
 router.post('/register', [
     body('username').isLength({ min: 3 }).withMessage('用户名至少3个字符'),
@@ -93,6 +124,7 @@ router.post('/register', [
         res.status(500).json({ message: '服务器错误' });
     }
 });
+*/
 
 // 验证 Token 接口
 router.get('/verify', async (req, res) => {

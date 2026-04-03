@@ -14,6 +14,7 @@
 
 import agenticRouter from './agenticRouter.js';
 import { generateText, extractJSON } from './aiClient.js';
+import logger from '../config/logger.js';
 
 // ── 输出 Schema 定义（注入 Prompt，强制 AI 严格遵循）────────────────────────
 
@@ -98,7 +99,7 @@ export async function buildReport(params) {
     throw new Error('question 参数不能为空');
   }
 
-  console.log(`[reportBuilder] 开始生成报告 | 问题: "${question}" | 年份: ${year}`);
+  logger.info(`[reportBuilder] 开始生成报告 | 问题: "${question}" | 年份: ${year}`);
 
   // ─ Step 0: 算力优化 - 尝试从对话上下文中提取已有结果 ─────
   // 如果对话上下文已经包含了一份高质量的分析（通常由前序 AgenticRouter 生成），
@@ -106,7 +107,7 @@ export async function buildReport(params) {
   if (Array.isArray(chatContext) && chatContext.length > 0) {
     const lastAssistantMsg = [...chatContext].reverse().find(m => m.role === 'assistant');
     if (lastAssistantMsg && lastAssistantMsg.content.length > 300) {
-      console.log('[reportBuilder] 检测到高质量对话上下文，启动快速转化模式...');
+      logger.info('[reportBuilder] 检测到高质量对话上下文，启动快速转化模式...');
       try {
         const messages = [
           {
@@ -125,7 +126,7 @@ ${REPORT_JSON_SCHEMA}`
         const fastData = extractJSON(fastText);
 
         normalizeAndFillReport(fastData, { question, year });
-        console.log('[reportBuilder] 快速转化完成，成功节省大量算力');
+        logger.info('[reportBuilder] 快速转化完成，成功节省大量算力');
         return fastData;
       } catch (err) {
         console.error('[reportBuilder] 快速转化失败，退回到全量生成模式:', err.message);
@@ -139,13 +140,13 @@ ${REPORT_JSON_SCHEMA}`
 
   try {
     dataContext = await agenticRouter.route(question, componentContext, year);
-    console.log(`[reportBuilder] 原始工具数据加载成功，长度: ${dataContext?.length || 0}`);
+    logger.info(`[reportBuilder] 原始工具数据加载成功，长度: ${dataContext?.length || 0}`);
 
     // 如果数据量足够，触发原生“数据挖掘” AI 调用 (替代 Python 引擎)
     if (dataContext && dataContext.length > 200) {
-      console.log('[reportBuilder] 启动 JS 原生深度数据挖掘 (AI-Chain)...');
+      logger.info('[reportBuilder] 启动 JS 原生深度数据挖掘 (AI-Chain)...');
       nativeAnalysis = await performDeepAnalysisJS(question, dataContext);
-      console.log('[reportBuilder] 原生深度洞察提取成功');
+      logger.info('[reportBuilder] 原生深度洞察提取成功');
     }
   } catch (err) {
     console.error('[reportBuilder] 数据获取失败:', err.message);
@@ -168,7 +169,7 @@ ${REPORT_JSON_SCHEMA}`
 
   for (let attempt = 1; attempt <= MAX_PARSE_RETRIES; attempt++) {
     try {
-      console.log(`[reportBuilder] AI 调用 (第 ${attempt} 次)... 模型: ${model || '默认'}`);
+      logger.info(`[reportBuilder] AI 调用 (第 ${attempt} 次)... 模型: ${model || '默认'}`);
       const rawText = await generateText(messages, { model });
       const reportData = extractJSON(rawText);
 
@@ -181,14 +182,14 @@ ${REPORT_JSON_SCHEMA}`
         viz: [] // JS 模式暂不生成动态图表文件，由前端渲染
       });
 
-      console.log(`[reportBuilder] 报告生成成功 | insights: ${reportData.insights?.length ?? 0} 条`);
+      logger.info(`[reportBuilder] 报告生成成功 | insights: ${reportData.insights?.length ?? 0} 条`);
       return reportData;
 
     } catch (parseErr) {
       console.warn(`[reportBuilder] 第 ${attempt} 次解析失败: ${parseErr.message}`);
 
       if (attempt < MAX_PARSE_RETRIES) {
-        console.log('[reportBuilder] 启动自愈重试...');
+        logger.warn('[reportBuilder] 启动自愈重试...');
         messages.push({
           role: 'assistant',
           content: '（上一次输出无法解析）'

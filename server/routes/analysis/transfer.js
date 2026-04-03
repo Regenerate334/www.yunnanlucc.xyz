@@ -19,11 +19,12 @@ router.get('/periods', async (_req, res) => {
 
 // (已移除 /query 路由，改用 WMS + SQL View 方案)
 
-// 获取指定时间段的转移矩阵 (必须放在 /query 之后，因为 /:period 是通配符路由)
+// 获取指定时间段的转移矩阵
 router.get('/:period', async (req, res) => {
     const { period } = req.params;
     try {
-        const { rows } = await pool.query(`SELECT * FROM public.clcd_transfer_matrix WHERE period = $1`, [period]);
+        const { rows } = await pool.query(`SELECT * FROM public.clcd_transfer_matrix WHERE period = $1`, [period]).catch(e => ({ rows: [] }));
+
         const { absoluteMatrix, percentageMatrix, landTypes } = calculateTransferMatrix(rows);
         res.json({ absoluteMatrix, percentageMatrix, landTypes, period });
     } catch (err) { handleError(res, err); }

@@ -25,11 +25,18 @@ class LandUseService {
 
     /**
      * 对地名进行模糊处理，返回 SQL 匹配参数
+     * @param {string} name - 地名
+     * @param {string} level - 级别 (province, prefecture, county)
      */
-    _getFuzzyName(name) {
+    _getFuzzyName(name, level = 'prefecture') {
         if (!name) return null;
         const clean = name.replace(/市|县|区|自治州|省/g, '').trim();
-        return this.regionAliases[clean] || `%${clean}%`;
+        // 只有地级市才应用映射逻辑（例如 “大理” -> “大理白族自治州”）
+        // 县级市（如 “大理市”）应直接使用模糊匹配，避免被错误映射到地级州
+        if (level === 'prefecture' && this.regionAliases[clean]) {
+            return this.regionAliases[clean];
+        }
+        return `%${clean}%`;
     }
 
     /**
@@ -85,12 +92,49 @@ class LandUseService {
             });
         }
 
+        // 4. 计算基于 CLCD 的专属 LUCC 指标
+        const ecoAreaCurrent = Number(currentProvince.forest || 0) + Number(currentProvince.shrub || 0) + Number(currentProvince.grassland || 0) + Number(currentProvince.water || 0) + Number(currentProvince.wetland || 0);
+        const ecoAreaBase = Number(baseProvince.forest || 0) + Number(baseProvince.shrub || 0) + Number(baseProvince.grassland || 0) + Number(baseProvince.water || 0) + Number(baseProvince.wetland || 0);
+
+        const compDynamic = calculateDynamicDegree(baseProvince, currentProvince, yearDiff);
+        const urbanDynamic = calculateSingleDynamicDegree(baseProvince.impervious || 0, currentProvince.impervious || 0, yearDiff);
+        const ecoDynamic = calculateSingleDynamicDegree(ecoAreaBase, ecoAreaCurrent, yearDiff);
+
+        // 格式化输出: 全领域统一单位 -> 平方公里(km2) = 原始面积(m2) / 1000000
+        const csponMetrics = {
+            croplandArea: {
+                value: parseFloat((Number(currentProvince.cropland || 0) / 1000000).toFixed(2)),
+                trend: parseFloat(((Number(currentProvince.cropland || 0) - Number(baseProvince.cropland || 0)) / 1000000).toFixed(2))
+            },
+            urbanArea: {
+                value: parseFloat((Number(currentProvince.impervious || 0) / 1000000).toFixed(2)),
+                trend: parseFloat(((Number(currentProvince.impervious || 0) - Number(baseProvince.impervious || 0)) / 1000000).toFixed(2))
+            },
+            ecoArea: {
+                value: parseFloat((ecoAreaCurrent / 1000000).toFixed(2)),
+                trend: parseFloat(((ecoAreaCurrent - ecoAreaBase) / 1000000).toFixed(2))
+            },
+            compDynamic: {
+                value: parseFloat(compDynamic.toFixed(3)),
+                trend: parseFloat(compDynamic.toFixed(3)) // 动态度本身就是变化率，这里 trend 可作为强调
+            },
+            urbanDynamic: {
+                value: parseFloat(urbanDynamic.toFixed(3)),
+                trend: parseFloat(urbanDynamic.toFixed(3))
+            },
+            ecoDynamic: {
+                value: parseFloat(ecoDynamic.toFixed(3)),
+                trend: parseFloat(ecoDynamic.toFixed(3))
+            }
+        };
+
         return {
             year,
             summary: currentProvince,
             baseSummary: baseProvince,
             ranking,
-            alerts
+            alerts,
+            csponMetrics
         };
     }
     /**
@@ -133,7 +177,7 @@ class LandUseService {
 
         if (regions) {
             if (Array.isArray(regions)) {
-                const fuzzyNames = regions.map(r => this._getFuzzyName(r));
+                const fuzzyNames = regions.map(r => this._getFuzzyName(r, 'prefecture'));
                 const placeholders = fuzzyNames.map((_, i) => `$${i + 2}`).join(', ');
                 sql += ` AND region_name IN (${placeholders})`; // IN works better for known set than multiple LIKE if they are complete names
                 // If fuzzy is needed:
@@ -141,7 +185,7 @@ class LandUseService {
                 sql = `SELECT * FROM clcd_prefecture WHERE year = $1 AND (${likeClauses})`;
                 params.push(...fuzzyNames);
             } else {
-                const fuzzy = this._getFuzzyName(regions);
+                const fuzzy = this._getFuzzyName(regions, 'prefecture');
                 sql += ` AND region_name LIKE $2`;
                 params.push(fuzzy);
             }
@@ -174,7 +218,7 @@ class LandUseService {
             return rows;
         } else {
             const tableName = level === 'county' ? 'clcd_county' : 'clcd_prefecture';
-            const fuzzy = this._getFuzzyName(region);
+            const fuzzy = this._getFuzzyName(region, level);
             const { rows } = await pool.query(`
                 SELECT * FROM ${tableName} 
                 WHERE region_name LIKE $1
@@ -202,7 +246,8 @@ class LandUseService {
         let whereClause = '';
         let params = [];
         if (region && region !== '云南省') {
-            const fuzzy = this._getFuzzyName(region);
+            // 转移矩阵通常基于县级或地级，这里尝试不带 level 限制或作为模糊匹配
+            const fuzzy = this._getFuzzyName(region, 'county');
             whereClause = `WHERE TRIM("地名") LIKE $1 OR TRIM("地级") LIKE $1`;
             params.push(fuzzy);
         }

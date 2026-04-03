@@ -1,23 +1,46 @@
 import pg from 'pg';
+import logger from './logger.js';
 
-// 环境变量由 server/index.js 统一加载
-const pool = new pg.Pool({
-    host: process.env.DB_HOST || 'localhost',
+let currentConfig = {
+    host: process.env.DB_HOST,
     port: Number(process.env.DB_PORT || 5432),
-    user: process.env.DB_USER || 'postgres',
-    password: process.env.DB_PASSWORD || 'password',
-    database: process.env.DB_DATABASE || 'yunnan_CLCD',
-    max: 10
-});
+    user: process.env.DB_USER,
+    password: process.env.DB_PASSWORD,
+    database: process.env.DB_DATABASE,
+    max: 15,
+    idleTimeoutMillis: 30000,
+    connectionTimeoutMillis: 5000,
+};
 
-// 测试连接
+if (!currentConfig.host || !currentConfig.user || !currentConfig.password || !currentConfig.database) {
+    logger.error('CRITICAL: Database environment variables are missing! Check .env file.');
+}
+
+let pool = new pg.Pool(currentConfig);
+
+const poolProxy = {
+    query: (...args) => pool.query(...args),
+    connect: (...args) => pool.connect(...args),
+    end: () => pool.end(),
+    // Allow switching
+    async switchAccount(user, password) {
+        logger.info(`[db] Switching backend account to: ${user}`);
+        await pool.end();
+        currentConfig.user = user;
+        if (password) currentConfig.password = password;
+        pool = new pg.Pool(currentConfig);
+        return true;
+    },
+    getCurrentUser: () => currentConfig.user
+};
+
+// Initial test
 pool.connect((err, client, release) => {
-    if (err) {
-        console.error('\x1b[31m[db] connection error:\x1b[0m', err.stack);
-    } else {
-        console.log('\x1b[32m[db] connected successfully\x1b[0m');
+    if (err) logger.error('[db] connection error:', { stack: err.stack });
+    else {
+        logger.info(`[db] connected successfully as ${currentConfig.user}`);
         release();
     }
 });
 
-export default pool;
+export default poolProxy;

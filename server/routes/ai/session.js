@@ -4,6 +4,7 @@
  */
 import express from 'express';
 import pool from '../../config/db.js';
+import logger from '../../config/logger.js';
 import { authMiddleware } from '../../middleware/auth.js';
 import { Ollama } from 'ollama';
 
@@ -29,7 +30,7 @@ async function generateSessionTitle(sessionId, userMessage) {
 
         const title = response.message?.content?.trim().slice(0, 30) || userMessage.slice(0, 20);
         await pool.query('UPDATE chat_sessions SET title = $1 WHERE id = $2', [title, sessionId]);
-        console.log(`[Sessions] AI 生成标题: "${title}"`);
+        logger.info(`[Sessions] AI 生成标题: "${title}"`);
     } catch (err) {
         console.error('[Sessions] AI 生成标题失败:', err.message);
         const fallbackTitle = userMessage.length > 20 ? userMessage.slice(0, 17) + '...' : userMessage;

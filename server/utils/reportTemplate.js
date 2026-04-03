@@ -46,7 +46,9 @@ export function getReportTemplate(data) {
     const mdToHtml = (str) => {
         if (!str) return '';
         if (typeof str !== 'string') return escHtml(str);
-        return str.replace(/\*\*(.*?)\*\*/g, '<b>$1</b>').replace(/\n/g, '<br>');
+        // [Security] 先进行 HTML 转义，然后再处理 Markdown 标记，防止 XSS
+        const escaped = escHtml(str);
+        return escaped.replace(/\*\*(.*?)\*\*/g, '<b>$1</b>').replace(/\n/g, '<br>');
     };
 
     // 1. 指标 (关键过滤：无标题或无值的指标不显示)

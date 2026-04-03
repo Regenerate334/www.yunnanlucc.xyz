@@ -28,7 +28,7 @@ const router = express.Router();
  * @param {'county'|'grid'} unit
  * @returns {Promise<Object>} GeoJSON FeatureCollection
  */
-async function queryTransferGeoJSON(tableName, yearStart, yearEnd, fromClass, toClass, unit) {
+export async function queryTransferGeoJSON(tableName, yearStart, yearEnd, fromClass, toClass, unit) {
     // 1. 获取所有可用 period 前缀，并筛出覆盖目标区间的 period
     const allPeriods = await getAvailablePeriods(pool, tableName);
     const activePeriods = findOverlappingPeriods(allPeriods, yearStart, yearEnd);
@@ -93,7 +93,7 @@ async function queryTransferGeoJSON(tableName, yearStart, yearEnd, fromClass, to
             ${nameField}
             (${sumExpr}) AS transfer_area,
             ST_AsGeoJSON(
-                ST_SimplifyPreserveTopology(geom, ${TOLERANCE})
+                ST_SimplifyPreserveTopology(ST_Transform(geom, 4326), ${TOLERANCE})
             )::json AS geometry
         FROM public."${safeName}"
         WHERE (${sumExpr}) > 0

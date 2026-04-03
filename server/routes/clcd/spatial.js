@@ -7,6 +7,7 @@ import express from 'express';
 import pool from '../../config/db.js';
 import { handleError } from '../../middleware/logger.js';
 import { getTableColumns } from './utils.js';
+import { buildRateQueryFragments, buildSafeRateExpression, quoteIdentifier } from './rateHelper.js';
 
 
 const router = express.Router();

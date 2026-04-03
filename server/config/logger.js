@@ -7,7 +7,7 @@ import dotenv from 'dotenv';
 // Ensure env vars are loaded
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
-dotenv.config({ path: path.resolve(__dirname, '../.env') });
+dotenv.config({ path: path.resolve(__dirname, '../../.env') });
 
 const logDir = path.join(__dirname, '../logs');
 const logLevel = process.env.LOG_LEVEL || 'info';

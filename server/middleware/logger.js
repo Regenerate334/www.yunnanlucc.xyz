@@ -27,10 +27,20 @@ export const requestLogger = (req, res, next) => {
 
 export const handleError = (res, err) => {
     const isProd = process.env.NODE_ENV === 'production';
-    // Log the full error stack to file/console
-    logger.error(`Error processing request: ${err.message}`, { stack: err.stack });
 
+    // Log the full error stack to Winston (stored in logs/error-*.log)
+    logger.error(`[Global Error] ${err.message}`, {
+        stack: err.stack,
+        url: res.req?.url,
+        method: res.req?.method
+    });
+
+    // Do not leak stack traces or internal names to client
     if (!res.headersSent) {
-        res.status(500).json({ error: isProd ? 'Internal server error' : String(err?.message || err) });
+        res.status(500).json({
+            success: false,
+            error: isProd ? 'Internal Server Error' : String(err?.message || err),
+            code: 500
+        });
     }
 };
