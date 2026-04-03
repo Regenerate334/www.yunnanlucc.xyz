@@ -1,3 +1,10 @@
+<!--
+  @component EcoRadarChart
+  @description 生态安全雷达图，通过多个维度（如多样性、均匀度等）评估研究区域的生态健康状况
+  @props data (各项生态指标数据)
+  @emits 无
+  @dependencies ECharts
+-->
 <template>
   <div ref="chartContainer" class="chart-container"></div>
 </template>

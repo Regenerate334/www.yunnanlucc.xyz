@@ -28,6 +28,7 @@ export function useMeasurement() {
     let activeShape: Cesium.Entity | null = null;
     let floatingPoint: Cesium.Entity | null = null;
     let entities: Cesium.Entity[] = [];
+    let postRenderListener: (() => void) | null = null;
 
     // 保存当前弹窗位置，用于单位变化时更新
     let currentPopupPosition: Cesium.Cartesian3 | null = null;
@@ -43,8 +44,7 @@ export function useMeasurement() {
 
         clearMeasurement();
 
-        // 清除县域标注和高亮（问题4的修复）
-        // 通过自定义事件通知Workbench清除
+        // 清除县域标注和高亮
         window.dispatchEvent(new CustomEvent('clearCountyHighlight'));
 
         mapStore.activeMeasurementTool = tool;
@@ -62,6 +62,13 @@ export function useMeasurement() {
 
     const clearMeasurement = () => {
         const viewer = mapStore.viewer;
+
+        // 1. 清理渲染监听器 (核心修复，防止内存泄漏)
+        if (viewer && postRenderListener) {
+            viewer.scene.postRender.removeEventListener(postRenderListener);
+            postRenderListener = null;
+        }
+
         if (viewer) {
             entities.forEach(entity => viewer.entities.remove(entity));
             entities = [];
@@ -85,7 +92,7 @@ export function useMeasurement() {
         showResultPanel.value = false;
         resetResults();
 
-        // 清除弹窗
+        // 2. 彻底清除弹窗 DOM
         const popup = document.getElementById('measurement-popup');
         if (popup) {
             popup.remove();
@@ -194,8 +201,7 @@ export function useMeasurement() {
             if (Cesium.defined(floatingPoint)) {
                 const newPosition = pickPosition(viewer, event.endPosition);
                 if (Cesium.defined(newPosition)) {
-                    activeShapePoints.pop();
-                    activeShapePoints.push(newPosition);
+                    activeShapePoints[activeShapePoints.length - 1] = newPosition;
 
                     if (activeShapePoints.length >= 2) {
                         calculateDistance(activeShapePoints[0], activeShapePoints[1]);
@@ -320,8 +326,7 @@ export function useMeasurement() {
             if (Cesium.defined(floatingPoint)) {
                 const newPosition = pickPosition(viewer, event.endPosition);
                 if (Cesium.defined(newPosition)) {
-                    activeShapePoints.pop();
-                    activeShapePoints.push(newPosition);
+                    activeShapePoints[activeShapePoints.length - 1] = newPosition;
 
                     if (activeShapePoints.length >= 3) {
                         calculateArea(activeShapePoints);
@@ -440,6 +445,12 @@ export function useMeasurement() {
 
     // 创建HTML弹窗显示测量结果
     const createMeasurementPopup = (viewer: Cesium.Viewer, position: Cesium.Cartesian3, content: string) => {
+        // 先移除旧的渲染监听器
+        if (postRenderListener) {
+            viewer.scene.postRender.removeEventListener(postRenderListener);
+            postRenderListener = null;
+        }
+
         const oldPopup = document.getElementById('measurement-popup');
         if (oldPopup) {
             oldPopup.remove();
@@ -470,7 +481,8 @@ export function useMeasurement() {
         popup.innerHTML = content;
         document.body.appendChild(popup);
 
-        const updatePopupPosition = () => {
+        // 创建新的位置更新函数并存入变量以便后续移除
+        postRenderListener = () => {
             const newCanvasPosition = Cesium.SceneTransforms.worldToWindowCoordinates(viewer.scene, position);
             if (newCanvasPosition && popup.parentElement) {
                 popup.style.left = newCanvasPosition.x + 'px';
@@ -478,7 +490,7 @@ export function useMeasurement() {
             }
         };
 
-        viewer.scene.postRender.addEventListener(updatePopupPosition);
+        viewer.scene.postRender.addEventListener(postRenderListener);
 
         return popup;
     };

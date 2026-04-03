@@ -1,9 +1,18 @@
+<!--
+  登录视图 (Login View)
+  职责：处理用户身份验证，支持账号密码登录，并与后端 Auth 模块进行凭证交互。
+  
+  修改提示：
+  1. 登录逻辑涉及 bcrypt 验证，前端仅传输原始密码，由后端统一处理哈希。
+  2. 验证通过后，JWT Token 会存入 localStorage 并在全局 store 中更新状态。
+  3. 若需修改背景或 UI 风格，请调整 <style> 中的 .login-container 相关类。
+-->
 <template>
     <div class="login-container">
         <div class="login-card">
             <div class="login-header">
-                <h1 class="login-title">云南国土空间规划监测预警平台</h1>
-                <p class="login-subtitle">{{ isLoginMode ? 'WELCOME!' : 'CREATE ACCOUNT' }}</p>
+                <h1 class="login-title">云南土地利用变化监测预警评估平台</h1>
+                <p class="login-subtitle">WELCOME!</p>
             </div>
 
             <form @submit.prevent="handleSubmit" class="login-form">
@@ -34,15 +43,10 @@
                 </div>
 
                 <button type="submit" class="login-btn" :disabled="isLoading">
-                    <span v-if="!isLoading">{{ isLoginMode ? '立即登录' : '立即注册' }}</span>
+                    <span v-if="!isLoading">立即登录</span>
                     <div v-else class="spinner"></div>
                 </button>
 
-                <div class="mode-toggle">
-                    <a href="#" @click.prevent="isLoginMode = !isLoginMode">
-                        {{ isLoginMode ? '没有账号？去注册' : '已有账号？去登录' }}
-                    </a>
-                </div>
             </form>
         </div>
     </div>
@@ -55,28 +59,28 @@ import { useAuthStore } from '../stores/auth';
 
 const router = useRouter();
 const authStore = useAuthStore();
-const isLoginMode = ref(true);
 const username = ref('');
 const password = ref('');
 
 const isLoading = ref(false);
 const errorMessage = ref('');
 
+// [Security] 移除前端预哈希。密码应由后端统一处理，以防“哈希即密码”攻击。
+// 建议：在生产环境中确保使用 HTTPS 协议传输。
+
 const handleSubmit = async () => {
     errorMessage.value = '';
-    if (isLoginMode.value) {
-        await handleLogin();
-    } else {
-        await handleRegister();
-    }
+    await handleLogin();
 };
 
 const handleLogin = async () => {
     isLoading.value = true;
     try {
+        // [Security] 现已启用 RSA 非对称加密传输
+        // 密码将通过 Web Crypto API 进行公钥加密后发送，防止在传输过程中被截获明文
         const success = await authStore.login(username.value, password.value);
         if (success) {
-            console.log('[Login] Login successful, navigating to workbench...');
+            // console.log('[Login] Login successful, navigating to workbench...');
             router.push('/workbench');
         } else {
             errorMessage.value = '登录失败，请检查账号密码';
@@ -88,28 +92,13 @@ const handleLogin = async () => {
     }
 };
 
-const handleRegister = async () => {
-    isLoading.value = true;
-    try {
-        const res = await authStore.register(username.value, password.value);
-        if (res.success) {
-            alert('注册成功，请直接登录');
-            isLoginMode.value = true;
-            password.value = '';
-        }
-    } catch (err) {
-        errorMessage.value = err.message || '注册失败';
-    } finally {
-        isLoading.value = false;
-    }
-};
 </script>
 
 <style scoped>
 .login-container {
     width: 100vw;
     height: 100vh;
-    background-image: url('../assets/images/login_bg.png');
+    background-image: url('@/assets/images/backgrounds/login-bg.webp');
     background-size: cover;
     background-position: center;
     display: flex;

@@ -1,3 +1,10 @@
+<!--
+  @component DynamicTrendChart
+  @description 土地动态变化趋势图，多维度展示动态度随时间的演变规律
+  @props seriesData (时间序列指标数据)
+  @emits 无
+  @dependencies ECharts
+-->
 <template>
   <div ref="chartContainer" class="chart-container"></div>
 </template>
@@ -13,10 +20,21 @@ const chartInstance = shallowRef(null);
 
 async function fetchDataAndRender() {
   try {
-    const data = await clcdApi.getProvinceTrend();
+    const rawData = await clcdApi.getProvinceTrend();
     
-    // 按年份排序
-    data.sort((a, b) => a.year - b.year);
+    // 核心修复：数据去重与年度汇总，防止重复年份导致图表重叠与计算逻辑错误
+    const yearsArr = [...new Set(rawData.map(d => Number(d.year)))].sort((a, b) => a - b);
+    const data = yearsArr.map(year => {
+        const matchingRecords = rawData.filter(d => Number(d.year) === year);
+        const aggregated = { year };
+        const sample = matchingRecords[0];
+        Object.keys(sample).forEach(key => {
+            if (key !== 'year' && typeof sample[key] === 'number') {
+                aggregated[key] = Math.max(...matchingRecords.map(r => r[key] || 0));
+            }
+        });
+        return aggregated;
+    });
 
     const years = [];
     const values = [];
@@ -66,11 +84,15 @@ function renderChart(years, values) {
       bottom: '3%',
       containLabel: true
     },
-    xAxis: {
-      type: 'category',
+    xAxis: { 
+      type: 'category', 
+      data: years, // Assuming 'years' is the correct data source for the x-axis
       boundaryGap: false,
-      data: years,
-      axisLabel: { color: '#fff' },
+      axisLabel: {
+        color: '#fff',
+        interval: 4, // 5年一个刻度 (e.g., 1990, 1995, 2000...)
+        hideOverlap: true
+      },
       axisLine: { lineStyle: { color: 'rgba(255, 255, 255, 0.3)' } }
     },
     yAxis: {

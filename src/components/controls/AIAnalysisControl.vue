@@ -1,11 +1,17 @@
+<!--
+  @component AIAnalysisControl
+  @description 智能分析助手入口，集成大模型分析能力，对当前地图视图或统计数据进行一键式专家解读
+  @props 无
+  @emits 无
+  @dependencies AIAnalysisModal (弹窗组件), useGlobalStore (全局状态)
+-->
 <template>
   <div class="ai-analysis-control">
-    <button @click="openAIAnalysis" class="ai-btn" title="AI 一键智能分析">
-       <ChatGptIcon :size="32" color="#ffffff" class="ai-icon" />
-       <span class="btn-label">AI 分析</span>
+    <button @click="toggleAIAnalysis" class="ai-btn" :class="{ active: showAIModal }" title="AI 一键智能分析">
+        <img :src="aiIcon" class="ai-icon" alt="AI" />
+        <span class="btn-label">AI 分析</span>
     </button>
 
-    <!-- AI 分析弹窗 -->
     <AIAnalysisModal 
       v-model:visible="showAIModal" 
       :year="selectedYear" 
@@ -18,7 +24,7 @@
 
 <script setup>
 import { ref, computed } from 'vue';
-import ChatGptIcon from '../icons/ChatGptIcon.vue';
+import aiIcon from '@/assets/icons/business/ai-analysis.png';
 import AIAnalysisModal from '../ui/AIAnalysisModal.vue';
 import { useGlobalStore } from '../../stores/global';
 
@@ -32,17 +38,15 @@ const selectedYear = computed(() => {
   return 2023; 
 });
 
-const openAIAnalysis = () => {
-  showAIModal.value = true;
+const toggleAIAnalysis = () => {
+  showAIModal.value = !showAIModal.value;
 };
 </script>
 
 <style scoped>
-.ai-analysis-control {
-  position: relative;
-}
-
+/* 根容器不再需要 position: relative，以便子面板相对于主工具栏容器对齐 */
 .ai-btn {
+  position: relative;
   width: 64px;
   height: 64px;
   border-radius: 14px;
@@ -58,12 +62,21 @@ const openAIAnalysis = () => {
   transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
   color: #a5ccff;
+  pointer-events: auto;
+}
+
+.ai-btn.active {
+  background: #3B76E1 !important;
+  border-color: #3B76E1;
+  color: #ffffff;
+  box-shadow: 0 4px 10px rgba(59, 118, 225, 0.3);
 }
 
 .btn-label {
   font-size: 10px;
   color: rgba(255, 255, 255, 0.9);
   font-weight: 600;
+  pointer-events: none;
 }
 
 .ai-btn:hover {
@@ -75,11 +88,14 @@ const openAIAnalysis = () => {
 
 .ai-btn:hover .ai-icon {
   transform: scale(1.1) rotate(5deg);
-  filter: drop-shadow(0 0 8px rgba(59, 130, 246, 0.5));
 }
 
 .ai-icon {
+  width: 28px;
+  height: 28px;
   transition: all 0.3s ease;
+  pointer-events: none;
+  filter: brightness(0) invert(1);
 }
 
 .ai-btn:active {

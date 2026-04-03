@@ -6,38 +6,48 @@
 /**
  * 清除所有标记为分析业务的图层
  * @param {Cesium.Viewer} viewer 
+ * @param {Cesium.ImageryLayer} [excludeLayer] 可选，排除该图层不删除
  */
-export function clearAllAnalysisLayers(viewer) {
+export function clearAllAnalysisLayers(viewer, excludeLayer = null) {
     if (!viewer || viewer.isDestroyed()) return;
 
     const layers = viewer.imageryLayers;
-    // 倒序遍历，安全删除
     for (let i = layers.length - 1; i >= 0; i--) {
         const layer = layers.get(i);
-        // 核心逻辑：只删除打过业务标记的图层，保留底图
-        if (layer.isAnalysisLayer === true) {
-            layers.remove(layer, true); // 第二个参数为 true 彻底销毁 WebGL 资源
+        if (layer.isAnalysisLayer === true && layer !== excludeLayer) {
+            layers.remove(layer, true);
         }
     }
 }
 
 /**
  * 添加互斥的分析业务图层
- * 确保场景中始终只存在一个处于激活状态的业务分析图层
  * @param {Cesium.Viewer} viewer 
  * @param {Cesium.ImageryLayer} newLayer 
+ * @param {number} [delay=0] 缓冲延迟时间（毫秒），用于平滑过渡防止闪烁
  */
-export function addExclusiveAnalysisLayer(viewer, newLayer) {
+export function addExclusiveAnalysisLayer(viewer, newLayer, delay = 0) {
     if (!viewer || viewer.isDestroyed() || !newLayer) return;
 
-    // 1. 先执行全局清理，确保环境纯净
-    clearAllAnalysisLayers(viewer);
-
-    // 2. 为新图层打上业务标记
+    // 1. 为新图层打上业务标记并添加到场景最上方
     newLayer.isAnalysisLayer = true;
+    if (!viewer.imageryLayers.contains(newLayer)) {
+        viewer.imageryLayers.add(newLayer);
+    }
+    viewer.imageryLayers.raiseToTop(newLayer);
+    newLayer.show = true;
+    newLayer.alpha = 1.0;
 
-    // 3. 将新图层加入场景
-    viewer.imageryLayers.add(newLayer);
+    // 2. 执行互斥清理
+    if (delay > 0) {
+        // 延迟清理：先叠加显示新图层，等待瓦片加载缓冲后再移除旧图层
+        setTimeout(() => {
+            clearAllAnalysisLayers(viewer, newLayer);
+        }, delay);
+    } else {
+        // 立即清理
+        clearAllAnalysisLayers(viewer, newLayer);
+    }
 
     return newLayer;
 }

@@ -1,40 +1,48 @@
+<!--
+  @component RegionCascader
+  @description 行政区划级联选择器，支持云南省 16 个地州市及下属区县的三级联动
+  @props modelValue ({ name, level }), placeholder, showLevelBadge
+  @emits update:modelValue, change
+  @dependencies regionApi (行政区划数据接口)
+-->
 <template>
   <div class="custom-region-dropdown" ref="dropdownRef">
     <div class="region-trigger" @click="toggleDropdown" :class="{ disabled: hierarchy.length === 0 }">
       <span class="selected-text">
         {{ modelValue.name || (hierarchy.length === 0 ? '正在加载...' : placeholder) }}
-        <span v-if="modelValue.name && showLevelBadge" class="level-badge">{{ modelValue.level === 'prefecture' ? '地级'
-          : '县级' }}</span>
+        <span v-if="modelValue.name && showLevelBadge" class="level-badge">{{ 
+          modelValue.level === 'province' ? '省级' :
+          modelValue.level === 'prefecture' ? '地级' : '县级' 
+        }}</span>
       </span>
-      <svg class="arrow" :class="{ open: isOpen }" viewBox="0 0 24 24" width="14" height="14">
-        <path d="M6 9l6 6 6-6" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round"
+      <svg class="arrow" :class="{ open: isOpen }" viewBox="0 0 24 24" width="15" height="15">
+        <path d="M6 9l6 6 6-6" stroke="currentColor" stroke-width="1.8" fill="none" stroke-linecap="round"
           stroke-linejoin="round" />
       </svg>
     </div>
 
     <transition name="dropdown-fade">
       <div v-if="isOpen" class="region-options-panel">
-        <!-- 搜索框 -->
         <div class="search-box">
           <input v-model="searchQuery" type="text" placeholder="搜索地州或区县..." @click.stop />
-          <!-- 使用 SVG 代替图片引用，避免路径问题 -->
-          <svg class="search-icon-svg" viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2">
+          <svg class="search-icon-svg" viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="1.2">
             <circle cx="11" cy="11" r="8"></circle>
             <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
           </svg>
         </div>
 
-        <!-- 三级选择区域 -->
         <div class="selection-columns">
-          <!-- 第一列：省直辖市 (固定为云南省) -->
           <div class="selection-column">
             <div class="column-header">省直辖市</div>
             <div class="column-list">
-              <div class="column-item active">云南省</div>
+              <div class="column-item" 
+                :class="{ active: isSelected('云南省', 'province') }"
+                @click="selectRegion('云南省', 'province')">
+                云南省
+              </div>
             </div>
           </div>
 
-          <!-- 第二列：地级市州 -->
           <div class="selection-column">
             <div class="column-header">地级市州</div>
             <div class="column-list">
@@ -42,15 +50,14 @@
                 :class="{ active: activePrefecture === pref.name || isSelected(pref.name, 'prefecture') }"
                 @mouseenter="activePrefecture = pref.name" @click="selectRegion(pref.name, 'prefecture')">
                 {{ pref.name }}
-                <svg class="sub-arrow" viewBox="0 0 12 12" width="12" height="12">
-                  <path d="M4 2l4 4-4 4" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round"
+                <svg class="sub-arrow" viewBox="0 0 12 12" width="10" height="10">
+                  <path d="M4 2l4 4-4 4" stroke="currentColor" stroke-width="1.2" fill="none" stroke-linecap="round"
                     stroke-linejoin="round" />
                 </svg>
               </div>
             </div>
           </div>
 
-          <!-- 第三列：区县旗 -->
           <div class="selection-column">
             <div class="column-header">区县旗</div>
             <div class="column-list">
@@ -266,13 +273,14 @@ onUnmounted(() => {
   align-items: center;
   justify-content: space-between;
   gap: 8px;
-  padding: 8px 16px;
-  background: rgba(255, 255, 255, 0.05);
+  padding: 6px 12px;
+  background: rgba(255, 255, 255, 0.04);
   border: 1px solid rgba(255, 255, 255, 0.1);
   border-radius: 8px;
   color: white;
   cursor: pointer;
-  min-width: 160px;
+  min-width: 140px;
+  min-height: 22px;
   transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
   backdrop-filter: blur(12px);
 }
@@ -295,12 +303,13 @@ onUnmounted(() => {
 }
 
 .level-badge {
-  font-size: 10px;
+  font-size: 11px;
   background: #3b82f6;
-  padding: 1px 4px;
+  padding: 1px 6px;
   border-radius: 4px;
   color: white;
-  transform: scale(0.9);
+  font-weight: 600;
+  margin-left: 4px;
 }
 
 .arrow {
@@ -401,7 +410,7 @@ onUnmounted(() => {
 }
 
 .column-list::-webkit-scrollbar-thumb {
-  background: rgba(255, 255, 255, 0.1);
+  background: rgba(255, 255, 255, 0.08);
   border-radius: 4px;
 }
 
@@ -413,9 +422,10 @@ onUnmounted(() => {
   border-radius: 4px;
   display: flex;
   align-items: center;
-  justify-content: space-between;
+  justify-content: center; /* 改为居中 */
   transition: all 0.2s;
   margin-bottom: 2px;
+  position: relative; /* 增加相对定位以容纳绝对定位箭头 */
 }
 
 .column-item:hover {
@@ -424,13 +434,15 @@ onUnmounted(() => {
 }
 
 .column-item.active {
-  background: rgba(59, 130, 246, 0.2);
+  background: rgba(59, 130, 246, 0.15);
   color: #3b82f6;
-  font-weight: 600;
+  font-weight: 700;
 }
 
 .sub-arrow {
   color: rgba(255, 255, 255, 0.3);
+  position: absolute;
+  right: 12px;
 }
 
 .column-item.active .sub-arrow {

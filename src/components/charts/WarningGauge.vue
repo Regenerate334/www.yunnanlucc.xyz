@@ -1,3 +1,10 @@
+<!--
+  @component WarningGauge
+  @description 预警仪表盘组件，动态展示关键指标（如耕地流失率）的警戒量级
+  @props value (当前数值), title (预警项名称)
+  @emits 无
+  @dependencies ECharts
+-->
 <template>
   <div ref="chartContainer" class="chart-container"></div>
 </template>

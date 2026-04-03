@@ -1,22 +1,28 @@
+<!-- LandRateControl: 土地利用分析面板，支持时段选择、流转方向定制及空间尺度设置 -->
+<!--
+  @component LandRateControl
+  @description 复垦率/未利用地率分析控制面板，支持地类筛选、阈值设定及实时空间统计
+  @props 无
+  @emits close (关闭面板)
+  @dependencies useGlobalStore, clcdApi
+-->
 <template>
   <div class="land-rate-control panel-card" ref="containerRef">
     <div class="panel-header">
       <h1 class="header-title">垦殖与转换率分析</h1>
       <button class="close-btn" @click="$emit('close')" title="关闭面板">
-        <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2.5">
+        <svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="1.8">
           <path d="M18 6L6 18M6 6l12 12" />
         </svg>
       </button>
     </div>
 
     <div class="control-body">
-
-      <!-- 分析指标 -->
       <div class="control-section">
-        <div class="section-label">分析指标</div>
-        <div class="segmented-control">
+        <div class="section-label">分析模式</div>
+        <div class="mode-selector">
           <button :class="{ active: mode === 'reclamation' }" @click.stop="mode = 'reclamation'">垦殖率</button>
-          <button :class="{ active: mode === 'conversion'  }" @click.stop="mode = 'conversion'">转换率</button>
+          <button :class="{ active: mode === 'conversion'  }" @click.stop="mode = 'conversion'">转换率强度</button>
         </div>
       </div>
 
@@ -27,7 +33,7 @@
           <div class="year-range-picker solo">
             <div class="range-field">
               <span class="field-tag">年份</span>
-              <input type="number" v-model.number="reclamYear" />
+              <input type="number" v-model.lazy.number="reclamYear" />
             </div>
           </div>
         </div>
@@ -40,14 +46,14 @@
           <div class="year-range-picker">
             <div class="range-field">
               <span class="field-tag">起始年份</span>
-              <input type="number" v-model.number="convYearStart" />
+              <input type="number" v-model.lazy.number="convYearStart" />
             </div>
             <div class="range-divider">
               <div class="divider-line"></div>
             </div>
             <div class="range-field">
               <span class="field-tag">截止年份</span>
-              <input type="number" v-model.number="convYearEnd" />
+              <input type="number" v-model.lazy.number="convYearEnd" />
             </div>
           </div>
         </div>
@@ -60,7 +66,7 @@
               <span class="select-hint">转出</span>
               <div class="select-trigger" @click.stop="toggleDropdown('from')">
                 <span class="selected-text">{{ fromClass === null ? '全部' : landClasses.find(c => c.value === fromClass)?.label }}</span>
-                <svg class="chevron" viewBox="0 0 24 24" width="14" height="14" stroke="currentColor" stroke-width="3" fill="none">
+                <svg class="chevron" viewBox="0 0 24 24" width="15" height="15" stroke="currentColor" stroke-width="1.8" fill="none">
                   <path d="M6 9l6 6 6-6" />
                 </svg>
               </div>
@@ -68,25 +74,23 @@
                 <ul v-if="fromOpen" class="select-options">
                   <li :class="{ active: fromClass === null }" @click="selectOption('from', null)">
                     全部
-                    <svg v-if="fromClass === null" viewBox="0 0 24 24" width="12" height="12" stroke="currentColor" stroke-width="3" fill="none"><path d="M20 6L9 17l-5-5"/></svg>
+                    <svg v-if="fromClass === null" viewBox="0 0 24 24" width="7" height="7" stroke="currentColor" stroke-width="1.2" fill="none"><path d="M20 6L9 17l-5-5"/></svg>
                   </li>
                   <li v-for="opt in landClasses" :key="opt.value" :class="{ active: fromClass === opt.value }" @click="selectOption('from', opt.value)">
                     {{ opt.label }}
-                    <svg v-if="fromClass === opt.value" viewBox="0 0 24 24" width="12" height="12" stroke="currentColor" stroke-width="3" fill="none"><path d="M20 6L9 17l-5-5"/></svg>
+                    <svg v-if="fromClass === opt.value" viewBox="0 0 24 24" width="15" height="15" stroke="currentColor" stroke-width="1.8" fill="none">
+                      <path d="M20 6L9 17l-5-5" />
+                    </svg>
                   </li>
                 </ul>
               </transition>
             </div>
 
-            <!-- 箭头/互换按钮 -->
             <div class="swap-btn-container" @click.stop="swapLandTypes" title="点击互换方向">
               <div class="swap-btn" :style="{ transform: `rotate(${rotateDeg}deg)` }">
-                <svg viewBox="0 0 1024 1024" width="32" height="32">
-                  <path d="M512 114.3c219.9 0 398.8 178.9 398.8 398.8s-178.9 398.8-398.8 398.8S113.2 733 113.2 513.1c0-219.9 178.9-398.8 398.8-398.8z" fill="#BDD2EF"/>
-                  <g transform="rotate(180 512 512)">
-                    <path d="M281.9 512.2l164.1 164.1c12.5 12.5 32.8 12.5 45.3 0s12.5-32.8 0-45.3L371.1 511.9l120.2-161.5c12.5-12.5 12.5-32.8 0-45.3s-32.8-12.5-45.3 0L281.9 466.9c-12.5 12.5-12.5 32.8 0 45.3" fill="#2867CE"/>
-                    <path d="M727.1 480.2H350v63.9h377.1v-63.9z" fill="#2867CE"/>
-                  </g>
+                <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="white" stroke-width="1.2">
+                  <circle cx="12" cy="12" r="10" stroke="rgba(255,255,255,0.2)" fill="rgba(255,255,255,0.05)"/>
+                  <path d="M8 12h8m-3-3l3 3-3 3" stroke-linecap="round" stroke-linejoin="round"/>
                 </svg>
               </div>
             </div>
@@ -96,7 +100,7 @@
               <span class="select-hint">转入</span>
               <div class="select-trigger" @click.stop="toggleDropdown('to')">
                 <span class="selected-text">{{ toClass === null ? '全部' : landClasses.find(c => c.value === toClass)?.label }}</span>
-                <svg class="chevron" viewBox="0 0 24 24" width="14" height="14" stroke="currentColor" stroke-width="3" fill="none">
+                <svg class="chevron" viewBox="0 0 24 24" width="15" height="15" stroke="currentColor" stroke-width="1.8" fill="none">
                   <path d="M6 9l6 6 6-6" />
                 </svg>
               </div>
@@ -104,11 +108,11 @@
                 <ul v-if="toOpen" class="select-options">
                   <li :class="{ active: toClass === null }" @click="selectOption('to', null)">
                     全部
-                    <svg v-if="toClass === null" viewBox="0 0 24 24" width="12" height="12" stroke="currentColor" stroke-width="3" fill="none"><path d="M20 6L9 17l-5-5"/></svg>
+                    <svg v-if="toClass === null" viewBox="0 0 24 24" width="7" height="7" stroke="currentColor" stroke-width="1.2" fill="none"><path d="M20 6L9 17l-5-5"/></svg>
                   </li>
                   <li v-for="opt in landClasses" :key="opt.value" :class="{ active: toClass === opt.value }" @click="selectOption('to', opt.value)">
                     {{ opt.label }}
-                    <svg v-if="toClass === opt.value" viewBox="0 0 24 24" width="12" height="12" stroke="currentColor" stroke-width="3" fill="none"><path d="M20 6L9 17l-5-5"/></svg>
+                    <svg v-if="toClass === opt.value" viewBox="0 0 24 24" width="7" height="7" stroke="currentColor" stroke-width="1.2" fill="none"><path d="M20 6L9 17l-5-5"/></svg>
                   </li>
                 </ul>
               </transition>
@@ -119,9 +123,17 @@
 
       <!-- 执行按钮 -->
       <div class="footer-actions">
+        <button class="reset-btn-ghost" @click.stop="$emit('reset')" title="重置图层数据">
+          <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8" />
+            <path d="M3 3v5h5" />
+          </svg>
+          重置
+        </button>
         <button class="execute-btn" @click.stop="handleQuery" :disabled="loading">
           <span v-if="loading" class="spinner-small"></span>
-          <span v-else>生成率分析图层</span>
+          <span v-if="loading" style="margin-left: 6px;">正在计算...</span>
+          <span v-else>开始分析</span>
         </button>
       </div>
 
@@ -226,6 +238,7 @@ const validateYear = () => {
 const handleQuery = () => {
   errorMsg.value = '';
   if (mode.value === 'reclamation') {
+    loading.value = true;
     emit('rate-query', {
       attribute:   'reclamation',
       year:        reclamYear.value,
@@ -237,6 +250,7 @@ const handleQuery = () => {
       errorMsg.value = '起始年份必须小于截止年份';
       return;
     }
+    loading.value = true;
     const fromLabel = fromClass.value === null ? '各地类' : (landClasses.find(c => c.value === fromClass.value)?.label || '');
     const toLabel   = toClass.value   === null ? '各地类' : (landClasses.find(c => c.value === toClass.value)?.label   || '');
     emit('rate-query', {
@@ -260,9 +274,6 @@ const handleClickOutside = (event) => {
   if (!path.some(el => el.classList && el.classList.contains('custom-select'))) {
     fromOpen.value = false;
     toOpen.value   = false;
-    yearOpen.value = false;
-    startYearOpen.value = false;
-    endYearOpen.value = false;
   }
 };
 
@@ -276,21 +287,38 @@ defineExpose({ setLoading, setError });
 
 <style scoped>
 .land-rate-control {
-  position: fixed;
-  bottom: calc(50% - 280px);
-  left: 100px;
+  position: absolute;
+  bottom: calc(100% + 15px); /* 置于按钮上方 15px */
+  left: 50%;
+  transform: translateX(-50%);
   width: 360px;
-  background: rgba(23, 35, 46, 0.85);
+  background: rgba(30, 45, 90, 0.95);
   backdrop-filter: blur(20px) saturate(180%);
   border: 1px solid rgba(255, 255, 255, 0.12);
   border-radius: 20px;
   color: #E2E8F0;
-  z-index: 2000;
+  z-index: 3000;
   display: flex;
   flex-direction: column;
   box-shadow: 0 12px 40px rgba(0, 0, 0, 0.4);
   transition: all 0.4s cubic-bezier(0.16, 1, 0.3, 1);
   font-family: "PingFang SC", "Microsoft YaHei", sans-serif;
+  overflow: visible;
+}
+
+/* 气泡尖角 */
+.land-rate-control::after {
+  content: '';
+  position: absolute;
+  bottom: -6px; 
+  left: 50%;
+  transform: translateX(-50%) rotate(45deg);
+  width: 12px;
+  height: 12px;
+  background: inherit; 
+  border-right: 1px solid rgba(255, 255, 255, 0.12);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.12);
+  z-index: -1; 
 }
 
 .panel-header {
@@ -298,30 +326,31 @@ defineExpose({ setLoading, setError });
   display: flex;
   align-items: center;
   justify-content: center;
-  height: 54px;
+  height: 43px; /* 极致压缩 */
   background: transparent;
   border-bottom: 1px solid rgba(255, 255, 255, 0.08);
 }
 
 .header-title {
-  font-weight: 700;
-  font-size: 20px;
-  letter-spacing: 2px;
+  font-weight: 600;
+  font-size: 15px;
+  letter-spacing: 1.5px;
   color: #fff;
   margin: 0;
-  text-shadow: 0 2px 10px rgba(0,0,0,0.5);
+  text-shadow: 0 2px 10px rgba(0, 0, 0, 0.5);
 }
 
 .close-btn {
   position: absolute;
-  right: 16px;
+  right: 12px;
   top: 50%;
   transform: translateY(-50%);
   background: transparent;
   border: none;
-  color: #94A3B8;
+  color: rgba(255, 255, 255, 0.6);
   cursor: pointer;
-  padding: 8px;
+  width: 30px;
+  height: 30px;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -335,26 +364,26 @@ defineExpose({ setLoading, setError });
 }
 
 .control-body {
-  padding: 24px;
+  padding: 14px 16px;
   display: flex;
   flex-direction: column;
-  gap: 16px;
+  gap: 12px;
 }
 
 .control-section {
   display: flex;
   flex-direction: column;
-  gap: 12px;
+  gap: 10px;
 }
 .control-section:not(:first-child) { margin-top: 8px; }
 
 .section-label {
   position: relative;
-  font-size: 14px;
+  font-size: 12px;
   font-weight: 700;
-  color: rgba(255, 255, 255, 0.9);
-  letter-spacing: 1px;
-  padding-left: 12px;
+  color: rgba(255, 255, 255, 0.85);
+  letter-spacing: 0.5px;
+  padding-left: 10px;
   display: flex;
   align-items: center;
 }
@@ -364,21 +393,20 @@ defineExpose({ setLoading, setError });
   left: 0;
   top: 50%;
   transform: translateY(-50%);
-  width: 3px;
-  height: 14px;
+  width: 2px;
+  height: 12px;
   background: #3B76E1;
-  border-radius: 2px;
-  box-shadow: 0 0 8px rgba(59, 118, 225, 0.5);
+  border-radius: 1px;
 }
 
-.segmented-control {
+.mode-selector {
   display: flex;
   background: rgba(0, 0, 0, 0.25);
   padding: 4px;
-  border-radius: 10px;
+  border-radius: 12px;
   border: 1px solid rgba(255, 255, 255, 0.05);
 }
-.segmented-control button {
+.mode-selector button {
   flex: 1;
   padding: 8px 0;
   background: transparent;
@@ -387,11 +415,11 @@ defineExpose({ setLoading, setError });
   font-size: 13px;
   font-weight: 600;
   cursor: pointer;
-  border-radius: 7px;
+  border-radius: 9px;
   font-family: inherit;
   transition: all 0.3s;
 }
-.segmented-control button.active {
+.mode-selector button.active {
   background: #3B76E1;
   color: white;
   box-shadow: 0 4px 12px rgba(59, 118, 225, 0.3);
@@ -400,8 +428,8 @@ defineExpose({ setLoading, setError });
 .year-range-picker {
   display: flex;
   align-items: center;
-  background: rgba(0, 0, 0, 0.2);
-  border-radius: 12px;
+  background: rgba(255, 255, 255, 0.04);
+  border-radius: 10px;
   border: 1px solid rgba(255, 255, 255, 0.1);
   padding: 8px 12px;
 }
@@ -416,19 +444,19 @@ defineExpose({ setLoading, setError });
   gap: 4px;
 }
 .field-tag {
-  font-size: 12px;
-  color: rgba(255, 255, 255, 0.75);
+  font-size: 11px;
+  color: rgba(255, 255, 255, 0.65);
   font-weight: 500;
-  letter-spacing: 1px;
+  letter-spacing: 0.5px;
   text-align: center;
 }
 .range-field input {
   width: 100%;
   background: transparent;
   border: none;
-  color: #F1F5F9;
-  font-size: 16px;
-  font-weight: 700;
+  color: rgba(255, 255, 255, 0.95);
+  font-size: 14px;
+  font-weight: 600;
   text-align: center;
   font-family: inherit;
   outline: none;
@@ -458,15 +486,20 @@ defineExpose({ setLoading, setError });
 .select-wrapper:hover { border-color: rgba(255, 255, 255, 0.2); background: rgba(255, 255, 255, 0.06); }
 .select-wrapper.open { border-color: #3B76E1; background: rgba(59, 118, 225, 0.05); box-shadow: 0 0 0 2px rgba(59, 118, 225, 0.2); }
 
-.select-hint { display: block; font-size: 12px; color: rgba(255, 255, 255, 0.75); font-weight: 500; margin-bottom: 4px; letter-spacing: 1px; }
-.select-trigger { display: flex; align-items: center; justify-content: space-between; cursor: pointer; min-height: 24px; }
-.selected-text { font-size: 14px; font-weight: 600; color: #F1F5F9; }
-.chevron { color: #64748B; transition: transform 0.3s; }
+.select-hint { display: block; font-size: 12px; color: rgba(255, 255, 255, 0.7); font-weight: 500; margin-bottom: 2px; letter-spacing: 1px; }
+.select-trigger { display: flex; align-items: center; justify-content: space-between; cursor: pointer; min-height: 20px; }
+.selected-text { font-size: 13px; font-weight: 600; color: rgba(255, 255, 255, 0.9); }
+.chevron {
+  width: 15px;
+  height: 15px;
+  color: rgba(255, 255, 255, 0.4);
+  transition: transform 0.3s;
+}
 .open .chevron { transform: rotate(180deg); color: #3B76E1; }
 
 .select-options {
   position: absolute;
-  top: calc(100% + 8px);
+  bottom: calc(100% + 8px);
   left: 0;
   right: 0;
   background: rgba(30, 40, 50, 0.95);
@@ -486,10 +519,14 @@ defineExpose({ setLoading, setError });
 .select-options::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.15); border-radius: 4px; }
 .select-options li { padding: 10px 12px; border-radius: 6px; font-size: 13px; font-weight: 500; color: #94A3B8; cursor: pointer; display: flex; align-items: center; justify-content: space-between; transition: all 0.2s; }
 .select-options li:hover { background: rgba(255,255,255,0.08); color: white; }
-.select-options li.active { background: #3B76E1; color: white; }
+.select-options li.active { background: rgba(59, 118, 225, 0.15); color: #3B76E1; font-weight: 700; }
+.select-options li svg {
+  width: 15px;
+  height: 15px;
+}
 
 .dropdown-fade-enter-active, .dropdown-fade-leave-active { transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1); }
-.dropdown-fade-enter-from, .dropdown-fade-leave-to { opacity: 0; transform: translateY(-10px); }
+.dropdown-fade-enter-from, .dropdown-fade-leave-to { opacity: 0; transform: translateY(10px); }
 
 .swap-btn-container { display: flex; align-items: center; justify-content: center; cursor: pointer; padding: 4px; border-radius: 50%; transition: all 0.3s ease; z-index: 10; }
 .swap-btn-container:hover { filter: brightness(1.1); transform: scale(1.15); }
@@ -518,26 +555,67 @@ defineExpose({ setLoading, setError });
 .footer-actions { display: flex; align-items: center; gap: 8px; margin-top: 4px; }
 .execute-btn {
   flex: 1;
-  height: 44px;
-  background: #3B76E1;
+  height: 36px;
+  background: linear-gradient(to bottom, #4a85ee, #3B76E1);
   border: none;
-  border-radius: 12px;
+  border-radius: 8px;
   color: white;
-  font-weight: 700;
-  font-size: 14px;
-  letter-spacing: 2px;
+  font-weight: 600;
+  font-size: 13px;
+  letter-spacing: 1px;
   cursor: pointer;
   font-family: inherit;
   transition: all 0.3s;
-  box-shadow: 0 4px 15px rgba(59, 118, 225, 0.3);
+  box-shadow: 0 4px 12px rgba(59, 118, 225, 0.25);
   display: flex;
   align-items: center;
   justify-content: center;
+  position: relative;
+  overflow: hidden;
 }
+
+.execute-btn::after {
+  content: '';
+  position: absolute;
+  top: 0; left: -100%; width: 100%; height: 100%;
+  background: linear-gradient(120deg, transparent, rgba(255,255,255,0.1), transparent);
+  transition: all 0.5s;
+}
+
+.execute-btn:hover::after { left: 100%; }
 .execute-btn:hover:not(:disabled) { transform: translateY(-2px); filter: brightness(1.1); }
 .execute-btn:disabled { background: #334155; box-shadow: none; cursor: not-allowed; opacity: 0.6; }
 
 .validation-error { color: #FB7185; font-size: 12px; text-align: center; padding: 8px; background: rgba(225, 29, 72, 0.1); border-radius: 8px; }
+
+.reset-btn-ghost {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  padding: 0 12px;
+  height: 36px;
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  border-radius: 8px;
+  color: rgba(255, 255, 255, 0.8);
+  font-size: 13px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.3s;
+  white-space: nowrap;
+}
+
+.reset-btn-ghost:hover {
+  background: rgba(255, 255, 255, 0.1);
+  border-color: rgba(255, 255, 255, 0.3);
+  color: white;
+  transform: translateY(-1px);
+}
+
+.reset-btn-ghost:active {
+  transform: translateY(0);
+}
 
 .spinner-small { display: inline-block; width: 18px; height: 18px; border: 2px solid rgba(255,255,255,0.3); border-radius: 50%; border-top-color: white; animation: spin 0.8s linear infinite; }
 @keyframes spin { to { transform: rotate(360deg); } }

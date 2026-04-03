@@ -1,3 +1,10 @@
+<!--
+  @component ViewResetButton
+  @description 视角复位工具，一键将地图相机返回定位至云南省默认观察范围
+  @props 无
+  @emits 无
+  @dependencies Cesium (地图引擎)
+-->
 <template>
   <div class="view-reset-control">
     <button @click="resetView" class="reset-btn" title="复位视图">
@@ -9,11 +16,8 @@
 
 <script setup>
 import * as Cesium from 'cesium';
-import resetIcon from '../../assets/icons/reset.svg';
+import resetIcon from '@/assets/icons/map/reset.svg';
 
-/**
- * 重置视图到默认位置（云南省）- 带平滑飞行动画
- */
 function resetView() {
   const viewer = window.cesiumViewer;
 
@@ -29,17 +33,14 @@ function resetView() {
       pitch: Cesium.Math.toRadians(-90),
       roll: 0.0
     },
-    duration: 2.0  // 飞行动画持续2秒
+    duration: 2.0
   });
 }
 </script>
 
 <style scoped>
-.view-reset-control {
-  position: relative;
-}
-
 .reset-btn {
+  position: relative;
   width: 64px;
   height: 64px;
   border-radius: 14px;
@@ -55,13 +56,14 @@ function resetView() {
   transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
   color: #a5ccff;
+  pointer-events: auto; /* 核心修复：确保按钮本体捕捉事件 */
 }
 
 .btn-label {
   font-size: 10px;
   color: rgba(255, 255, 255, 0.9);
   font-weight: 600;
-  pointer-events: none;
+  pointer-events: none; /* 让点击穿透到按钮本体 */
 }
 
 .reset-btn:hover {
@@ -82,7 +84,7 @@ function resetView() {
   filter: brightness(0) invert(1);
   opacity: 0.8;
   transition: all 0.3s ease;
-  pointer-events: none;
+  pointer-events: none; /* 让点击穿透到按钮本体 */
 }
 
 .reset-btn:hover .reset-icon {

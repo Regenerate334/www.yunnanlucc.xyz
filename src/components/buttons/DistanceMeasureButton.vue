@@ -1,41 +1,45 @@
+<!--
+  @component DistanceMeasureButton
+  @description 地图测距工具组件，支持折线绘制、实时距离计算及多种长度单位切换
+  @props 无
+  @emits 无
+  @dependencies useMeasurement (测绘逻辑), useGlobalStore (全局状态控制)
+-->
 <template>
-    <div class="area-measure-control">
-        <button @click="toggleMeasure" class="measure-btn" :class="{ active: isMeasuring }" title="测面积">
-            <img src="../../assets/icons/cemianji.png" class="measure-icon" alt="测面积" />
-            <span class="btn-label">测面积</span>
+    <div class="distance-measure-control" ref="containerRef">
+        <button @click="toggleMeasure" class="measure-btn" :class="{ active: isMeasuring }" title="测距">
+            <img src="@/assets/icons/map/measure-distance.png" class="measure-icon" alt="测距" />
+            <span class="btn-label">测距</span>
         </button>
 
-        <!-- 右侧弹出结果面板 -->
-        <transition name="slide-fade">
-            <div v-if="globalStore.activePanel === 'area'" class="result-popover vibe-panel">
-                <!-- 面板头部: 居中标题 + 关闭按钮 -->
+        <transition name="bubble-pop">
+            <div v-if="globalStore.activePanel === 'distance'" class="result-popover vibe-panel">
                 <div class="vibe-panel-header">
-                    <h1 class="vibe-panel-title">测面结果</h1>
+                    <h1 class="vibe-panel-title">测距结果</h1>
                     <button class="vibe-close-btn" @click="globalStore.setActivePanel(null)" title="关闭面板">
-                        <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2.5">
+                        <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="1.2">
                             <path d="M18 6L6 18M6 6l12 12" />
                         </svg>
                     </button>
                 </div>
 
-                <!-- 面板主体: 带蓝竖线的二级标题 + 内嵌深色卡片 -->
                 <div class="vibe-panel-body">
                     <!-- 单位选择模块 -->
                     <div class="vibe-section">
                         <div class="vibe-section-label">显示单位</div>
                         <div class="vibe-inset-card unit-selector-card" ref="unitDropdownRef">
                             <div class="vibe-custom-select" @click.stop="toggleUnitDropdown">
-                                <span class="selected-text">{{ unitLabels[areaUnit] }}</span>
-                                <svg class="chevron" :class="{ open: isUnitDropdownOpen }" viewBox="0 0 24 24" width="14" height="14" stroke="currentColor" stroke-width="3" fill="none">
+                                <span class="selected-text">{{ unitLabels[distanceUnit] }}</span>
+                                <svg class="chevron" :class="{ open: isUnitDropdownOpen }" viewBox="0 0 24 24" width="10" height="10" stroke="currentColor" stroke-width="1.2" fill="none">
                                     <path d="M6 9l6 6 6-6" />
                                 </svg>
                             </div>
                             <transition name="dropdown-fade">
                                 <ul v-if="isUnitDropdownOpen" class="vibe-select-options">
                                     <li v-for="(label, value) in unitLabels" :key="value" 
-                                        :class="{ active: areaUnit === value }" @click.stop="selectUnit(value)">
+                                        :class="{ active: distanceUnit === value }" @click.stop="selectUnit(value)">
                                         {{ label }}
-                                        <svg v-if="areaUnit === value" viewBox="0 0 24 24" width="12" height="12" stroke="currentColor" stroke-width="3" fill="none">
+                                        <svg v-if="distanceUnit === value" viewBox="0 0 24 24" width="10" height="10" stroke="currentColor" stroke-width="1.2" fill="none">
                                             <path d="M20 6L9 17l-5-5" />
                                         </svg>
                                     </li>
@@ -44,18 +48,11 @@
                         </div>
                     </div>
 
-                    <!-- 结果数值模块 -->
+                    <!-- 结果数值模块: 仅保留水平距离 -->
                     <div class="vibe-section">
-                        <div class="vibe-section-label">面积</div>
+                        <div class="vibe-section-label">水平距离</div>
                         <div class="vibe-inset-card data-card">
-                            <span class="vibe-data-value">{{ formatArea(results.area) }}</span>
-                        </div>
-                    </div>
-
-                    <div class="vibe-section">
-                        <div class="vibe-section-label">周长</div>
-                        <div class="vibe-inset-card data-card">
-                            <span class="vibe-data-value">{{ formatDistance(results.perimeter) }}</span>
+                            <span class="vibe-data-value">{{ formatDistance(results.horizontal) }}</span>
                         </div>
                     </div>
                 </div>
@@ -79,43 +76,46 @@ import { useGlobalStore } from '../../stores/global';
 const globalStore = useGlobalStore();
 const {
     activeTool,
-    areaUnit,
     distanceUnit,
     results,
     activateTool,
     clearMeasurement,
-    formatDistance,
-    formatArea
+    formatDistance
 } = useMeasurement();
 
-// 监听全局面板状态，如果是 area 则激活测量工具，否则取消激活
+const isMeasuring = computed(() => activeTool.value === 'distance');
+
+// 监听全局面板状态，如果是 distance 则激活测量工具，否则取消激活
 watch(() => globalStore.activePanel, (newVal) => {
-    if (newVal === 'area') {
-        if (activeTool.value !== 'area') {
-            activateTool('area');
+    if (newVal === 'distance') {
+        if (activeTool.value !== 'distance') {
+            activateTool('distance');
         }
-    } else if (activeTool.value === 'area') {
+    } else if (activeTool.value === 'distance') {
         activateTool(null);
     }
 });
 
 function toggleMeasure() {
-    globalStore.setActivePanel('area');
+    if (globalStore.activePanel === 'distance') {
+        globalStore.setActivePanel(null);
+    } else {
+        globalStore.setActivePanel('distance');
+    }
 }
 
 const isUnitDropdownOpen = ref(false);
+const containerRef = ref(null);
 const unitDropdownRef = ref(null);
 
 const unitLabels = {
-    sq_meter: '平方米',
-    sq_kilometer: '平方千米',
-    sq_inch: '平方英寸',
-    sq_foot: '平方英尺',
-    sq_yard: '平方码',
-    sq_mile: '平方英里',
-    acre: '英亩',
-    are: '公亩',
-    hectare: '公顷'
+    meter: '米',
+    kilometer: '公里',
+    inch: '英寸',
+    foot: '英尺',
+    yard: '码',
+    mile: '英里',
+    nautical_mile: '海里'
 };
 
 function toggleUnitDropdown() {
@@ -123,15 +123,29 @@ function toggleUnitDropdown() {
 }
 
 function selectUnit(value) {
-    areaUnit.value = value;
+    distanceUnit.value = value;
     isUnitDropdownOpen.value = false;
 }
 
-function handleClickOutside(event) {
-    if (unitDropdownRef.value && !unitDropdownRef.value.contains(event.target)) {
+const handleClickOutside = (event) => {
+    const path = event.composedPath();
+    const isInside = containerRef.value && path.includes(containerRef.value);
+    
+    // 关键修正：只有在点击既不在按钮容器内，也不在地图区域内时，才关闭面板
+    const isMapClick = path.some(el => el.id === 'cesiumContainer' || (el.classList && el.classList.contains('cesium-viewer')));
+    
+    if (!isInside && !isMapClick && globalStore.activePanel === 'distance') {
+        globalStore.setActivePanel(null);
+    }
+    
+    // 下拉框遮罩逻辑
+    const isSelectClick = path.some(el => 
+        el.classList && (el.classList.contains('vibe-custom-select') || el.classList.contains('vibe-select-options'))
+    );
+    if (!isSelectClick) {
         isUnitDropdownOpen.value = false;
     }
-}
+};
 
 onMounted(() => {
     document.addEventListener('click', handleClickOutside);
@@ -141,7 +155,7 @@ onUnmounted(() => {
     document.removeEventListener('click', handleClickOutside);
 });
 
-const isMeasuring = computed(() => globalStore.activePanel === 'area');
+
 </script>
 
 <style scoped>
@@ -162,14 +176,15 @@ const isMeasuring = computed(() => globalStore.activePanel === 'area');
     gap: 2px;
     transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
     box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
-    z-index: 2;
     color: #a5ccff;
+    pointer-events: auto;
 }
 
 .btn-label {
     font-size: 10px;
     color: rgba(255, 255, 255, 0.9);
     font-weight: 600;
+    pointer-events: none;
 }
 
 .measure-btn:hover {
@@ -192,10 +207,10 @@ const isMeasuring = computed(() => globalStore.activePanel === 'area');
 }
 
 .measure-icon {
-    width: 28px;
-    height: 28px;
+    width: 32px;
+    height: 32px;
     object-fit: contain;
-    opacity: 0.8;
+    filter: brightness(0) invert(1);
     transition: all 0.3s ease;
 }
 
@@ -210,11 +225,11 @@ const isMeasuring = computed(() => globalStore.activePanel === 'area');
 /* 弹出面板基础结构 (Vibe Panel 规范) */
 .vibe-panel {
     position: absolute;
-    top: 0;
-    left: 100%;
-    margin-left: 20px;
+    bottom: calc(100% + 15px); /* 置于按钮上方 15px */
+    left: 50%;
+    transform: translateX(-50%);
     width: 260px;
-    background: rgba(23, 35, 46, 0.85); /* 完全同步土地流转面板参数 */
+    background: rgba(30, 45, 90, 0.95);
     backdrop-filter: blur(20px) saturate(180%);
     border: 1px solid rgba(255, 255, 255, 0.12);
     border-radius: 20px;
@@ -223,24 +238,38 @@ const isMeasuring = computed(() => globalStore.activePanel === 'area');
     z-index: 1000;
     display: flex;
     flex-direction: column;
-    /* 修复截断问题：移除 overflow: hidden 以允许下拉菜单溢出父容器 */
     overflow: visible; 
     font-family: "PingFang SC", "Microsoft YaHei", sans-serif;
 }
 
-/* Header: 极限压缩高度 */
+/* 气泡尖角 */
+.vibe-panel::after {
+    content: '';
+    position: absolute;
+    bottom: -6px; 
+    left: 50%;
+    transform: translateX(-50%) rotate(45deg);
+    width: 12px;
+    height: 12px;
+    background: inherit; 
+    border-right: 1px solid rgba(255, 255, 255, 0.12);
+    border-bottom: 1px solid rgba(255, 255, 255, 0.12);
+    z-index: -1; 
+}
+
+/* Header 样式 */
 .vibe-panel-header {
     position: relative;
     display: flex;
     align-items: center;
     justify-content: center;
-    height: 46px; /* 从 54px 压缩 */
+    height: 43px; 
     border-bottom: 1px solid rgba(255, 255, 255, 0.08);
 }
 
 .vibe-panel-title {
-    font-weight: 700;
-    font-size: 17px;
+    font-weight: 600;
+    font-size: 15px;
     letter-spacing: 1.5px;
     color: #fff;
     margin: 0;
@@ -249,16 +278,19 @@ const isMeasuring = computed(() => globalStore.activePanel === 'area');
 
 .vibe-close-btn {
     position: absolute;
-    right: 16px; /* 对齐测流转面板 16px */
+    right: 12px;
     top: 50%;
     transform: translateY(-50%);
     background: transparent;
     border: none;
-    color: rgba(255, 255, 255, 0.85); /* 恢复中性色 */
+    color: rgba(255, 255, 255, 0.6);
     cursor: pointer;
-    padding: 6px;
+    width: 30px;
+    height: 30px;
     display: flex;
-    transition: all 0.3s ease; /* 丝滑过渡 */
+    align-items: center;
+    justify-content: center;
+    transition: all 0.3s ease;
     border-radius: 50%;
 }
 
@@ -268,29 +300,28 @@ const isMeasuring = computed(() => globalStore.activePanel === 'area');
     transform: translateY(-50%) rotate(90deg);
 }
 
-/* Body: 间距舒适的模块化布局 */
 /* Body: 极限压缩间距 */
 .vibe-panel-body {
-    padding: 12px 16px; 
+    padding: 10px 14px; /* 从 12/16 进一步压缩 */
     display: flex;
     flex-direction: column;
-    gap: 12px; 
+    gap: 10px; /* 从 12px 压缩 */
 }
 
 /* 二级标题简洁化 */
 .vibe-section {
     display: flex;
     flex-direction: column;
-    gap: 8px;
+    gap: 8px; /* 从 10px 压缩 */
 }
 
 .vibe-section-label {
     position: relative;
-    font-size: 13px;
+    font-size: 12px;
     font-weight: 700;
     color: rgba(255, 255, 255, 0.85);
     letter-spacing: 0.5px;
-    padding-left: 12px;
+    padding-left: 10px;
     display: flex;
     align-items: center;
 }
@@ -301,11 +332,10 @@ const isMeasuring = computed(() => globalStore.activePanel === 'area');
     left: 0;
     top: 50%;
     transform: translateY(-50%);
-    width: 3px;
-    height: 13px;
+    width: 2px;
+    height: 12px;
     background: #3B76E1;
-    border-radius: 2px;
-    box-shadow: 0 0 8px rgba(59, 118, 225, 0.5);
+    border-radius: 1px;
 }
 
 /* 内嵌卡片: 极限尺寸压缩 */
@@ -313,7 +343,7 @@ const isMeasuring = computed(() => globalStore.activePanel === 'area');
     background: rgba(0, 0, 0, 0.25);
     border: 1px solid rgba(255, 255, 255, 0.05);
     border-radius: 8px;
-    padding: 6px 12px;
+    padding: 6px 12px; /* 从 8/12 压缩 */
     transition: all 0.2s;
 }
 
@@ -321,11 +351,11 @@ const isMeasuring = computed(() => globalStore.activePanel === 'area');
     display: flex;
     align-items: center;
     justify-content: center;
-    min-height: 34px;
+    min-height: 34px; /* 从 38px 压缩 */
 }
 
 .vibe-data-value {
-    font-size: 16px;
+    font-size: 16px; /* 字号降级，确保不盖过主标题 */
     font-weight: 700;
     color: #fff;
     font-family: 'Inter', system-ui, sans-serif;
@@ -335,11 +365,11 @@ const isMeasuring = computed(() => globalStore.activePanel === 'area');
 /* 下拉框深度定制 (Vibe Select) */
 .unit-selector-card {
     position: relative;
-    padding: 0;
+    padding: 0; /* 让 trigger 填满 */
 }
 
 .vibe-custom-select {
-    padding: 10px 14px;
+    padding: 8px 14px;
     display: flex;
     justify-content: space-between;
     align-items: center;
@@ -347,7 +377,7 @@ const isMeasuring = computed(() => globalStore.activePanel === 'area');
 }
 
 .vibe-custom-select .selected-text {
-    font-size: 14px;
+    font-size: 13px;
     font-weight: 600;
 }
 
@@ -378,7 +408,7 @@ const isMeasuring = computed(() => globalStore.activePanel === 'area');
     overflow-y: auto;
 }
 
-/* 统一暗色滚动条样式 */
+/* 对齐土地流转面板的暗色滚动条 */
 .vibe-select-options::-webkit-scrollbar {
     width: 4px;
 }
@@ -413,32 +443,42 @@ const isMeasuring = computed(() => globalStore.activePanel === 'area');
 }
 
 .vibe-select-options li.active {
-    background: #3B76E1;
-    color: white;
+    background: rgba(59, 118, 225, 0.15);
+    color: #3B76E1;
+    font-weight: 700;
 }
 
 /* Footer 极限紧凑 */
 .vibe-panel-footer {
-    padding: 0 16px 12px;
+    padding: 0 16px 12px; /* 移除上内边距，利用 body gap */
 }
 
 .vibe-execute-btn {
     width: 100%;
-    height: 44px;
-    background: #3B76E1;
+    height: 36px;
+    background: linear-gradient(to bottom, #4a85ee, #3B76E1);
     border: none;
-    border-radius: 12px;
+    border-radius: 8px;
     color: white;
-    font-weight: 700;
-    font-size: 14px;
-    letter-spacing: 2px; /* 对齐流转面板的 2px */
+    font-weight: 600;
+    font-size: 13px;
+    letter-spacing: 1px;
     cursor: pointer;
     transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
-    box-shadow: 0 4px 15px rgba(59, 118, 225, 0.3);
+    box-shadow: 0 4px 12px rgba(59, 118, 225, 0.25);
     display: flex;
     align-items: center;
     justify-content: center;
+    position: relative;
+    overflow: hidden;
 }
+
+.vibe-execute-btn::after {
+    content: ''; position: absolute; top: 0; left: -100%; width: 100%; height: 100%;
+    background: linear-gradient(120deg, transparent, rgba(255,255,255,0.1), transparent);
+    transition: all 0.5s;
+}
+.vibe-execute-btn:hover::after { left: 100%; }
 
 .vibe-execute-btn.vibe-warn {
     background: rgba(245, 108, 108, 0.1);
@@ -462,18 +502,18 @@ const isMeasuring = computed(() => globalStore.activePanel === 'area');
     transform: translateY(0);
 }
 
-/* 进场动画修正 */
-.slide-fade-enter-active {
+/* 进场动画修正：从下方弹出并缩放 */
+.bubble-pop-enter-active {
     transition: all 0.4s cubic-bezier(0.16, 1, 0.3, 1);
 }
 
-.slide-fade-leave-active {
+.bubble-pop-leave-active {
     transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
 }
 
-.slide-fade-enter-from,
-.slide-fade-leave-to {
-    transform: translateX(-20px);
+.bubble-pop-enter-from,
+.bubble-pop-leave-to {
+    transform: translate(-50%, 20px) scale(0.9);
     opacity: 0;
 }
 </style>

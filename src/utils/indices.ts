@@ -108,34 +108,31 @@ export function calculateLUDI(data: Record<LandUseType, number>): number {
 
 /**
  * 4. 生态服务价值 (Ecological Service Value, ESV)
- * 基于谢高地等人的中国陆地生态系统单位面积生态服务价值当量表
- * 注意：这里使用的是标准当量因子，实际应用中通常需要根据当地粮食产量进行修正。
- * 此处仅作为相对变化的参考指标。
- * 单位: 元/hm² (示例值，可调整)
+ * 基于谢高地等人 (2015) 中国生态系统服务价值当量因子表
+ * 当量因子 (Equivalent Factors):
+ * Cropland: 1.0, Forest: 5.04, Shrub: 2.0, Grassland: 1.57, Water: 13.22, Wetland: 13.5, Barren: 0.1, Snow/Ice: 0, Impervious: 0
  */
-const ESV_COEFFICIENTS: Record<string, number> = {
-    'Cropland': 7900,   // 耕地
-    'Forest': 28000,    // 林地
-    'Grassland': 6400,  // 草地
-    'Wetland': 59000,   // 湿地
-    'Water': 42000,     // 水域
-    'Barren': 200,      // 荒漠
-    'Impervious': 0,    // 建设用地
-    'Shrub': 18000,     // 灌木 (估算，介于林草之间)
-    'Snow/Ice': 0       // 冰川积雪
+const ESV_COEFFICIENTS: Record<LandUseType, number> = {
+    'Cropland': 1.00,
+    'Forest': 5.04,
+    'Shrub': 2.0,
+    'Grassland': 1.57,
+    'Water': 13.22,
+    'Wetland': 13.5,
+    'Barren': 0.1,
+    'Snow/Ice': 0,
+    'Impervious': 0
 };
 
 export function calculateESV(data: Record<LandUseType, number>): number {
     let totalESV = 0;
-
     (Object.keys(data) as LandUseType[]).forEach(type => {
-        const area = data[type] || 0; // 假设输入面积单位为 km²
-        // 1 km² = 100 hm²
+        const area = data[type] || 0;
+        // 采用当量因子 * 面积 (km2 -> hm2 转换) 进行计算
         const areaInHm2 = area * 100;
         const coeff = ESV_COEFFICIENTS[type] || 0;
         totalESV += areaInHm2 * coeff;
     });
-
     return totalESV;
 }
 

@@ -17,6 +17,10 @@ export const useGlobalStore = defineStore('global', () => {
     const activeLayer = ref<string>('clcd') // 'clcd' | 'county' | 'grid' | 'land_transfer'
     const previousLayer = ref<string>('clcd') // 记录进入分析前的图层
 
+    // 新增：分析专题互斥状态
+    const activeTheme = ref<string | null>(null)   // 'transfer' | 'rate' | 'spatial_stats' | null
+    const previousTheme = ref<string | null>(null)  // 记录上一次活跃的专题
+
 
     // Actions
     function setYear(y: number) {
@@ -65,6 +69,12 @@ export const useGlobalStore = defineStore('global', () => {
         }
     }
 
+    // 新增：设置当前分析专题（自动记录上一专题以便清理）
+    function setActiveTheme(theme: string | null) {
+        previousTheme.value = activeTheme.value
+        activeTheme.value = theme
+    }
+
 
     return {
         scope,
@@ -78,6 +88,8 @@ export const useGlobalStore = defineStore('global', () => {
         legendData,
         activeLayer,
         previousLayer,
+        activeTheme,
+        previousTheme,
         setYear,
         setRange,
         setScope,
@@ -87,6 +99,7 @@ export const useGlobalStore = defineStore('global', () => {
         updateLegend,
         clearLegend,
         setActiveLayer,
-        restorePreviousLayer
+        restorePreviousLayer,
+        setActiveTheme
     }
 })

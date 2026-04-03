@@ -1,16 +1,23 @@
+<!-- LandTransferControl: 土地流转分析面板，用于展示不同地类间的流转规模与趋势 -->
+<!--
+  @component LandTransferControl
+  @description 土地利用转移分析控制面板，支持双年份对比选择、地类流向统计及桑基图联动
+  @props 无
+  @emits close (关闭面板)
+  @dependencies useGlobalStore, clcdApi
+-->
 <template>
   <div class="land-transfer-control panel-card" ref="containerRef">
     <div class="panel-header">
       <h1 class="header-title">土地流转动态监测</h1>
       <button class="close-btn" @click="$emit('close')" title="关闭面板">
-        <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2.5">
+        <svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="1.8">
           <path d="M18 6L6 18M6 6l12 12" />
         </svg>
       </button>
     </div>
 
     <div class="control-body">
-      <!-- 空间单元选择 -->
       <div class="control-section">
         <div class="section-label">空间统计单元</div>
         <div class="segmented-control">
@@ -31,14 +38,14 @@
         <div class="year-range-picker">
           <div class="range-field">
             <span class="field-tag">起始年份</span>
-            <input type="number" v-model.number="yearStart" />
+            <input type="number" v-model.lazy.number="yearStart" />
           </div>
           <div class="range-divider">
             <div class="divider-line"></div>
           </div>
           <div class="range-field">
             <span class="field-tag">截止年份</span>
-            <input type="number" v-model.number="yearEnd" />
+            <input type="number" v-model.lazy.number="yearEnd" />
           </div>
         </div>
       </div>
@@ -51,7 +58,7 @@
             <span class="select-hint">转出</span>
             <div class="select-trigger" @click.stop="toggleDropdown('from')">
               <span class="selected-text">{{ landClasses.find(c => c.value === fromClass)?.label }}</span>
-              <svg class="chevron" viewBox="0 0 24 24" width="14" height="14" stroke="currentColor" stroke-width="3" fill="none">
+              <svg class="chevron" viewBox="0 0 24 24" width="15" height="15" stroke="currentColor" stroke-width="1.8" fill="none">
                 <path d="M6 9l6 6 6-6" />
               </svg>
             </div>
@@ -64,7 +71,7 @@
                   @click="selectOption('from', opt.value)"
                 >
                   {{ opt.label }}
-                  <svg v-if="fromClass === opt.value" viewBox="0 0 24 24" width="12" height="12" stroke="currentColor" stroke-width="3" fill="none">
+                  <svg v-if="fromClass === opt.value" viewBox="0 0 24 24" width="15" height="15" stroke="currentColor" stroke-width="1.8" fill="none">
                     <path d="M20 6L9 17l-5-5" />
                   </svg>
                 </li>
@@ -74,14 +81,9 @@
 
           <div class="swap-btn-container" @click.stop="swapLandTypes" title="点击互换方向">
             <div class="swap-btn" :style="{ transform: `rotate(${rotateDeg}deg)` }">
-              <svg viewBox="0 0 1024 1024" width="32" height="32">
-                <!-- 圆形底板 -->
-                <path d="M512 114.3c219.9 0 398.8 178.9 398.8 398.8s-178.9 398.8-398.8 398.8S113.2 733 113.2 513.1c0-219.9 178.9-398.8 398.8-398.8z" fill="#BDD2EF"></path>
-                <!-- 箭头 (默认旋转180度指向右侧) -->
-                <g transform="rotate(180 512 512)">
-                  <path d="M281.9 512.2l164.1 164.1c12.5 12.5 32.8 12.5 45.3 0s12.5-32.8 0-45.3L371.1 511.9l120.2-161.5c12.5-12.5 12.5-32.8 0-45.3s-32.8-12.5-45.3 0L281.9 466.9c-12.5 12.5-12.5 32.8 0 45.3" fill="#2867CE"></path>
-                  <path d="M727.1 480.2H350v63.9h377.1v-63.9z" fill="#2867CE"></path>
-                </g>
+              <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="white" stroke-width="1.8">
+                <circle cx="12" cy="12" r="10" stroke="rgba(255,255,255,0.2)" fill="rgba(255,255,255,0.05)"/>
+                <path d="M8 12h8m-3-3l3 3-3 3" stroke-linecap="round" stroke-linejoin="round"/>
               </svg>
             </div>
           </div>
@@ -90,7 +92,7 @@
             <span class="select-hint">转入</span>
             <div class="select-trigger" @click.stop="toggleDropdown('to')">
               <span class="selected-text">{{ landClasses.find(c => c.value === toClass)?.label }}</span>
-              <svg class="chevron" viewBox="0 0 24 24" width="14" height="14" stroke="currentColor" stroke-width="3" fill="none">
+              <svg class="chevron" viewBox="0 0 24 24" width="15" height="15" stroke="currentColor" stroke-width="1.8" fill="none">
                 <path d="M6 9l6 6 6-6" />
               </svg>
             </div>
@@ -103,7 +105,7 @@
                   @click="selectOption('to', opt.value)"
                 >
                   {{ opt.label }}
-                  <svg v-if="toClass === opt.value" viewBox="0 0 24 24" width="12" height="12" stroke="currentColor" stroke-width="3" fill="none">
+                  <svg v-if="toClass === opt.value" viewBox="0 0 24 24" width="7" height="7" stroke="currentColor" stroke-width="1.2" fill="none">
                     <path d="M20 6L9 17l-5-5" />
                   </svg>
                 </li>
@@ -115,9 +117,17 @@
 
       <!-- 执行按钮 -->
       <div class="footer-actions">
+          <button class="reset-btn-ghost" @click.stop="$emit('reset')" title="重置图层数据">
+            <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8" />
+              <path d="M3 3v5h5" />
+            </svg>
+            重置
+          </button>
           <button class="execute-btn" @click.stop="handleQuery" :disabled="loading">
             <span v-if="loading" class="spinner-small"></span>
-            <span v-else>土地流转空间格局</span>
+            <span v-if="loading" style="margin-left: 6px;">正在处理...</span>
+            <span v-else>开始分析</span>
           </button>
       </div>
       
@@ -293,21 +303,38 @@ defineExpose({ setLoading, setError });
 
 <style scoped>
 .land-transfer-control {
-  position: fixed;
-  bottom: calc(50% - 272px);
-  left: 100px;
+  position: absolute;
+  bottom: calc(100% + 15px); /* 置于按钮上方 15px */
+  left: 50%;
+  transform: translateX(-50%);
   width: 360px;
-  background: rgba(23, 35, 46, 0.85);
+  background: rgba(30, 45, 90, 0.95);
   backdrop-filter: blur(20px) saturate(180%);
   border: 1px solid rgba(255, 255, 255, 0.12);
   border-radius: 20px;
   color: #E2E8F0;
-  z-index: 2000;
+  z-index: 3000;
   display: flex;
   flex-direction: column;
   box-shadow: 0 12px 40px rgba(0, 0, 0, 0.4);
   transition: all 0.4s cubic-bezier(0.16, 1, 0.3, 1);
   font-family: "PingFang SC", "Microsoft YaHei", sans-serif;
+  overflow: visible;
+}
+
+/* 气泡尖角 */
+.land-transfer-control::after {
+  content: '';
+  position: absolute;
+  bottom: -6px; 
+  left: 50%;
+  transform: translateX(-50%) rotate(45deg);
+  width: 12px;
+  height: 12px;
+  background: inherit; 
+  border-right: 1px solid rgba(255, 255, 255, 0.12);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.12);
+  z-index: -1; 
 }
 
 .panel-header {
@@ -315,15 +342,15 @@ defineExpose({ setLoading, setError });
   display: flex;
   align-items: center;
   justify-content: center;
-  height: 54px;
+  height: 43px; /* 极致压缩 */
   background: transparent;
   border-bottom: 1px solid rgba(255, 255, 255, 0.08);
 }
 
 .header-title {
-  font-weight: 700;
-  font-size: 20px;
-  letter-spacing: 2px;
+  font-weight: 600;
+  font-size: 15px;
+  letter-spacing: 1.5px;
   color: #fff;
   margin: 0;
   text-shadow: 0 2px 10px rgba(0,0,0,0.5);
@@ -331,14 +358,15 @@ defineExpose({ setLoading, setError });
 
 .close-btn {
   position: absolute;
-  right: 16px;
+  right: 12px;
   top: 50%;
   transform: translateY(-50%);
   background: transparent;
   border: none;
-  color: #94A3B8;
+  color: rgba(255, 255, 255, 0.6);
   cursor: pointer;
-  padding: 8px;
+  width: 32px; 
+  height: 32px;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -353,16 +381,16 @@ defineExpose({ setLoading, setError });
 }
 
 .control-body {
-  padding: 24px;
+  padding: 14px 16px; 
   display: flex;
   flex-direction: column;
-  gap: 16px; 
+  gap: 12px; 
 }
 
 .control-section {
   display: flex;
   flex-direction: column;
-  gap: 12px;
+  gap: 10px;
 }
 
 .control-section:not(:first-child) {
@@ -371,12 +399,12 @@ defineExpose({ setLoading, setError });
 
 .section-label {
   position: relative;
-  font-size: 14px;
+  font-size: 12px;
   font-weight: 700;
-  color: rgba(255, 255, 255, 0.9);
+  color: rgba(255, 255, 255, 0.85);
   text-transform: uppercase;
-  letter-spacing: 1px;
-  padding-left: 12px;
+  letter-spacing: 0.5px;
+  padding-left: 10px;
   display: flex;
   align-items: center;
 }
@@ -387,11 +415,10 @@ defineExpose({ setLoading, setError });
   left: 0;
   top: 50%;
   transform: translateY(-50%);
-  width: 3px;
-  height: 14px;
+  width: 2px; /* 极细装饰条 */
+  height: 12px;
   background: #3B76E1;
-  border-radius: 2px;
-  box-shadow: 0 0 8px rgba(59, 118, 225, 0.5);
+  border-radius: 1px;
 }
 
 .segmented-control {
@@ -404,11 +431,11 @@ defineExpose({ setLoading, setError });
 
 .segmented-control button {
   flex: 1;
-  padding: 8px 0;
+  padding: 6px 0;
   background: transparent;
   border: none;
   color: #94A3B8;
-  font-size: 13px;
+  font-size: 12px;
   font-weight: 600;
   cursor: pointer;
   border-radius: 7px;
@@ -426,9 +453,9 @@ defineExpose({ setLoading, setError });
   display: flex;
   align-items: center;
   background: rgba(0, 0, 0, 0.2);
-  border-radius: 12px;
+  border-radius: 10px;
   border: 1px solid rgba(255, 255, 255, 0.1);
-  padding: 8px 12px;
+  padding: 6px 10px; 
 }
 
 .range-field {
@@ -441,10 +468,10 @@ defineExpose({ setLoading, setError });
 }
 
 .field-tag {
-  font-size: 12px;
-  color: rgba(255, 255, 255, 0.75);
+  font-size: 11px;
+  color: rgba(255, 255, 255, 0.65);
   font-weight: 500;
-  letter-spacing: 1px;
+  letter-spacing: 0.5px;
   text-align: center;
 }
 
@@ -452,9 +479,9 @@ defineExpose({ setLoading, setError });
   width: 100%;
   background: transparent;
   border: none;
-  color: #F1F5F9;
-  font-size: 16px;
-  font-weight: 700;
+  color: rgba(255, 255, 255, 0.9);
+  font-size: 14px;
+  font-weight: 600;
   text-align: center;
   font-family: inherit;
   outline: none;
@@ -522,17 +549,19 @@ defineExpose({ setLoading, setError });
   align-items: center;
   justify-content: space-between;
   cursor: pointer;
-  min-height: 24px;
+  min-height: 20px;
 }
 
 .selected-text {
-  font-size: 14px;
+  font-size: 13px;
   font-weight: 600;
-  color: #F1F5F9;
+  color: rgba(255, 255, 255, 0.9);
 }
 
 .chevron {
-  color: #64748B;
+  width: 15px;
+  height: 15px;
+  color: rgba(255, 255, 255, 0.4);
   transition: transform 0.3s;
 }
 
@@ -543,7 +572,7 @@ defineExpose({ setLoading, setError });
 
 .select-options {
   position: absolute;
-  top: calc(100% + 8px);
+  bottom: calc(100% + 8px);
   left: 0;
   right: 0;
   background: rgba(30, 40, 50, 0.95);
@@ -596,9 +625,10 @@ defineExpose({ setLoading, setError });
   color: white;
 }
 
-.select-options li.active {
-  background: #3B76E1;
-  color: white;
+.select-options li.active { background: rgba(59, 118, 225, 0.15); color: #3B76E1; font-weight: 700; }
+.select-options li svg {
+  width: 15px;
+  height: 15px;
 }
 
 .dropdown-fade-enter-active, .dropdown-fade-leave-active {
@@ -606,7 +636,7 @@ defineExpose({ setLoading, setError });
 }
 .dropdown-fade-enter-from, .dropdown-fade-leave-to {
   opacity: 0;
-  transform: translateY(-10px);
+  transform: translateY(10px);
 }
 
 .transfer-arrow {
@@ -623,21 +653,38 @@ defineExpose({ setLoading, setError });
 
 .execute-btn {
   flex: 1;
-  height: 44px;
-  background: #3B76E1;
+  height: 36px; /* 从 40px 压缩 */
+  background: linear-gradient(to bottom, #4a85ee, #3B76E1); /* 增加微妙深度 */
   border: none;
-  border-radius: 12px;
+  border-radius: 8px;
   color: white;
-  font-weight: 700;
-  font-size: 14px;
-  letter-spacing: 2px;
+  font-weight: 600; /* 减重 */
+  font-size: 13px;
+  letter-spacing: 1px;
   cursor: pointer;
   font-family: inherit;
   transition: all 0.3s;
-  box-shadow: 0 4px 15px rgba(59, 118, 225, 0.3);
+  box-shadow: 0 4px 12px rgba(59, 118, 225, 0.25);
   display: flex;
   align-items: center;
   justify-content: center;
+  position: relative;
+  overflow: hidden;
+}
+
+.execute-btn::after {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: -100%;
+  width: 100%;
+  height: 100%;
+  background: linear-gradient(120deg, transparent, rgba(255,255,255,0.1), transparent);
+  transition: all 0.5s;
+}
+
+.execute-btn:hover::after {
+  left: 100%;
 }
 
 .execute-btn:hover:not(:disabled) {
@@ -651,14 +698,21 @@ defineExpose({ setLoading, setError });
   justify-content: center;
   cursor: pointer;
   padding: 4px;
-  border-radius: 50%;
   transition: all 0.3s ease;
   z-index: 10;
 }
 
-.swap-btn-container:hover {
-  filter: brightness(1.1);
-  transform: scale(1.15);
+.swap-btn {
+  backdrop-filter: blur(8px);
+  background: rgba(255, 255, 255, 0.05); /* 磨砂玻璃质感 */
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  border-radius: 50%;
+  width: 28px;
+  height: 28px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
 }
 
 .swap-btn {
@@ -675,23 +729,33 @@ defineExpose({ setLoading, setError });
   opacity: 0.6;
 }
 
-.reset-icon-btn {
-  width: 44px;
-  height: 44px; 
-  background: rgba(255, 255, 255, 0.05);
-  border: 1px solid rgba(255, 255, 255, 0.1);
-  border-radius: 12px;
-  color: #94A3B8;
+.reset-btn-ghost {
   display: flex;
   align-items: center;
   justify-content: center;
+  gap: 6px;
+  padding: 0 12px;
+  height: 36px;
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  border-radius: 8px;
+  color: rgba(255, 255, 255, 0.8);
+  font-size: 13px;
+  font-weight: 500;
   cursor: pointer;
-  transition: all 0.2s;
+  transition: all 0.3s;
+  white-space: nowrap;
 }
 
-.reset-icon-btn:hover {
+.reset-btn-ghost:hover {
   background: rgba(255, 255, 255, 0.1);
+  border-color: rgba(255, 255, 255, 0.3);
   color: white;
+  transform: translateY(-1px);
+}
+
+.reset-btn-ghost:active {
+  transform: translateY(0);
 }
 
 .validation-error {

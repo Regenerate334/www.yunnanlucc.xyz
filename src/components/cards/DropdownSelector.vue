@@ -1,3 +1,10 @@
+<!--
+  @component DropdownSelector
+  @description 通用下拉选择器组件，支持图标插槽、自适应宽度及美化交互
+  @props modelValue (绑定值), options (选项列表), width (宽度), placeholder (占位符), iconOnly (仅图标模式), title (悬浮提示)
+  @emits update:modelValue (双向绑定), change (选中项变化)
+  @dependencies 无
+-->
 <template>
   <div class="dropdown-selector" :style="{ width: computedWidth }">
     <!-- 主按钮 -->

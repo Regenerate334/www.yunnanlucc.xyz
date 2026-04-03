@@ -1,3 +1,11 @@
+<!-- AnalysisLegend: 分析图例组件，展示业务数据图层的颜色分级与含义 -->
+<!--
+  @component AnalysisLegend
+  @description 专题分析地图图例，支持动态分级色彩展示与单位标注
+  @props title (图例标题), breaks (分级断点), colors (颜色序列), unit (数据单位)
+  @emits 无
+  @dependencies 无
+-->
 <template>
   <div v-if="legendItems && legendItems.length > 0" class="vibe-legend-container">
     <div class="vibe-legend-header">
@@ -33,22 +41,23 @@ const legendItems = computed(() => {
   return [];
 });
 
-/**
- * 格式化数值：是整数不带小数点
- */
 function formatValue(val) {
+  // 如果已经是带单位的字符串或复杂标签，保留原样
+  if (typeof val === 'string' && /[^\d.-]/.test(val.trim())) {
+    return val.trim();
+  }
   const num = parseFloat(val);
   if (isNaN(num)) return val;
+  // 对纯数字进行基础格式化
   return Number.isInteger(num) ? num.toString() : num.toFixed(2);
 }
 
-/**
- * 格式化图例标签
- */
 function formatLegendLabel(label) {
   if (!label || typeof label !== 'string') return label;
   
-  if (label.includes('-')) {
+  // 仅对纯数字范围 (如 "10-20") 尝试进一步拆分格式化
+  // 如果包含像 "%" 或已经由 handleRateQuery 格式化的字符串，则直接返回
+  if (label.includes('-') && !label.includes('%') && !/[^\d.\-\s]/.test(label)) {
     const parts = label.split('-');
     if (parts.length === 2) {
       return `${formatValue(parts[0].trim())} - ${formatValue(parts[1].trim())}`;
@@ -60,9 +69,6 @@ function formatLegendLabel(label) {
 </script>
 
 <style>
-/* ==========================================================================
-   VIBE GLOBAL LEGEND SYSTEM - Fused into Component
-   ========================================================================== */
 
 .vibe-legend-container {
   width: 190px;

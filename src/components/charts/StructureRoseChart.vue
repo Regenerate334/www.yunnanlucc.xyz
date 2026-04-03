@@ -1,3 +1,10 @@
+<!--
+  @component StructureRoseChart
+  @description 土地利用结构南丁格尔玫瑰图，以极坐标形式展示各类地类的面积占比与分布平衡
+  @props data (地类数据数组)
+  @emits 无
+  @dependencies ECharts
+-->
 <template>
   <div ref="chartContainer" class="chart-container"></div>
 </template>

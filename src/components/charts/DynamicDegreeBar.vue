@@ -1,3 +1,10 @@
+<!--
+  @component DynamicDegreeBar
+  @description 土地利用动态度柱状图，展示不同地类在特定时间段内的单一动态度指标
+  @props year (年份), data (计算后的指标数据)
+  @emits 无
+  @dependencies ECharts
+-->
 <template>
   <div ref="chartContainer" class="chart-container"></div>
 </template>
@@ -40,19 +47,19 @@ function initChart() {
     tooltip: {
       trigger: 'axis',
       axisPointer: { type: 'shadow' },
-      backgroundColor: 'rgba(15, 23, 42, 0.9)',
-      borderColor: '#3b82f6',
+      backgroundColor: 'rgba(4, 21, 51, 0.9)',
+      borderColor: '#00f5ff',
       textStyle: { color: '#fff' },
       formatter: (params) => {
         const item = params[0];
-        return `${item.name}: ${Number(item.value).toFixed(2)}%`;
+        return `${item.name}: <span style="color:#00f5ff; font-family:'DIN Alternate', monospace; font-size:14px; font-weight:bold;">${Number(item.value).toFixed(2)}%</span>`;
       }
     },
     grid: {
-      top: '2%',
+      top: '5%',
       left: '0%',
-      right: '5%',
-      bottom: '8%',
+      right: '8%',
+      bottom: '5%',
       containLabel: true
     },
     xAxis: {
@@ -63,7 +70,7 @@ function initChart() {
       nameLocation: 'end',
       nameGap: 8,
       nameTextStyle: {
-        color: '#a5ccff',
+        color: '#64748b',
         fontSize: 11,
         align: 'right',
         verticalAlign: 'top',
@@ -71,26 +78,27 @@ function initChart() {
       },
       splitLine: {
         show: true,
-        lineStyle: { color: 'rgba(255, 255, 255, 0.05)' }
+        lineStyle: { color: 'rgba(0, 245, 255, 0.1)', type: 'dashed' }
       },
+      axisTick: { show: false },
       axisLabel: {
-        color: '#94a3b8',
-        fontSize: 11,
+        color: '#64748b',
+        fontFamily: 'DIN Alternate, monospace',
+        fontSize: 10,
         hideOverlap: true,
         margin: 10
       },
       axisLine: {
-        show: true,
-        lineStyle: { color: 'rgba(255, 255, 255, 0.2)' }
+        show: false
       }
     },
     yAxis: {
       type: 'category',
+      axisTick: { show: false },
       data: [],
       axisLabel: {
-        color: '#e2e8f0',
+        color: '#a5ccff',
         fontSize: 12,
-        fontWeight: 'bold',
         interval: 0,
         formatter: (value) => {
           const core = value.replace(/(族|自治州|地区|市|自治县)$/g, '')
@@ -100,7 +108,7 @@ function initChart() {
       },
       axisLine: {
         show: true,
-        lineStyle: { color: 'rgba(255, 255, 255, 0.2)' }
+        lineStyle: { color: 'rgba(0, 245, 255, 0.2)' }
       },
       inverse: true
     },
@@ -109,19 +117,23 @@ function initChart() {
         name: '动态度',
         type: 'bar',
         data: [],
-        barWidth: '60%',
+        barWidth: 8,
         itemStyle: {
           color: new echarts.graphic.LinearGradient(0, 0, 1, 0, [
-            { offset: 0, color: '#3b82f6' },
-            { offset: 1, color: '#2dd4bf' }
+            { offset: 0, color: 'rgba(0,0,0,0)' },
+            { offset: 1, color: '#00f5ff' }
           ]),
-          borderRadius: [0, 4, 4, 0]
+          borderRadius: [0, 4, 4, 0],
+          shadowColor: '#00f5ff',
+          shadowBlur: 10
         },
         label: {
           show: true,
           position: 'right',
-          color: '#06b6d4',
-          fontWeight: 'bold',
+          color: '#ffffff',
+          textBorderColor: 'rgba(0,0,0,0.8)',
+          textBorderWidth: 2,
+          fontFamily: 'DIN Alternate, monospace',
           fontSize: 12,
           formatter: (params) => {
             return `${Number(params.value).toFixed(2)}%`;
@@ -131,9 +143,10 @@ function initChart() {
         emphasis: {
           itemStyle: {
             color: new echarts.graphic.LinearGradient(0, 0, 1, 0, [
-              { offset: 0, color: '#60a5fa' },
-              { offset: 1, color: '#5eead4' }
-            ])
+              { offset: 0, color: 'rgba(0,0,0,0)' },
+              { offset: 1, color: '#00ff7f' }
+            ]),
+            shadowColor: '#00ff7f'
           }
         },
         animationDuration: 1000,

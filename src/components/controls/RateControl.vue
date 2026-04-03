@@ -1,47 +1,34 @@
+<!-- RateControl: 垦殖与转换率分析的入口组件，负责弹出对应的分析面板 -->
+<!--
+  @component RateControl
+  @description 综合变化率分析控制面板，整合了复垦率与未利用地率的交互逻辑
+  @props 无
+  @emits close (关闭面板)
+  @dependencies LandRateControl, useGlobalStore
+-->
 <template>
     <div class="rate-control">
         <!-- 侧边栏入口按钮 -->
-        <button @click="openModal" class="control-btn" :class="{ active: isVisible }" title="垦殖与转换率分析">
-            <svg width="28" height="28" viewBox="0 0 100 100" fill="none">
-                <!-- 拼图式背景饼图，体现“统一图表风格” -->
-                <circle cx="50" cy="50" r="45" fill="rgba(255,255,255,0.05)" stroke="rgba(255,255,255,0.1)" stroke-width="1"/>
-                
-                <!-- 扇形1: 耕地颜色 -->
-                <path d="M50 50 L50 5 A45 45 0 0 1 95 50 Z" fill="#FAE39C" opacity="0.9"/>
-                <!-- 扇形2: 林地颜色 -->
-                <path d="M50 50 L95 50 A45 45 0 0 1 50 95 Z" fill="#446F33" opacity="0.9"/>
-                <!-- 扇形3: 水域颜色 -->
-                <path d="M50 50 L50 95 A45 45 0 0 1 5 50 Z" fill="#1E69B4" opacity="0.9"/>
-                <!-- 扇形4: 建设用地颜色 -->
-                <path d="M50 50 L5 50 A45 45 0 0 1 50 5 Z" fill="#E24290" opacity="0.9"/>
-
-                <!-- 中心孔洞，形成环状/现代感 -->
-                <circle cx="50" cy="50" r="18" fill="currentColor"/>
-                
-                <!-- 覆盖一个象征“率”的增长折线 -->
-                <polyline points="35,65 45,55 55,60 70,45" 
-                    stroke="white" stroke-width="6" stroke-linecap="round" stroke-linejoin="round" fill="none"
-                    style="filter: drop-shadow(0 2px 4px rgba(0,0,0,0.5))" />
-            </svg>
+        <button @click="toggleModal" class="control-btn" :class="{ active: isVisible }" title="垦殖与转换率分析">
+            <img :src="rateIcon" class="rate-icon" alt="图标" />
             <span class="btn-label">垦殖转换</span>
         </button>
 
-        <Teleport to="body">
-            <transition name="slide-fade">
-                <LandRateControl
-                    ref="innerControlRef"
-                    v-if="isVisible"
-                    @close="closeModal"
-                    @rate-query="$emit('rate-query', $event)"
-                    @reset="$emit('reset-map')"
-                />
-            </transition>
-        </Teleport>
+        <transition name="bubble-pop">
+            <LandRateControl
+                ref="innerControlRef"
+                v-if="isVisible"
+                @close="closeModal"
+                @rate-query="$emit('rate-query', $event)"
+                @reset="$emit('reset-map')"
+            />
+        </transition>
     </div>
 </template>
 
 <script setup>
 import { ref, computed } from 'vue';
+import rateIcon from '@/assets/icons/business/land-rate.png';
 import LandRateControl from './LandRateControl.vue';
 import { useGlobalStore } from '../../stores/global';
 
@@ -52,8 +39,12 @@ const emit = defineEmits(['rate-query', 'reset-map']);
 const isVisible = computed(() => globalStore.activePanel === panelName);
 const innerControlRef = ref(null);
 
-function openModal() {
-    globalStore.setActivePanel(panelName);
+function toggleModal() {
+    if (globalStore.activePanel === panelName) {
+        globalStore.setActivePanel(null);
+    } else {
+        globalStore.setActivePanel(panelName);
+    }
 }
 
 function closeModal() {
@@ -72,11 +63,10 @@ defineExpose({ setLoading, setError });
 </script>
 
 <style scoped>
-.rate-control {
-    position: relative;
-}
+/* 根容器不再需要 position: relative，以便子面板相对于主工具栏容器对齐 */
 
 .control-btn {
+    position: relative;
     width: 64px;
     height: 64px;
     border-radius: 14px;
@@ -92,6 +82,7 @@ defineExpose({ setLoading, setError });
     box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
     flex-direction: column;
     gap: 2px;
+    pointer-events: auto;
 }
 
 .control-btn.active {
@@ -109,30 +100,35 @@ defineExpose({ setLoading, setError });
     box-shadow: 0 6px 16px rgba(0, 0, 0, 0.3);
 }
 
-.control-btn:hover svg {
-    transform: scale(1.1);
+.control-btn .rate-icon {
+    width: 28px;
+    height: 28px;
+    transition: transform 0.3s ease;
+    pointer-events: none;
+    filter: brightness(0) invert(1); /* 保持白色图标风格 */
 }
 
-.control-btn svg {
-    transition: transform 0.3s ease;
+.control-btn:hover .rate-icon {
+    transform: scale(1.1);
 }
 
 .btn-label {
     font-size: 10px;
     color: rgba(255, 255, 255, 0.9);
     font-weight: 600;
+    pointer-events: none;
 }
 
-/* 入场/离场动画 */
-.slide-fade-enter-active {
-    transition: all 0.4s cubic-bezier(0.34, 1.56, 0.64, 1);
+/* 入场/离场动画修正：从下方弹出并缩放 */
+.bubble-pop-enter-active {
+    transition: all 0.4s cubic-bezier(0.16, 1, 0.3, 1);
 }
-.slide-fade-leave-active {
-    transition: all 0.3s cubic-bezier(0.25, 0.8, 0.25, 1);
+.bubble-pop-leave-active {
+    transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
 }
-.slide-fade-enter-from,
-.slide-fade-leave-to {
-    transform: translateX(-20px);
+.bubble-pop-enter-from,
+.bubble-pop-leave-to {
+    transform: translate(-50%, 20px) scale(0.9);
     opacity: 0;
 }
 </style>

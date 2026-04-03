@@ -1,3 +1,12 @@
+<!--
+  区域检测分析视图 (Regional Analysis View)
+  职责：针对特定行政区域或格网进行高频土地利用变化检测，集成动态分级渲染图例与空间统计信息。
+  
+  修改提示：
+  1. 空间数据通过 WMS 协议从 GeoServer 获取，分级断点由后端 /api/clcd/breaks 动态计算。
+  2. 缓冲区策略（Double Buffering）由 updateLayerVisibility 控制，用于实现图层切换平滑过渡。
+  3. 若需调整初始视角，请修改 initCesium 函数中的 viewer.camera.setView 参数。
+-->
 <template>
   <div class="regional-analysis-page">
     <div id="cesiumContainer" class="map-container"></div>
@@ -80,16 +89,6 @@
     />
 
 
-    <!-- 时间轴控制器 -->
-    <div class="time-player-container" v-if="years.length > 0">
-      <!-- 极简模式播放器 -->
-      <TimePlayer 
-        :years="years"
-        v-model="selectedYear"
-        :interval="2000"
-      />
-    </div>
-
     <!-- 区域信息悬浮提示 -->
     <div v-if="selectedEntity" class="info-tooltip" :style="popupStyle">
       <div class="tooltip-title">{{ selectedEntity.name }}</div>
@@ -107,15 +106,18 @@
   </div>
 </template>
 
+ * @logic 基于 Cesium 实现 WMS 分级渲染，支持县级/格网尺度的土地利用属性时空动态展示。
+ */
 <script setup>
 import { ref, shallowRef, computed, watch, onMounted, onUnmounted } from 'vue';
 import { useRouter } from 'vue-router';
 import * as Cesium from 'cesium';
 import { clcdApi } from '../api/index.js';
-import TimePlayer from '../components/controls/TimePlayer.vue';
 import { useGlobalStore } from '../stores/index.ts';
 import 'cesium/Build/Cesium/Widgets/widgets.css';
 import AnalysisLegend from '../components/ui/AnalysisLegend.vue';
+import { GEOSERVER_CONFIG } from '../config/index.js';
+import { LEGEND_CONFIGS, ATTRIBUTE_LABELS } from '../constants/landuse.js';
 
 const router = useRouter();
 const store = useGlobalStore();
@@ -147,7 +149,7 @@ watch(selectedYear, (newVal) => {
     loadWMSLayer();
 });
 
-// ... rest of imports ...
+
 
 // 底图切换
 const currentBaseMap = ref('imagery');
@@ -162,46 +164,8 @@ const legendBreaks = ref([]);
 const selectedEntity = ref(null);
 const popupStyle = ref({ left: '0px', top: '0px' });
 
-// 各地类的图例配置（颜色 + 分级范围）
-// 10级颜色方案配置 (与 GeoServer SLD 同步)
-const legendConfigs = {
-  cropland: {
-    colors: ['#ffffe5', '#fff7bc', '#fee391', '#fec44f', '#fe9929', '#ec7014', '#cc4c02', '#993404', '#662506', '#401200'], 
-    labels: []
-  },
-  forest: {
-    colors: ['#f7fcf5', '#e5f5e0', '#c7e9c0', '#a1d99b', '#74c476', '#41ab5d', '#238b45', '#006d2c', '#00441b', '#00220e'], 
-    labels: []
-  },
-  shrub: {
-    colors: ['#ffffe5', '#f7fcb9', '#d9f0a3', '#addd8e', '#78c679', '#41ab5d', '#238443', '#006837', '#004529', '#002818'], 
-    labels: []
-  },
-  grassland: {
-    colors: ['#ffffcc', '#e4f4ac', '#ccebc5', '#a8ddb5', '#7bccc4', '#4eb3d3', '#2b8cbe', '#0868ac', '#084081', '#042040'],
-    labels: []
-  },
-  water: {
-    colors: ['#f7fbff', '#deebf7', '#c6dbef', '#9ecae1', '#6baed6', '#4292c6', '#2171b5', '#08519c', '#08306b', '#041836'], 
-    labels: []
-  },
-  wetland: {
-    colors: ['#f7fcf0', '#e0f3db', '#ccebc5', '#a8ddb5', '#7bccc4', '#4eb3d3', '#2b8cbe', '#0868ac', '#084081', '#042040'], 
-    labels: []
-  },
-  impervious: {
-    colors: ['#fff5f0', '#fee0d2', '#fcbba1', '#fc9272', '#fb6a4a', '#ef3b2c', '#cb181d', '#a50f15', '#67000d', '#400008'], 
-    labels: []
-  },
-  barren: {
-    colors: ['#ffffff', '#f0f0f0', '#d9d9d9', '#bdbdbd', '#969696', '#737373', '#525252', '#252525', '#111111', '#000000'],
-    labels: []
-  },
-  snow_ice: {
-    colors: ['#f7fcfd', '#e0ecf4', '#bfd3e6', '#9ebcda', '#8c96c6', '#8c6bb1', '#88419d', '#810f7c', '#4d004b', '#270026'],
-    labels: []
-  }
-};
+// Constants now imported from @/constants/landuse.js
+const legendConfigs = LEGEND_CONFIGS;
 
 // 获取当前属性的颜色列表
 const currentColorScale = computed(() => {
@@ -272,7 +236,7 @@ function cleanupData() {
 // 空间单元变化监听
 watch(spatialUnit, (newUnit, oldUnit) => {
   if (newUnit !== oldUnit) {
-    console.log(`[RegionalAnalysis] Spatial unit changed to ${newUnit}`);
+    // console.log(`[RegionalAnalysis] Spatial unit changed to ${newUnit}`);
     clearWMSCache(); // Clear cache to prevent showing wrong layers
     loadWMSLayer();
   }
@@ -280,14 +244,14 @@ watch(spatialUnit, (newUnit, oldUnit) => {
 
 // 监听年份变化，自动刷新 WMS 图层
 watch(selectedYear, () => {
-  console.log('[RegionalAnalysis] Year changed, updating WMS...');
+  // console.log('[RegionalAnalysis] Year changed, updating WMS...');
   loadWMSLayer(null, false); // null = use selectedYear.value, false = silent update
 });
 
 // 监听分析指标变化，更新 WMS 样式
 // 监听分析指标变化，更新 WMS 样式
 watch(selectedAttribute, () => {
-  console.log('[RegionalAnalysis] Attribute changed, updating WMS style...');
+  // console.log('[RegionalAnalysis] Attribute changed, updating WMS style...');
   clearWMSCache(); // Clear cache to prevent showing wrong layers
   loadWMSLayer();
 });
@@ -315,7 +279,7 @@ async function fetchYears() {
 }
 
 onMounted(async () => {
-  console.log('[RegionalAnalysis] Page mounted, checking token...');
+  // console.log('[RegionalAnalysis] Page mounted, checking token...');
   const token = localStorage.getItem('auth_token');
   if (!token) {
     console.warn('[RegionalAnalysis] No token found during mount, redirecting to login');
@@ -331,7 +295,7 @@ onMounted(async () => {
     await initCesium();
     // 自动触发第一次加载
     if (viewer.value) {
-      console.log('[RegionalAnalysis] Auto-triggering initial WMS load...');
+      // console.log('[RegionalAnalysis] Auto-triggering initial WMS load...');
       // 使用纯 WMS 渲染模式，最省内存
       loadWMSLayer();
     }
@@ -339,7 +303,7 @@ onMounted(async () => {
 });
 
 async function initCesium() {
-  console.log('[RegionalAnalysis] Initializing Cesium...');
+  // console.log('[RegionalAnalysis] Initializing Cesium...');
   try {
     const cesiumContainer = document.getElementById('cesiumContainer');
     if (!cesiumContainer) {
@@ -479,7 +443,7 @@ async function initCesium() {
       
     }, Cesium.ScreenSpaceEventType.MOUSE_MOVE);
     
-    console.log('[RegionalAnalysis] Cesium initialized successfully');
+    // console.log('[RegionalAnalysis] Cesium initialized successfully');
 
   } catch (e) {
     console.error('[RegionalAnalysis] Cesium init error:', e);
@@ -494,7 +458,7 @@ function loadBaseMap(mapType) {
     baseMapLayer.value = null;
   }
 
-  const token = 'ab70e90828db5b27aa040f2cb879c7f1';
+  const token = import.meta.env.VITE_TIANDITU_TOKEN;
   
   // 底图配置
   const baseMapConfigs = {
@@ -507,7 +471,7 @@ function loadBaseMap(mapType) {
 
   try {
     // 加载底图图层
-    const baseUrl = `http://t0.tianditu.gov.cn/${config.layer}_w/wmts?service=wmts&request=GetTile&version=1.0.0&LAYER=${config.layer}&tileMatrixSet=w&TileMatrix={TileMatrix}&TileRow={TileRow}&TileCol={TileCol}&style=default&format=tiles&tk=${token}`;
+    const baseUrl = `https://t0.tianditu.gov.cn/${config.layer}_w/wmts?service=wmts&request=GetTile&version=1.0.0&LAYER=${config.layer}&tileMatrixSet=w&TileMatrix={TileMatrix}&TileRow={TileRow}&TileCol={TileCol}&style=default&format=tiles&tk=${token}`;
     
     const imageryProvider = new Cesium.WebMapTileServiceImageryProvider({
       url: baseUrl,
@@ -521,7 +485,7 @@ function loadBaseMap(mapType) {
     
     // 更新当前底图类型
     currentBaseMap.value = mapType;
-    console.log(`[RegionalAnalysis] Base map changed to: ${config.name}`);
+    // console.log(`[RegionalAnalysis] Base map changed to: ${config.name}`);
   } catch (e) {
     console.error('Failed to load base map:', e);
   }
@@ -530,7 +494,7 @@ function loadBaseMap(mapType) {
 async function loadYunnanBoundary() {
   if (!viewer.value) return;
   try {
-    const dataSource = await Cesium.GeoJsonDataSource.load('/data/yunnan_boundary.geo.json', {
+    const dataSource = await Cesium.GeoJsonDataSource.load('/data/yunnan_province_only.geojson', {
       stroke: Cesium.Color.fromCssColorString('#00E5FF'),
       fill: Cesium.Color.TRANSPARENT,
       strokeWidth: 10,
@@ -631,7 +595,7 @@ async function loadWMSLayer(targetYear = null, visible = true) {
     const method = spatialUnit.value === 'grid' ? 'quantile' : 'jenks';
     const numClasses = 10;
     
-    console.log(`[RegionalAnalysis] Requesting breaks: unit=${spatialUnit.value}, method=${method}, classes=${numClasses}`);
+    // console.log(`[RegionalAnalysis] Requesting breaks: unit=${spatialUnit.value}, method=${method}, classes=${numClasses}`);
     
     // 直接使用 fetch 避免 api/index.js 可能存在的参数传递问题
     const token = localStorage.getItem('auth_token');
@@ -655,7 +619,7 @@ async function loadWMSLayer(targetYear = null, visible = true) {
     const dynamicAttr = breaksData.field;
     currentStatsField.value = dynamicAttr;
     
-    console.log('[RegionalAnalysis] Breaks Response:', breaksData);
+    // console.log('[RegionalAnalysis] Breaks Response:', breaksData);
     
     // 异常检测：如果格网模式下出现巨大数值，显示警告
     if (spatialUnit.value === 'grid' && breaks[breaks.length-1] > 200) {
@@ -667,7 +631,7 @@ async function loadWMSLayer(targetYear = null, visible = true) {
         breaks.push(breaks[breaks.length - 1]);
     }
     
-    console.log(`[RegionalAnalysis] Loaded breaks for field: ${dynamicAttr}, classes: ${numClasses}`);
+    // console.log(`[RegionalAnalysis] Loaded breaks for field: ${dynamicAttr}, classes: ${numClasses}`);
     
     // 更新图例标签
     const labels = [];
@@ -694,7 +658,7 @@ async function loadWMSLayer(targetYear = null, visible = true) {
     }
     
     const styleName = `${selectedAttribute.value}_dynamic`;
-    console.log(`[RegionalAnalysis] Loading WMS: ${layerName}, style=${styleName}, env=${envParams}`);
+    // console.log(`[RegionalAnalysis] Loading WMS: ${layerName}, style=${styleName}, env=${envParams}`);
   
     const wmsParameters = {
           service: 'WMS',
@@ -708,7 +672,7 @@ async function loadWMSLayer(targetYear = null, visible = true) {
     };
 
     const wmsProvider = new Cesium.WebMapServiceImageryProvider({
-      url: 'http://localhost:8080/geoserver/WebGIS/wms',
+      url: GEOSERVER_CONFIG.wmsUrl,
       layers: layerName,
       enablePickFeatures: true,
       parameters: wmsParameters
@@ -809,7 +773,7 @@ function getAttributeLabel(key) {
 }
 
 onUnmounted(() => {
-  console.log('[RegionalAnalysis] Component unmounting, starting cleanup...');
+  // console.log('[RegionalAnalysis] Component unmounting, starting cleanup...');
   
   // 1. 清理数据源
   cleanupData();
@@ -853,7 +817,7 @@ onUnmounted(() => {
     viewer.value = null;
   }
   
-  console.log('[RegionalAnalysis] Cleanup complete');
+  // console.log('[RegionalAnalysis] Cleanup complete');
 });
 </script>
 

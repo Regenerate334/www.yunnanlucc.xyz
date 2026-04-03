@@ -1,6 +1,7 @@
 import { defineStore } from 'pinia';
 import { ref } from 'vue';
 import { authApi } from '../api/index.js';
+import { encrypt } from '../utils/crypto.js';
 
 export const useAuthStore = defineStore('auth', () => {
     // State
@@ -12,7 +13,9 @@ export const useAuthStore = defineStore('auth', () => {
     // Actions
     async function login(username: string, password: string) {
         try {
-            const res = await authApi.login(username, password);
+            // [Security] 强制对传输过程中的密码进行 RSA 公钥加密，对齐后端解密规范
+            const encryptedPassword = await encrypt(password);
+            const res = await authApi.login(username, encryptedPassword);
             if (res.success) {
                 setSession(res.token, res.user);
                 return true;
@@ -23,9 +26,6 @@ export const useAuthStore = defineStore('auth', () => {
         }
     }
 
-    async function register(username: string, password: string) {
-        return await authApi.register(username, password);
-    }
 
     function logout() {
         token.value = '';
@@ -74,7 +74,6 @@ export const useAuthStore = defineStore('auth', () => {
         user,
         isAuthenticated,
         login,
-        register,
         logout,
         checkAuth
     };

@@ -1,3 +1,10 @@
+<!--
+  @component AlertList
+  @description 监测预警动态列表，基于地类动态度模型自动识别耕地流失、建设扩张等预警事件
+  @props year (当前年份), data (可选的外部预警数据)
+  @emits 无
+  @dependencies clcdApi (数据接口), indices (动态度计算工具)
+-->
 <template>
   <div class="alert-list-container">
     <div class="alert-header">
@@ -134,9 +141,7 @@ watch(() => props.year, () => {
 });
 
 watch(() => props.data, (newData) => {
-  if (newData) {
-    generateAlerts();
-  }
+  if (newData) generateAlerts();
 }, { immediate: true });
 </script>
 

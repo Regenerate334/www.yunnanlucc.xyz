@@ -34,7 +34,7 @@ export async function analyzeData({ question, year, landData, context }) {
             answer: data.answer || '分析失败，请稍后重试。'
         };
     } catch (error) {
-        console.error('[AI Service] 请求失败:', error);
+        // console.error('[AI Service] 请求失败:', error);
         return {
             success: false,
             answer: '网络错误，请检查连接后重试。'
@@ -113,7 +113,7 @@ export async function analyzeDataStream({ messages, year, landData, componentCon
                         onError?.(data.error);
                     }
                 } catch (e) {
-                    console.error('[AI Service] 解析 SSE 行失败:', e.message, 'Line:', line);
+                    // console.error('[AI Service] 解析 SSE 行失败:', e.message, 'Line:', line);
                 }
             }
         }
@@ -130,10 +130,10 @@ export async function analyzeDataStream({ messages, year, landData, componentCon
         onDone?.();
     } catch (error) {
         if (error.name === 'AbortError') {
-            console.log('[AI Service] 请求被用户中止');
+            // console.log('[AI Service] 请求被用户中止');
             return;
         }
-        console.error('[AI Service] 流式请求失败:', error);
+        // console.error('[AI Service] 流式请求失败:', error);
         onError?.(error.message || '网络错误');
     }
 }

@@ -4,16 +4,20 @@ import { useAuthStore } from '../stores/auth';
 import Portal from '../views/Portal.vue';
 import Login from '../views/Login.vue';
 import Workbench from '../views/Workbench.vue';
-import Analysis from '../views/Analysis.vue';
 import RegionalAnalysis from '../views/RegionalAnalysis.vue';
+import Admin from '../views/Admin.vue';
 
 const routes = [
 	{ path: '/', redirect: '/portal' },
 	{ path: '/portal', component: Portal },
 	{ path: '/login', component: Login },
 	{ path: '/workbench', component: Workbench },
-	{ path: '/analysis', component: Analysis },
 	{ path: '/regional-analysis', component: RegionalAnalysis },
+	{
+		path: '/admin',
+		component: Admin,
+		meta: { requiredRole: 'super_admin' }
+	},
 	// 为了兼容旧路径，可以添加重定向
 	{ path: '/front', redirect: '/workbench' }
 ];
@@ -48,9 +52,15 @@ router.beforeEach(async (to, from, next) => {
 	} else {
 		// has token but not authorized in store (e.g. page refresh)
 		// verify with backend
-		console.log('[Router] Verifying token with backend...');
+		// console.log('[Router] Verifying token with backend...');
 		const isValid = await authStore.checkAuth();
 		if (isValid) {
+			// Check roles for specific routes
+			if (to.meta.requiredRole && authStore.user?.role !== to.meta.requiredRole) {
+				console.warn(`[Router] Access denied. Role ${to.meta.requiredRole} required.`);
+				next('/workbench');
+				return;
+			}
 			next();
 		} else {
 			console.warn(`[Router] Token invalid. Redirecting to /login`);

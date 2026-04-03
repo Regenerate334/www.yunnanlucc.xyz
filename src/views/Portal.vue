@@ -1,166 +1,197 @@
+<!--
+  系统门户/大屏视图 (Portal View)
+  职责：作为系统入口，展示 3D 地球视觉动效及系统核心功能矩阵，引导用户进入业务工作台。
+  
+  修改提示：
+  1. 3D 地球由 ECharts-GL 驱动，纹理素材位于 @/assets/images/ui/ 目录下。
+  2. 底部功能卡片的文案修改需在模板的“核心内容区”直接编辑。
+  3. 页面已适配自适应缩放，修改布局时请优先使用 Tailwind CSS 类名。
+-->
 <template>
-    <div class="relative flex h-screen w-screen items-center justify-center overflow-hidden">
+    <div class="relative flex h-screen w-screen items-center justify-center overflow-hidden bg-black select-none">
 
-        <!-- 背景层（本地图片） -->
-        <div ref="bgRef"
-            class="absolute inset-0 bg-cover bg-center transition-transform duration-500 ease-in-out group-hover:scale-105 will-change-transform"
-            :style="{ backgroundImage: `url(${bgUrl})`, transform: `scale(${bgScale})`, transformOrigin: 'center center' }">
+        <!-- 3D 地球背景层 (ECharts-GL) -->
+        <div ref="chartRef" class="absolute inset-0 z-0"></div>
+
+        <!-- 背景装饰层：柔光渐变 -->
+        <div class="pointer-events-none absolute inset-0 z-1">
+            <div class="absolute -left-32 -top-32 h-80 w-80 rounded-full bg-blue-500/10 blur-3xl"></div>
+            <div class="absolute -right-24 -bottom-24 h-96 w-96 rounded-full bg-cyan-400/10 blur-3xl"></div>
         </div>
 
-        <!-- 背景装饰层：柔光渐变与网格线（呼应空间网格） -->
-        <div class="pointer-events-none absolute inset-0">
-            <div class="absolute -left-32 -top-32 h-80 w-80 rounded-full bg-blue-500/20 blur-3xl"></div>
-            <div class="absolute -right-24 -bottom-24 h-96 w-96 rounded-full bg-cyan-400/20 blur-3xl"></div>
-            <div class="absolute inset-0"
-                style="background-image: linear-gradient(rgba(255,255,255,0.06) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,0.06) 1px, transparent 1px); background-size: 40px 40px;">
-            </div>
-        </div>
+        <!-- 遮罩效果层：让 3D 地球从中心透出，边缘压暗聚焦 -->
+        <div class="absolute inset-0 z-2 bg-[radial-gradient(circle_at_center,transparent_0%,rgba(0,0,0,0.8)_100%)] pointer-events-none"></div>
 
-        <!-- 遮罩效果层 -->
-        <div class="absolute inset-0 bg-gradient-to-t from-gray-900/80 via-gray-900/50 to-transparent"></div>
-
-        <!-- 文字标题内容层 -->
-        <div class="relative z-10 flex flex-col items-center text-center text-white px-4">
-            <!-- 理论定位徽章 -->
-            <div class="mb-5 flex flex-wrap items-center justify-center gap-2 text-xs md:text-sm">
-                <span class="rounded-full bg-white/10 px-5 py-1 backdrop-blur-sm">理论导向</span>
-                <span class="rounded-full bg-white/10 px-5 py-1 backdrop-blur-sm">指标体系与方法论</span>
-                <span class="rounded-full bg-white/10 px-5 py-1 backdrop-blur-sm">规划决策支持</span>
+        <!-- [PRO MAX] 核心内容区 (整体下移) -->
+        <div class="relative z-10 flex h-full flex-col items-center justify-start text-center text-white px-4 pt-44 md:pt-56">
+            
+            <!-- 极简抬头：更新英文全称 -->
+            <div class="mb-6 flex items-center space-x-3 text-xs md:text-sm tracking-[0.2em] font-light text-white/40 uppercase">
+                <span class="h-[1px] w-8 bg-gradient-to-r from-transparent to-blue-500/50"></span>
+                <span>Yunnan Province Land Use Change Early Warning and Assessment System</span>
+                <span class="h-[1px] w-8 bg-gradient-to-l from-transparent to-blue-500/50"></span>
             </div>
-            <h1 class="mb-3 text-5xl font-bold tracking-wider text-shadow-md md:text-7xl">
-                云南国土空间规划监测预警平台
+            
+            <!-- 艺术化主标题：静态显示，无动画 -->
+            <h1 class="mb-6 text-5xl font-extralight md:text-8xl leading-[1.3] text-white">
+                <span class="inline-block tracking-[0.2em] transform hover:scale-[1.02] drop-shadow-[0_0_15px_rgba(255,255,255,0.15)]">
+                    云南省土地利用变化
+                </span><br/>
+                <span class="font-bold tracking-[0.05em] text-transparent bg-clip-text bg-gradient-to-r from-blue-400 via-cyan-300 to-blue-500 drop-shadow-[0_10px_30px_rgba(59,130,246,0.4)]">
+                    监测预警评估系统
+                </span>
             </h1>
 
-            <p class="mb-10 max-w-3xl text-lg text-gray-200 text-shadow-md md:text-2xl">
-                数据驱动决策，科技守护未来
+            <!-- Slogan：缩减底部间距 -->
+            <p class="mb-1 max-w-[60rem] text-lg md:text-2xl font-extralight tracking-[0.4em] text-cyan-50/60 drop-shadow-lg leading-relaxed">
+                融合时空智能与动态可视，以数据穿透驱动精准治理
             </p>
 
-            <!-- 主操作按钮区 -->
-            <div class="mb-10 flex flex-wrap items-center justify-center gap-4">
-                <button @click="enterPlatform" @keyup.enter="enterPlatform" aria-label="进入平台"
-                    class="group relative inline-flex items-center justify-center overflow-hidden rounded-full bg-blue-600 px-10 py-4 text-lg font-semibold text-white shadow-lg transition-all duration-300 ease-in-out hover:bg-blue-700 focus:outline-none focus:ring-4 focus:ring-blue-500/50">
-                    <span
-                        class="absolute -inset-full top-0 block -translate-x-full transform bg-gradient-to-r from-transparent via-white/30 to-transparent transition-transform duration-500 ease-in-out group-hover:translate-x-full"></span>
-                    进入平台
-                </button>
-                <a href="https://github.com/Regenerate334/my_webgis_project" target="_blank" rel="noreferrer"
-                    class="inline-flex items-center justify-center rounded-full border border-white/40 bg-white/10 px-8 py-4 text-lg font-medium text-white backdrop-blur-sm transition-colors hover:bg-white/20 focus:outline-none focus:ring-4 focus:ring-white/30">
-                    了解详情
-                </a>
-            </div>
+            <!-- 移除中心操作矩阵，改为底部并列架构 -->
+            
+            <!-- [PRO MAX] 核心入口与观测阵列 (根据反馈下移位置) -->
+            <div class="absolute bottom-28 left-0 right-0 px-8 flex flex-col items-center">
+                
+                <!-- 01: 登录按钮 (缩减下间距，紧凑布局) -->
+                <div class="mb-12">
+                    <button @click="enterPlatform" 
+                        class="group relative flex h-14 w-64 items-center justify-center overflow-hidden rounded-full border border-blue-400/40 bg-blue-600/20 backdrop-blur-3xl hover:bg-blue-600/40 hover:shadow-[0_0_30px_rgba(59,130,246,0.3)]">
+                        <span class="text-xl font-bold tracking-[0.4em] text-white">登录系统</span>
+                    </button>
+                </div>
 
-            <!-- 理论亮点：指标体系 / 预警方法 / 情景评估 -->
-            <div class="mb-10 grid w-full max-w-4xl grid-cols-1 gap-4 px-2 md:grid-cols-3">
-                <div
-                    class="rounded-xl border border-white/10 bg-white/5 p-4 text-center shadow-sm backdrop-blur-md flex flex-col items-center">
-                    <div class="mb-2 flex items-center gap-2 text-cyan-300">
-                        <span class="font-semibold ">监测评估指标体系</span>
+                <!-- 02: 5个精品功能标题 (增强明度与间距) -->
+                <div class="w-[95vw] flex flex-wrap justify-between items-end gap-16">
+                    
+                    <!-- 1. 长序动态感知 -->
+                    <div class="relative flex w-72 flex-col items-center justify-center">
+                        <h3 class="text-xl font-bold tracking-[0.1em] text-transparent bg-clip-text bg-gradient-to-r from-blue-400 via-cyan-300 to-blue-500 drop-shadow-[0_4px_12px_rgba(59,130,246,0.5)] cursor-default">长序动态感知</h3>
+                        <p class="mt-3 text-sm leading-relaxed tracking-wide text-white/80 text-center">
+                            穿透 35 年时序演进脉络，高频感知全域地类动态变化，构建时空连续的土地利用演化知识图谱。
+                        </p>
                     </div>
-                    <p class="text-sm text-gray-200/90">分层分域建模，量化空间绩效</p>
-                </div>
-                <div
-                    class="rounded-xl border border-white/10 bg-white/5 p-4 text-center shadow-sm backdrop-blur-md flex flex-col items-center">
-                    <div class="mb-2 flex items-center gap-2 text-emerald-300">
-                        <span class="font-semibold">预警触发与阈值机制</span>
+
+                    <!-- 2. 多维格网解构 -->
+                    <div class="relative flex w-72 flex-col items-center justify-center">
+                        <h3 class="text-xl font-bold tracking-[0.1em] text-transparent bg-clip-text bg-gradient-to-r from-blue-400 via-cyan-300 to-blue-500 drop-shadow-[0_4px_12px_rgba(59,130,246,0.5)] cursor-default">多维格网解构</h3>
+                        <p class="mt-3 text-sm leading-relaxed tracking-wide text-white/80 text-center">
+                            贯通省-市-县级维度，解构地类构成的空间异质性，实现精细化格网单元下的多尺度空间关联建模。
+                        </p>
                     </div>
-                    <p class="text-sm text-gray-200/90">洞悉潜在风险，触发精准预警。</p>
-                </div>
-                <div
-                    class="rounded-xl border border-white/10 bg-white/5 p-4 text-left shadow-sm backdrop-blur-md flex flex-col items-center">
-                    <div class="mb-2 flex items-center gap-2 text-amber-300">
-                        <span class="font-semibold">情景模拟与评估方法</span>
+
+                    <!-- 3. 大模型语义解析 -->
+                    <div class="relative flex w-72 flex-col items-center justify-center">
+                        <h3 class="text-xl font-bold tracking-[0.1em] text-transparent bg-clip-text bg-gradient-to-r from-blue-400 via-cyan-300 to-blue-500 drop-shadow-[0_4px_12px_rgba(59,130,246,0.5)] cursor-default">大模型语义解析</h3>
+                        <p class="mt-3 text-sm leading-relaxed tracking-wide text-white/80 text-center">
+                            融合 LLM 语义识别与行业知识库，驱动海量非结构化数据向智慧决策的敏捷转化与深度知识提取。
+                        </p>
                     </div>
-                    <p class="text-sm text-gray-200/90">推演多重情景，赋能科学决策</p>
+
+                    <!-- 4. 全景专题制图 -->
+                    <div class="relative flex w-72 flex-col items-center justify-center">
+                        <h3 class="text-xl font-bold tracking-[0.1em] text-transparent bg-clip-text bg-gradient-to-r from-blue-400 via-cyan-300 to-blue-500 drop-shadow-[0_4px_12px_rgba(59,130,246,0.5)] cursor-default">全景专题制图</h3>
+                        <p class="mt-3 text-sm leading-relaxed tracking-wide text-white/80 text-center">
+                            敏捷生成多因子耦合专题图件，直观勾勒土地资源要素全案画像，支撑高精度空间可视化。
+                        </p>
+                    </div>
+
+                    <!-- 5. 精准预警评估 -->
+                    <div class="relative flex w-72 flex-col items-center justify-center">
+                        <h3 class="text-xl font-bold tracking-[0.1em] text-transparent bg-clip-text bg-gradient-to-r from-blue-400 via-cyan-300 to-blue-500 drop-shadow-[0_4px_12px_rgba(59,130,246,0.5)] cursor-default">精准预警评估</h3>
+                        <p class="mt-3 text-sm leading-relaxed tracking-wide text-white/80 text-center">
+                            动态识别红线底线风险，自动生成分级预警报告，为国土空间规划与生态保护提供决策支撑。
+                        </p>
+                    </div>
+
+
+
+
                 </div>
             </div>
-
-            <!-- 统计卡片：理论对象/方法/产出 -->
-            <div class="mb-6 grid w-full max-w-5xl grid-cols-3 gap-3 text-center">
-                <div class="rounded-lg bg-white/10 p-3 backdrop-blur-sm">
-                    <div class="text-2xl font-bold">实施对象</div>
-                    <div class="text-1xl text-white/80">聚焦三区三线，守护生态格局</div>
-                </div>
-                <div class="rounded-lg bg-white/10 p-3 backdrop-blur-sm">
-                    <div class="text-2xl font-bold">方法模型</div>
-                    <div class="text-1xl text-white/80">AI驱动引擎，智慧报告图谱</div>
-                </div>
-                <div class="rounded-lg bg-white/10 p-3 backdrop-blur-sm">
-                    <div class="text-2xl font-bold">结果分析</div>
-                    <div class="text-1xl text-white/80">预期产出（方案/论文/报告）</div>
-                </div>
-            </div>
-
-            <small class="text-white/70">按 Enter 键可快速进入</small>
-
-            <footer class="absolute -bottom-40 text-center text-md text-gray-400">
-                <p>© 2025 彭派 | 云南国土空间规划监测预警平台</p>
-            </footer>
         </div>
+
+        <footer class="absolute bottom-10 w-full text-center text-xs tracking-widest text-white/60 z-10 transition-opacity hover:opacity-100">
+            <p>© 昆明理工大学国土资源工程学院 彭派GIS课题组</p>
+        </footer>
     </div>
 </template>
 
 <script setup>
 import { ref, onMounted, onBeforeUnmount } from 'vue';
 import { useRouter } from 'vue-router';
-import portalBg from '../assets/images/portal_bg.png';
+import * as echarts from 'echarts';
+import 'echarts-gl';
+
+// 导入本地素材
+import earthTexture from '@/assets/images/ui/earth.jpg';
+import starfieldTexture from '@/assets/images/ui/starfield.jpg';
 
 const router = useRouter();
-const bgScale = ref(1);
+const chartRef = ref(null);
+let myChart = null;
 
-// 使用背景图片
-const bgUrl = portalBg;
+function initChart() {
+    if (!chartRef.value) return;
+    
+    myChart = echarts.init(chartRef.value);
+    
+    const option = {
+        backgroundColor: '#000',
+        globe: {
+            // 使用导入的本地资源
+            baseTexture: earthTexture,
+            shading: 'color', // 改为 color 模式，消除阴影面，保持全球明亮
+            environment: starfieldTexture,
+            atmosphere: {
+                show: true,
+                offset: 5,
+                color: '#88aaff',
+                intensity: 0.8
+            },
+            viewControl: {
+                autoRotate: true,
+                autoRotateSpeed: 3, // 调慢旋转速度，更具稳重感
+                autoRotateAfterStill: 15,
+                distance: 180, // 拉近距离，让地球更大更清晰
+                damping: 0.8
+            }
+        },
+        series: []
+    };
+
+    myChart.setOption(option);
+}
+
+function handleResize() {
+    myChart?.resize();
+}
 
 function enterPlatform() {
     router.push('/login');
 }
 
-function updateBgScale() {
-    const vv = window.visualViewport;
-    if (vv && typeof vv.scale === 'number') {
-        bgScale.value = vv.scale || 1;
-        return;
-    }
-    const dpr = window.devicePixelRatio || 1;
-    bgScale.value = dpr;
-}
-
-function handleDprChange() {
-    updateBgScale();
-}
-
 onMounted(() => {
-    updateBgScale();
-    if (window.matchMedia) {
-        try {
-            const mediaQueries = [
-                '(resolution: 96dpi)',
-                '(resolution: 120dpi)',
-                '(resolution: 144dpi)',
-                '(resolution: 192dpi)'
-            ];
-            mediaQueries.forEach(q => {
-                const mq = window.matchMedia(q);
-                mq.addEventListener?.('change', handleDprChange);
-            });
-        } catch (e) {
-            window.addEventListener('resize', handleDprChange);
-        }
-    } else {
-        window.addEventListener('resize', handleDprChange);
-    }
+    initChart();
+    window.addEventListener('resize', handleResize);
+    window.addEventListener('keydown', (e) => {
+        if (e.key === 'Enter') enterPlatform();
+    });
 });
 
 onBeforeUnmount(() => {
-    window.removeEventListener('resize', handleDprChange);
+    window.removeEventListener('resize', handleResize);
+    if (myChart) {
+        myChart.dispose();
+    }
 });
 </script>
 
 <style scoped>
-.text-shadow {
-    text-shadow: 0 2px 4px rgba(0, 0, 0, 0.5);
-}
+/* 极简无动画模式 */
 
-.text-shadow-md {
-    text-shadow: 0 4px 8px rgba(0, 0, 0, 0.6);
+@keyframes slideUp {
+    from { opacity: 0; transform: translateY(50px); }
+    to { opacity: 1; transform: translateY(0); }
 }
+/* 保持背景与文字交互的层次感 */
 </style>
