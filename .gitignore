@@ -23,54 +23,80 @@ dist-ssr/
 .env.*
 !.env.example
 server/.env
+server/.env.*
 
 # Logs
-logs
+logs/
 server/logs/
 *.log
 npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
 pnpm-debug.log*
+pm2.log
+
+# Security / Keys
+server/config/keys/
+auth_private.pem
+auth_public.pem
 
 # Testing
 coverage/
 __snapshots__/
 
-# IDE / Editor
+# IDE / Editor (Exclude personal settings, keep shared)
 .vscode/*
 !.vscode/extensions.json
 !.vscode/settings.json
 !.vscode/launch.json
 .idea/
+.history/
 *.suo
 *.ntvs*
 *.njsproj
 *.sln
 *.sw?
-.history/
 .project
 .settings/
 .classpath
 
-# OS
+# OS / System
 .DS_Store
 Thumbs.db
 desktop.ini
 Icon?
 ehthumbs.db
+$RECYCLE.BIN/
+.eslintcache
+.stylelintcache
 
 # Database
 *.db
 *.sqlite
+*.sqlite3
+*.sql
+*.dump
+dump.rdb
 
-# GIS Data (Optional: ignore large data files if they are not meant for version control)
-# src/assets/data/*.json
-# public/data/*.zip
-# *.shp
-# *.dbf
-# *.shx
-# *.prj
+# GIS Data & Large Assets
+# Exclude large datasets and raw GIS formats that shouldn't be in Git
+src/assets/data/*.json
+public/data/*.json
+public/data/*.zip
+*.shp
+*.dbf
+*.shx
+*.prj
+*.tif
+*.tiff
+*.geotiff
+*.osm
+*.pbf
+*.mbtiles
+*.gpx
+*.kml
+*.kmz
 
 # AI Agent
 .agent/cache/
+tmp/

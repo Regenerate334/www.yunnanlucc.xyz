@@ -4,14 +4,17 @@
   "version": "1.0.0",
   "type": "module",
   "scripts": {
-    "dev": "concurrently -k -n \"OLLAMA,SERVER,CLIENT\" -c \"magenta,green,blue\" \"node ./scripts/dev/start-ollama.js\" \"npm run server\" \"npm run client\"",
+    "dev": "concurrently -n \"SERVER,CLIENT\" -c \"green,blue\" \"npm run server\" \"npm run client\"",
+    "start:all": "pm2 start ecosystem.config.cjs",
+    "restart:all": "pm2 restart ecosystem.config.cjs",
+    "stop:all": "pm2 delete ollama nginx tunnel postgres geoserver ai-service",
+    "status": "pm2 status",
     "client": "vite",
-    "server": "node ./server/start.js",
-    "stop": "taskkill /F /IM node.exe",
+    "server": "node ./server/index.js",
     "build": "vite build",
-    "preview": "vite preview",
-    "sync:rate-layers": "node ./scripts/data/sync_rate_layers.js",
-    "ai:off": "node ./scripts/dev/ai-off.js"
+    "init:db": "node ./ops/data/initDb.js",
+    "sync:rate-layers": "node ./ops/data/sync_rate_layers.js",
+    "sync:sld": "node ./ops/geo/sync_all_slds.js"
   },
   "dependencies": {
     "@turf/bbox": "^7.3.4",
@@ -23,8 +26,11 @@
     "cors": "^2.8.5",
     "dotenv": "^16.4.5",
     "echarts": "^5.5.0",
+    "echarts-gl": "^2.0.9",
     "express": "^4.19.2",
+    "express-rate-limit": "^8.3.2",
     "express-validator": "^7.3.1",
+    "helmet": "^8.1.0",
     "highlight.js": "^11.11.1",
     "jsonwebtoken": "^9.0.3",
     "katex": "^0.16.27",
@@ -47,6 +53,7 @@
     "concurrently": "^8.2.2",
     "postcss": "^8.5.6",
     "tailwindcss": "^4.1.13",
-    "vite": "^6.3.5"
+    "vite": "^6.3.5",
+    "vite-plugin-compression": "^0.5.1"
   }
 }

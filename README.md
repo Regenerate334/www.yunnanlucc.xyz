@@ -91,7 +91,13 @@ graph TB
 ## 📁 项目结构详解
 
 ```
-my_webgis_project/
+├── ops/                             # 运维与核心管理 (Operations & Maintenance)
+│   ├── data/                        # 数据运维 (CLCD, 数据湖同步, 恢复)
+│   ├── geo/                         # 地理服务运维 (SLD 样式同步)
+│   ├── sys/                         # 系统运维 (Nginx, PM2)
+│   │   └── nginx/                   # Nginx 配置
+│   └── ai/                          # AI 模型运维
+│
 ├── server/                          # 后端服务
 │   ├── index.js                     # Express 主服务器
 │   ├── init-ai.js                   # AI 模型初始化
@@ -100,36 +106,26 @@ my_webgis_project/
 │   │   ├── db.js
 │   │   └── logger.js
 │   ├── routes/                      # API 路由模块
-│   │   ├── ai/                      # AI 相关路由 (chat, session)
-│   │   ├── clcd/                    # CLCD 数据路由 (省/市/县)
+│   │   ├── ai/                      # AI 相关路由
+│   │   ├── clcd/                    # CLCD 数据路由
 │   │   ├── analysis/                # 空间分析路由
 │   │   ├── auth.js                  # 用户认证
 │   │   └── index.js                 # 路由入口
-│   ├── utils/                       # 工具模块
+│   ├── utils/                       # 后端工具模块
 │   └── logs/                        # 日志目录
+
 │
 ├── src/                             # 前端源码
 │   ├── components/                  # Vue 组件库
-│   │   ├── front_page.vue          # 主地图页面
-│   │   ├── login_page.vue          # 登录页
-│   │   ├── charts/                 # ECharts 图表组件
-│   │   ├── controls/               # 地图控制组件 (时间轴、图例等)
-│   │   ├── dashboard/              # 分析面板组件
-│   │   └── ui/                     # 通用 UI 组件
-│   │
 │   ├── utils/                      # 前端工具库
-│   │   ├── aiService.js           # AI 通信服务
-│   │   └── ...
-│   │
 │   ├── api/                        # API 请求封装
 │   ├── stores/                     # Pinia 状态管理
 │   ├── router/                     # Vue Router 配置
 │   └── assets/                     # 静态资源
 │
 ├── public/                         # 静态文件 (GeoJSON, icons)
-├── scripts/                        # 辅助脚本 (Ollama 启动等)
 ├── docs/                           # 项目文档 (API, OpenAPI)
-├── tests/                          # 测试套件
+├── database/                       # 数据库初始化 SQL
 └── vite.config.js                 # Vite 配置
 ```
 
@@ -363,11 +359,10 @@ OLLAMA_MODEL=gpt-oss:20b
 ```
 
 ### 同步垦殖率/转换率空间图层
-由于垦殖率与转换率在渲染端需要像 County/GRID 等 `shp` 图层一样使用，项目提供了同步脚本（`scripts/data/sync_rate_layers.js`），它会：
-1. 在 `public` schema 创建 `spatial_rate_layer_county` 与 `spatial_rate_layer_grid` 两张 PostGIS 表；
-2. 依次遍历 `clcd_county` 的年份，重建每年的总面积、垦殖量、转换总量以及比例字段（`reclamation_rate` / `conversion_rate`）并保留几何；
-3. 建立 `year`、`geom` 索引，保证像加载普通 shp 一样快速响应；
-4. 可通过 `npm run sync:rate-layers` 执行，完成后前端直接调用 `/api/clcd/spatial/rates/:unit/:year` 读取 GeoJSON，即等价于“直接加载 SHP”。
+由于垦殖率与转换率在渲染端需要像 County/GRID 等 `shp` 图层一样使用，项目提供了一键同步指令：
+1. **同步逻辑**: 自动化在 `public` schema 创建空间比例层，重建 `reclamation_rate` / `conversion_rate` 并保留几何；
+2. **执行**: 通过 `npm run sync:rate-layers` 执行（底层调用 `ops/data/sync_rate_layers.js`）；
+3. **频率**: 在重大数据更新或分级修复后执行一次。
 
 在发布前请确保数据库已有 `spatial_county_yunnan_stats`、`spatial_grid_yunnan_stats`、`clcd_county` 与转移表，并执行一次同步脚本，后续可按需重跑以刷新字段。
 
