@@ -51,3 +51,59 @@ export function addExclusiveAnalysisLayer(viewer, newLayer, delay = 0) {
 
     return newLayer;
 }
+
+/**
+ * 为单个 Entity 转换 Polygon Outline 为独立加粗的 Polyline (绕开 WebGL 1px 线宽限制)
+ * @param {Cesium.Entity} entity 
+ * @param {Cesium.Color} color 
+ * @param {number} width 
+ * @param {any} Cesium 
+ */
+export function applyThickPolygonOutlineForEntity(entity, color, width, Cesium) {
+    if (!entity.polygon) return;
+
+    // 关闭原生的 1px 外边框
+    entity.polygon.outline = false;
+
+    // 获取多边形的层级节点 (Positions)
+    let hierarchy = undefined;
+    if (typeof entity.polygon.hierarchy.getValue === 'function') {
+        hierarchy = entity.polygon.hierarchy.getValue(Cesium.JulianDate.now());
+    } else {
+        hierarchy = entity.polygon.hierarchy;
+    }
+
+    if (hierarchy && hierarchy.positions && hierarchy.positions.length > 0) {
+        // 闭合环线
+        const positions = [...hierarchy.positions, hierarchy.positions[0]];
+        if (!entity.polyline) {
+            entity.polyline = new Cesium.PolylineGraphics({
+                positions: positions,
+                width: width,
+                material: color,
+                clampToGround: true // 开启贴地才能支持 Windows Chrome 显示比 1 宽的线条
+            });
+        } else {
+            entity.polyline.positions = positions;
+            entity.polyline.width = width;
+            entity.polyline.material = color;
+            entity.polyline.clampToGround = true;
+            entity.polyline.show = true;
+        }
+    }
+}
+
+/**
+ * 遍历 DataSource 的实体，将所有 Polygon 的 outline 转为可加粗的 Polyline
+ * @param {Cesium.DataSource} dataSource 
+ * @param {Cesium.Color} color 
+ * @param {number} width 
+ * @param {any} Cesium 
+ */
+export function applyThickPolygonOutline(dataSource, color, width, Cesium) {
+    if (!dataSource || !dataSource.entities) return;
+    const entities = dataSource.entities.values;
+    entities.forEach(ent => {
+        applyThickPolygonOutlineForEntity(ent, color, width, Cesium);
+    });
+}

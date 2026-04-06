@@ -51,7 +51,17 @@ export const UI_CONFIG = {
     themeColor: '#00ccff',
     sidebarWidth: 260,
     refreshInterval: 1000 * 60 * 5, // 默认 5 分钟
-    maxWmsCacheSize: 10 // WMS 图层缓存上限 (提升至 10 以适配预加载和双缓冲过渡)
+    maxWmsCacheSize: 10, // WMS 图层缓存上限 (提升至 10 以适配预加载和双缓冲过渡)
+    // 全局边界样式配置
+    BOUNDARY_STYLE: {
+        provinceWidth: 3.5,     // 省界线宽
+        cityWidth: 2.5,         // 地级市界线宽
+        countyWidth: 1.5,       // 县级界线宽
+        highlightWidth: 6.0,    // 选中/高亮线宽
+        provinceColor: '#00E5FF',
+        cityColor: '#00E5FF',
+        countyColor: '#00E5FF'
+    }
 };
 
 export default {

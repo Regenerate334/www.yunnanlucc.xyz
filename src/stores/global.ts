@@ -3,7 +3,7 @@ import { ref } from 'vue'
 
 export const useGlobalStore = defineStore('global', () => {
     // State
-    const scope = ref({ level: 'province', code: 'yunnan' })
+    const scope = ref({ level: 'province', code: '530000', name: '云南省' }) // 使用标准代码 530000
     const timeMode = ref('single') // 'single' | 'range'
     const currentYear = ref(1985)
     const range = ref([1985, 2023])
@@ -22,6 +22,10 @@ export const useGlobalStore = defineStore('global', () => {
     const previousTheme = ref<string | null>(null)  // 记录上一次活跃的专题
 
 
+    // 新增：当前切片拼音列表 (用于 CLCD 图层动态拼装)
+    const currentPinyins = ref<string[]>([])
+
+
     // Actions
     function setYear(y: number) {
         currentYear.value = y
@@ -31,8 +35,8 @@ export const useGlobalStore = defineStore('global', () => {
         range.value = r
     }
 
-    function setScope(level: string, code: string) {
-        scope.value = { level, code }
+    function setScope(level: string, code: string, name: string) {
+        scope.value = { level, code, name }
     }
 
     function setActivePanel(panel: string | null) {
@@ -75,6 +79,10 @@ export const useGlobalStore = defineStore('global', () => {
         activeTheme.value = theme
     }
 
+    function setCurrentPinyins(pinyins: string[]) {
+        currentPinyins.value = pinyins
+    }
+
 
     return {
         scope,
@@ -90,6 +98,7 @@ export const useGlobalStore = defineStore('global', () => {
         previousLayer,
         activeTheme,
         previousTheme,
+        currentPinyins,
         setYear,
         setRange,
         setScope,
@@ -100,6 +109,7 @@ export const useGlobalStore = defineStore('global', () => {
         clearLegend,
         setActiveLayer,
         restorePreviousLayer,
-        setActiveTheme
+        setActiveTheme,
+        setCurrentPinyins
     }
 })

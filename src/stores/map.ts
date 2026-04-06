@@ -6,6 +6,7 @@
 import { defineStore } from 'pinia'
 import { ref, shallowRef } from 'vue'
 import type * as Cesium from 'cesium'
+import { UI_CONFIG } from '@/config'
 
 export const useMapStore = defineStore('map', () => {
     // ============================================
@@ -65,13 +66,13 @@ export const useMapStore = defineStore('map', () => {
         // 重置之前的高亮
         if (highlightedEntity.value && highlightedEntity.value.polygon) {
             // 恢复原始样式
-            highlightedEntity.value.polygon.outlineWidth = new (window as any).Cesium.ConstantProperty(1)
+            highlightedEntity.value.polygon.outlineWidth = new (window as any).Cesium.ConstantProperty(UI_CONFIG.BOUNDARY_STYLE.countyWidth)
             highlightedEntity.value.polygon.outlineColor = new (window as any).Cesium.Color.WHITE.withAlpha(0.5)
         }
 
         // 设置新的高亮
         if (entity && entity.polygon) {
-            entity.polygon.outlineWidth = new (window as any).Cesium.ConstantProperty(3)
+            entity.polygon.outlineWidth = new (window as any).Cesium.ConstantProperty(UI_CONFIG.BOUNDARY_STYLE.highlightWidth)
             entity.polygon.outlineColor = new (window as any).Cesium.Color.YELLOW
             highlightedEntity.value = entity
         } else {
