@@ -97,6 +97,8 @@ import { clcdApi } from '../../api/index.js';
 import AnalysisLegend from '../ui/AnalysisLegend.vue';
 import { useMapStore } from '../../stores/map.ts';
 import { useGlobalStore } from '../../stores/global';
+import { UI_CONFIG } from '../../config/index.js';
+import { applyThickPolygonOutlineForEntity } from '../../utils/cesiumUtils.js';
 
 const globalStore = useGlobalStore();
 const panelName = 'regionalAnalysis';
@@ -196,8 +198,6 @@ async function loadAndRender() {
 
     // 加载 GeoJSON
     const ds = await Cesium.GeoJsonDataSource.load(geojson, {
-      stroke: Cesium.Color.WHITE.withAlpha(0.8),
-      strokeWidth: 1,
       fill: Cesium.Color.TRANSPARENT,
       clampToGround: true
     });
@@ -209,9 +209,8 @@ async function loadAndRender() {
         const value = entity.properties[selectedAttribute.value]?.getValue() || 0;
         const color = getColorForValue(value, breaks);
         entity.polygon.material = color.withAlpha(0.75);
-        entity.polygon.outline = true;
-        entity.polygon.outlineColor = Cesium.Color.WHITE.withAlpha(0.6);
-        entity.polygon.outlineWidth = 1;
+        
+        applyThickPolygonOutlineForEntity(entity, Cesium.Color.WHITE.withAlpha(0.6), UI_CONFIG.BOUNDARY_STYLE.countyWidth, Cesium);
       }
     });
 

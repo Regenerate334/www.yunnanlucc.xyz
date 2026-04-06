@@ -167,10 +167,13 @@
 <script setup>
 import { ref, onMounted, watch } from 'vue';
 import { clcdApi, analysisApi } from '../../api/index.js'; 
+import { useGlobalStore } from '../../stores/global';
 import iconCropland from '@/assets/icons/business/cropland.png';
 import iconUrban from '@/assets/icons/business/urban.png';
 import iconForest from '@/assets/icons/business/forest.png';
 import iconLand from '@/assets/icons/business/land.png';
+
+const globalStore = useGlobalStore();
 
 const props = defineProps({
   year: { type: Number, default: 2023 },
@@ -184,6 +187,11 @@ watch(() => props.theme, (newTheme) => {
   console.log(`[LeftPanel] Theme switched to: ${newTheme}`);
   fetchData();
 });
+
+// 监听全局区域变化
+watch(() => globalStore.scope, () => {
+    fetchData();
+}, { deep: true });
 
 const metrics = ref({
     croplandArea: { value: 0, trend: 0 },
@@ -200,11 +208,20 @@ const metrics = ref({
 async function fetchData() {
   loading.value = true;
   try {
-    // 切换至 clcdApi 获取时序数据，实现与 K 线图完全一致的 YoY 同源计算
-    const trendRes = await clcdApi.getProvinceTrend();
+    const { level, name } = globalStore.scope;
+    let trendRes;
+    
+    // 根据行政级别调用不同接口
+    if (level === 'province') {
+        trendRes = await clcdApi.getProvinceTrend();
+    } else {
+        // level: prefecture 或 county
+        trendRes = await clcdApi.getRegionalTrend(level, name);
+    }
+    
     const trendList = Array.isArray(trendRes) ? trendRes : (trendRes?.data || []);
     
-    // 定位年度数据：当前年 vs 最近的前一个可用年份（处理 1985-1990 这种跨度）
+    // 定位年度数据：当前年 vs 最近的前一个可用年份
     const currentYear = Number(props.year);
     const curr = trendList.find(i => Number(i.year) === currentYear);
     const prev = trendList

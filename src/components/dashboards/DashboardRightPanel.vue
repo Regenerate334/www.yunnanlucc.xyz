@@ -110,6 +110,9 @@
 import { ref, onMounted, computed, watch, nextTick } from 'vue';
 import * as echarts from 'echarts';
 import { clcdApi } from '../../api/index.js';
+import { useGlobalStore } from '../../stores/global';
+
+const globalStore = useGlobalStore();
 
 const props = defineProps({
   year: { type: Number, default: 2023 }
@@ -118,6 +121,11 @@ const props = defineProps({
 const loading = ref(true);
 const trendData = ref([]);
 const compositeScore = ref(0);
+
+// 监听全局区域变化
+watch(() => globalStore.scope, () => {
+    fetchData();
+}, { deep: true });
 
 /* ======= 四级预警分级体系 ======= */
 const LEVELS = {
