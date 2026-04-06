@@ -116,7 +116,8 @@ import { clcdApi } from '../api/index.js';
 import { useGlobalStore } from '../stores/index.ts';
 import 'cesium/Build/Cesium/Widgets/widgets.css';
 import AnalysisLegend from '../components/ui/AnalysisLegend.vue';
-import { GEOSERVER_CONFIG } from '../config/index.js';
+import { GEOSERVER_CONFIG, UI_CONFIG } from '../config/index.js';
+import { applyThickPolygonOutline } from '../utils/cesiumUtils.js';
 import { LEGEND_CONFIGS, ATTRIBUTE_LABELS } from '../constants/landuse.js';
 
 const router = useRouter();
@@ -371,6 +372,9 @@ async function initCesium() {
       }
     });
 
+    // 微调默认视角拉伸系数，避免 UI 遮挡
+    Cesium.Camera.DEFAULT_VIEW_FACTOR = 4.5;
+
   // 设置悬浮事件（鼠标移动时显示信息）
     let hoverDebounceTimer = null;
     let lastPickPosition = null;
@@ -495,29 +499,26 @@ async function loadYunnanBoundary() {
   if (!viewer.value) return;
   try {
     const dataSource = await Cesium.GeoJsonDataSource.load('/data/yunnan_province_only.geojson', {
-      stroke: Cesium.Color.fromCssColorString('#00E5FF'),
       fill: Cesium.Color.TRANSPARENT,
-      strokeWidth: 10,
       markerSize: 0,
       clampToGround: true
     });
     viewer.value.dataSources.add(dataSource);
     
-    // 样式调整
+    // 样式调整 - 使用 thick polygon 规避 WebGL 1px 限制
+    const pvColor = Cesium.Color.fromCssColorString(UI_CONFIG.BOUNDARY_STYLE.provinceColor);
+    applyThickPolygonOutline(dataSource, pvColor, UI_CONFIG.BOUNDARY_STYLE.provinceWidth, Cesium);
+    
     const entities = dataSource.entities.values;
-    entities.forEach(entity => {
-      const name = entity.properties.name ? entity.properties.name.getValue() : '';
-      if (!name.includes('云南')) {
-         dataSource.entities.remove(entity);
-      } else {
-        if (entity.polygon) {
-           entity.polygon.fill = false;
-           entity.polygon.outline = true;
-           entity.polygon.outlineColor = Cesium.Color.fromCssColorString('#00E5FF');
-           entity.polygon.outlineWidth = 6;
+    // Remove unwanted geometries
+    for (let i = entities.length - 1; i >= 0; i--) {
+        const entity = entities[i];
+        const name = entity.properties.name ? entity.properties.name.getValue() : '';
+        if (!name.includes('云南')) {
+            dataSource.entities.remove(entity);
         }
-      }
-    });
+    }
+
   } catch (e) {
     console.error('Failed to load boundary:', e);
   }

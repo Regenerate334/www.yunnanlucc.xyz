@@ -12,6 +12,9 @@
     <div class="background-layer"></div>
     <div id="cesiumContainer"></div>
 
+    <!-- 行政区划选择器 (左上角悬浮) -->
+    <RegionSelector />
+
 
     <div v-if="isRegionalAnalysisMode" class="analysis-header floating-glass">
       <div class="header-left">
@@ -138,12 +141,13 @@ import 'cesium/Build/Cesium/Widgets/widgets.css';
 import DropdownSelector from '../components/cards/DropdownSelector.vue';
 import DashboardLeftPanel from '../components/dashboards/DashboardLeftPanel.vue';
 import DashboardRightPanel from '../components/dashboards/DashboardRightPanel.vue';
+import RegionSelector from '../components/ui/RegionSelector.vue';
 import BottomNav from '../components/ui/BottomNav.vue';
 import AnalysisLegend from '../components/ui/AnalysisLegend.vue';
 import { useMapStore } from '../stores/map.ts';
 import { useGlobalStore } from '../stores/index.ts'; 
 import { clcdApi, authApi, analysisApi } from '../api/index.js';
-import { addExclusiveAnalysisLayer, clearAllAnalysisLayers } from '../utils/cesiumUtils.js';
+import { addExclusiveAnalysisLayer, clearAllAnalysisLayers, applyThickPolygonOutline, applyThickPolygonOutlineForEntity } from '../utils/cesiumUtils.js';
 import { GEOSERVER_CONFIG, UI_CONFIG } from '../config/index.js';
 import { CLCD_COLORS, LANDUSE_NAMES, LEGEND_CONFIGS, SDE_COLORS, ATTRIBUTE_LABELS } from '../constants/landuse.js';
 
@@ -177,6 +181,8 @@ const clcdLayerCache = new Map(); // 用于 Standard (CLCD) 模式的平滑切�
 const breaksCache = new Map(); // 缓存 API 返回的分级断点，消除请求延迟
 const activeWmsKey = ref(null); // 记录当前意图加载的活跃图层键名，用于防止竞态冲突
 const lastRequestId = ref(0);   // 用于追踪最新的加载请求，过时的请求将被丢弃
+let scopeRequestId = 0;         // 新增：追踪行政区划切换请求，防止异步时序导致的图层残留
+const currentClipWKT = ref(null); // 当前用于裁剪的 WKT 字符串
 
 // LRU 缓存管理：添加图层到缓存，超限自动淘汰最旧图层
 function addToCache(key, layer) {
@@ -210,6 +216,198 @@ const transferDataSource = shallowRef(null);
 
 // Bottom Nav Ref
 const bottomNavRef = ref(null);
+
+// ======================== 行政区划联动逻辑 ========================
+const regionBoundarySource = shallowRef(null);
+const cachedGeoJSON = {
+  province: null,
+  cities: null,
+  all: null,
+  pinyinMap: null
+};
+
+// 辅助：GeoJSON 转 WKT (支持 Polygon 和 MultiPolygon 并合并)
+// 增加坐标精度控制和简单抽稀，防止 URL 过长导致 HTTP 431
+function geojsonToWKT(features) {
+    if (!features || features.length === 0) return null;
+    
+    const allPolygons = [];
+    features.forEach(f => {
+        const geom = f.geometry;
+        if (geom.type === 'Polygon') {
+            allPolygons.push(geom.coordinates);
+        } else if (geom.type === 'MultiPolygon') {
+            allPolygons.push(...geom.coordinates);
+        }
+    });
+
+    if (allPolygons.length === 0) return null;
+
+    // 构建 MULTIPOLYGON WKT，限制精度为 5 位小数，并进行简单抽稀（每3个点选1个）
+    const parts = allPolygons.map(poly => {
+        const rings = poly.map(ring => {
+            // 抽稀逻辑：如果是复杂多边形（点数 > 100），间隔取点，但必须保留首尾点以闭合
+            let sampledPoints = ring;
+            if (ring.length > 100) {
+                sampledPoints = ring.filter((_, index) => index % 3 === 0);
+                // 确保闭合：检查最后一个点是否与原始最后一个点相同，如果不相同且不是同一个坐标，手动补上
+                const last = ring[ring.length - 1];
+                const sampledLast = sampledPoints[sampledPoints.length - 1];
+                if (sampledLast[0] !== last[0] || sampledLast[1] !== last[1]) {
+                    sampledPoints.push(last);
+                }
+            }
+            
+            const coordsStr = sampledPoints.map(c => 
+                `${parseFloat(c[0].toFixed(5))} ${parseFloat(c[1].toFixed(5))}`
+            ).join(', ');
+            return `(${coordsStr})`;
+        }).join(', ');
+        return `(${rings})`;
+    }).join(', ');
+
+    const wkt = `MULTIPOLYGON(${parts})`;
+    // console.log('[Workbench] Generated WKT Length:', wkt.length);
+    return wkt;
+}
+
+// 监听区域范围变化
+// 监听区域范围变化
+watch(() => globalStore.scope, async (newScope, oldScope) => {
+  const viewer = mapStore.viewer;
+  if (!viewer) return;
+
+  const currentRid = ++scopeRequestId;
+
+  // 1. 清理旧边界
+  if (regionBoundarySource.value) {
+    viewer.dataSources.remove(regionBoundarySource.value);
+    regionBoundarySource.value = null;
+  }
+
+  try {
+    let features = [];
+    const targetName = newScope.name;
+
+    // A. 维护当前拼音列表 (用于图层动态加载)
+    let pinyins = [];
+    if (!cachedGeoJSON.pinyinMap) {
+        const resp = await fetch('/data/region_pinyin_map.json');
+        if (currentRid !== scopeRequestId) return;
+        cachedGeoJSON.pinyinMap = await resp.json();
+    }
+
+    // 2. 根据级别加载并过滤 GeoJSON
+    if (newScope.level === 'province') {
+        // 省级：重置裁剪并加载全省边界
+        currentClipWKT.value = null;
+        if (!cachedGeoJSON.province) {
+            const resp = await fetch('/data/yunnan_boundary.geo.json');
+            if (currentRid !== scopeRequestId) return;
+            cachedGeoJSON.province = await resp.json();
+        }
+        features = cachedGeoJSON.province.features;
+        pinyins = []; // 为空则 loadStandardLayer 会加载全省
+    } else if (newScope.level === 'prefecture') {
+        // 地级市：使用专用地市边界文件以消除内部县级线
+        if (!cachedGeoJSON.cities) {
+            const resp = await fetch('/data/yunnan_cities_boundary.geo.json');
+            if (currentRid !== scopeRequestId) return;
+            cachedGeoJSON.cities = await resp.json();
+        }
+        // 匹配 name 或 fullname
+        features = cachedGeoJSON.cities.features.filter(f => {
+            const p = f.properties;
+            const name = p.name || p.fullname || '';
+            return name === targetName || name.includes(targetName) || targetName.includes(name);
+        });
+        currentClipWKT.value = geojsonToWKT(features);
+
+        // 获取该市下属所有县的拼音
+        if (!cachedGeoJSON.all) {
+            const resp = await fetch('/data/yunnan_all_counties.geojson');
+            if (currentRid !== scopeRequestId) return;
+            cachedGeoJSON.all = await resp.json();
+        }
+        const childCounties = cachedGeoJSON.all.features.filter(f => {
+            const parentName = f.properties.parent?.name || '';
+            return parentName === targetName || parentName.includes(targetName) || targetName.includes(parentName);
+        });
+        pinyins = childCounties.map(c => cachedGeoJSON.pinyinMap[c.properties.name]).filter(Boolean);
+    } else if (newScope.level === 'county') {
+        // 县级：加载包含所有区县的数据集
+        if (!cachedGeoJSON.all) {
+            const resp = await fetch('/data/yunnan_all_counties.geojson');
+            if (currentRid !== scopeRequestId) return;
+            cachedGeoJSON.all = await resp.json();
+        }
+        features = cachedGeoJSON.all.features.filter(f => {
+            const p = f.properties;
+            const name = p.name || p.NAME || p.fullname || p.COUNTY || '';
+            return name === targetName || name.includes(targetName) || targetName.includes(name);
+        });
+        currentClipWKT.value = geojsonToWKT(features);
+        
+        // 单个县的拼音
+        const py = cachedGeoJSON.pinyinMap[targetName];
+        if (py) pinyins = [py];
+    }
+
+    // 最终防御：如果此时已经有新的请求，则彻底放弃当前请求的结果，防止旧图层在清理后被添加
+    if (currentRid !== scopeRequestId) return;
+
+    // 更新全局拼音状态，供 loadStandardLayer 使用
+    globalStore.setCurrentPinyins(pinyins);
+
+    if (features.length === 0) return;
+
+    // 3. 渲染边界高亮 (采用实体遍历优化模式)
+    const highlightGeoJSON = { type: "FeatureCollection", features: features };
+    const ds = await Cesium.GeoJsonDataSource.load(highlightGeoJSON, { clampToGround: true });
+    
+    // 再次确认请求 ID
+    if (currentRid !== scopeRequestId) return;
+
+    const entities = ds.entities.values;
+    for (let i = 0; i < entities.length; i++) {
+        const entity = entities[i];
+        if (entity.polygon) {
+            entity.polygon.fill = false;
+            applyThickPolygonOutlineForEntity(entity, Cesium.Color.RED, UI_CONFIG.BOUNDARY_STYLE.highlightWidth, Cesium);
+        }
+    }
+    
+    viewer.dataSources.add(ds);
+    regionBoundarySource.value = ds;
+
+    // 4. 视角穿梭：仅在级别变化或非省级切换时执行，避免省级重复缩放
+    const shouldFly = newScope.level !== 'province' || (oldScope && oldScope.level !== 'province');
+    if (shouldFly) {
+        viewer.flyTo(ds, {
+          duration: 1.5,
+          offset: new Cesium.HeadingPitchRange(0, Cesium.Math.toRadians(-90), 0)
+        });
+    }
+
+    // 5. 彻底清理所有旧的业务图层（影像图层），防止全省图层残留
+    clearAllAnalysisLayers(viewer);
+    
+    // 6. 同步清理缓存状态
+    clcdLayerCache.clear();
+    wmsLayerCache.clear();
+    clcdLayer.value = null;
+    spatialLayer.value = null;
+    
+    // 仅重载 CLCD 图层，空间分析图层保持不动 (带入当前请求 ID)
+    if (spatialUnit.value === 'clcd') {
+      loadStandardLayer(selectedYear.value, true, currentRid);
+    }
+  } catch (e) {
+    console.error('[Workbench] Region navigation failed:', e);
+  }
+}, { deep: true, immediate: true });
+
+// ================================================================
 const isPreloading = ref(false);
 const PRELOAD_RANGE = 3; // 提升预加载深度，提前拉取前后各 3 年的瓦片与断点数据
 const BUFFER_DELAY = 800; // 全局缓冲延迟 (ms)
@@ -320,7 +518,7 @@ async function refreshMapLayer(forceClearCache = false) {
 
   // 2. 根据模式执行特定加载逻辑
   if (unit === 'clcd') {
-    loadStandardLayer(year);
+    loadStandardLayer(year, true, scopeRequestId);
   } else {
     // 处理 Shrub 兼容性 (格网无灌木)
     if (unit === 'grid' && attr === 'shrub') {
@@ -340,18 +538,16 @@ async function refreshMapLayer(forceClearCache = false) {
   }
 }
 
-// 响应各个其间参数的变化，统一驱动地图刷新 (Global Watcher)
+// 响应各个参数的变化，统一驱动地图刷新 (Global Watcher)
+// 注意: currentClipWKT 不在此监听，已由 scope watcher 独立处理
 watch(
   [selectedYear, spatialUnit, selectedAttribute, isChangeMode, changeYearFrom, changeYearTo], 
   ([newYear, newUnit, newAttr, newIsChange, newYFrom, newYTo], [oldYear, oldUnit, oldAttr, oldIsChange, oldYFrom, oldYTo]) => {
     if (!viewer.value) return;
 
-    // console.log('[Workbench-GlobalWatch] Triggered by parameter change');
-
-    // 如果是从分析模式切回 CLCD，或者切换了空间分辨率/属性，或者是进入/退出变化模式，清理 WMS 状态
+    // 如果切换了空间分辨率/属性或进入/退出变化模式，清理 WMS 状态
     const needsCleanup = newUnit !== oldUnit || newAttr !== oldAttr || newIsChange !== oldIsChange;
     
-    // 已移除：不再强制重置为 1985 耕地，以保持交互连贯性
     refreshMapLayer(needsCleanup);
   }, 
   { deep: false }
@@ -404,7 +600,7 @@ async function preloadNearbyYears(centerYear) {
   // 并行预加载（静默模式，不切换显示）
   const preloadPromises = yearsToPreload.map(async (year) => {
     if (spatialUnit.value === 'clcd') {
-      return loadStandardLayer(year); 
+      return loadStandardLayer(year, false, scopeRequestId); 
     }
     // 关键：预加载 WMS 的同时，提前拉取 breaks 统计数据并存入缓存
     return loadWMSLayer(year, false).catch(err => 
@@ -632,7 +828,7 @@ async function handleSpatialStatsQuery(params) {
                     <Fill><CssParameter name="fill">#FFFFFF</CssParameter></Fill>
                     <Stroke>
                       <CssParameter name="stroke">#000000</CssParameter>
-                      <CssParameter name="stroke-width">0.5</CssParameter>
+                      <CssParameter name="stroke-width">${UI_CONFIG.BOUNDARY_STYLE.countyWidth}</CssParameter>
                     </Stroke>
                   </PolygonSymbolizer>
                 </Rule>
@@ -854,6 +1050,9 @@ function handleResetMap() {
   globalStore.setActiveLayer('clcd');
   selectedAttribute.value = 'cropland';
   
+  // 重置行政范围到全省，这会触发 scope 监听器并重新加载全省 WMS
+  globalStore.setScope('province', '530000', '云南省');
+  
   // 2. 清理流转图层和其他专属UI
   clearAllAnalysisLayers(viewer.value);
   transferWmsLayer = null;
@@ -878,12 +1077,11 @@ function handleResetMap() {
   // 3. 恢复行政边界原始样式
   if (yunnanDataSource.value) {
     const entities = yunnanDataSource.value.entities.values;
+    const countyColor = Cesium.Color.fromCssColorString(UI_CONFIG.BOUNDARY_STYLE.provinceColor).withAlpha(0.3);
     entities.forEach(ent => {
         if (ent.polygon) {
             ent.polygon.material = Cesium.Color.WHITE.withAlpha(0.01);
-            ent.polygon.outline = true;
-            ent.polygon.outlineColor = Cesium.Color.fromCssColorString('#00E5FF').withAlpha(0.3);
-            ent.polygon.outlineWidth = 1;
+            applyThickPolygonOutlineForEntity(ent, countyColor, UI_CONFIG.BOUNDARY_STYLE.countyWidth, Cesium);
         }
     });
     // 强制显示县级边界，提供地理参照
@@ -1212,20 +1410,16 @@ function highlightRegion(name) {
     });
 
     if (target) {
-        // console.log('[Workbench] Highlighting region:', target.properties.name ? target.properties.name.getValue() : 'Unknown');
         if (target.polygon) {
-            target.polygon.fill = true;
-            // Flashing Cyan Effect
-            target.polygon.material = new Cesium.ColorMaterialProperty(new Cesium.CallbackProperty((time, result) => {
-                // Alpha oscillates between 0.3 and 0.8 for strong pulsing
-                const alpha = (Math.sin(time.secondsOfDay * 8) + 1.0) / 2.0 * 0.5 + 0.3;
-                return Cesium.Color.fromCssColorString('#00E5FF').withAlpha(alpha, result);
-            }, false));
-            
-            // White Outline
-            target.polygon.outline = true;
-            target.polygon.outlineColor = Cesium.Color.fromCssColorString('#FFFFFF');
-            target.polygon.outlineWidth = 3;
+            target.polygon.fill = false; // 保证内部完全透明
+        }
+        if (target.polyline) {
+            target.polyline.width = UI_CONFIG.BOUNDARY_STYLE.highlightWidth;
+            target.polyline.material = Cesium.Color.RED;
+            target.polyline.show = true;
+        } else {
+            // Fallback immediately generated
+            applyThickPolygonOutlineForEntity(target, Cesium.Color.RED, UI_CONFIG.BOUNDARY_STYLE.highlightWidth, Cesium);
         }
         highlightedEntity.value = target;
     } else {
@@ -1235,11 +1429,10 @@ function highlightRegion(name) {
 
 function clearHighlight() {
     if (highlightedEntity.value) {
-        if (highlightedEntity.value.polygon) {
-            // Revert to invisible but pickable state
-            highlightedEntity.value.polygon.fill = true; 
-            highlightedEntity.value.polygon.material = Cesium.Color.WHITE.withAlpha(0.01);
-            highlightedEntity.value.polygon.outline = false; 
+        // Restore original thickness using our custom polyline
+        if (highlightedEntity.value.polyline) {
+            highlightedEntity.value.polyline.width = UI_CONFIG.BOUNDARY_STYLE.countyWidth;
+            highlightedEntity.value.polyline.material = Cesium.Color.fromCssColorString(UI_CONFIG.BOUNDARY_STYLE.countyColor).withAlpha(0.2);
         }
         highlightedEntity.value = null;
     }
@@ -1267,6 +1460,7 @@ onMounted(async () => {
       navigationHelpButton: false,
       infoBox: false,
       fullscreenButton: false,
+      skyAtmosphere: false, // 彻底移除大气层
       shouldAnimate: true,
       contextOptions: {
         webgl: {
@@ -1284,12 +1478,17 @@ onMounted(async () => {
     viewer.value = viewerInstance;
 
     viewer.value.scene.postProcessStages.fxaa.enabled = true;
-    viewer.value.scene.highDynamicRange = true; // 恢复 HDR
-    viewer.value.resolutionScale = window.devicePixelRatio || 1.0; // 恢复分辨率倍数
+    viewer.value.scene.highDynamicRange = true;
+    viewer.value.resolutionScale = window.devicePixelRatio || 1.0;
     
-    // 渲染精度优化 (保留瓦片缓存限制)
-    viewer.value.scene.globe.maximumScreenSpaceError = 2.0; // 恢复默认精度
-    viewer.value.scene.globe.tileCacheSize = 50; // 保留较小的瓦片缓存以节省基础显存
+    // 渲染精度优化与环境清理
+    viewer.value.scene.globe.maximumScreenSpaceError = 2.0;
+    viewer.value.scene.globe.tileCacheSize = 50;
+    viewer.value.scene.globe.showGroundAtmosphere = false; // 彻底禁用地面大气效果
+    viewer.value.scene.fog.enabled = false; // 禁用雾效 (彻底净化视角)
+    
+    // 强制锁定垂直视角：禁用倾斜交互
+    viewer.value.scene.screenSpaceCameraController.enableTilt = false; 
     
     // 监听渲染事件，实时更新提示框位置与比例
     viewer.value.scene.postRender.addEventListener(updatePopupPosition);
@@ -1308,14 +1507,15 @@ onMounted(async () => {
 
     // 1. Load Standard Cloud-based Yunnan Counties GeoJSON (For County Analysis)
     Cesium.GeoJsonDataSource.load('/data/yunnan_all_counties.geojson', {
-      stroke: Cesium.Color.fromCssColorString('#00E5FF').withAlpha(0.2), 
       fill: Cesium.Color.TRANSPARENT,
-      strokeWidth: 1, 
       markerSize: 0,
-      clampToGround: true
+      clampToGround: true // Requires for GroundPolyline support
     }).then(function (dataSource) {
-       viewer.value.dataSources.add(dataSource);
-       yunnanDataSource.value = dataSource;
+      yunnanDataSource.value = dataSource;
+      viewer.value.dataSources.add(dataSource);
+      
+      const countyColor = Cesium.Color.fromCssColorString(UI_CONFIG.BOUNDARY_STYLE.countyColor).withAlpha(0.2);
+      applyThickPolygonOutline(dataSource, countyColor, UI_CONFIG.BOUNDARY_STYLE.countyWidth, Cesium);
        
        const entities = dataSource.entities.values;
        for (let i = 0; i < entities.length; i++) {
@@ -1337,31 +1537,16 @@ onMounted(async () => {
     // 2. Load Original Province Boundary (For CLCD Mode)
     // Use the optimized single-province file created by the extraction script
     Cesium.GeoJsonDataSource.load('/data/yunnan_province_only.geojson', {
-      stroke: Cesium.Color.fromCssColorString('#00E5FF'),
       fill: Cesium.Color.TRANSPARENT,
-      strokeWidth: 5,
       markerSize: 0,
       clampToGround: true
     }).then(function (dataSource) {
        viewer.value.dataSources.add(dataSource);
        provinceDataSource.value = dataSource;
        
-       const entities = dataSource.entities.values;
-       // No need to filter, file only contains Yunnan
-       
-       for (let i = 0; i < entities.length; i++) {
-           const entity = entities[i];
-           if (entity.polygon) {
-               entity.polygon.fill = false;
-               entity.polygon.outline = true;
-               entity.polygon.outlineColor = Cesium.Color.fromCssColorString('#00E5FF');
-               entity.polygon.outlineWidth = 3;
-           }
-           if (entity.polyline) {
-               entity.polyline.width = 3;
-               entity.polyline.material = Cesium.Color.fromCssColorString('#00E5FF');
-           }
-       }
+       const pvColor = Cesium.Color.fromCssColorString(UI_CONFIG.BOUNDARY_STYLE.provinceColor).withAlpha(0.6);
+       applyThickPolygonOutline(dataSource, pvColor, UI_CONFIG.BOUNDARY_STYLE.provinceWidth, Cesium);
+
        // Initial visibility check
        dataSource.show = spatialUnit.value === 'clcd';
     }).catch(console.error);
@@ -1382,10 +1567,12 @@ onMounted(async () => {
     setupViewLock();
     // 设置鼠标事件
     setupClickHandler();
+    
+    // 微调默认视角拉伸系数，避免 UI 遮挡 (Cesium 默认是 3.0, 加大可增加 flyTo 的周围边距)
+    Cesium.Camera.DEFAULT_VIEW_FACTOR = 4.5;
 
-    // Initial Load based on default spatialUnit ('clcd')
     if (spatialUnit.value === 'clcd') {
-        loadStandardLayer(selectedYear.value);
+        loadStandardLayer(selectedYear.value, true, scopeRequestId);
         loadYearData(selectedYear.value);
     } else {
         loadWMSLayer(selectedYear.value);
@@ -1575,10 +1762,16 @@ function handleBaseMapChange(mapType) {
 }
 
 // 标准模式图层加载 (Standard CLCD)
-function loadStandardLayer(year, visible = true) {
+function loadStandardLayer(year, visible = true, rid = null) {
   if (!viewer.value) return;
+
+  // 如果提供了请求 ID 且已经过时，则不执行加载
+  if (rid !== null && rid < scopeRequestId) {
+    console.log(`[Workbench] Discarding outdated scope request: ${rid} (current: ${scopeRequestId})`);
+    return;
+  }
   
-  // 校验年份有效性 (根据 D 盘物理文件清单)
+  // 校验年份有效性
   const validYears = [
     1985, 
     1990, 1991, 1992, 1993, 1994, 1995, 1996, 1997, 1998, 1999, 
@@ -1592,14 +1785,24 @@ function loadStandardLayer(year, visible = true) {
     return;
   }
 
-  const cacheKey = `yunnan_${year}`;
+  // 动态确定图层列表
+  const pinyins = globalStore.currentPinyins;
+  // 如果有特定区域拼音列表（市/县级），加载拼装图层；否则回退到全省 ImageMosaic 图层
+  const layers = (pinyins && pinyins.length > 0)
+    ? pinyins.map(py => `WebGIS:county_${py}`).join(',')
+    : GEOSERVER_CONFIG.layers.yunnanTime;
+
+
+  // 包含裁剪信息的缓存键
+  const scopeKey = globalStore.scope.level === 'province' ? 'all' : globalStore.scope.name;
+  const clipSuffix = currentClipWKT.value ? `_clip_${currentClipWKT.value.length}` : '';
+  const cacheKey = `clcd_${year}_${scopeKey}${clipSuffix}`;
   
   // 检查缓存
   if (clcdLayerCache.has(cacheKey)) {
     const cachedLayer = clcdLayerCache.get(cacheKey);
     if (visible) {
-      const targetKey = `yunnan_${year}`;
-      updateLayerVisibility(targetKey, lastRequestId.value, true);
+      updateLayerVisibility(cacheKey, lastRequestId.value, true);
       clcdLayer.value = cachedLayer;
     }
     return;
@@ -1608,14 +1811,16 @@ function loadStandardLayer(year, visible = true) {
   try {
     const provider = new Cesium.WebMapServiceImageryProvider({
       url: GEOSERVER_CONFIG.wmsUrl,
-      layers: GEOSERVER_CONFIG.layers.yunnanTime,
+      layers: layers,
       parameters: {
         service: 'WMS',
         version: '1.1.1',
         request: 'GetMap',
         format: 'image/png',
         transparent: true,
-        time: `${year}-01-01`
+        time: `${year}-01-01`,
+        // 仅全省图层需要 clip 裁剪，县级/市级图层数据本身已是区域范围，不传 clip
+        ...(currentClipWKT.value && globalStore.scope.level === 'province' ? { clip: currentClipWKT.value } : {})
       }
     });
 
@@ -1623,6 +1828,12 @@ function loadStandardLayer(year, visible = true) {
     newLayer.isAnalysisLayer = true;
     newLayer.alpha = 0; // 预加载默认透明
     newLayer.show = true;
+
+    // 【二次防御】在真正加入地图前再次检查 RID，防止异步 Provider 初始化期间 Scope 发生变化
+    if (rid !== null && rid < scopeRequestId) {
+        console.log(`[Workbench] Discarding late layer addition for request: ${rid}`);
+        return;
+    }
     
     // 加入缓存
     clcdLayerCache.set(cacheKey, newLayer);
@@ -1639,7 +1850,7 @@ function loadStandardLayer(year, visible = true) {
     }
     
   } catch (e) {
-    console.error(`加载 ${year} 年 CLCD 图层失败:`, e);
+    console.error(`加载 ${year} 年 CLCD 动态图层 [${layers}] 失败:`, e);
   }
 }
 
@@ -1664,10 +1875,11 @@ async function loadWMSLayer(targetYear = null, visible = true, reqId = null) {
 
   const year = targetYear || selectedYear.value;
   
-  // 变化模式使用不同的缓存键
+  // 包含裁剪信息的缓存键
+  const clipSuffix = currentClipWKT.value ? `_clip_${currentClipWKT.value.length}` : '';
   const cacheKey = isChangeMode.value 
-    ? `change_${changeYearFrom.value}_${changeYearTo.value}_${spatialUnit.value}_${selectedAttribute.value}`
-    : `${year}_${spatialUnit.value}_${selectedAttribute.value}`;
+    ? `change_${changeYearFrom.value}_${changeYearTo.value}_${spatialUnit.value}_${selectedAttribute.value}${clipSuffix}`
+    : `${year}_${spatialUnit.value}_${selectedAttribute.value}${clipSuffix}`;
 
   // 1. 如果缓存中存在，验证其是否被外部强制销毁以防崩溃
   if (wmsLayerCache.has(cacheKey)) {
@@ -1777,7 +1989,8 @@ async function loadWMSLayer(targetYear = null, visible = true, reqId = null) {
           format: 'image/png',
           styles: styleName,
           env: envParams,
-          info_format: 'application/json'
+          info_format: 'application/json',
+          ...(currentClipWKT.value ? { clip: currentClipWKT.value } : {})
     };
 
     // console.log('[Workbench] Adding WMS Provider:', { layerName, wmsParameters });
@@ -1828,6 +2041,18 @@ function updateLayerVisibility(targetKey, reqId = null, isClcd = false) {
     const previousLayer = isClcd ? clcdLayer.value : spatialLayer.value;
     const isSameLayer = previousLayer === targetLayer;
 
+    // 清理其他非目标、非当前动画层的状态
+    cache.forEach((layer, key) => {
+        if (layer !== targetLayer && layer !== previousLayer) {
+            layer.show = false;
+            layer.alpha = 0;
+            if (viewer.value.imageryLayers.contains(layer)) {
+                // If the user wants strictly memory clean, we could remove it. 
+                // But hiding is enough for fast switching.
+            }
+        }
+    });
+
     // 2. 确保目标图层在地图上并置顶
     if (!viewer.value.imageryLayers.contains(targetLayer)) {
         targetLayer.isAnalysisLayer = true;
@@ -1852,7 +2077,16 @@ function updateLayerVisibility(targetKey, reqId = null, isClcd = false) {
             if (progress < 1) {
                 // 如果用户已经中途切换至更新的年份，则停止当前动画
                 const currentActiveKey = isClcd ? `yunnan_${selectedYear.value}` : activeWmsKey.value;
-                if (activeWmsKey.value === targetKey || (isClcd && Number(targetKey.split('_').pop()) === selectedYear.value)) {
+                if (
+                    activeWmsKey.value === targetKey ||
+                    (isClcd && (function() {
+                        // 支持新旧两种 cacheKey 格式：
+                        // 旧: yunnan_1985  新: clcd_1985_xxx
+                        const parts = targetKey.split('_');
+                        const yr = parts[0] === 'clcd' ? Number(parts[1]) : Number(parts[parts.length - 1]);
+                        return yr === selectedYear.value;
+                    })())
+                ) {
                     targetLayer.alpha = progress;
                     previousLayer.alpha = 1 - progress;
                     requestAnimationFrame(animate);
@@ -1886,17 +2120,33 @@ function updateLayerVisibility(targetKey, reqId = null, isClcd = false) {
  */
 function cleanupOfflineLayers(activeKey, isClcd = false) {
     const cache = isClcd ? clcdLayerCache : wmsLayerCache;
-    const activeYearStr = isClcd ? activeKey.split('_').pop() : activeKey.split('_')[0];
-    const activeYear = parseInt(activeYearStr);
     
+    // 正确解析年份 (支持 clcd_YYYY_scope 格式)
+    const getYearFromKey = (key) => {
+        const parts = key.split('_');
+        return isClcd ? (parts[0] === 'clcd' ? parseInt(parts[1]) : parseInt(parts[parts.length - 1])) : parseInt(parts[0]);
+    };
+    
+    const activeYear = getYearFromKey(activeKey);
     if (isNaN(activeYear)) return;
 
     cache.forEach((layer, key) => {
-        const layerYearStr = isClcd ? key.split('_').pop() : key.split('_')[0];
-        const layerYear = parseInt(layerYearStr);
-        if (Math.abs(layerYear - activeYear) > 7 && key !== activeKey) {
-            layer.show = false;
-            layer.alpha = 0;
+        const layerYear = getYearFromKey(key);
+        // 如果是 CLCD 模式，除了非相近年份要清理外，还要清理同一时间内的不同范围切片
+        // （比如从“曲靖”切到“宣威”，旧范围应该被回收/隐藏，避免内存积压）
+        const isDistantYear = Math.abs(layerYear - activeYear) > 7;
+        const isDifferentScopeInClcd = isClcd && key !== activeKey && layerYear === activeYear;
+
+        if ((isDistantYear || isDifferentScopeInClcd) && key !== activeKey) {
+            if (layer.show) {
+                layer.show = false;
+                layer.alpha = 0;
+            }
+            // 考虑直接移除影像图层来释放显存
+            if (viewer.value && viewer.value.imageryLayers.contains(layer) && cache === clcdLayerCache) {
+                 viewer.value.imageryLayers.remove(layer, true); // 移除图层节约 WebGL 资源
+                 cache.delete(key);
+            }
         }
     });
 
@@ -1985,29 +2235,19 @@ function cleanupCLCDLayer() {
 }
 
 function clearWMSCache() {
-  wmsLayerCache.forEach((layer) => {
-    try {
-      if (viewer.value && !viewer.value.isDestroyed()) {
-        viewer.value.imageryLayers.remove(layer, true);
-      }
-    } catch (e) {}
-  });
-  wmsLayerCache.clear();
+  if (!viewer.value) return;
   
-  // 同时清理 CLCD 缓存
-  clcdLayerCache.forEach((layer) => {
-    try {
-      if (viewer.value && !viewer.value.isDestroyed()) {
-        viewer.value.imageryLayers.remove(layer, true);
-      }
-    } catch (e) {}
-  });
-  clcdLayerCache.clear();
+  // 1. 采用暴力清理逻辑，直接拔除所有标记为业务分析层的 ImageryLayers
+  clearAllAnalysisLayers(viewer.value);
 
-  spatialLayer.value = null;
+  // 2. 同时清理内存中的 Map 缓存，防止 key 冲突
+  wmsLayerCache.clear();
+  clcdLayerCache.clear();
   
-  // Secondary Brute-Force Cleanup to catch stragglers
-  cleanupResidueLayers();
+  // 3. 重置所有顶级引用
+  spatialLayer.value = null;
+  clcdLayer.value = null;
+  activeWmsKey.value = null;
 }
 
 // 暴力清理残留的“spatial_”开头的图层
@@ -2074,7 +2314,7 @@ function exitRegionalAnalysis() {
   clearWMSCache();
   
   // 恢复 Standard CLCD
-  loadStandardLayer(selectedYear.value);
+  loadStandardLayer(selectedYear.value, true, scopeRequestId);
 }
 
 // 跳转到区域检测分析页面 (Deprecated: Now acts as Switcher)
