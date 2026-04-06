@@ -1,0 +1,228 @@
+{
+    "coverage": {
+        "name": "CLCD_AAA",
+        "nativeName": "CLCD_AAA",
+        "namespace": {
+            "name": "WebGIS",
+            "href": "http://localhost:8080/geoserver/rest/namespaces/WebGIS.json"
+        },
+        "title": "county_anningshi",
+        "description": "Generated from ImageMosaic",
+        "keywords": {
+            "string": [
+                "county_anningshi",
+                "WCS",
+                "ImageMosaic"
+            ]
+        },
+        "nativeCRS": {
+            "@class": "projected",
+            "$": "PROJCS[\"CGCS2000 / 3-degree Gauss-Kruger zone 34\", \r\n  GEOGCS[\"China Geodetic Coordinate System 2000\", \r\n    DATUM[\"China 2000\", \r\n      SPHEROID[\"CGCS2000\", 6378137.0, 298.257222101, AUTHORITY[\"EPSG\",\"1024\"]], \r\n      AUTHORITY[\"EPSG\",\"1043\"]], \r\n    PRIMEM[\"Greenwich\", 0.0, AUTHORITY[\"EPSG\",\"8901\"]], \r\n    UNIT[\"degree\", 0.017453292519943295], \r\n    AXIS[\"Geodetic longitude\", EAST], \r\n    AXIS[\"Geodetic latitude\", NORTH], \r\n    AUTHORITY[\"EPSG\",\"4490\"]], \r\n  PROJECTION[\"Transverse_Mercator\", AUTHORITY[\"EPSG\",\"9807\"]], \r\n  PARAMETER[\"central_meridian\", 102.0], \r\n  PARAMETER[\"latitude_of_origin\", 0.0], \r\n  PARAMETER[\"scale_factor\", 1.0], \r\n  PARAMETER[\"false_easting\", 34500000.0], \r\n  PARAMETER[\"false_northing\", 0.0], \r\n  UNIT[\"m\", 1.0], \r\n  AXIS[\"Easting\", EAST], \r\n  AXIS[\"Northing\", NORTH], \r\n  AUTHORITY[\"EPSG\",\"4522\"]]"
+        },
+        "srs": "EPSG:4522",
+        "nativeBoundingBox": {
+            "minx": 34344166.5706629,
+            "maxx": 34655833.4293371,
+            "miny": 2337470.1925891824,
+            "maxy": 4729373.218111707,
+            "crs": {
+                "@class": "projected",
+                "$": "EPSG:4522"
+            }
+        },
+        "latLonBoundingBox": {
+            "minx": 100.09863634179574,
+            "maxx": 103.90136365820427,
+            "miny": 21.123359739213186,
+            "maxy": 42.69982246826617,
+            "crs": "EPSG:4326"
+        },
+        "projectionPolicy": "FORCE_DECLARED",
+        "enabled": true,
+        "metadata": {
+            "entry": [
+                {
+                    "@key": "elevation",
+                    "dimensionInfo": {
+                        "enabled": false
+                    }
+                },
+                {
+                    "@key": "time",
+                    "dimensionInfo": {
+                        "enabled": true,
+                        "presentation": "LIST",
+                        "units": "ISO8601",
+                        "defaultValue": {
+                            "strategy": "MAXIMUM"
+                        },
+                        "nearestMatchEnabled": false,
+                        "rawNearestMatchEnabled": false,
+                        "startValue": "",
+                        "endValue": ""
+                    }
+                },
+                {
+                    "@key": "cachingEnabled",
+                    "$": "false"
+                },
+                {
+                    "@key": "dirName",
+                    "$": "AAA_county_anningshi"
+                }
+            ]
+        },
+        "store": {
+            "@class": "coverageStore",
+            "name": "WebGIS:AAA",
+            "href": "http://localhost:8080/geoserver/rest/workspaces/WebGIS/coveragestores/AAA.json"
+        },
+        "serviceConfiguration": false,
+        "simpleConversionEnabled": false,
+        "internationalTitle": "",
+        "internationalAbstract": "",
+        "nativeFormat": "ImageMosaic",
+        "grid": {
+            "@dimension": 2,
+            "range": {
+                "low": "0 0",
+                "high": "1564 2206"
+            },
+            "transform": {
+                "scaleX": 30.00573893051947,
+                "scaleY": -30.00573893052024,
+                "shearX": 0,
+                "shearY": 0,
+                "translateX": 34516857.56949228,
+                "translateY": 2778442.793135085
+            },
+            "crs": "EPSG:4522"
+        },
+        "supportedFormats": {
+            "string": [
+                "GEOTIFF",
+                "GIF",
+                "PNG",
+                "JPEG",
+                "TIFF"
+            ]
+        },
+        "interpolationMethods": {
+            "string": [
+                "nearest neighbor",
+                "bilinear",
+                "bicubic"
+            ]
+        },
+        "defaultInterpolationMethod": "nearest neighbor",
+        "dimensions": {
+            "coverageDimension": {
+                "name": "PALETTE_INDEX",
+                "description": "GridSampleDimension[-Infinity,Infinity]",
+                "range": {
+                    "min": "-inf",
+                    "max": "inf"
+                },
+                "nullValues": {
+                    "double": 0
+                },
+                "dimensionType": {
+                    "name": "UNSIGNED_8BITS"
+                }
+            }
+        },
+        "requestSRS": {
+            "string": "EPSG:4522"
+        },
+        "responseSRS": {
+            "string": "EPSG:4522"
+        },
+        "parameters": {
+            "entry": [
+                {
+                    "string": "BackgroundValues",
+                    "null": ""
+                },
+                {
+                    "string": [
+                        "OVERVIEW_POLICY",
+                        "QUALITY"
+                    ]
+                },
+                {
+                    "string": [
+                        "MergeBehavior",
+                        "FLAT"
+                    ]
+                },
+                {
+                    "string": "AllowMultithreading",
+                    "boolean": false
+                },
+                {
+                    "string": "MaxAllowedTiles",
+                    "int": -1
+                },
+                {
+                    "string": [
+                        "ExcessGranuleRemoval",
+                        "NONE"
+                    ]
+                },
+                {
+                    "string": [
+                        "OutputTransparentColor",
+                        "#000000"
+                    ]
+                },
+                {
+                    "string": "USE_IMAGEN_IMAGEREAD",
+                    "boolean": true
+                },
+                {
+                    "string": "Bands",
+                    "null": ""
+                },
+                {
+                    "string": "RescalePixels",
+                    "boolean": true
+                },
+                {
+                    "string": "Filter",
+                    "null": ""
+                },
+                {
+                    "string": "SkipDuplicates",
+                    "boolean": false
+                },
+                {
+                    "string": [
+                        "InputTransparentColor",
+                        "#000000"
+                    ]
+                },
+                {
+                    "string": [
+                        "SUGGESTED_TILE_SIZE",
+                        "512,512"
+                    ]
+                },
+                {
+                    "string": "Accurate resolution computation",
+                    "boolean": false
+                },
+                {
+                    "string": "SORTING",
+                    "null": ""
+                },
+                {
+                    "string": [
+                        "FootprintBehavior",
+                        "None"
+                    ]
+                }
+            ]
+        },
+        "nativeCoverageName": "county_anningshi"
+    }
+}
