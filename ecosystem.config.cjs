@@ -29,7 +29,7 @@ module.exports = {
         {
             name: "nginx",
             script: "C:\\Software Installation\\Software for learning\\nginx-1.26.3\\nginx.exe",
-            args: `-c "C:\\projects\\webgis\\my_webgis_project\\ops\\nginx\\nginx_production.conf" -p "C:\\Software Installation\\Software for learning\\nginx-1.26.3\\"`,
+            args: `-c "C:\\projects\\webgis\\my_webgis_project\\ops\\sys\\nginx\\nginx_production.conf" -p "C:\\Software Installation\\Software for learning\\nginx-1.26.3\\"`,
             cwd: "C:\\Software Installation\\Software for learning\\nginx-1.26.3\\",
             instances: 1,
             exec_mode: "fork",
