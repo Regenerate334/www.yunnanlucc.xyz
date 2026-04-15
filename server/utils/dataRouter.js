@@ -409,6 +409,43 @@ export class ContextBuilder {
 
     buildTrendTable(rows, entities) {
         const cols = this._getRelevantCols(entities);
+
+        // 检测是否为多区域混合数据
+        const regionNames = [...new Set(rows.map(r => r.region_name).filter(Boolean))];
+        const isMultiRegion = regionNames.length > 1;
+
+        if (isMultiRegion) {
+            // ── 多区域：按区域分组，每个区域独立表格 + 独立统计 ──
+            let output = [`### 多区域历史序列数据（经后端核对，禁止擅自压缩）`];
+
+            for (const region of regionNames) {
+                const regionRows = rows.filter(r => r.region_name === region).sort((a, b) => a.year - b.year);
+                output.push('', `#### ${region}`);
+
+                const headerCells = ['年份', ...cols.map(c => `${this.translateCol(c)}(km²)`)];
+                output.push(`| ${headerCells.join(' | ')} |`);
+                output.push(`|${headerCells.map(() => '---').join('|')}|`);
+                regionRows.forEach(r => {
+                    const cells = cols.map(c => this.formatKm2(r[c]));
+                    output.push(`| ${r.year} | ${cells.join(' | ')} |`);
+                });
+
+                // 每个区域独立计算趋势统计
+                if (cols.length > 0) {
+                    output.push('', `**${region} 核心指标 (Verified Facts)**`);
+                    cols.forEach(c => {
+                        const stats = StatisticalAnalyzer.calculateTrend(regionRows, c);
+                        if (stats) {
+                            const direction = stats.delta >= 0 ? '增加' : '减少';
+                            output.push(`- **${this.translateCol(c)}**: 从 ${stats.startYear} 年的 ${stats.startArea.toFixed(2)} km² ${direction}至 ${stats.endYear} 年的 ${stats.endArea.toFixed(2)} km²，累计变化 ${Math.abs(stats.delta).toFixed(2)} km² (${stats.percentChange.toFixed(2)}%)，CAGR: ${stats.cagr.toFixed(2)}%。`);
+                        }
+                    });
+                }
+            }
+            return output.join('\n');
+        }
+
+        // ── 单区域趋势（原有逻辑）──
         const headerCells = ['年份', ...cols.map(c => `${this.translateCol(c)}(km²)`)];
         const header = `| ${headerCells.join(' | ')} |`;
         const sep = `|${headerCells.map(() => '---').join('|')}|`;
@@ -660,22 +697,42 @@ export class DataRouter {
 
         // ════════════════════════════ 具体地级市场景 ══════════════════════════
         if (prefectures.length >= 1) {
-            // 跨年对比：用户指定了至少 2 个年份或年份区间
-            if (years.length >= 2 || effectiveRange) {
-                const [y1, y2] = effectiveRange || [years[0], years[1]];
-                const rows = await this.getPrefectureCrossYearData(prefectures, y1, y2);
-                return { type: 'cross_year', years: [y1, y2], rows };
-            }
-
-            // 趋势查询
-            if (queryType === 'trend' || queryType === 'change_rate' || hasYearRange) {
+            // 趋势查询（优先级最高：queryType 显式为 trend/change_rate）
+            if (queryType === 'trend' || queryType === 'change_rate') {
                 if (prefectures.length === 1) {
                     const rows = await this.getPrefectureTrendData(prefectures[0]);
                     return { type: 'trend', region: prefectures[0], rows };
                 }
-                // 多个地级市的趋势 → 返回各自当年数据
-                const rows = await this.getMultiplePrefectureData(prefectures, targetYear);
-                return { type: 'comparison', rows };
+                // 多个地级市的趋势 → 并行获取各自的完整历史序列
+                const allTrends = await Promise.all(
+                    prefectures.map(p => this.getPrefectureTrendData(p))
+                );
+                const rows = allTrends.flat();
+                return { type: 'trend', region: prefectures.join('和'), rows, multi: true };
+            }
+
+            // 跨年对比：仅当用户明确指定了 2 个年份且跨度较小（≤5年）时触发
+            // 大跨度年份区间（如 1985-2023 来自"历史"关键词）应走趋势分支
+            if (years.length >= 2 || effectiveRange) {
+                const [y1, y2] = effectiveRange || [years[0], years[1]];
+                const span = Math.abs(y2 - y1);
+
+                if (span <= 5) {
+                    // 短跨度：跨年对比（只返回 2 个年份的面状对比）
+                    const rows = await this.getPrefectureCrossYearData(prefectures, y1, y2);
+                    return { type: 'cross_year', years: [y1, y2], rows };
+                } else {
+                    // 长跨度：当作趋势处理，获取完整历史序列
+                    if (prefectures.length === 1) {
+                        const rows = await this.getPrefectureTrendData(prefectures[0]);
+                        return { type: 'trend', region: prefectures[0], rows };
+                    }
+                    const allTrends = await Promise.all(
+                        prefectures.map(p => this.getPrefectureTrendData(p))
+                    );
+                    const rows = allTrends.flat();
+                    return { type: 'trend', region: prefectures.join('和'), rows, multi: true };
+                }
             }
 
             // 多地级市对比
@@ -814,3 +871,5 @@ export class DataRouter {
         return rows;
     }
 }
+
+export default new DataRouter();

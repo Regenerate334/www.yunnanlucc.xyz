@@ -11,6 +11,7 @@ const LAND_CLASS_NAMES = {
 const transferTool = {
     name: 'land_transfer_analysis',
     description: '查询土地利用转移矩阵，分析不同地类之间的相互转化情况。支持按州市、按县级过滤。',
+    keywords: ['流转', '转移', '转化', '转入', '转出', '变为', '变成', '土地流转', '流转矩阵', '转移矩阵', '地类转移'],
     parameters: {
         type: 'object',
         properties: {

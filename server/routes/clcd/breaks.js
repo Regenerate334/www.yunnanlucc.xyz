@@ -155,9 +155,20 @@ router.get('/', [
 
             logger.info(`[breaks] Transfer mode: ${validCols.length} cols, ${stats.count} rows, breaks:`, breaks);
 
-            // [Security] 移除副作用：不再向物理表写入 _transfer_sum。
-            // WMS 渲染应通过 SLD 环境变量或 SQL 视图动态处理复杂表达式。
-            logger.info(`[breaks] Transfer mode computed: ${validCols.length} cols, ${stats.count} rows`);
+            // 5b. [Critical Fix] 恢复物理表更新：WMS 渲染依赖 _transfer_sum 物理列
+            // 由于 Geoserver 中的 SLD 使用了 env('attr') 且默认为 _transfer_sum，
+            // 必须先将计算结果写入物理表以便 WMS 同步渲染。
+            await pool.query(`
+                ALTER TABLE public."${tableName}" 
+                ADD COLUMN IF NOT EXISTS "_transfer_sum" double precision DEFAULT 0
+            `);
+
+            await pool.query(`
+                UPDATE public."${tableName}" 
+                SET "_transfer_sum" = (${sumExpr}) / 1000000.0
+            `);
+
+            logger.info(`[breaks] Transfer mode computed & updated: ${validCols.length} cols, ${stats.count} rows`);
 
             return res.json({
                 mode: 'transfer',
@@ -217,8 +228,12 @@ router.get('/', [
                     return res.status(400).json({ error: `Cannot find cropland column for year ${targetYear}` });
                 }
 
-                // [Security] 移除副作用：不再向物理表写入 _rate_val。
-                logger.info(`[breaks/rate] Reclamation calculated for col=${croplandCol}, year=${targetYear}`);
+                // [Critical Fix] 恢复物理表更新：WMS 渲染依赖 _rate_val 物理列
+                await pool.query(`
+                    UPDATE public."${STATS_TABLE}" 
+                    SET "${RATE_COL}" = "${croplandCol}" / "shape_area"
+                    WHERE "shape_area" > 0
+                `);
 
                 logger.info(`[breaks/rate] Reclamation updated: col=${croplandCol}, year=${targetYear}`);
 

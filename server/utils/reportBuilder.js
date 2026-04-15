@@ -12,7 +12,7 @@
  *  - 后端语言：Node.js（不是 Python）
  */
 
-import agenticRouter from './agenticRouter.js';
+import aiMiddleware from './aiMiddleware.js';
 import { generateText, extractJSON } from './aiClient.js';
 import logger from '../config/logger.js';
 
@@ -139,7 +139,7 @@ ${REPORT_JSON_SCHEMA}`
   let nativeAnalysis = '';
 
   try {
-    dataContext = await agenticRouter.route(question, componentContext, year);
+    dataContext = await aiMiddleware.getDataContext(question, componentContext, year);
     logger.info(`[reportBuilder] 原始工具数据加载成功，长度: ${dataContext?.length || 0}`);
 
     // 如果数据量足够，触发原生“数据挖掘” AI 调用 (替代 Python 引擎)

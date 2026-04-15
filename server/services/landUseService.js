@@ -258,6 +258,134 @@ class LandUseService {
 
         return dataRows[0] || {};
     }
+    /**
+     * 计算 2021-2026 范式的权威监测算法
+     * 依据：docs/LUCC_Algorithms_2021_2026.md
+     */
+    _calculateMonitoringIndices(curr, base) {
+        if (!curr || !base) return null;
+
+        const norm = (val) => Number(val || 0) / 1000000; // 转化为 km2
+        const landTypes = ['cropland', 'forest', 'shrub', 'grassland', 'water', 'wetland', 'impervious', 'barren', 'snow_ice'];
+
+        let totalArea = 0, totalBaseArea = 0;
+        landTypes.forEach(t => {
+            totalArea += norm(curr[t]);
+            totalBaseArea += norm(base[t]);
+        });
+        if (totalArea <= 0 || totalBaseArea <= 0) return null;
+
+        /**
+         * 1. InVEST生境质量 (HQI)
+         * 权重：Forest/Wetland: 1.0, Water: 0.9, Shrub: 0.8, Grass: 0.7, Cropland: 0.3, Barren/Snow: 0.1
+         */
+        const hqWeights = { forest: 1.0, wetland: 1.0, water: 0.9, shrub: 0.8, grassland: 0.7, cropland: 0.3, barren: 0.1, snow_ice: 0.1, impervious: 0 };
+        let hqSum = 0, hqBaseSum = 0;
+        landTypes.forEach(t => {
+            hqSum += norm(curr[t]) * hqWeights[t];
+            hqBaseSum += norm(base[t]) * hqWeights[t];
+        });
+        const hqVal = (hqSum / totalArea) * 100;
+        const hqBase = (hqBaseSum / totalBaseArea) * 100;
+
+        /**
+         * 2. 源汇碳代谢压力 (CMPI)
+         * 源：Impervious: 50, Cropland: 0.42
+         * 汇：Forest: 0.58, Shrub: 0.20, Water/Wetland: 0.25, Grass: 0.02
+         */
+        const calcCMP = (data) => {
+            const emissions = norm(data.impervious) * 50 + norm(data.cropland) * 0.42;
+            const sinks = norm(data.forest) * 0.58 + norm(data.shrub) * 0.20 + (norm(data.water) + norm(data.wetland)) * 0.25 + norm(data.grassland) * 0.02;
+            return emissions / (sinks || 0.001);
+        };
+        const cmpVal = calcCMP(curr);
+        const cmpBase = calcCMP(base);
+
+        /**
+         * 3. 生态韧性度 (ERes)
+         * 权重：Forest: 1.0, Wetland: 0.9, Water: 0.8, Shrub/Grass: 0.7, Cropland: 0.4, Barren/Snow: 0.1
+         */
+        const resWeights = { forest: 1.0, wetland: 0.9, water: 0.8, shrub: 0.7, grassland: 0.7, cropland: 0.4, barren: 0.1, snow_ice: 0.1, impervious: 0 };
+        let eResSum = 0, eResBaseSum = 0;
+        landTypes.forEach(t => {
+            eResSum += norm(curr[t]) * resWeights[t];
+            eResBaseSum += norm(base[t]) * resWeights[t];
+        });
+        const eresVal = (eResSum / totalArea) * 100;
+        const eresBase = (eResBaseSum / totalBaseArea) * 100;
+
+        /**
+         * 4. 三生空间冲突度 (PLEC)
+         * 公式：(Life * 2 + Prod * 1) / Eco
+         */
+        const calcPLEC = (data) => {
+            const aProd = norm(data.cropland);
+            const aLife = norm(data.impervious);
+            const aEco = norm(data.forest) + norm(data.shrub) + norm(data.grassland) + norm(data.water) + norm(data.wetland) + norm(data.barren) + norm(data.snow_ice);
+            return (aLife * 2.0 + aProd * 1.0) / (aEco || 0.001);
+        };
+        const plecVal = calcPLEC(curr);
+        const plecBase = calcPLEC(base);
+
+        // 统一预警级别判定逻辑
+        const getScore = (val, breaks, ascending = true) => {
+            const [b1, b2, b3] = breaks;
+            if (ascending) {
+                if (val <= b1) return (val / b1) * 25;
+                if (val <= b2) return 25 + ((val - b1) / (b2 - b1)) * 25;
+                if (val <= b3) return 50 + ((val - b2) / (b3 - b2)) * 25;
+                return 75 + ((val - b3) / b3) * 25;
+            } else {
+                if (val >= b1) return ((Math.max(b1 * 1.1, val) - val) / (Math.max(b1 * 1.1, val) - b1 + 0.001)) * 25;
+                if (val >= b2) return 25 + ((b1 - val) / (b1 - b2)) * 25;
+                if (val >= b3) return 50 + ((b2 - val) / (b2 - b3)) * 25;
+                return 75 + ((b3 - val) / b3) * 25;
+            }
+        };
+
+        const scores = {
+            hq: getScore(hqVal, [hqBase - 0.5, hqBase - 2.0, hqBase - 5.0], false),
+            cmp: getScore(cmpVal, [cmpBase + 0.05, cmpBase + 0.20, cmpBase + 0.50], true),
+            eres: getScore(eresVal, [eresBase - 0.5, eresBase - 2.0, eresBase - 5.0], false),
+            plec: getScore(plecVal, [plecBase + 0.02, plecBase + 0.08, plecBase + 0.20], true)
+        };
+
+        // 综合加权引擎 (MCE Weighting Strategy)
+        const weightedSum = scores.hq * 0.30 + scores.cmp * 0.25 + scores.eres * 0.25 + scores.plec * 0.20;
+        const maxRisk = Math.max(...Object.values(scores));
+        const compositeScore = weightedSum * 0.60 + maxRisk * 0.40;
+
+        return {
+            year: curr.year,
+            metrics: {
+                hq: { value: hqVal, base: hqBase, score: scores.hq },
+                cmp: { value: cmpVal, base: cmpBase, score: scores.cmp },
+                eres: { value: eresVal, base: eresBase, score: scores.eres },
+                plec: { value: plecVal, base: plecBase, score: scores.plec }
+            },
+            compositeScore: Math.min(100, Math.max(0, compositeScore))
+        };
+    }
+
+    /**
+     * 获取指定区域和年份的监测指数
+     */
+    async getRegionMonitoring(year, region = '云南省', level = 'province') {
+        const baseYear = 1985;
+        let currentData, baseData;
+
+        if (level === 'province' || region === '云南省') {
+            currentData = await this.getProvinceSummary(year);
+            baseData = await this.getProvinceSummary(baseYear);
+        } else {
+            const currentRows = await this.getTrend(region, year, year, level);
+            const baseRows = await this.getTrend(region, baseYear, baseYear, level);
+            currentData = currentRows[0];
+            baseData = baseRows[0] || currentRows[0]; // 兜底处理
+        }
+
+        return this._calculateMonitoringIndices(currentData, baseData);
+    }
 }
 
 export default new LandUseService();

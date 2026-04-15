@@ -11,13 +11,14 @@ const LAND_USE_CONFIG = {
 const clcdTool = {
     name: 'clcd_analysis',
     description: '查询云南省 1985-2023 年土地利用与覆盖变化（CLCD）数据。支持趋势分析、区域对比、地类占比和面积排名。',
+    keywords: ['土地利用', '土地覆盖', 'CLCD', '面积', '统计', '趋势', '排名', '对比', '占比', '构成', '结构'],
     parameters: {
         type: 'object',
         properties: {
             query_type: {
                 type: 'string',
-                enum: ['trend', 'comparison', 'ranking', 'structure'],
-                description: '查询类型：trend(趋势/历史), comparison(区域对比), ranking(面积排名), structure(地类占比)'
+                enum: ['trend', 'comparison', 'ranking', 'structure', 'monitoring'],
+                description: '查询类型：trend(趋势), comparison(对比), ranking(排名), structure(占比), monitoring(监测指数/风险评估)'
             },
             region: {
                 type: 'string',
@@ -101,6 +102,12 @@ const clcdTool = {
                 return { type: 'comparison', rows, year: targetYear, region: isMultiRegion ? regions.join('和') : '全省各地市' };
             }
 
+            if (query_type === 'monitoring') {
+                const targetRegion = regions[0];
+                const data = await landUseService.getRegionMonitoring(targetYear, targetRegion, isMultiRegion ? 'prefecture' : 'province');
+                return { type: 'monitoring', ...data, region: targetRegion };
+            }
+
             // 结构化数据/占比
             if (regions.length === 1 && regions[0] === '云南省') {
                 const row = await landUseService.getProvinceSummary(targetYear);
@@ -116,6 +123,35 @@ const clcdTool = {
     },
 
     format(data, entities) {
+        if (data.type === 'monitoring') {
+            const m = data.metrics;
+            const score = data.compositeScore.toFixed(1);
+
+            const getStatusTxt = (s, labels) => {
+                if (s > 75) return `🔴 ${labels[3]}`;
+                if (s > 50) return `🟠 ${labels[2]}`;
+                if (s > 25) return `🟡 ${labels[1]}`;
+                return `🟢 ${labels[0]}`;
+            };
+
+            return [
+                `## 环境风险监测评估：${data.region} (${data.year}年)`,
+                `> 依据：2021-2026 LUCC 权威学术评价模型`,
+                '',
+                `### 综合风险指数：**${score}** / 100`,
+                '',
+                '| 监测指标 | 原始值 | 1985 基准 | 风险得分 | 状态 |',
+                '| :--- | :--- | :--- | :--- | :--- |',
+                `| InVEST 生境质量 | ${m.hq.value.toFixed(3)} | ${m.hq.base.toFixed(3)} | ${m.hq.score.toFixed(1)} | ${getStatusTxt(m.hq.score, ['安全/优', '关注/良', '警告/中', '严重退化/差'])} |`,
+                `| 源汇碳代谢压力 | ${m.cmp.value.toFixed(3)} | ${m.cmp.base.toFixed(3)} | ${m.cmp.score.toFixed(1)} | ${getStatusTxt(m.cmp.score, ['安全', '代谢承压', '警告', '严重风险'])} |`,
+                `| 全域生态韧性度 | ${m.eres.value.toFixed(3)} | ${m.eres.base.toFixed(3)} | ${m.eres.score.toFixed(1)} | ${getStatusTxt(m.eres.score, ['安全', '海绵退化', '脆弱预警', '结构崩溃'])} |`,
+                `| 三生空间冲突度 | ${m.plec.value.toFixed(3)} | ${m.plec.base.toFixed(3)} | ${m.plec.score.toFixed(1)} | ${getStatusTxt(m.plec.score, ['协同安全', '边缘试探', '深度博弈', '全面侵蚀'])} |`,
+                '',
+                '**评估结论**：',
+                data.compositeScore > 50 ? '⚠️ 该区域存在显著的生态环境风险，建议加强空间规划管制。' : '✅ 区域生态状态相对稳定，建议配合“三区三线”进行持续监测。'
+            ].join('\n');
+        }
+
         const rows = data.rows || [];
         if (rows.length === 0) return `> CLCD 土地利用数据：未找到相关记录。`;
 
