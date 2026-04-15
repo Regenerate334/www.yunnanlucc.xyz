@@ -37,7 +37,7 @@
                     <div class="modal-body">
                         <div v-if="isLoading" class="loading-state">
                             <div class="spinner"></div>
-                            <span>正在调取 {{ selectedRegion.name }} 历史监测数据...</span>
+                            <span>正在加载 {{ selectedRegion.name }} 历史监测数据...</span>
                         </div>
                         <RegionalTrendChart v-else-if="trendData.length > 0" :regionName="selectedRegion.name"
                             :level="selectedRegion.level" :seriesData="trendData" />
@@ -72,7 +72,17 @@ const globalStore = useGlobalStore();
 const panelName = 'regionalTrend';
 
 const isVisible = computed(() => globalStore.activePanel === panelName);
-const selectedRegion = ref({ name: '云南省', level: 'province' });
+const selectedRegion = computed({
+    get: () => ({ 
+        name: globalStore.scope.name, 
+        level: globalStore.scope.level,
+        code: globalStore.scope.code
+    }),
+    set: (val) => {
+        globalStore.setScope(val.level, val.code || '', val.name);
+    }
+});
+
 const trendData = ref([]);
 const isLoading = ref(false);
 
@@ -113,11 +123,19 @@ function closeModal() {
     globalStore.setActivePanel(null);
 }
 
-watch(selectedRegion, (newVal) => {
-    if (newVal.name) {
+// 监听全局 Scope 变化，自动刷新数据
+watch(() => globalStore.scope, () => {
+    if (isVisible.value) {
         fetchTrendData();
     }
 }, { deep: true });
+
+// 监听面板打开，确保数据是最新的
+watch(isVisible, (visible) => {
+    if (visible) {
+        fetchTrendData();
+    }
+});
 </script>
 
 <style scoped>
@@ -425,17 +443,28 @@ watch(selectedRegion, (newVal) => {
 }
 
 .close-btn {
-    background: none;
+    background: rgba(255, 255, 255, 0.05);
     border: none;
     color: rgba(255, 255, 255, 0.5);
     font-size: 24px;
     cursor: pointer;
-    padding: 10px;
-    transition: color 0.2s;
+    width: 38px;
+    height: 38px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 50%;
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
 .close-btn:hover {
+    background: rgba(245, 108, 108, 0.2);
     color: #fff;
+    transform: rotate(90deg) scale(1.1);
+}
+
+.close-btn:active {
+    transform: rotate(90deg) scale(0.95);
 }
 
 .modal-body {

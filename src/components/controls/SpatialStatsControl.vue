@@ -367,9 +367,9 @@ defineExpose({ setLoading, setError });
   right: 12px; 
   top: 50%; 
   transform: translateY(-50%); 
-  background: rgba(245, 108, 108, 0.15); /* 默认开启半透明红 */
+  background: rgba(255, 255, 255, 0.05);
   border: none; 
-  color: #F56C6C; /* 默认红色 */
+  color: rgba(255, 255, 255, 0.5);
   cursor: pointer; 
   width: 34px; 
   height: 34px; 
@@ -380,9 +380,12 @@ defineExpose({ setLoading, setError });
   transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1); 
 }
 .close-btn:hover { 
-  background: rgba(245, 108, 108, 0.25);
+  background: rgba(245, 108, 108, 0.2);
   color: #fff; 
   transform: translateY(-50%) rotate(90deg) scale(1.1); 
+}
+.close-btn:active {
+  transform: translateY(-50%) rotate(90deg) scale(0.95);
 }
 .control-body { padding: 14px 16px; display: flex; flex-direction: column; gap: 12px; }
 .control-section { display: flex; flex-direction: column; gap: 10px; }

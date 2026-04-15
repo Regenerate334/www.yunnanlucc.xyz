@@ -63,7 +63,7 @@ router.beforeEach(async (to, from, next) => {
 			}
 			next();
 		} else {
-			console.warn(`[Router] Token invalid. Redirecting to /login`);
+			console.warn(`[Router] Token invalid or session expired. Redirecting to /login from ${from.fullPath} to ${to.fullPath}`);
 			next('/login');
 		}
 	}

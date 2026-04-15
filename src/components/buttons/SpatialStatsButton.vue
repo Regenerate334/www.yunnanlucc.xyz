@@ -28,7 +28,7 @@
 
 <script setup>
 import { ref, computed } from 'vue';
-import statsIcon from '@/assets/icons/business/spatial-stats.png';
+import statsIcon from '../../assets/icons/business/spatial-stats.png';
 import SpatialStatsControl from '../controls/SpatialStatsControl.vue';
 import { useGlobalStore } from '../../stores/global';
 

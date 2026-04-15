@@ -85,7 +85,7 @@
 <script setup>
 import { ref, computed, watch, onMounted, onUnmounted, nextTick } from 'vue';
 import { useGlobalStore } from '../../stores/index.ts';
-import timeIcon from '@/assets/icons/business/time-selector.png';
+import timeIcon from '../../assets/icons/business/time-selector.png';
 
 const props = defineProps({
   modelValue: {
@@ -141,14 +141,16 @@ function selectYear(year) {
   scrollIntoView(year);
 }
 
-// 控制箭头仅执行滚动，不触发年份选中
+// 左右箭头控制：点击时逐年切换年份
 function stepYear(direction) {
-  if (!trackWrapper.value) return;
-  const scrollAmount = nodeOffset * 3 * direction; // 每次点击箭头滚动 3 个节点的跨度
-  trackWrapper.value.scrollBy({
-    left: scrollAmount,
-    behavior: 'smooth'
-  });
+  if (!yearsAll.value.length) return;
+  const index = yearsAll.value.indexOf(props.modelValue);
+  const nextIndex = index + direction;
+  
+  // 边界检查
+  if (nextIndex >= 0 && nextIndex < yearsAll.value.length) {
+    selectYear(yearsAll.value[nextIndex]);
+  }
 }
 
 // 鼠标滚轮横向滚动支持

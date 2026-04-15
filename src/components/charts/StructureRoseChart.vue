@@ -16,47 +16,69 @@ import { clcdApi } from '../../api/index.js';
 import { transformDataForCalculation } from '../../utils/indices.ts';
 
 const props = defineProps({
-  year: { type: Number, default: 2023 }
+  year: { type: Number, default: 2023 },
+  regionName: { type: String, default: '云南省' },
+  level: { type: String, default: 'province' }
 });
 
 const chartContainer = shallowRef(null);
 const chartInstance = shallowRef(null);
 
 const landUseColors = {
-  'Cropland': '#FAE39C',
-  'Forest': '#446F33',
-  'Shrub': '#33A02C',
-  'Grassland': '#ABD37B',
-  'Water': '#1E69B4',
-  'Snow/Ice': '#A6CEE3',
-  'Barren': '#CFBDA3',
-  'Impervious': '#E24290',
-  'Wetland': '#2899E8'
+  'cropland': '#FAE39C',
+  'forest': '#446F33',
+  'shrub': '#33A02C',
+  'grassland': '#ABD37B',
+  'water': '#1E69B4',
+  'snow_ice': '#A6CEE3',
+  'barren': '#CFBDA3',
+  'impervious': '#E24290',
+  'wetland': '#2899E8'
 };
 
 const landUseNames = {
-  'Cropland': '耕地',
-  'Forest': '林地',
-  'Shrub': '灌木',
-  'Grassland': '草地',
-  'Water': '水域',
-  'Snow/Ice': '冰雪',
-  'Barren': '裸地',
-  'Impervious': '建设用地',
-  'Wetland': '湿地'
+  'cropland': '耕地',
+  'forest': '林地',
+  'shrub': '灌木',
+  'grassland': '草地',
+  'water': '水域',
+  'snow_ice': '冰雪',
+  'barren': '裸地',
+  'impervious': '建设用地',
+  'wetland': '湿地'
 };
 
 async function fetchDataAndRender() {
   try {
-    const data = await clcdApi.getYearSummary(props.year);
-    if (!data) return;
+    let data;
+    if (props.level === 'province') {
+      data = await clcdApi.getYearSummary(props.year);
+    } else {
+      // 针对地市或县级，先获取该区域所有年份数据，再筛选目标年份
+      let regData;
+      if (props.level === 'prefecture') {
+        regData = await clcdApi.getPrefectureDataByName(props.regionName);
+      } else {
+        regData = await clcdApi.getCountyDataByName(props.regionName);
+      }
+      
+      if (regData && Array.isArray(regData)) {
+        data = regData.find(d => Number(d.year) === Number(props.year));
+      }
+    }
 
-    const transformed = transformDataForCalculation(data);
-    const chartData = Object.keys(transformed).map(key => ({
-      name: landUseNames[key] || key,
-      value: transformed[key],
+    if (!data) {
+      console.warn(`[StructureRoseChart] No data for ${props.regionName} in ${props.year}`);
+      return;
+    }
+
+    // 转换数据格式
+    const types = Object.keys(landUseNames);
+    const chartData = types.map(key => ({
+      name: landUseNames[key],
+      value: Number(data[key]) || 0,
       itemStyle: { color: landUseColors[key] }
-    })).sort((a, b) => b.value - a.value);
+    })).filter(item => item.value > 0).sort((a, b) => b.value - a.value);
 
     renderChart(chartData);
 
@@ -121,7 +143,7 @@ onUnmounted(() => {
   chartInstance.value?.dispose();
 });
 
-watch(() => props.year, () => {
+watch([() => props.year, () => props.regionName, () => props.level], () => {
   fetchDataAndRender();
 });
 

@@ -81,7 +81,13 @@ export async function encrypt(plainText) {
         );
     } catch (err) {
         console.error('[Crypto] 加密执行失败:', err);
-        throw new Error('数据安全处理异常');
+
+        // 区分错误原因，防止直接吞噬原始错误
+        if (!window.crypto || !window.crypto.subtle) {
+            throw new Error('数据安全处理异常：当前非 HTTPS 环境或 localhost，浏览器已禁用底层加密模块 (Web Crypto API)。');
+        }
+
+        throw new Error(err.message || '数据安全处理异常');
     }
 }
 

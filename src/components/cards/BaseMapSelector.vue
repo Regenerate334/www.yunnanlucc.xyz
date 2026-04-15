@@ -24,11 +24,14 @@
 
 <script setup>
 import { ref, computed, onMounted, onUnmounted } from 'vue';
+import { useGlobalStore } from '../../stores/global';
 
+const globalStore = useGlobalStore();
+const panelName = 'basemap';
 const emit = defineEmits(['change']);
 
 const selectedMap = ref('imagery'); // 默认影像底图
-const isOpen = ref(false);
+const isOpen = computed(() => globalStore.activePanel === panelName);
 
 const baseMaps = [
   { id: 'imagery', name: '天地图影像' },
@@ -37,18 +40,22 @@ const baseMaps = [
 ];
 
 function toggleDropdown() {
-  isOpen.value = !isOpen.value;
+  if (globalStore.activePanel === panelName) {
+    globalStore.setActivePanel(null);
+  } else {
+    globalStore.setActivePanel(panelName);
+  }
 }
 
 function selectMap(mapId) {
   selectedMap.value = mapId;
-  isOpen.value = false;
+  globalStore.setActivePanel(null);
   emit('change', mapId);
 }
 
 const handleClickOutside = (e) => {
-  if (!e.target.closest('.basemap-selector')) {
-    isOpen.value = false;
+  if (globalStore.activePanel === panelName && !e.target.closest('.basemap-selector')) {
+    globalStore.setActivePanel(null);
   }
 };
 

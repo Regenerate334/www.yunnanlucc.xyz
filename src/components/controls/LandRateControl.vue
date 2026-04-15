@@ -345,9 +345,9 @@ defineExpose({ setLoading, setError });
   right: 12px;
   top: 50%;
   transform: translateY(-50%);
-  background: rgba(245, 108, 108, 0.15); /* 默认开启半透明红 */
+  background: rgba(255, 255, 255, 0.05); /* 统一为默认浅白背景 */
   border: none;
-  color: #F56C6C; /* 默认红色 */
+  color: rgba(255, 255, 255, 0.5); /* 默认淡色 */
   cursor: pointer;
   width: 34px;
   height: 34px;
@@ -358,9 +358,12 @@ defineExpose({ setLoading, setError });
   border-radius: 50%;
 }
 .close-btn:hover {
-  background: rgba(245, 108, 108, 0.25);
+  background: rgba(245, 108, 108, 0.2); /* 悬停变为红底 */
   color: #fff;
   transform: translateY(-50%) rotate(90deg) scale(1.1);
+}
+.close-btn:active {
+  transform: translateY(-50%) rotate(90deg) scale(0.95);
 }
 
 .control-body {

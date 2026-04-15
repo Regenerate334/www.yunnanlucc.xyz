@@ -8,7 +8,7 @@
 <template>
     <div class="distance-measure-control" ref="containerRef">
         <button @click="toggleMeasure" class="measure-btn" :class="{ active: isMeasuring }" title="测距">
-            <img src="@/assets/icons/map/measure-distance.png" class="measure-icon" alt="测距" />
+            <img src="../../assets/icons/map/measure-distance.png" class="measure-icon" alt="测距" />
             <span class="btn-label">测距</span>
         </button>
 
@@ -210,7 +210,6 @@ onUnmounted(() => {
     width: 32px;
     height: 32px;
     object-fit: contain;
-    filter: brightness(0) invert(1);
     transition: all 0.3s ease;
 }
 

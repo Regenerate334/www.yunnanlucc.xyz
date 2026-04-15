@@ -12,6 +12,7 @@
         v-if="authStore.user?.role === 'super_admin'"
         class="floating-tool-btn admin-trigger"
         @click="goToAdmin"
+        tabindex="-1"
         title="系统控制中心"
       >
         <div class="tool-icon">
@@ -28,7 +29,7 @@
     >
       <!-- 左侧组：基础工具与测量 (6个) -->
       <div class="nav-group left">
-        <button class="control-btn logout-btn" @click="handleLogout" title="退出系统">
+        <button type="button" class="control-btn logout-btn" @click="handleLogout" @keydown.enter.stop tabindex="-1" title="退出系统">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
             <path d="M18.36 6.64a9 9 0 1 1-12.73 0"></path>
             <line x1="12" y1="2" x2="12" y2="12"></line>
@@ -46,9 +47,9 @@
           :modelValue="selectedYear"
           @update:modelValue="(val) => $emit('update:selectedYear', val)"
         />
+        <RegionSelector />
         <ViewResetButton @reset-map="$emit('reset-map')" />
         <DistanceMeasureButton />
-        <AreaMeasureButton />
       </div>
 
       <!-- 中央主页按钮 -->
@@ -62,6 +63,7 @@
 
       <!-- 右侧组：高级分析与可视化 (7个) -->
       <div class="nav-group right">
+        <AreaMeasureButton />
         <SpatialStatsButton
           ref="spatialStatsControl"
           @stats-query="(val) => $emit('stats-query', val)"
@@ -106,6 +108,7 @@ import AreaMeasureButton from '../buttons/AreaMeasureButton.vue';
 import SpatialStatsButton from '../buttons/SpatialStatsButton.vue';
 import SpatialLayerSelector from '../cards/SpatialLayerSelector.vue';
 import TimeSelectionButton from '../cards/TimeSelectionButton.vue';
+import RegionSelector from './RegionSelector.vue';
 
 const props = defineProps({
   selectedYear: Number,
@@ -200,14 +203,15 @@ defineExpose({ transferControl, rateControl, spatialStatsControl });
 .nav-group.left > :deep(*:nth-child(6)) { transform: translateY(20px) !important; }
 .nav-group.left > :deep(*:nth-child(7)) { transform: translateY(18px) !important; }
 
-/* 底部导航栏控制按钮拱形自适应 - 7个右侧 */
+/* 底部导航栏控制按钮拱形自适应 - 8个右侧 */
 .nav-group.right > :deep(*:nth-child(1)) { transform: translateY(18px) !important; }
 .nav-group.right > :deep(*:nth-child(2)) { transform: translateY(20px) !important; }
-.nav-group.right > :deep(*:nth-child(3)) { transform: translateY(22px) !important; }
-.nav-group.right > :deep(*:nth-child(4)) { transform: translateY(24px) !important; }
-.nav-group.right > :deep(*:nth-child(5)) { transform: translateY(25px) !important; }
-.nav-group.right > :deep(*:nth-child(6)) { transform: translateY(26px) !important; }
+.nav-group.right > :deep(*:nth-child(3)) { transform: translateY(21px) !important; }
+.nav-group.right > :deep(*:nth-child(4)) { transform: translateY(23px) !important; }
+.nav-group.right > :deep(*:nth-child(5)) { transform: translateY(24px) !important; }
+.nav-group.right > :deep(*:nth-child(6)) { transform: translateY(25px) !important; }
 .nav-group.right > :deep(*:nth-child(7)) { transform: translateY(26px) !important; }
+.nav-group.right > :deep(*:nth-child(8)) { transform: translateY(26px) !important; }
 
 /* 深度选择器：让所有控制按钮透明，融入背景设计图 */
 :deep(.control-btn),
@@ -216,9 +220,10 @@ defineExpose({ transferControl, rateControl, spatialStatsControl });
 :deep(.ai-btn),
 :deep(.time-toggle-btn),
 :deep(.logout-btn),
-:deep(.admin-btn) {
-  width: 42px !important; 
-  height: 42px !important;
+:deep(.admin-btn),
+:deep(.region-btn) {
+  width: 48px !important; 
+  height: 48px !important;
   border: 1px solid rgba(255, 255, 255, 0.45) !important;
   background: radial-gradient(circle at 30% 30%, rgba(80, 110, 200, 0.6) 0%, rgba(30, 45, 90, 0.85) 100%) !important;
   border-radius: 50% !important;
@@ -234,34 +239,27 @@ defineExpose({ transferControl, rateControl, spatialStatsControl });
     0 0 12px rgba(64, 150, 255, 0.2) !important;
   backdrop-filter: blur(8px) !important;
   position: relative;
-  overflow: hidden;
+  overflow: visible; /* 允许图标轻微溢出或阴影显示 */
 }
 
 /* 添加按钮表面的高光质感 */
-:deep(.control-btn)::after,
-:deep(.reset-btn)::after,
-:deep(.measure-btn)::after,
-:deep(.ai-btn)::after,
-:deep(.time-toggle-btn)::after,
 :deep(.logout-btn)::after,
-:deep(.admin-btn)::after {
+:deep(.admin-btn)::after,
+:deep(.region-btn)::after {
   content: '';
   position: absolute;
   top: 0;
   left: 0;
   width: 100%;
   height: 100%;
+  border-radius: inherit; /* 核心修复：确保高光层契合圆形边界，去除尖角 */
   background: linear-gradient(135deg, rgba(255,255,255,0.15) 0%, transparent 50%);
   pointer-events: none;
 }
 
-:deep(.control-btn:hover),
-:deep(.reset-btn:hover),
-:deep(.measure-btn:hover),
-:deep(.ai-btn:hover),
-:deep(.time-toggle-btn:hover),
 :deep(.logout-btn:hover),
-:deep(.admin-btn:hover) {
+:deep(.admin-btn:hover),
+:deep(.region-btn:hover) {
   background: radial-gradient(circle at 30% 30%, rgba(100, 140, 255, 0.8) 0%, rgba(40, 60, 120, 0.95) 100%) !important;
   border-color: rgba(255, 255, 255, 0.8) !important;
   transform: translateY(-8px) scale(1.15) rotate(5deg) !important;
@@ -288,8 +286,9 @@ defineExpose({ transferControl, rateControl, spatialStatsControl });
 :deep(.time-toggle-btn span),
 :deep(.logout-btn span),
 :deep(.admin-btn span),
+:deep(.region-btn span),
 :deep(.btn-label),
-:deep(.nav-group button div:not(.icon)),
+:deep(.nav-group button div:not(.icon):not(.btn-icon)),
 :deep(.control-btn span) {
   display: none !important;
   visibility: hidden !important;
@@ -300,11 +299,11 @@ defineExpose({ transferControl, rateControl, spatialStatsControl });
   position: absolute !important;
 }
 
-/* 统一图标颜色为纯净白，取消高光 */
-:deep(.nav-group .control-btn img),
-:deep(.nav-group .control-btn svg) {
-  width: 24px;
-  height: 24px;
+/* 统一所有按钮内的图标颜色为纯净白，增加滤镜使其可见 */
+:deep(.nav-group button img),
+:deep(.nav-group button svg) {
+  width: 26px;
+  height: 26px;
   margin: 0;
   filter: brightness(0) invert(1) drop-shadow(0 2px 2px rgba(0,0,0,0.3)); /* 增加图标阴影增强立体感 */
   opacity: 0.95;

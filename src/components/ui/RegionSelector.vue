@@ -1,37 +1,25 @@
 <template>
-  <div class="region-selector-wrapper" :class="{ 'is-expanded': isExpanded }">
-    <!-- 顶部状态栏 (作为主入口) -->
-    <div class="status-bar floating-glass" @click="toggleExpanded">
-      <div class="location-icon">
-        <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2">
-          <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0118 0z" />
-          <circle cx="12" cy="10" r="3" />
-        </svg>
-      </div>
-      <div class="current-path">
-        <span class="path-segment">云南省</span>
-        <template v-if="selectedCity">
-          <svg class="separator" viewBox="0 0 24 24" width="12" height="12"><path d="M9 18l6-6-6-6" fill="none" stroke="currentColor" stroke-width="2.5" /></svg>
-          <span class="path-segment highlight">{{ selectedCity }}</span>
-        </template>
-        <template v-if="selectedCounty">
-          <svg class="separator" viewBox="0 0 24 24" width="12" height="12"><path d="M9 18l6-6-6-6" fill="none" stroke="currentColor" stroke-width="2.5" /></svg>
-          <span class="path-segment highlight">{{ selectedCounty }}</span>
-        </template>
-      </div>
-      <div class="expand-icon" :class="{ 'rotated': isExpanded }">
-        <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="3">
-          <path d="M6 9l6 6 6-6" />
-        </svg>
-      </div>
-    </div>
+  <div class="region-selector-trigger" :class="{ 'is-active': isExpanded }">
+    <!-- 按钮主体：使用官方 png 图标 -->
+    <button 
+      class="region-btn" 
+      @click="toggleExpanded" 
+      tabindex="-1"
+      :title="selectedCounty || selectedCity || '行政区划选择'"
+    >
+      <img :src="regionIcon" alt="地区选择" class="icon-img icon" />
+      <!-- 弱化高亮：极简半透明标签 -->
+      <span class="region-label" v-if="!isExpanded && (selectedCity || selectedCounty)">
+         {{ selectedCounty || selectedCity }}
+      </span>
+    </button>
 
-    <!-- 三栏级联选择面板 -->
-    <transition name="panel-zoom">
+    <!-- 三栏级联选择面板 (向上弹出，540px 宽度对齐 RegionCascader) -->
+    <transition name="panel-slide-up">
       <div v-if="isExpanded" class="selection-panel floating-glass">
         <div class="panel-header">
            <div class="search-input-wrapper">
-             <svg class="search-icon" viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2.5">
+             <svg class="search-icon" viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2">
                <circle cx="11" cy="11" r="8" /><line x1="21" y1="21" x2="16.65" y2="16.65" />
              </svg>
              <input 
@@ -39,8 +27,9 @@
                type="text" 
                placeholder="搜索地州或区县..." 
                ref="searchInput"
-               @keyup.enter="handleSearchEnter"
+               @keyup.enter.prevent="handleSearchEnter"
              />
+             <button class="close-panel-btn" @click="globalStore.setActivePanel(null)">×</button>
            </div>
         </div>
 
@@ -70,6 +59,7 @@
                     :key="city.code" 
                     class="list-item"
                     :class="{ active: selectedCity === city.name }"
+                    @mouseenter="hoveredCity = city.name"
                     @click="onCitySelect(city)"
                   >
                     <span class="item-text">{{ city.name }}</span>
@@ -82,9 +72,9 @@
               <div class="column county-col">
                 <div class="column-title">区县旗</div>
                 <div class="list-wrapper custom-scrollbar">
-                  <template v-if="currentCityObj">
+                  <template v-if="currentHoveredCityObj || currentCityObj">
                     <div 
-                      v-for="county in currentCityObj.children" 
+                      v-for="county in (currentHoveredCityObj?.children || currentCityObj?.children)" 
                       :key="county.code || county" 
                       class="list-item"
                       :class="{ active: selectedCounty === (county.name || county) }"
@@ -93,7 +83,7 @@
                       {{ county.name || county }}
                     </div>
                   </template>
-                  <div v-else class="empty-hint">请先选择地市</div>
+                  <div v-else class="empty-hint">请悬停或选择地市</div>
                 </div>
               </div>
             </div>
@@ -122,18 +112,25 @@
 import { ref, computed, onMounted, watch, nextTick } from 'vue';
 import { useGlobalStore } from '../../stores/global';
 import { regionApi } from '../../api/index.js';
+import regionIcon from '../../assets/icons/common/region_selector.png';
 
 const globalStore = useGlobalStore();
-const isExpanded = ref(false);
+const panelName = 'region_selection';
+const isExpanded = computed(() => globalStore.activePanel === panelName);
 const searchQuery = ref('');
 const hierarchy = ref([]);
 const searchInput = ref(null);
 
 const selectedCity = ref('');
 const selectedCounty = ref('');
+const hoveredCity = ref('');
 
 const currentCityObj = computed(() => {
   return hierarchy.value.find(c => c.name === selectedCity.value);
+});
+
+const currentHoveredCityObj = computed(() => {
+  return hierarchy.value.find(c => c.name === hoveredCity.value);
 });
 
 const searchResults = computed(() => {
@@ -176,18 +173,24 @@ function syncFromStore() {
   } else if (level === 'prefecture') {
     selectedCity.value = name;
     selectedCounty.value = '';
+    hoveredCity.value = name;
   } else if (level === 'county') {
     selectedCounty.value = name;
     const parent = hierarchy.value.find(c => 
       c.children && (c.children.includes(name) || c.children.find(child => child.name === name))
     );
-    if (parent) selectedCity.value = parent.name;
+    if (parent) {
+      selectedCity.value = parent.name;
+      hoveredCity.value = parent.name;
+    }
   }
 }
 
 function toggleExpanded() {
-  isExpanded.value = !isExpanded.value;
-  if (isExpanded.value) {
+  if (globalStore.activePanel === panelName) {
+    globalStore.setActivePanel(null);
+  } else {
+    globalStore.setActivePanel(panelName);
     nextTick(() => { searchInput.value?.focus(); });
   }
 }
@@ -221,126 +224,172 @@ function onResultClick(res) {
   }
 }
 
+function handleSearchEnter() {
+  if (searchResults.value.length > 0) {
+    onResultClick(searchResults.value[0]);
+  }
+}
+
 onMounted(fetchHierarchy);
 watch(() => globalStore.scope, syncFromStore, { deep: true });
 </script>
 
 <style scoped>
-.region-selector-wrapper {
-  position: absolute;
-  top: 24px;
-  left: 24px;
-  z-index: 1100;
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
+.region-selector-trigger {
+  position: relative;
+  display: inline-block;
+  pointer-events: auto;
 }
 
-/* 顶部状态栏 (玻璃黑) */
-.status-bar {
+/* 按钮样式：对齐 BottomNav，弱化发光 */
+.region-btn {
+  width: 42px;
+  height: 42px;
+  border-radius: 50%;
+  border: 1px solid rgba(255, 255, 255, 0.4);
+  background: radial-gradient(circle at 30% 30%, rgba(80, 110, 200, 0.5) 0%, rgba(30, 45, 90, 0.8) 100%);
   display: flex;
+  justify-content: center;
   align-items: center;
-  gap: 12px;
-  padding: 10px 18px;
-  border-radius: 10px;
-  background: rgba(13, 25, 48, 0.7);
-  border: 1px solid rgba(255, 255, 255, 0.1);
-  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.4);
-  backdrop-filter: blur(12px);
+  padding: 0;
   cursor: pointer;
-  transition: all 0.3s;
-  min-width: 180px;
+  transition: all 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.4);
+  backdrop-filter: blur(8px);
+  position: relative;
 }
 
-.status-bar:hover {
-  background: rgba(20, 35, 65, 0.85);
-  border-color: rgba(59, 130, 246, 0.5);
+.region-btn:hover {
+  background: radial-gradient(circle at 30% 30%, rgba(100, 140, 255, 0.6) 0%, rgba(40, 60, 120, 0.9) 100%);
+  border-color: rgba(255, 255, 255, 0.7);
+  transform: translateY(-4px) scale(1.1);
 }
 
-.current-path {
-  flex: 1;
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  font-size: 14px;
-  color: rgba(255, 255, 255, 0.8);
-  font-weight: 500;
+.is-active .region-btn {
+  background: rgba(59, 130, 246, 0.8);
+  border-color: #fff;
+  box-shadow: 0 0 15px rgba(59, 130, 246, 0.4);
 }
 
-.path-segment.highlight {
-  color: #3b82f6;
-  font-weight: 700;
+.icon-img {
+  width: 24px;
+  height: 24px;
+  object-fit: contain;
+  /* 移除局部 drop-shadow，改为由 BottomNav 全局接管，确保视觉统一 */
+  transition: transform 0.3s ease;
 }
 
-.separator {
-  opacity: 0.3;
+.region-label {
+  position: absolute;
+  top: -22px;
+  left: 50%;
+  transform: translateX(-50%);
+  background: rgba(13, 25, 48, 0.6);
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  padding: 1px 8px;
+  border-radius: 4px;
+  color: rgba(255, 255, 255, 0.9);
+  font-size: 11px;
+  white-space: nowrap;
+  pointer-events: none;
+  backdrop-filter: blur(4px);
+  box-shadow: 0 2px 8px rgba(0,0,0,0.4);
 }
 
-.expand-icon {
-  transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-  opacity: 0.5;
-}
-
-.expand-icon.rotated {
-  transform: rotate(180deg);
-}
-
-/* 三栏选择面板 */
+/* 选择面板：高度对齐 RegionCascader (540px) */
 .selection-panel {
-  width: 720px;
+  position: absolute;
+  bottom: 60px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 540px;
   background: rgba(13, 25, 48, 0.95);
+  border: 1px solid rgba(255, 255, 255, 0.1);
   border-radius: 12px;
-  border: 1px solid rgba(59, 130, 246, 0.4);
-  box-shadow: 0 20px 80px rgba(0, 0, 0, 0.8);
+  box-shadow: 0 12px 40px rgba(0, 0, 0, 0.6);
   backdrop-filter: blur(24px);
   overflow: hidden;
   display: flex;
   flex-direction: column;
+  z-index: 3000;
+  padding: 16px; /* 增加内边距对齐 Cascader */
+  gap: 12px;
 }
 
 .panel-header {
-  padding: 16px 20px;
-  background: rgba(255, 255, 255, 0.02);
-  border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+  padding: 0;
+  background: transparent;
+  border-bottom: none;
 }
 
 .search-input-wrapper {
   position: relative;
   width: 100%;
+  display: flex;
+  align-items: center;
+  gap: 10px;
 }
 
 .search-icon {
   position: absolute;
-  left: 14px;
+  left: 12px;
   top: 50%;
   transform: translateY(-50%);
-  color: rgba(255, 255, 255, 0.3);
+  color: rgba(255, 255, 255, 0.4);
 }
 
 .search-input-wrapper input {
-  width: 100%;
-  height: 40px;
-  background: rgba(0, 0, 0, 0.3);
+  flex: 1;
+  padding: 10px 12px 10px 36px;
+  background: rgba(255, 255, 255, 0.05);
   border: 1px solid rgba(255, 255, 255, 0.1);
   border-radius: 8px;
-  padding: 0 16px 0 44px;
   color: white;
-  font-size: 14px;
-  transition: all 0.2s;
+  font-size: 13px;
+  transition: all 0.3s;
 }
 
 .search-input-wrapper input:focus {
   outline: none;
+  background: rgba(255, 255, 255, 0.1);
   border-color: #3b82f6;
-  background: rgba(0, 0, 0, 0.5);
+}
+
+.close-panel-btn {
+  background: rgba(255, 255, 255, 0.05);
+  border: none;
+  color: rgba(255, 255, 255, 0.4);
+  font-size: 18px;
+  cursor: pointer;
+  width: 28px;
+  height: 28px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.close-panel-btn:hover {
+  background: rgba(245, 108, 108, 0.2);
+  color: #fff;
+  transform: rotate(90deg) scale(1.1);
+}
+
+.close-panel-btn:active {
+  transform: rotate(90deg) scale(0.95);
+  opacity: 0.8;
 }
 
 .columns-container {
   display: flex;
-  height: 420px;
+  height: 320px;
+  border: 1px solid rgba(255, 255, 255, 0.05);
+  border-radius: 8px;
+  background: rgba(0, 0, 0, 0.2);
+  overflow: hidden;
 }
 
-/* 栏目样式 */
 .column {
   flex: 1;
   display: flex;
@@ -348,37 +397,34 @@ watch(() => globalStore.scope, syncFromStore, { deep: true });
   border-right: 1px solid rgba(255, 255, 255, 0.05);
 }
 
-.column:last-child {
-  border-right: none;
-}
-
 .column-title {
-  padding: 12px 20px;
-  font-size: 13px;
-  color: rgba(255, 255, 255, 0.3);
+  padding: 10px;
+  font-size: 12px;
+  color: #94a3b8;
   font-weight: 600;
-  text-transform: uppercase;
-  letter-spacing: 0.5px;
-  background: rgba(255, 255, 255, 0.01);
+  background: rgba(255, 255, 255, 0.02);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+  text-align: center;
 }
 
 .list-wrapper {
   flex: 1;
   overflow-y: auto;
-  padding: 6px;
+  padding: 4px;
 }
 
 .list-item {
-  padding: 10px 16px;
-  margin-bottom: 2px;
-  border-radius: 6px;
+  padding: 8px 12px;
+  font-size: 13px;
+  color: rgba(255, 255, 255, 0.8);
   cursor: pointer;
+  border-radius: 4px;
   display: flex;
-  justify-content: space-between;
   align-items: center;
-  color: rgba(255, 255, 255, 0.7);
-  font-size: 14px;
+  justify-content: center;
   transition: all 0.2s;
+  margin-bottom: 2px;
+  position: relative;
 }
 
 .list-item:hover {
@@ -387,43 +433,40 @@ watch(() => globalStore.scope, syncFromStore, { deep: true });
 }
 
 .list-item.active {
-  background: rgba(59, 130, 246, 0.2);
+  background: rgba(59, 130, 246, 0.15);
   color: #3b82f6;
   font-weight: 700;
 }
 
 .list-item .arrow {
-  opacity: 0.2;
-}
-
-.list-item:hover .arrow {
-  opacity: 0.8;
+  position: absolute;
+  right: 12px;
+  opacity: 0.3;
 }
 
 .empty-hint {
-  padding: 30px;
+  padding: 40px 20px;
   text-align: center;
   color: rgba(255, 255, 255, 0.2);
-  font-size: 13px;
+  font-size: 12px;
+  font-style: italic;
 }
 
-/* 搜索结果 */
 .search-results {
-  height: 420px;
+  height: 320px;
   overflow-y: auto;
-  padding: 10px;
+  padding: 8px;
 }
 
 .result-item {
-  padding: 14px 20px;
-  border-radius: 8px;
+  padding: 10px 16px;
+  border-radius: 6px;
   margin-bottom: 4px;
   cursor: pointer;
   display: flex;
   justify-content: space-between;
   align-items: center;
   background: rgba(255, 255, 255, 0.02);
-  transition: all 0.2s;
 }
 
 .result-item:hover {
@@ -431,38 +474,34 @@ watch(() => globalStore.scope, syncFromStore, { deep: true });
 }
 
 .res-name {
-  font-size: 15px;
+  font-size: 14px;
   font-weight: 600;
   color: #fff;
-  margin-bottom: 2px;
 }
 
 .res-path {
-  font-size: 12px;
+  font-size: 11px;
   color: rgba(255, 255, 255, 0.4);
+  margin-top: 2px;
 }
 
 .res-badge {
-  padding: 2px 8px;
-  background: rgba(59, 130, 246, 0.1);
-  border: 1px solid rgba(59, 130, 246, 0.3);
+  padding: 1px 8px;
+  background: rgba(59, 130, 246, 0.15);
   border-radius: 4px;
   color: #3b82f6;
-  font-size: 11px;
+  font-size: 10px;
 }
 
-/* 滚动条 */
 .custom-scrollbar::-webkit-scrollbar { width: 4px; }
 .custom-scrollbar::-webkit-scrollbar-thumb { background: rgba(255, 255, 255, 0.1); border-radius: 2px; }
-.custom-scrollbar::-webkit-scrollbar-thumb:hover { background: rgba(59, 130, 246, 0.4); }
 
-/* 动画 */
-.panel-zoom-enter-active, .panel-zoom-leave-active {
-  transition: all 0.4s cubic-bezier(0.16, 1, 0.3, 1);
+.panel-slide-up-enter-active, .panel-slide-up-leave-active {
+  transition: all 0.4s cubic-bezier(0.19, 1, 0.22, 1);
 }
 
-.panel-zoom-enter-from, .panel-zoom-leave-to {
+.panel-slide-up-enter-from, .panel-slide-up-leave-to {
   opacity: 0;
-  transform: translateY(-10px) scale(0.98);
+  transform: translateX(-50%) translateY(15px);
 }
 </style>

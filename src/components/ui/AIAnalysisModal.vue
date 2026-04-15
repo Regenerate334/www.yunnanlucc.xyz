@@ -1471,18 +1471,29 @@ const retryReport = () => {
 }
 
 .close-btn {
-  background: transparent;
+  background: rgba(255, 255, 255, 0.05);
   border: none;
-  color: #94a3b8;
+  color: rgba(255, 255, 255, 0.5);
   font-size: 24px;
   cursor: pointer;
   line-height: 1;
-  padding: 4px;
-  transition: color 0.2s;
+  width: 32px;
+  height: 32px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
 .close-btn:hover {
-  color: #f1f5f9;
+  background: rgba(245, 108, 108, 0.2);
+  color: #fff;
+  transform: rotate(90deg) scale(1.1);
+}
+
+.close-btn:active {
+  transform: rotate(90deg) scale(0.95);
 }
 
 .ai-modal-body {
@@ -2408,18 +2419,30 @@ const retryReport = () => {
 }
 
 .report-close-btn {
-  background: transparent;
+  background: rgba(255, 255, 255, 0.05);
   border: none;
-  color: #64748b;
+  color: rgba(255, 255, 255, 0.5);
   font-size: 22px;
   line-height: 1;
-  padding: 2px 6px;
+  width: 30px;
+  height: 30px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
   cursor: pointer;
-  border-radius: 4px;
-  transition: color 0.15s;
+  border-radius: 50%;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
-.report-close-btn:hover { color: #e2e8f0; }
+.report-close-btn:hover {
+  background: rgba(245, 108, 108, 0.2);
+  color: #fff;
+  transform: rotate(90deg) scale(1.1);
+}
+
+.report-close-btn:active {
+  transform: rotate(90deg) scale(0.95);
+}
 
 .report-modal-body {
   flex: 1;

@@ -143,7 +143,7 @@ export function useMeasurement() {
             `;
         }
 
-        createMeasurementPopup(viewer, currentPopupPosition, content);
+        createMeasurementPopup(viewer, content);
     };
 
     // 监听单位变化，更新弹窗
@@ -204,7 +204,12 @@ export function useMeasurement() {
                     activeShapePoints[activeShapePoints.length - 1] = newPosition;
 
                     if (activeShapePoints.length >= 2) {
-                        calculateDistance(activeShapePoints[0], activeShapePoints[1]);
+                        // 使用 RAF 机制限制计算频率
+                        requestAnimationFrame(() => {
+                            if (mapStore.activeMeasurementTool === 'distance') {
+                                calculateDistance(activeShapePoints[0], activeShapePoints[1]);
+                            }
+                        });
                     }
                 }
             }
@@ -258,7 +263,7 @@ export function useMeasurement() {
                     </div>
                 </div>
             `;
-            createMeasurementPopup(viewer, midpoint, content);
+            createMeasurementPopup(viewer, content);
         }
     };
 
@@ -329,7 +334,12 @@ export function useMeasurement() {
                     activeShapePoints[activeShapePoints.length - 1] = newPosition;
 
                     if (activeShapePoints.length >= 3) {
-                        calculateArea(activeShapePoints);
+                        // 测面计算开销大（含三角化），引入限流
+                        requestAnimationFrame(() => {
+                            if (mapStore.activeMeasurementTool === 'area') {
+                                calculateArea(activeShapePoints);
+                            }
+                        });
                     }
                 }
             }
@@ -408,7 +418,7 @@ export function useMeasurement() {
                     </div>
                 </div>
             `;
-            createMeasurementPopup(viewer, center, content);
+            createMeasurementPopup(viewer, content);
         }
     };
 
@@ -443,54 +453,52 @@ export function useMeasurement() {
         return point;
     };
 
-    // 创建HTML弹窗显示测量结果
-    const createMeasurementPopup = (viewer: Cesium.Viewer, position: Cesium.Cartesian3, content: string) => {
-        // 先移除旧的渲染监听器
-        if (postRenderListener) {
-            viewer.scene.postRender.removeEventListener(postRenderListener);
-            postRenderListener = null;
+    // 创建/更新 HTML 弹窗显示测量结果
+    const createMeasurementPopup = (viewer: Cesium.Viewer, content: string) => {
+        let popup = document.getElementById('measurement-popup');
+
+        // 1. 如果弹窗不存在，则创建它并绑定渲染监听器
+        if (!popup) {
+            popup = document.createElement('div');
+            popup.id = 'measurement-popup';
+            popup.style.cssText = `
+                position: fixed;
+                transform: translate(-50%, -100%);
+                background: rgba(13, 25, 48, 0.4);
+                backdrop-filter: blur(20px);
+                -webkit-backdrop-filter: blur(20px);
+                border-radius: 12px;
+                border: 1px solid rgba(255, 255, 255, 0.08);
+                box-shadow: 0 12px 40px rgba(0, 0, 0, 0.2);
+                z-index: 10000;
+                pointer-events: none;
+                min-width: 180px;
+                padding: 12px;
+                font-family: "PingFang SC", "Microsoft YaHei", sans-serif;
+                transition: opacity 0.2s ease;
+            `;
+            document.body.appendChild(popup);
+
+            // 仅在此处创建持久监听器
+            postRenderListener = () => {
+                if (currentPopupPosition && popup) {
+                    const canvasPosition = Cesium.SceneTransforms.worldToWindowCoordinates(viewer.scene, currentPopupPosition);
+                    if (canvasPosition) {
+                        popup.style.left = canvasPosition.x + 'px';
+                        popup.style.top = (canvasPosition.y - 20) + 'px';
+                        popup.style.opacity = '1';
+                    } else {
+                        popup.style.opacity = '0';
+                    }
+                }
+            };
+            viewer.scene.postRender.addEventListener(postRenderListener);
         }
 
-        const oldPopup = document.getElementById('measurement-popup');
-        if (oldPopup) {
-            oldPopup.remove();
+        // 2. 仅更新内容，而不触动 DOM 树或监听器
+        if (popup.innerHTML !== content) {
+            popup.innerHTML = content;
         }
-
-        const canvasPosition = Cesium.SceneTransforms.worldToWindowCoordinates(viewer.scene, position);
-        if (!canvasPosition) return;
-
-        const popup = document.createElement('div');
-        popup.id = 'measurement-popup';
-        popup.style.cssText = `
-            position: fixed;
-            left: ${canvasPosition.x}px;
-            top: ${canvasPosition.y - 20}px;
-            transform: translate(-50%, -100%);
-            background: rgba(13, 25, 48, 0.4);
-            backdrop-filter: blur(20px);
-            -webkit-backdrop-filter: blur(20px);
-            border-radius: 12px;
-            border: 1px solid rgba(255, 255, 255, 0.08);
-            box-shadow: 0 12px 40px rgba(0, 0, 0, 0.2);
-            z-index: 10000;
-            pointer-events: none;
-            min-width: 180px;
-            padding: 12px;
-            font-family: "PingFang SC", "Microsoft YaHei", sans-serif;
-        `;
-        popup.innerHTML = content;
-        document.body.appendChild(popup);
-
-        // 创建新的位置更新函数并存入变量以便后续移除
-        postRenderListener = () => {
-            const newCanvasPosition = Cesium.SceneTransforms.worldToWindowCoordinates(viewer.scene, position);
-            if (newCanvasPosition && popup.parentElement) {
-                popup.style.left = newCanvasPosition.x + 'px';
-                popup.style.top = (newCanvasPosition.y - 20) + 'px';
-            }
-        };
-
-        viewer.scene.postRender.addEventListener(postRenderListener);
 
         return popup;
     };

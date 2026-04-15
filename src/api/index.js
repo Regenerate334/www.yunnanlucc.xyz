@@ -30,6 +30,8 @@ async function request(url, options = {}) {
 
         // 如果返回 401，说明 Token 失效，跳转到登录页
         if (response.status === 401 && !url.includes('/api/auth/login')) {
+            console.error(`[API] 401 Unauthorized detected for URL: ${url}. Redirecting to /login...`);
+            console.trace('Redirect origin trace:');
             localStorage.removeItem('auth_token');
             window.location.href = '/login';
             return;
@@ -111,7 +113,10 @@ export const clcdApi = {
     getBreaks: (attr, year, method = 'quantile', classes = 8, unit = 'county') => request(`${API_BASE_URL}/clcd/breaks?attr=${attr}&year=${year}&method=${method}&classes=${classes}&unit=${unit}`),
 
     // 获取所有可用的年份列表
-    getAvailableYears: () => request(`${API_BASE_URL}/clcd/years`)
+    getAvailableYears: () => request(`${API_BASE_URL}/clcd/years`),
+
+    // 获取区域实时监测指标 (2021-2026 权威算法)
+    getMonitoring: (level, name, year) => request(`${API_BASE_URL}/clcd/monitoring/${level}/${encodeURIComponent(name)}/${year}`)
 };
 
 // 行政区划相关接口

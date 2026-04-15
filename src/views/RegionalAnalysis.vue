@@ -359,9 +359,6 @@ async function initCesium() {
     
     // 加载底图
     loadBaseMap('imagery');
-    
-    // 加载云南省边界
-    loadYunnanBoundary();
 
     // 飞到初始视角 (保持与 Workbench 云南范围一致)
     viewer.value.camera.setView({
@@ -495,34 +492,6 @@ function loadBaseMap(mapType) {
   }
 }
 
-async function loadYunnanBoundary() {
-  if (!viewer.value) return;
-  try {
-    const dataSource = await Cesium.GeoJsonDataSource.load('/data/yunnan_province_only.geojson', {
-      fill: Cesium.Color.TRANSPARENT,
-      markerSize: 0,
-      clampToGround: true
-    });
-    viewer.value.dataSources.add(dataSource);
-    
-    // 样式调整 - 使用 thick polygon 规避 WebGL 1px 限制
-    const pvColor = Cesium.Color.fromCssColorString(UI_CONFIG.BOUNDARY_STYLE.provinceColor);
-    applyThickPolygonOutline(dataSource, pvColor, UI_CONFIG.BOUNDARY_STYLE.provinceWidth, Cesium);
-    
-    const entities = dataSource.entities.values;
-    // Remove unwanted geometries
-    for (let i = entities.length - 1; i >= 0; i--) {
-        const entity = entities[i];
-        const name = entity.properties.name ? entity.properties.name.getValue() : '';
-        if (!name.includes('云南')) {
-            dataSource.entities.remove(entity);
-        }
-    }
-
-  } catch (e) {
-    console.error('Failed to load boundary:', e);
-  }
-}
 
 // ==================== GeoJSON 矢量渲染已移除 ====================
 // 现在使用纯 WMS 渲染模式，由 GeoServer 处理样式

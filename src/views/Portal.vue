@@ -170,16 +170,19 @@ function enterPlatform() {
     router.push('/login');
 }
 
+function handleEnterKey(e) {
+    if (e.key === 'Enter') enterPlatform();
+}
+
 onMounted(() => {
     initChart();
     window.addEventListener('resize', handleResize);
-    window.addEventListener('keydown', (e) => {
-        if (e.key === 'Enter') enterPlatform();
-    });
+    window.addEventListener('keydown', handleEnterKey);
 });
 
 onBeforeUnmount(() => {
     window.removeEventListener('resize', handleResize);
+    window.removeEventListener('keydown', handleEnterKey);
     if (myChart) {
         myChart.dispose();
     }

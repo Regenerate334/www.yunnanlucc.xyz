@@ -18,7 +18,7 @@
         <div class="data-section">
           <div class="section-header">
             <div class="title-decor"></div>
-            <span class="header-text">格局演变</span>
+            <span class="header-text">{{ globalStore.scope.name }}{{ props.year }}年格局演变</span>
             <div class="header-line"></div>
           </div>
           
@@ -85,10 +85,10 @@
               <div class="icon-box">
                  <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2"><path d="M13 21h8"></path><path d="M5 21V5a2 2 0 012-2h4a2 2 0 012 2v16"></path><path d="M13 21v-8h4v8"></path></svg>
               </div>
-              <div class="label">城市扩张速率</div>
+              <div class="label">城市扩张强度指数</div>
               <div class="value-box">
-                <span class="value">{{ (metrics.urbanDynamic?.value || 0).toFixed(0) }}</span>
-                <span class="unit">km²/yr</span>
+                <span class="value">{{ (metrics.urbanDynamic?.value || 0) }}</span>
+                <span class="unit">%</span>
               </div>
               <div class="trend" :class="(metrics.urbanDynamic?.trend || 0) >= 0 ? 'up':'down'">
                 <svg class="trend-art-arrow" viewBox="0 0 24 24">
@@ -105,7 +105,7 @@
         <div class="data-section">
           <div class="section-header">
             <div class="title-decor"></div>
-            <span class="header-text">动态特征</span>
+            <span class="header-text">{{ globalStore.scope.name }}{{ props.year }}年动态特征</span>
             <div class="header-line"></div>
           </div>
           
@@ -193,6 +193,11 @@ watch(() => globalStore.scope, () => {
     fetchData();
 }, { deep: true });
 
+// 监听年份变化
+watch(() => props.year, () => {
+    fetchData();
+});
+
 const metrics = ref({
     croplandArea: { value: 0, trend: 0 },
     urbanArea: { value: 0, trend: 0 },
@@ -222,36 +227,36 @@ async function fetchData() {
     const trendList = Array.isArray(trendRes) ? trendRes : (trendRes?.data || []);
     
     // 定位年度数据：当前年 vs 最近的前一个可用年份
+    // 定位数据：当前年 vs 1985 历史基准 (确保动态变化显著且具可比性)
     const currentYear = Number(props.year);
     const curr = trendList.find(i => Number(i.year) === currentYear);
-    const prev = trendList
-      .filter(i => Number(i.year) < currentYear)
-      .sort((a, b) => Number(b.year) - Number(a.year))[0] || curr;
+    const prev = trendList.sort((a, b) => Number(a.year) - Number(b.year))[0] || curr;
     
-    // 计算实际跨度 T
+    // 计算实际跨度 T (用于年均指标标准化)
     const T = (curr && prev) ? (Number(curr.year) - Number(prev.year) || 1) : 1;
 
     if (curr && prev) {
-       // 全地类解析
        const landTypes = ['cropland', 'forest', 'shrub', 'grassland', 'water', 'wetland', 'impervious', 'barren', 'snow_ice'];
        
-       const cVal = Number(curr.cropland || 0);
-       const pVal = Number(prev.cropland || 0);
-       const uVal = Number(curr.impervious || 0);
-       const upVal = Number(prev.impervious || 0);
+       const getV = (obj, key) => Number(obj[key] || 0);
        
-       // 3. 林地面积 (Forest ONLY - 必须与时序演化图一致)
-       const fVal = Number(curr.forest || 0);
-       const fpVal = Number(prev.forest || 0);
+       const cVal = getV(curr, 'cropland');
+       const pVal = getV(prev, 'cropland');
+       const uVal = getV(curr, 'impervious');
+       const upVal = getV(prev, 'impervious');
+       const fVal = getV(curr, 'forest');
+       const fpVal = getV(prev, 'forest');
+       
+       // 3. 林地面积
        metrics.value.forestArea = { 
          value: (fVal / 1000000).toFixed(2), 
          trend: (fVal - fpVal) / 1000000
        };
        metrics.value.forestTrend = (fVal - fpVal) / 1000000;
 
-       // 4. 生态面积 (Forest + Shrub + Grassland + Water + Wetland - 系统综合指标)
+       // 4. 生态面积
        const getEco = (data) => ['forest', 'shrub', 'grassland', 'water', 'wetland']
-         .reduce((sum, key) => sum + Number(data[key] || 0), 0);
+         .reduce((sum, key) => sum + getV(data, key), 0);
        
        const eVal = getEco(curr);
        const epVal = getEco(prev);
@@ -260,52 +265,41 @@ async function fetchData() {
          trend: (eVal - epVal) / 1000000
        };
 
-       // 1. 格局演变 (显示总量及总增减，单位 km2)
-       metrics.value.croplandArea = { 
-         value: (cVal / 1000000).toFixed(2), 
-         trend: (cVal - pVal) / 1000000 
-       };
+       // 1. 格局演变
+       metrics.value.croplandArea = { value: (cVal / 1000000).toFixed(2), trend: (cVal - pVal) / 1000000 };
+       metrics.value.urbanArea = { value: (uVal / 1000000).toFixed(2), trend: (uVal - upVal) / 1000000 };
 
-       metrics.value.urbanArea = { 
-         value: (uVal / 1000000).toFixed(2), 
-         trend: (uVal - upVal) / 1000000 
-       };
+       let totalChange = 0, totalStart = 0;
+       landTypes.forEach(t => {
+         const s = getV(prev, t);
+         totalChange += Math.abs(getV(curr, t) - s);
+         totalStart += s;
+       });
 
-       // 2. 城市扩张速率：专属年均速率 (km2/yr)
+       // 2. 城市扩张强度指数 (UEI, Idx) - 顶刊标准
        metrics.value.urbanDynamic = { 
-         value: (uVal - upVal) / (1000000 * T), 
+         value: totalStart ? ((uVal - upVal) / totalStart / T * 100).toFixed(4) : '0.0000', 
          trend: (uVal - upVal) / 1000000 
        };
 
-       // 5. 动态特征 (按定义均需除以 T，反映年均活跃度 %)
+       // 5. 动态特征
        metrics.value.croplandDynamic = pVal ? ((cVal - pVal) / pVal / T * 100).toFixed(3) : '0.000';
        metrics.value.urbanDynamicVal = upVal ? ((uVal - upVal) / upVal / T * 100).toFixed(3) : '0.000';
        metrics.value.forestDynamic = fpVal ? ((fVal - fpVal) / fpVal / T * 100).toFixed(3) : '0.000';
-
-       // 4. 综合土地利用动态度
-       let totalChange = 0;
-       let totalStart = 0;
-       landTypes.forEach(type => {
-         const start = Number(prev[type] || 0);
-         const end = Number(curr[type] || 0);
-         totalChange += Math.abs(end - start);
-         totalStart += start;
-       });
        metrics.value.lcTrend = totalChange / 1000000;
        metrics.value.lcDynamic = (totalStart && T) ? (totalChange / (2 * totalStart) / T * 100).toFixed(3) : '0.000';
     } else {
-       console.warn(`[LeftPanel] 未找到 ${currentYear} 年的数据`);
        metrics.value = {
          croplandArea: { value: 0, trend: 0 },
          urbanArea: { value: 0, trend: 0 },
          ecoArea: { value: 0, trend: 0 },
+         forestArea: { value: 0, trend: 0 },
          croplandDynamic: '0.000',
          urbanDynamicVal: '0.000',
          urbanDynamic: { value: 0, trend: 0 },
          forestDynamic: '0.000',
          lcDynamic: '0.000',
-         forestTrend: 0,
-         forestArea: 0
+         forestTrend: 0
        };
     }
 
@@ -334,9 +328,9 @@ watch(() => props.year, fetchData);
   flex-direction: column;
   user-select: none;
   -webkit-user-select: none;
-  
-  /* 切角多边形：对称的左上、右下切角，匹配右侧面板 */
-  clip-path: polygon(22px 0, 100% 0, 100% calc(100% - 22px), calc(100% - 22px) 100%, 0 100%, 0 22px);
+  overflow: visible;
+
+  /* 注意：此处不再设置 clip-path，改由 ::before 伪元素设置，以允许子元素溢出边界并优化滤镜渲染 */
 }
 
 .tech-panel-container::before {
@@ -347,12 +341,12 @@ watch(() => props.year, fetchData);
   /* 切角背板，与外壳完全同步 */
   clip-path: polygon(22px 0, 100% 0, 100% calc(100% - 22px), calc(100% - 22px) 100%, 0 100%, 0 22px);
   
-  /* 恢复玻璃感深海蓝叠加，禁用底部模糊以保证极简纯净的地图穿透感 */
-  background: linear-gradient(135deg, rgba(10, 25, 70, 0.7) 0%, rgba(15, 35, 80, 0.5) 100%);
-  backdrop-filter: none;
-  -webkit-backdrop-filter: none;
-  border: 1.5px solid rgba(0, 245, 255, 0.6);
-  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.5), inset 0 0 24px rgba(0, 245, 255, 0.08);
+  /* 采用与右侧面板完全同步的增强型玻璃感参数 */
+  background: linear-gradient(135deg, rgba(10, 25, 70, 0.78) 0%, rgba(15, 35, 80, 0.62) 100%);
+  backdrop-filter: blur(28px) saturate(190%);
+  -webkit-backdrop-filter: blur(28px) saturate(190%);
+  border: 1.5px solid rgba(0, 245, 255, 0.4);
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.5), inset 0 0 30px rgba(0, 245, 255, 0.12);
 }
 
 /* 切角装饰点 (强调科技感，与右面板对称) */

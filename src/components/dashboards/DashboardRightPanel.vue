@@ -8,7 +8,7 @@
       <!-- 标题区 -->
       <div class="section-header">
         <div class="title-decor"></div>
-        <span class="header-text">预警·风险监测</span>
+        <span class="header-text">{{ globalStore.scope.name }}{{ props.year }}年风险监测</span>
         <div class="header-line"></div>
       </div>
 
@@ -43,22 +43,11 @@
         </div>
       </div>
 
-      <div class="composite-info has-tooltip">
+      <div class="composite-info">
         <div class="score-row">
           <span class="score-label">综合风险指数</span>
           <span class="score-val" :style="{ color: statusColor }">{{ compositeScore.toFixed(0) }}</span>
           <span class="score-max">/ 100</span>
-        </div>
-        <div class="score-desc">
-          基于耕地保有、建设扩张、耕林转换、生态屏障 4 项核心规划指标加权评估
-        </div>
-        <!-- 综合指数公式提示 -->
-        <div class="formula-tooltip">
-          <div class="formula-title">综合评价逻辑 (MCE 加权)</div>
-          <div class="formula-body">
-            45% 耕地保有 + 15% 建设扩张 + <br/>
-            20% 耕林置换 + 20% 生态屏障
-          </div>
         </div>
       </div>
 
@@ -67,38 +56,27 @@
 
       <!-- 指标详情卡片网格 -->
       <div class="indicators-grid">
-        <div v-for="item in warningIndicators" :key="item.id" class="indicator-wrapper has-tooltip">
+        <div v-for="item in warningIndicators" :key="item.id" class="indicator-wrapper">
           <!-- 实际显示的卡片内容 (带切角背景) -->
           <div class="indicator-card" :style="{ '--card-accent': item.color }">
             <div class="card-clip-mark"></div>
             
             <div class="card-header-row">
-              <span class="card-name">{{ item.title }}</span>
-              <div class="card-status-info">
-                <div class="card-status-badge">
-                  <span class="badge-light" :style="{ backgroundColor: item.color }"></span>
-                  <span class="badge-text" :style="{ color: item.color }">{{ item.levelText }}</span>
-                </div>
-                <div class="card-score-tag" :style="{ color: item.color, borderColor: `${item.color}40` }">
-                  风险分: {{ item.score.toFixed(1) }}
-                </div>
+              <span class="card-name" :title="item.title">{{ item.title }}</span>
+              <div class="card-status-badge">
+                <span class="badge-light" :style="{ backgroundColor: item.color }"></span>
+                <span class="badge-text" :style="{ color: item.color }">{{ item.levelText }}</span>
               </div>
+            </div>
+
+            <div class="card-score-tag" :style="{ color: item.color, borderColor: `${item.color}40` }">
+              风险分: {{ item.score.toFixed(1) }}
             </div>
 
             <div class="card-metric-row">
               <span class="metric-big-num">{{ item.valueText }}</span>
               <span class="metric-unit">{{ item.unit }}</span>
             </div>
-
-            <div class="card-desc-row">
-              {{ item.desc }}
-            </div>
-          </div>
-
-          <!-- 指标公式提示 (在卡片外层，不受 clip-path 影响) -->
-          <div class="formula-tooltip card-tip">
-            <div class="formula-title">核算公式 ({{ item.title }})</div>
-            <div class="formula-content">{{ item.formula }}</div>
           </div>
         </div>
       </div>
@@ -136,10 +114,10 @@ const LEVELS = {
 };
 
 const warningIndicators = ref([
-  { id: 'cropland', title: '耕地保有红线', level: 'safe', levelText: '安全', color: '#00c864', valueText: '0.00', score: 0, unit: '%',  desc: '正在计算中...', formula: '(当前耕地 / 1985年耕地) × 100%' },
-  { id: 'urban',    title: '建设用地扩张', level: 'safe', levelText: '安全', color: '#00c864', valueText: '0.00', score: 0, unit: 'x',  desc: '正在计算中...', formula: '当前扩张速度 / 历史平均增速' },
-  { id: 'swap',     title: '耕林空间置换', level: 'safe', levelText: '安全', color: '#00c864', valueText: '0.00', score: 0, unit: '%',  desc: '正在计算中...', formula: '(|耕地变化| + |林地变化|) / (2 × 总面积 × 步长)' },
-  { id: 'eco',      title: '生态安全屏障', level: 'safe', levelText: '安全', color: '#00c864', valueText: '0.00', score: 0, unit: '%',  desc: '正在计算中...', formula: '(当前林地 / 1985年林地) × 100%' }
+  { id: 'hq',   title: 'InVEST生境质量', level: 'safe', levelText: '优(GEP)', color: '#00c864', valueText: '0.00', score: 0, unit: 'Idx', desc: '正在计算中...', formula: 'Sharp(2020) InVEST: Σ(P_i × 适宜性度)×100' },
+  { id: 'cmp',  title: '源汇碳代谢压力', level: 'safe', levelText: '低压(汇)', color: '#00c864', valueText: '0.00', score: 0, unit: '倍', desc: '正在计算中...', formula: '赵荣钦(2022) 双碳评估: Σ碳源 / Σ碳汇' },
+  { id: 'eres', title: '全域生态韧性度', level: 'safe', levelText: '强韧', color: '#00c864', valueText: '0.00', score: 0, unit: 'Idx', desc: '正在计算中...', formula: 'Peng(2023) 韧性城市: 景观阻抗与恢复赋权' },
+  { id: 'plec', title: '三生空间冲突度', level: 'safe', levelText: '低频', color: '#00c864', valueText: '0.00', score: 0, unit: '比', desc: '正在计算中...', formula: '刘彦随(2020) 国土规划: 生产生活区 / 生态区' }
 ]);
 
 const gaugeChartRef = ref(null);
@@ -174,18 +152,23 @@ function getRangeText(key) {
  */
 function getThresholdLevel(val, breaks, ascending = true) {
   const [b1, b2, b3] = breaks;
+  let score = 0;
   if (ascending) {
-    // 升序指标 (如扩张率)：值越高，风险越大
-    if (val <= b1) return { level: 'safe',    score: (val / b1) * 25 };
-    if (val <= b2) return { level: 'watch',   score: 25 + ((val - b1) / (b2 - b1)) * 25 };
-    if (val <= b3) return { level: 'warning', score: 50 + ((val - b2) / (b3 - b2)) * 25 };
-    return { level: 'alert', score: Math.min(75 + ((val - b3) / b3) * 25, 100) };
+    // 升序指标 (如碳代谢压力)：值越高，风险越大。安全区 0~25
+    if (val <= b1)      { score = (val / b1) * 25; return { level: 'safe', score: Math.max(0, Math.min(25, score)) }; }
+    else if (val <= b2) { score = 25 + ((val - b1) / (b2 - b1)) * 25; return { level: 'watch', score: Math.max(25, Math.min(50, score)) }; }
+    else if (val <= b3) { score = 50 + ((val - b2) / (b3 - b2)) * 25; return { level: 'warning', score: Math.max(50, Math.min(75, score)) }; }
+    else                { score = 75 + ((val - b3) / b3) * 25; return { level: 'alert', score: Math.min(100, score) }; }
   } else {
-    // 降序指标 (如保有率)：值越低，风险越大
-    if (val >= b1) return { level: 'safe',    score: Math.max(0, (1 - (b1 - val) / (b1 * 0.1)) * 25) }; 
-    if (val >= b2) return { level: 'watch',   score: 25 + ((b1 - val) / (b1 - b2)) * 25 };
-    if (val >= b3) return { level: 'warning', score: 50 + ((b2 - val) / (b2 - b3)) * 25 };
-    return { level: 'alert', score: Math.min(75 + ((b3 - val) / b3) * 25, 100) };
+    // 降序指标 (如生境质量)：值越低，风险越大。安全区 0~25
+    if (val >= b1)      { 
+      const maxVal = Math.max(b1 * 1.1, val); // 动态判定顶端
+      score = ((maxVal - val) / (maxVal - b1 + 0.001)) * 25; 
+      return { level: 'safe', score: Math.max(0, Math.min(25, score)) }; 
+    }
+    else if (val >= b2) { score = 25 + ((b1 - val) / (b1 - b2)) * 25; return { level: 'watch', score: Math.max(25, Math.min(50, score)) }; }
+    else if (val >= b3) { score = 50 + ((b2 - val) / (b2 - b3)) * 25; return { level: 'warning', score: Math.max(50, Math.min(75, score)) }; }
+    else                { score = 75 + ((b3 - val) / b3) * 25; return { level: 'alert', score: Math.min(100, score) }; }
   }
 }
 
@@ -202,23 +185,34 @@ function setIndicator(id, rawValue, result, unit, desc) {
   item.desc = desc;
 }
 
+// 监听全局区域变化
+watch(() => globalStore.scope, () => {
+    fetchData();
+}, { deep: true });
+
+// 监听年份变化
+watch(() => props.year, () => {
+    calculateWarnings();
+});
+
 async function fetchData() {
   loading.value = true;
   try {
-    const res = await clcdApi.getProvinceTrend();
-    // 基础请求 request() 已在内部处理了 .data 解包，res 直接就是数组
-    const trendList = Array.isArray(res) ? res : (res?.data || []);
+    const { level, name } = globalStore.scope;
     
-    if (trendList.length > 0) {
-      trendData.value = trendList.sort((a, b) => Number(a.year) - Number(b.year));
-      calculateWarnings();
+    // 1. 获取趋势数据 (保留以防后续图表需求，或单纯作为辅助记录)
+    let res;
+    if (level === 'province') {
+        res = await clcdApi.getProvinceTrend();
     } else {
-      console.warn('[WarningDashboard] No trend data returned from API');
-      // 给用户一个反馈，不要卡在“正在计算中”
-      warningIndicators.value.forEach(item => {
-        item.desc = '暂无历史序列数据，无法计算风险趋势。';
-      });
+        res = await clcdApi.getRegionalTrend(level, name);
     }
+    const trendList = Array.isArray(res) ? res : (res?.data || []);
+    trendData.value = trendList.sort((a, b) => Number(a.year) - Number(b.year));
+
+    // 2. 获取监测指标 (核心：从后端获取权威计算结果)
+    await calculateWarnings();
+    
   } catch (e) {
     console.error('Warning Dashboard fetch failed', e);
     warningIndicators.value.forEach(item => {
@@ -229,87 +223,35 @@ async function fetchData() {
   }
 }
 
-/* 
-  核心业务逻辑：指标监测预警算法
-  [数据合规性声明] 指标计算必须严格基于后端接口 (clcdApi.getProvinceTrend) 返回的真实物理地类面积。
-  禁止使用任何 Math.random() 或模拟占位数据。
-*/
-/* 
-  核心业务逻辑：国土空间规划/LUCC 监测预警算法
-  算法引证: 
-  - 耕地保有: 基于"永久基本农田保护红线"制度
-  - 建设扩张: 基于"城镇开发边界(UDB)"与扩张强度指数 (UEII)
-  - 耕林转换: 基于"边缘效应"与"土地转类稳定性"研究
-  [数据声明] 严禁捏造，所有指标均基于 clcdApi 获取的真实时空序列数据计算。
-*/
-function calculateWarnings() {
+/**
+ * 核心业务逻辑：指标监测预警算法
+ * [重构] 现已迁移至后端 landUseService.js，此处仅负责调用并渲染。
+ */
+async function calculateWarnings() {
   const currentYear = Number(props.year);
-  const trendList = trendData.value || [];
-  if (!trendList.length) return;
+  const { level, name } = globalStore.scope;
 
-  const curr = trendList.find(d => Number(d.year) === currentYear);
-  const base = trendList.find(d => Number(d.year) === 1985) || trendList[0];
-  const prev = trendList.filter(d => Number(d.year) < currentYear).sort((a, b) => Number(b.year) - Number(a.year))[0] || curr;
-  if (!curr || !base) return;
+  try {
+    const data = await clcdApi.getMonitoring(level, name, currentYear);
+    if (!data) return;
 
-  const T_total = currentYear - Number(base.year) || 1;
-  const T_step = currentYear - Number(prev.year) || 1;
-  const norm = (val) => Number(val || 0) / 1000000;
-  const landTypes = ['cropland', 'forest', 'shrub', 'grassland', 'water', 'wetland', 'impervious', 'barren', 'snow_ice'];
-  
-  let totalArea = 0;
-  landTypes.forEach(t => { totalArea += norm(curr[t]); });
+    compositeScore.value = data.compositeScore;
+    
+    // 同步 4 大指标
+    const m = data.metrics;
+    const getLevel = (score) => score > 75 ? 'alert' : score > 50 ? 'warning' : score > 25 ? 'watch' : 'safe';
 
-  // 1. 🌾 耕地保有红线 (Cropland Retention)
-  // 参考阈值: 依据规划底线，保有率低于 95% 视为生态压力显著 (Zhang et al., 2021)
-  const cCurr = norm(curr.cropland), cBase = norm(base.cropland);
-  const cRetain = cBase > 0 ? (cCurr / cBase) * 100 : 100;
-  const cResult = getThresholdLevel(cRetain, [98, 95, 92], false); // 越小越危险
-  setIndicator('cropland', cRetain, cResult, '%', 
-    cResult.level === 'safe'    ? '耕地保有率极高，基本农田保护红线稳固。' :
-    cResult.level === 'watch'   ? '耕地存量出现微弱下行，需警惕非农化倾向。' :
-    cResult.level === 'warning' ? '耕地保有已触及预警线，建议限制占补平衡审批。' :
-                                  '耕地大幅跌破红线，粮食安全底线已受威胁！');
+    setIndicator('hq', m.hq.value, { level: getLevel(m.hq.score), score: m.hq.score }, 'Idx', '');
+    setIndicator('cmp', m.cmp.value, { level: getLevel(m.cmp.score), score: m.cmp.score }, '倍', '');
+    setIndicator('eres', m.eres.value, { level: getLevel(m.eres.score), score: m.eres.score }, 'Idx', '');
+    setIndicator('plec', m.plec.value, { level: getLevel(m.plec.score), score: m.plec.score }, '比', '');
 
-  // 2. 🏗️ 建设用地扩张强度 (Urban Sprawl Intensity)
-  const uCurr = norm(curr.impervious), uBase = norm(base.impervious), uPrev = norm(prev.impervious);
-  const histAvgRate = (uCurr - uBase) / T_total;
-  const currRate = (uCurr - uPrev) / T_step;
-  const sprawlRatio = histAvgRate > 0 ? currRate / histAvgRate : 1.0;
-  const uResult = getThresholdLevel(sprawlRatio, [1.2, 1.8, 2.5], true);
-  setIndicator('urban', sprawlRatio, uResult, 'x',
-    uResult.level === 'safe'    ? '城镇扩张节奏平稳，土地利用集约度良好。' :
-    uResult.level === 'watch'   ? '增长速度略有超前，需审视开发边界饱和度。' :
-    uResult.level === 'warning' ? '城镇蔓延明显加速，存在空间管控失效风险。' :
-                                  '建设用地爆发式增长，空间秩序面临严重混乱！');
-
-  // 3. 🔃 耕林空间置换 (Crop-Forest Swap Intensity)
-  const cDelta = Math.abs(norm(curr.cropland) - norm(prev.cropland));
-  const fDelta = Math.abs(norm(curr.forest) - norm(prev.forest));
-  const swapVal = totalArea > 0 ? ((cDelta + fDelta) / (2 * totalArea * T_step)) * 100 : 0;
-  const sResult = getThresholdLevel(swapVal, [0.1, 0.3, 0.6], true);
-  setIndicator('swap', swapVal, sResult, '%',
-    sResult.level === 'safe'    ? '农林系统格局稳健，空间置换处于极低水平。' :
-    sResult.level === 'watch'   ? '局部活跃，存在季节性或政策性农林微调。' :
-    sResult.level === 'warning' ? '耕林地块频繁更替，空间边界灵活性过高。' :
-                                  '耕林大规模剧烈互转，土地利用权属严重冲突！');
-
-  // 4. 🛡️ 生态安全屏障 (Ecological Shield Status)
-  const fCurr = norm(curr.forest), fBase = norm(base.forest);
-  const eRetain = fBase > 0 ? (fCurr / fBase) * 100 : 100;
-  const eResult = getThresholdLevel(eRetain, [100, 97, 94], false);
-  setIndicator('eco', eRetain, eResult, '%',
-    eResult.level === 'safe'    ? '生态基板稳固，绿色屏障调节功能发挥正常。' :
-    eResult.level === 'watch'   ? '林地出现局部侵蚀，建议加强封山育林。' :
-    eResult.level === 'warning' ? '森林覆盖持续退化，生态系统服务能力受损。' :
-                                  '生态格局严重碎片化，绿色屏障面临崩溃风险！');
-
-  // 综合计算加权风险分 (校准版: 耕地保护优先策略)
-  compositeScore.value = cResult.score * 0.45 + uResult.score * 0.15 + sResult.score * 0.2 + eResult.score * 0.2;
-
-  nextTick(() => {
-    initGaugeChart();
-  });
+    nextTick(() => {
+      initGaugeChart();
+    });
+  } catch (e) {
+    console.error('Calculate Warnings failed', e);
+  }
 }
 
 function initGaugeChart() {
@@ -323,7 +265,7 @@ function initGaugeChart() {
   
   const option = {
     series: [
-      // 1. 发光外环 (装饰用)
+      // 1. 发光装饰
       {
         type: 'gauge',
         min: 0, max: 100,
@@ -373,10 +315,10 @@ function initGaugeChart() {
         },
         axisLabel: { show: false },
         pointer: {
-          icon: 'triangle', // 改为充实的科幻实心指针
+          icon: 'triangle', 
           width: 7,
           length: '65%',
-          offsetCenter: [0, '8%'], // 指针尾部略微下拉，与底座咬合
+          offsetCenter: [0, '8%'], 
           itemStyle: {
             color: color,
             shadowColor: color,
@@ -389,20 +331,20 @@ function initGaugeChart() {
           showAbove: true,
           size: 16,
           itemStyle: {
-            color: '#1a1a1a', // 黑色机械底座
-            borderColor: color, // 发光边缘
+            color: '#1a1a1a', 
+            borderColor: color, 
             borderWidth: 3,
             shadowColor: color,
             shadowBlur: 8
           }
         },
         detail: {
-          offsetCenter: [0, '35%'], // 进一步上移数字，彻底拉开与下方徽章的距离
+          offsetCenter: [0, '35%'], 
           formatter: '{a|{value}}',
           rich: {
             a: {
               color: color,
-              fontSize: 38, // 没了副标题，主数字可以稍微大一点点
+              fontSize: 38, 
               fontFamily: 'YouSheBiaoTiHei',
               fontStyle: 'italic',
               fontWeight: 'bold',
@@ -438,7 +380,7 @@ watch(() => props.year, calculateWarnings);
   -webkit-user-select: none;
   overflow: visible;
 
-  /* 注意：此处不再设置 clip-path，改由 ::before 伪元素设置，以允许子元素（如提示框）溢出边界 */
+  /* 此处不再设置 clip-path，改由 ::before 伪元素设置，以允许子元素（如提示框）溢出边界 */
 }
 
 /* 毛玻璃背板 (::before 同步切角) */
@@ -449,11 +391,12 @@ watch(() => props.year, calculateWarnings);
   z-index: -1;
   clip-path: polygon(0 0, calc(100% - 22px) 0, 100% 22px, 100% 100%, 22px 100%, 0 calc(100% - 22px));
   /* 恢复玻璃感深海蓝叠加，禁用底部模糊以保证极简纯净的地图穿透感 */
-  background: linear-gradient(135deg, rgba(10, 25, 70, 0.75) 0%, rgba(15, 35, 80, 0.6) 100%);
-  backdrop-filter: blur(16px);
-  -webkit-backdrop-filter: blur(16px);
+  /* 采用与左侧面板完全同步的增强型玻璃感参数 */
+  background: linear-gradient(135deg, rgba(10, 25, 70, 0.78) 0%, rgba(15, 35, 80, 0.62) 100%);
+  backdrop-filter: blur(28px) saturate(190%);
+  -webkit-backdrop-filter: blur(28px) saturate(190%);
   border: 1.5px solid rgba(0, 245, 255, 0.4);
-  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.5), inset 0 0 24px rgba(0, 245, 255, 0.08);
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.5), inset 0 0 30px rgba(0, 245, 255, 0.12);
 }
 
 /* 切角装饰点 (强调科技感) */
@@ -648,13 +591,13 @@ watch(() => props.year, calculateWarnings);
   grid-template-columns: 1fr 1fr;
   row-gap: 20px; /* 加大第一行与第二行的间距 */
   column-gap: 12px;
-  margin-top: 10px; /* 将整个网格往下移动一点 */
+  margin-top: auto; /* 使用 auto 自动吸收上方全部剩余空间，将网格牢牢压在主容器最下端 */
   flex-shrink: 0; 
 }
 .indicator-card {
   position: relative;
-  padding: 16px 20px 20px; /* 增加左右内边距，防止文字溢出被 clip-path 裁掉 */
-  min-height: 124px; /* 确保卡片不会被压缩截断文字 */
+  padding: 16px 20px 16px; /* 减小下边距 */
+  min-height: 80px; /* 减小最小高度 */
   /* 用户自定义颜色: RGB(52, 131, 241) Alpha 75% */
   background: rgba(52, 131, 241, 0.75);
   border: 1px solid rgba(0, 245, 255, 0.3);
@@ -682,30 +625,34 @@ watch(() => props.year, calculateWarnings);
   display: flex;
   align-items: center;
   justify-content: space-between;
-  margin-bottom: 12px;
+  margin-bottom: 6px;
+  gap: 4px;
 }
 .card-name {
-  font-size: 13px; color: rgba(255,255,255,0.9);
-  font-weight: 500; letter-spacing: 0.5px;
-}
-.card-status-info {
-  display: flex;
-  flex-direction: column; /* 垂直排列，腾出空间展示得分 */
-  align-items: flex-end;
-  gap: 4px;
+  font-size: 13px;
+  color: rgba(255,255,255,0.95);
+  font-weight: 600;
+  letter-spacing: 0.5px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  flex: 1; /* allow shrinking while pushing badge left if needed, but flex:1 pushes it right mostly */
 }
 .card-status-badge {
   display: flex;
   align-items: center;
-  gap: 5px;
+  gap: 4px;
+  flex-shrink: 0;
 }
 .card-score-tag {
-  font-size: 10px;
-  padding: 0 4px;
-  border: 0.5px solid rgba(255,255,255,0.2);
-  border-radius: 2px;
-  background: rgba(0,0,0,0.2);
-  font-family: monospace;
+  font-size: 11px;
+  padding: 2px 6px;
+  border: 1px solid rgba(255,255,255,0.1);
+  border-radius: 3px;
+  background: rgba(0,0,0,0.25);
+  font-family: 'Orbitron', monospace;
+  display: inline-block;
+  margin-bottom: 8px;
 }
 .badge-light {
   width: 5px; height: 5px; border-radius: 50%;

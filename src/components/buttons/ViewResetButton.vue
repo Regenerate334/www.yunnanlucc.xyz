@@ -9,14 +9,13 @@
   <div class="view-reset-control">
     <button @click="resetView" class="reset-btn" title="复位视图">
       <img :src="resetIcon" alt="复位" class="reset-icon" />
-      <span class="btn-label">视图复位</span>
     </button>
   </div>
 </template>
 
 <script setup>
 import * as Cesium from 'cesium';
-import resetIcon from '@/assets/icons/map/reset.svg';
+import resetIcon from '../../assets/icons/map/reset.svg';
 
 const emit = defineEmits(['reset-map']);
 

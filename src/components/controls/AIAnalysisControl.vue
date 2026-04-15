@@ -7,13 +7,13 @@
 -->
 <template>
   <div class="ai-analysis-control">
-    <button @click="toggleAIAnalysis" class="ai-btn" :class="{ active: showAIModal }" title="AI 一键智能分析">
+    <button @click="toggleAIAnalysis" class="ai-btn" :class="{ active: isOpen }" title="AI 一键智能分析">
         <img :src="aiIcon" class="ai-icon" alt="AI" />
         <span class="btn-label">AI 分析</span>
     </button>
 
     <AIAnalysisModal 
-      v-model:visible="showAIModal" 
+      v-model:visible="isOpen" 
       :year="selectedYear" 
       region="云南省" 
       analysis-type="comprehensive"
@@ -29,7 +29,17 @@ import AIAnalysisModal from '../ui/AIAnalysisModal.vue';
 import { useGlobalStore } from '../../stores/global';
 
 const globalStore = useGlobalStore();
-const showAIModal = ref(false);
+const panelName = 'ai_analysis';
+const isOpen = computed({
+  get: () => globalStore.activePanel === panelName,
+  set: (val) => {
+    if (!val && globalStore.activePanel === panelName) {
+      globalStore.setActivePanel(null);
+    } else if (val) {
+      globalStore.setActivePanel(panelName);
+    }
+  }
+});
 
 // 从全局状态或 props 获取当前年份，默认为 2023
 const selectedYear = computed(() => {
@@ -39,7 +49,11 @@ const selectedYear = computed(() => {
 });
 
 const toggleAIAnalysis = () => {
-  showAIModal.value = !showAIModal.value;
+  if (globalStore.activePanel === panelName) {
+    globalStore.setActivePanel(null);
+  } else {
+    globalStore.setActivePanel(panelName);
+  }
 };
 </script>
 

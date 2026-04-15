@@ -98,7 +98,23 @@ const availableYears = computed(() => {
 
 const localAvailableYears = ref([]); // 局部缓存
 const isVisible = computed(() => globalStore.activePanel === panelName);
-const selectedRegion = ref({ name: '云南省', level: 'province' });
+const selectedRegion = computed({
+  get: () => ({
+    name: globalStore.scope.name,
+    level: globalStore.scope.level,
+    code: globalStore.scope.code,
+    // 从层级列表中推断父级（仅县级需要）
+    parentName: globalStore.scope.level === 'county' 
+      ? (hierarchyList.value.find(p => p.children && p.children.some(c => (c.name || c) === globalStore.scope.name))?.name || '')
+      : null
+  }),
+  set: (val) => {
+    globalStore.setScope(val.level, val.code || '', val.name);
+  }
+});
+
+// 内部使用的层级列表（映射自 prefectureList 或 API）
+const hierarchyList = ref([]);
 
 const isFirstYear = computed(() => {
   if (!availableYears.value.length) return true;
@@ -519,6 +535,7 @@ function getRoseOption(mapName) {
 // getKlineOption 已被移除并重构至 RegionalKlineChart.vue
 
 function handleRegionChange() {
+  // 选人逻辑已通过 computed setter 同步至 globalStore
   initChart();
 }
 
@@ -547,6 +564,12 @@ function switchView(viewId) {
   currentView.value = 'rose';
 }
 
+watch(() => globalStore.scope, async (newScope) => {
+  if (isVisible.value) {
+    initChart();
+  }
+}, { deep: true });
+
 watch(currentYear, async () => {
   if (isVisible.value) {
     isLoading.value = true;
@@ -566,6 +589,14 @@ watch(currentYear, async () => {
 onMounted(async () => {
   window.addEventListener('resize', handleResize);
   
+  // 初始化全局及局部层级列表
+  try {
+    const hier = await regionApi.getRegionHierarchy();
+    hierarchyList.value = hier;
+  } catch (e) {
+    console.error('Failed to fetch hierarchy:', e);
+  }
+
   // 预取可用年份
   try {
     const years = await clcdApi.getAvailableYears();
@@ -579,7 +610,6 @@ onMounted(async () => {
         currentYear.value = sortedYears[0];
       }
     }
-    // console.log('Structure Panel Available Years Sync:', availableYears.value);
   } catch (e) {
     console.error('Failed to fetch years:', e);
   }
@@ -734,6 +764,31 @@ onUnmounted(() => {
   border-color: #3b82f6;
   color: #fff;
   transform: scale(1.1);
+}
+
+.close-btn {
+  background: rgba(255, 255, 255, 0.05);
+  border: none;
+  color: rgba(255, 255, 255, 0.5);
+  font-size: 24px;
+  cursor: pointer;
+  width: 38px;
+  height: 38px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.close-btn:hover {
+  background: rgba(245, 108, 108, 0.2);
+  color: #fff;
+  transform: rotate(90deg) scale(1.1);
+}
+
+.close-btn:active {
+  transform: rotate(90deg) scale(0.95);
 }
 
 .year-nav-btn:disabled {

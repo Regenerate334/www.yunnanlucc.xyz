@@ -8,7 +8,7 @@
 <template>
     <div class="vibe-area-measure" ref="containerRef">
         <button @click="toggleMeasure" class="measure-btn" :class="{ active: isMeasuring }" title="测面积">
-            <img src="@/assets/icons/map/measure-area.png" class="measure-icon" alt="测面积" />
+            <img src="../../assets/icons/map/measure-area.png" class="measure-icon" alt="测面积" />
             <span class="btn-label">测面积</span>
         </button>
 
@@ -227,7 +227,6 @@ onUnmounted(() => {
     width: 32px;
     height: 32px;
     object-fit: contain;
-    filter: brightness(0) invert(1);
     transition: all 0.3s ease;
 }
 
@@ -410,7 +409,7 @@ onUnmounted(() => {
 
 .vibe-select-options {
     position: absolute;
-    top: calc(100% + 4px); /* 适应极致压缩后的间距 */
+    bottom: calc(100% + 4px); /* 改为向上展开 */
     left: 0;
     right: 0;
     background: rgba(23, 35, 46, 0.98);
@@ -421,7 +420,7 @@ onUnmounted(() => {
     padding: 6px;
     list-style: none;
     z-index: 2500; /* 确保层级高于一切，突破容器限制 */
-    box-shadow: 0 10px 25px rgba(0, 0, 0, 0.6);
+    box-shadow: 0 -10px 25px rgba(0, 0, 0, 0.6);
     max-height: 180px;
     overflow-y: auto;
 }

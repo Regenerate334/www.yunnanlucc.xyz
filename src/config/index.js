@@ -55,12 +55,13 @@ export const UI_CONFIG = {
     // 全局边界样式配置
     BOUNDARY_STYLE: {
         provinceWidth: 3.5,     // 省界线宽
-        cityWidth: 2.5,         // 地级市界线宽
-        countyWidth: 1.5,       // 县级界线宽
-        highlightWidth: 6.0,    // 选中/高亮线宽
-        provinceColor: '#00E5FF',
-        cityColor: '#00E5FF',
-        countyColor: '#00E5FF'
+        cityWidth: 2.0,         // 地级市界线宽
+        countyWidth: 1.0,       // 县级界线宽
+        highlightWidth: 4.0,    // 选中/高亮线宽
+        provinceColor: '#FF0000', // 省级：红色
+        cityColor: '#9C27B0',     // 地级市：紫色
+        countyColor: '#00FFFF',    // 县级：青色
+        highlightColor: '#FFFF00'  // 选中高亮：黄色
     }
 };
 

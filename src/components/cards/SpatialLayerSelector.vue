@@ -23,7 +23,7 @@
       <div v-if="isOpen" class="layer-selector-panel panel-card">
         <div class="panel-header">
           <h1 class="header-title">统计图层选择</h1>
-          <button class="close-btn" @click="isOpen = false" title="关闭">
+          <button class="close-btn" @click="globalStore.setActivePanel(null)" title="关闭">
             <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2.2">
               <path d="M18 6L6 18M6 6l12 12" />
             </svg>
@@ -93,7 +93,7 @@
 
 <script setup>
 import { ref, computed, onMounted, onUnmounted, watch } from 'vue';
-import statisticIcon from '@/assets/icons/business/layer-stats.png';
+import statisticIcon from '../../assets/icons/business/layer-stats.png';
 
 const props = defineProps({
   modelValue: {
@@ -112,7 +112,11 @@ const props = defineProps({
 
 const emit = defineEmits(['update:modelValue', 'update:selectedAttribute', 'change']);
 
-const isOpen = ref(false);
+import { useGlobalStore } from '../../stores/global';
+const globalStore = useGlobalStore();
+const panelName = 'spatial_layer';
+const isOpen = computed(() => globalStore.activePanel === panelName);
+
 const containerRef = ref(null);
 const activeMainLayer = ref(props.modelValue);
 
@@ -148,7 +152,11 @@ const currentLabelShort = computed(() => {
 });
 
 function toggleDropdown() {
-  isOpen.value = !isOpen.value;
+  if (globalStore.activePanel === panelName) {
+    globalStore.setActivePanel(null);
+  } else {
+    globalStore.setActivePanel(panelName);
+  }
 }
 
 function selectMainLayer(layerId) {
@@ -170,8 +178,8 @@ function selectAttribute(attrValue) {
 }
 
 const handleClickOutside = (e) => {
-  if (containerRef.value && !containerRef.value.contains(e.target)) {
-    isOpen.value = false;
+  if (globalStore.activePanel === panelName && containerRef.value && !containerRef.value.contains(e.target)) {
+    globalStore.setActivePanel(null);
   }
 };
 
@@ -246,11 +254,11 @@ onUnmounted(() => {
 .close-btn {
   position: absolute;
   right: 10px;
-  background: rgba(245, 108, 108, 0.15); /* 默认开启半透明红 */
+  background: rgba(255, 255, 255, 0.05); /* 统一为默认浅白背景 */
   border: none;
-  color: #F56C6C; /* 默认红色 */
+  color: rgba(255, 255, 255, 0.5); /* 默认淡色 */
   cursor: pointer;
-  width: 34px; /* 统一放大一致 */
+  width: 34px;
   height: 34px;
   display: flex;
   align-items: center;
@@ -260,9 +268,13 @@ onUnmounted(() => {
 }
 
 .close-btn:hover {
-  background: rgba(245, 108, 108, 0.25);
+  background: rgba(245, 108, 108, 0.2); /* 悬停变为红底 */
   color: #fff;
   transform: rotate(90deg) scale(1.1);
+}
+
+.close-btn:active {
+  transform: rotate(90deg) scale(0.95);
 }
 
 .control-body {
