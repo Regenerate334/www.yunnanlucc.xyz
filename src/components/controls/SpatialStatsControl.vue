@@ -10,7 +10,7 @@
   <div class="spatial-stats-control panel-card" ref="containerRef">
     <div class="panel-header">
       <h1 class="header-title">空间轨迹与标准差椭圆</h1>
-      <button class="close-btn" @click="$emit('close')" title="关闭面板">
+      <button class="close-btn" @click.stop="$emit('close')" @keydown.enter.stop title="关闭面板">
         <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2.2">
           <path d="M18 6L6 18M6 6l12 12" />
         </svg>

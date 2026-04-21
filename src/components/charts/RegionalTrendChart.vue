@@ -60,12 +60,13 @@ const landUseColors = {
 };
 
 const policyMarkers = [
-    { year: '1999', name: '首轮退耕还林启动', color: '#52c41a' },
-    { year: '2000', name: '西部大开发战略', color: '#722ed1' },
-    { year: '2010', name: '低丘缓坡开发试点', color: '#faad14' },
-    { year: '2012', name: '生态文明建设战略', color: '#13c2c2' },
-    { year: '2018', name: '滇中引水工程开工', color: '#1890ff' },
-    { year: '2021', name: '国土空间“一张图”', color: '#f5222d' }
+    { year: '1999', name: '首轮退耕还林工程启动', color: '#52c41a', relevantTypes: ['cropland', 'forest'] },
+    { year: '2000', name: '西部大开发战略实施', color: '#722ed1', relevantTypes: ['impervious'] },
+    { year: '2010', name: '低丘缓坡土地综合开发试点', color: '#faad14', relevantTypes: ['impervious', 'shrub'] },
+    { year: '2017', name: '云南省高速公路“能通全通”工程', color: '#eb2f96', relevantTypes: ['impervious'] },
+    { year: '2018', name: '滇中引水工程全面开工', color: '#1890ff', relevantTypes: ['water', 'impervious'] },
+    { year: '2021', name: '白鹤滩水电站下闸蓄水', color: '#13c2c2', relevantTypes: ['water'] },
+    { year: '2022', name: '耕地“非农化、非粮化”整治', color: '#a0d911', relevantTypes: ['cropland', 'forest', 'shrub'] }
 ];
 
 // 恢复本地诊断逻辑
@@ -303,18 +304,20 @@ const updateChart = () => {
                 silent: true,
                 symbol: ['none', 'none'],
                 label: { show: false },
-                data: policyMarkers.filter(p => Number(p.year) >= 1985 && Number(p.year) <= 2023).map(p => {
-                    // 在类目轴中，如果年份不精确匹配，寻找最接近的类目
-                    const targetYear = Number(p.year);
-                    const closestYear = years.reduce((prev, curr) => 
-                        Math.abs(curr - targetYear) < Math.abs(prev - targetYear) ? curr : prev
-                    );
-                    return {
-                        xAxis: closestYear.toString(), // 匹配类目名
-                        name: p.name,
-                        lineStyle: { color: p.color, type: 'dashed', opacity: 0.5, width: 1.2 }
-                    };
-                })
+                data: policyMarkers
+                    .filter(p => Number(p.year) >= 1985 && Number(p.year) <= 2023)
+                    .map(p => {
+                        // 在类目轴中，如果年份不精确匹配，寻找最接近的类目
+                        const targetYear = Number(p.year);
+                        const closestYear = years.reduce((prev, curr) => 
+                            Math.abs(curr - targetYear) < Math.abs(prev - targetYear) ? curr : prev
+                        );
+                        return {
+                            xAxis: closestYear.toString(), // 匹配类目名
+                            name: p.name,
+                            lineStyle: { color: p.color, type: 'dashed', opacity: 0.5, width: 1.2 }
+                        };
+                    })
             }
         });
     });
@@ -336,11 +339,16 @@ const updateChart = () => {
                 const year = params[0].axisValue;
                 const filteredParams = params.filter(p => !p.seriesName.includes('_bar'));
                 const record = props.seriesData.find(d => d.year.toString() === year.toString());
-                const policy = policyMarkers.find(p => p.year.toString() === year.toString());
-
+                const matchedPolicies = policyMarkers.filter(p => p.year.toString() === year.toString());
                 let html = `<div style="font-weight:600; margin-bottom:10px; border-bottom:1px solid rgba(255,255,255,0.1); padding-bottom:6px; color:#a5ccff; display:flex; justify-content:space-between; align-items:center;">`;
                 html += `<span>${year}年 ${props.level === 'province' ? '全省详情' : '区域详情'}</span>`;
-                if (policy) html += `<span style="color:${policy.color}; font-size:11px; background:${policy.color}22; padding:2px 6px; border-radius:4px; border:1px solid ${policy.color}44;">${policy.name}</span>`;
+                if (matchedPolicies.length > 0) {
+                    html += `<div style="display:flex; flex-direction:column; gap:4px; align-items:flex-end;">`;
+                    matchedPolicies.forEach(p => {
+                        html += `<span style="color:${p.color}; font-size:11px; background:${p.color}22; padding:1px 6px; border-radius:4px; border:1px solid ${p.color}44;">${p.name}</span>`;
+                    });
+                    html += `</div>`;
+                }
                 html += `</div>`;
 
                 if (!record) return html + "暂无数据";

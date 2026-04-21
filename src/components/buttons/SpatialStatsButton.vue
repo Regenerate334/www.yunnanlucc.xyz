@@ -36,7 +36,7 @@ const globalStore = useGlobalStore();
 const panelName = 'spatial_stats';
 
 const emit = defineEmits(['stats-query', 'update-visibility', 'reset-map']);
-const isVisible = computed(() => globalStore.activePanel === panelName || globalStore.activeTheme === panelName);
+const isVisible = computed(() => globalStore.activePanel === panelName);
 const innerControlRef = ref(null);
 
 function toggleModal() {

@@ -63,12 +63,13 @@ const upColor = '#22c55e'; // 增长绿（符合生态评估惯例）
 const downColor = '#ef4444'; // 减少红
 
 const policyMarkers = [
-    { year: '1999', name: '首轮退耕还林启动', color: '#52c41a' },
-    { year: '2000', name: '西部大开发战略', color: '#722ed1' },
-    { year: '2010', name: '低丘缓坡开发试点', color: '#faad14' },
-    { year: '2012', name: '生态文明建设战略', color: '#13c2c2' },
-    { year: '2018', name: '滇中引水工程开工', color: '#1890ff' },
-    { year: '2021', name: '国土空间“一张图”', color: '#f5222d' }
+    { year: '1999', name: '首轮退耕还林工程启动', color: '#52c41a', relevantTypes: ['cropland', 'forest'] },
+    { year: '2000', name: '西部大开发战略实施', color: '#722ed1', relevantTypes: ['impervious'] },
+    { year: '2010', name: '低丘缓坡土地综合开发试点', color: '#faad14', relevantTypes: ['impervious', 'shrub'] },
+    { year: '2017', name: '云南省高速公路“能通全通”工程', color: '#eb2f96', relevantTypes: ['impervious'] },
+    { year: '2018', name: '滇中引水工程全面开工', color: '#1890ff', relevantTypes: ['water', 'impervious'] },
+    { year: '2021', name: '白鹤滩水电站下闸蓄水', color: '#13c2c2', relevantTypes: ['water'] },
+    { year: '2022', name: '耕地“非农化、非粮化”整治', color: '#a0d911', relevantTypes: ['cropland', 'forest', 'shrub'] }
 ];
 
 const initChart = () => {
@@ -177,12 +178,18 @@ const updateChart = () => {
             },
             formatter: (params) => {
                 const year = params[0].name;
-                const policy = policyMarkers.find(p => p.year.toString() === year.toString());
+                const matchedPolicies = policyMarkers.filter(p => p.year.toString() === year.toString());
                 const activeLabel = landUseNames[activeLandType.value];
 
                 let html = `<div style="font-weight:600; margin-bottom:12px; border-bottom:1px solid rgba(255,255,255,0.1); padding-bottom:8px; color:#a5ccff; display:flex; justify-content:space-between; align-items:center; gap:20px;">`;
                 html += `<span>${year}年 ${activeLabel} 演化监测</span>`;
-                if (policy) html += `<span style="color:${policy.color}; font-size:11px; background:${policy.color}22; padding:2px 6px; border-radius:4px; border:1px solid ${policy.color}44;">${policy.name}</span>`;
+                if (matchedPolicies.length > 0) {
+                    html += `<div style="display:flex; flex-direction:column; gap:6px; align-items:flex-end;">`;
+                    matchedPolicies.forEach(p => {
+                        html += `<span style="color:${p.color}; font-size:11px; background:${p.color}22; padding:1px 8px; border-radius:4px; border:1px solid ${p.color}44;">${p.name}</span>`;
+                    });
+                    html += `</div>`;
+                }
                 html += `</div>`;
 
                 // 核心指标提取
@@ -317,11 +324,12 @@ const updateChart = () => {
                     },
                     lineStyle: { type: 'dashed', opacity: 0.6, width: 1.5 }, // 增加可见程度
                     emphasis: { lineStyle: { opacity: 1, width: 2 } },
-                    data: policyMarkers.map(p => ({
-                        xAxis: p.year,
-                        name: p.name,
-                        lineStyle: { color: p.color }
-                    }))
+                    data: policyMarkers
+                        .map(p => ({
+                            xAxis: p.year,
+                            name: p.name,
+                            lineStyle: { color: p.color }
+                        }))
                 }
             },
             { name: '面积增加', type: 'bar', data: [], itemStyle: { color: upColor } },
