@@ -17,6 +17,8 @@
     "sync:sld": "node ./ops/geo/sync_all_slds.js"
   },
   "dependencies": {
+    "@llamaindex/ollama": "^0.1.23",
+    "@modelcontextprotocol/sdk": "^1.29.0",
     "@turf/bbox": "^7.3.4",
     "@turf/turf": "^7.2.0",
     "@types/turf": "^3.5.32",
@@ -34,6 +36,7 @@
     "highlight.js": "^11.11.1",
     "jsonwebtoken": "^9.0.3",
     "katex": "^0.16.27",
+    "llamaindex": "^0.12.1",
     "markdown-it": "^14.1.0",
     "markdown-it-texmath": "^1.0.0",
     "ollama": "^0.6.3",
@@ -44,7 +47,8 @@
     "vue": "^3.5.13",
     "vue-router": "^4.5.1",
     "winston": "^3.19.0",
-    "winston-daily-rotate-file": "^5.0.0"
+    "winston-daily-rotate-file": "^5.0.0",
+    "zod": "^4.3.6"
   },
   "devDependencies": {
     "@tailwindcss/postcss": "^4.1.13",

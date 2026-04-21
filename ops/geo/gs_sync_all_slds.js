@@ -70,7 +70,7 @@ async function main() {
     for (const sld of sldFiles) {
         await uploadSld(sld.name, sld.path);
     }
-    console.log('✅ All styles synced.');
+    console.log('All styles synced.');
 }
 
 main().catch(console.error);
