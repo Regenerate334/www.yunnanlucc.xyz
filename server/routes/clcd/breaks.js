@@ -214,17 +214,11 @@ router.get('/', [
                     return res.status(400).json({ error: 'reclamation rate requires year param' });
                 }
                 const targetYear = parseInt(year);
-                const years = await getAvailableYears();
                 const dbCols = await getTableColumns(STATS_TABLE);
                 const prefix = ATTR_PREFIX_MAP['cropland'];
+                const croplandCol = `${prefix}_${targetYear}`;
 
-                // 找出与目标年份对应的耕地面积列（按年份索引排序）
-                const croplandCols = dbCols
-                    .filter(c => c.startsWith(`${prefix}_sq_`))
-                    .sort((a, b) => parseInt(a.split('_').pop()) - parseInt(b.split('_').pop()));
-                const croplandCol = croplandCols[years.indexOf(targetYear)];
-
-                if (!croplandCol) {
+                if (!dbCols.includes(croplandCol)) {
                     return res.status(400).json({ error: `Cannot find cropland column for year ${targetYear}` });
                 }
 

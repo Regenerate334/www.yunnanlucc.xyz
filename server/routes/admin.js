@@ -15,6 +15,7 @@ import { fileURLToPath } from 'url';
 import { execSync } from 'child_process';
 import crypto from 'crypto';
 import pool from '../config/db.js';
+import logger from '../config/logger.js';
 import { authMiddleware, roleCheck } from '../middleware/auth.js';
 import os from 'os';
 import { decrypt as rsaDecrypt } from '../utils/cryptoHelper.js';

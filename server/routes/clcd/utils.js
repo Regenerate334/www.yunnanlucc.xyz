@@ -46,18 +46,11 @@ export async function getTableColumns(tableName) {
  */
 export function resolveFieldByYear(year, prefix, dbCols, years) {
     const yInt = Number(year);
-    const idx = years.indexOf(yInt);
-    if (idx === -1) return null;
+    const targetColumnName = `${prefix}_${yInt}`;
 
-    const relevantCols = dbCols
-        .filter(c => c.startsWith(`${prefix}_sq_`))
-        .sort((a, b) => {
-            const numA = parseInt(a.split('_').pop());
-            const numB = parseInt(b.split('_').pop());
-            return numA - numB;
-        });
-
-    if (idx < relevantCols.length) return relevantCols[idx];
+    if (dbCols.includes(targetColumnName)) {
+        return targetColumnName;
+    }
     return null;
 }
 

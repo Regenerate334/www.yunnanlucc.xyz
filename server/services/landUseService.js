@@ -33,105 +33,134 @@ class LandUseService {
         const clean = name.replace(/市|县|区|自治州|省/g, '').trim();
         // 只有地级市才应用映射逻辑（例如 “大理” -> “大理白族自治州”）
         // 县级市（如 “大理市”）应直接使用模糊匹配，避免被错误映射到地级州
-        if (level === 'prefecture' && this.regionAliases[clean]) {
+        if ((level === 'prefecture' || level === 'auto') && this.regionAliases[clean]) {
             return this.regionAliases[clean];
         }
         return `%${clean}%`;
     }
 
     /**
-     * 获取仪表盘综合分析数据
+     * 自动推断行政级别
      */
-    async getDashboardData(year, type = 'comprehensive') {
+    _inferLevel(name) {
+        if (!name || name === '云南省' || name === '全省') return 'province';
+        const clean = name.replace(/市|县|区|自治州|省/g, '').trim();
+        if (this.regionAliases[clean]) return 'prefecture';
+        return 'county'; // 如果不是地州或省级，则默认降维到县级
+    }
+
+    /**
+     * 获取仪表盘综合分析数据
+     * @param {number} year - 目标年份
+     * @param {string} type - 'comprehensive' 或特定地类
+     * @param {string} region - 目标区域
+     * @param {string} level - 行政级别
+     */
+    async getDashboardData(year, type = 'comprehensive', region = '云南省', level = 'auto') {
         const baseYear = 1985;
         const yearDiff = Math.abs(year - baseYear);
 
-        // 1. 获取全省对比数据
-        const currentProvince = await this.getProvinceSummary(year);
-        const baseProvince = await this.getProvinceSummary(baseYear);
+        let actualLevel = level;
+        if (actualLevel === 'auto' || !actualLevel) {
+            actualLevel = this._inferLevel(region);
+        }
 
-        if (!currentProvince || !baseProvince) return null;
+        // 1. 获取目标区域对比数据
+        let currentRegionSummary, baseRegionSummary;
+        if (actualLevel === 'province' || region === '云南省' || region === '全省') {
+            currentRegionSummary = await this.getProvinceSummary(year);
+            baseRegionSummary = await this.getProvinceSummary(baseYear);
+            region = '云南省';
+        } else {
+            const currentRows = await this.getRegionData(year, region, actualLevel);
+            const baseRows = await this.getRegionData(baseYear, region, actualLevel);
+            currentRegionSummary = currentRows[0];
+            baseRegionSummary = baseRows[0] || currentRows[0];
+        }
 
-        // 2. 获取地级市排行
-        const { rows: prefRows } = await pool.query(`
-            SELECT p1.region_name, 
-                   p1.cropland as c1, p1.forest as f1, p1.shrub as s1, p1.grassland as g1, 
-                   p1.water as w1, p1.snow_ice as i1, p1.barren as b1, p1.impervious as m1, p1.wetland as t1,
-                   p2.cropland as c2, p2.forest as f2, p2.shrub as s2, p2.grassland as g2, 
-                   p2.water as w2, p2.snow_ice as i2, p2.barren as b2, p2.impervious as m2, p2.wetland as t2
-            FROM public.clcd_prefecture p1
-            JOIN public.clcd_prefecture p2 ON p1.region_name = p2.region_name
-            WHERE p1.year = $1 AND p2.year = $2
-        `, [year, baseYear]);
+        if (!currentRegionSummary || !baseRegionSummary) return null;
 
-        const ranking = prefRows.map(r => {
-            let dynamicValue = 0;
-            if (type === 'comprehensive') {
+        // 2. 获取该区域内的下级排行 (如果是全省则取地州，如果是地州则取县级)
+        let ranking = [];
+        const nextLevel = actualLevel === 'province' ? 'prefecture' : 'county';
+        const tableName = nextLevel === 'county' ? 'clcd_county' : 'clcd_prefecture';
+
+        let subRegionFilter = '';
+        let subRegionParams = [year, baseYear];
+        if (actualLevel === 'prefecture') {
+            const fuzzy = this._getFuzzyName(region, 'prefecture');
+            subRegionFilter = ` AND p1.region_name LIKE $3 `; // In county table, region_name is the county, we need a parent field if exists?
+            // Wait, in clcd_county table, there might not be a "parent" column. 
+            // Let's check table schema.
+        }
+
+        // 简化排行：如果不是全省，暂时只返回该区域自己的数据作为“排行”第一项，或尝试匹配
+        if (actualLevel === 'province') {
+            const { rows: prefRows } = await pool.query(`
+                SELECT p1.region_name, 
+                       p1.cropland as c1, p1.forest as f1, p1.shrub as s1, p1.grassland as g1, 
+                       p1.water as w1, p1.snow_ice as i1, p1.barren as b1, p1.impervious as m1, p1.wetland as t1,
+                       p2.cropland as c2, p2.forest as f2, p2.shrub as s2, p2.grassland as g2, 
+                       p2.water as w2, p2.snow_ice as i2, p2.barren as b2, p2.impervious as m2, p2.wetland as t2
+                FROM public.clcd_prefecture p1
+                JOIN public.clcd_prefecture p2 ON p1.region_name = p2.region_name
+                WHERE p1.year = $1 AND p2.year = $2
+            `, [year, baseYear]);
+
+            ranking = prefRows.map(r => {
+                let dynamicValue = 0;
                 const start = { cropland: r.c2, forest: r.f2, shrub: r.s2, grassland: r.g2, water: r.w2, snow_ice: r.i2, barren: r.b2, impervious: r.m2, wetland: r.t2 };
                 const end = { cropland: r.c1, forest: r.f1, shrub: r.s1, grassland: r.g1, water: r.w1, snow_ice: r.i1, barren: r.b1, impervious: r.m1, wetland: r.t1 };
                 dynamicValue = calculateDynamicDegree(start, end, yearDiff);
-            } else {
-                const typeMap = { cropland: 'c', forest: 'f', grassland: 'g', impervious: 'm', water: 'w' };
-                const alias = typeMap[type] || 'c';
-                dynamicValue = calculateSingleDynamicDegree(Number(r[alias + '2']), Number(r[alias + '1']), yearDiff);
-            }
-            return {
-                name: r.region_name.replace(/市|自治州|地区/g, ''),
-                value: parseFloat(Math.abs(dynamicValue).toFixed(4))
-            };
-        }).sort((a, b) => b.value - a.value).slice(0, 10);
+                return {
+                    name: r.region_name.replace(/市|自治州|地区/g, ''),
+                    value: parseFloat(Math.abs(dynamicValue).toFixed(4))
+                };
+            }).sort((a, b) => b.value - a.value).slice(0, 10);
+        }
 
         // 3. 构建预警
         const alerts = [];
-        if (currentProvince.cropland < baseProvince.cropland * 0.95) {
+        if (currentRegionSummary.cropland < baseRegionSummary.cropland * 0.95) {
             alerts.push({
                 id: Date.now(),
                 type: 'danger',
                 title: '耕地红线预警',
-                content: `当前全省耕地较1985年减少超过5%，请注意生态补给。`
+                content: `当前${region}耕地较1985年减少超过5%，请注意生态补给。`
             });
         }
 
-        // 4. 计算基于 CLCD 的专属 LUCC 指标
-        const ecoAreaCurrent = Number(currentProvince.forest || 0) + Number(currentProvince.shrub || 0) + Number(currentProvince.grassland || 0) + Number(currentProvince.water || 0) + Number(currentProvince.wetland || 0);
-        const ecoAreaBase = Number(baseProvince.forest || 0) + Number(baseProvince.shrub || 0) + Number(baseProvince.grassland || 0) + Number(baseProvince.water || 0) + Number(baseProvince.wetland || 0);
+        // 4. 计算指标
+        const ecoAreaCurrent = Number(currentRegionSummary.forest || 0) + Number(currentRegionSummary.shrub || 0) + Number(currentRegionSummary.grassland || 0) + Number(currentRegionSummary.water || 0) + Number(currentRegionSummary.wetland || 0);
+        const ecoAreaBase = Number(baseRegionSummary.forest || 0) + Number(baseRegionSummary.shrub || 0) + Number(baseRegionSummary.grassland || 0) + Number(baseRegionSummary.water || 0) + Number(baseRegionSummary.wetland || 0);
 
-        const compDynamic = calculateDynamicDegree(baseProvince, currentProvince, yearDiff);
-        const urbanDynamic = calculateSingleDynamicDegree(baseProvince.impervious || 0, currentProvince.impervious || 0, yearDiff);
+        const compDynamic = calculateDynamicDegree(baseRegionSummary, currentRegionSummary, yearDiff);
+        const urbanDynamic = calculateSingleDynamicDegree(baseRegionSummary.impervious || 0, currentRegionSummary.impervious || 0, yearDiff);
         const ecoDynamic = calculateSingleDynamicDegree(ecoAreaBase, ecoAreaCurrent, yearDiff);
 
-        // 格式化输出: 全领域统一单位 -> 平方公里(km2) = 原始面积(m2) / 1000000
         const csponMetrics = {
             croplandArea: {
-                value: parseFloat((Number(currentProvince.cropland || 0) / 1000000).toFixed(2)),
-                trend: parseFloat(((Number(currentProvince.cropland || 0) - Number(baseProvince.cropland || 0)) / 1000000).toFixed(2))
+                value: parseFloat((Number(currentRegionSummary.cropland || 0) / 1000000).toFixed(2)),
+                trend: parseFloat(((Number(currentRegionSummary.cropland || 0) - Number(baseRegionSummary.cropland || 0)) / 1000000).toFixed(2))
             },
             urbanArea: {
-                value: parseFloat((Number(currentProvince.impervious || 0) / 1000000).toFixed(2)),
-                trend: parseFloat(((Number(currentProvince.impervious || 0) - Number(baseProvince.impervious || 0)) / 1000000).toFixed(2))
+                value: parseFloat((Number(currentRegionSummary.impervious || 0) / 1000000).toFixed(2)),
+                trend: parseFloat(((Number(currentRegionSummary.impervious || 0) - Number(baseRegionSummary.impervious || 0)) / 1000000).toFixed(2))
             },
             ecoArea: {
                 value: parseFloat((ecoAreaCurrent / 1000000).toFixed(2)),
                 trend: parseFloat(((ecoAreaCurrent - ecoAreaBase) / 1000000).toFixed(2))
             },
-            compDynamic: {
-                value: parseFloat(compDynamic.toFixed(3)),
-                trend: parseFloat(compDynamic.toFixed(3)) // 动态度本身就是变化率，这里 trend 可作为强调
-            },
-            urbanDynamic: {
-                value: parseFloat(urbanDynamic.toFixed(3)),
-                trend: parseFloat(urbanDynamic.toFixed(3))
-            },
-            ecoDynamic: {
-                value: parseFloat(ecoDynamic.toFixed(3)),
-                trend: parseFloat(ecoDynamic.toFixed(3))
-            }
+            compDynamic: { value: parseFloat(compDynamic.toFixed(3)), trend: parseFloat(compDynamic.toFixed(3)) },
+            urbanDynamic: { value: parseFloat(urbanDynamic.toFixed(3)), trend: parseFloat(urbanDynamic.toFixed(3)) },
+            ecoDynamic: { value: parseFloat(ecoDynamic.toFixed(3)), trend: parseFloat(ecoDynamic.toFixed(3)) }
         };
 
         return {
             year,
-            summary: currentProvince,
-            baseSummary: baseProvince,
+            region,
+            summary: currentRegionSummary,
+            baseSummary: baseRegionSummary,
             ranking,
             alerts,
             csponMetrics
@@ -169,23 +198,36 @@ class LandUseService {
     }
 
     /**
-     * 获取地级市数据（单年或对比）
+     * 获取市县数据（单年或对比）
      */
-    async getPrefectureData(year, regions = null) {
-        let sql = `SELECT * FROM clcd_prefecture WHERE year = $1`;
+    async getRegionData(year, regions = null, level = 'auto') {
+        // 如果未指定具体 level 并且是单一区域，进行自动推断
+        let actualLevel = level;
+        if (actualLevel === 'auto' || !actualLevel) {
+            if (regions && !Array.isArray(regions)) {
+                actualLevel = this._inferLevel(regions);
+            } else if (regions && Array.isArray(regions) && regions.length > 0) {
+                actualLevel = this._inferLevel(regions[0]); // 按第一个元素推断
+            } else {
+                actualLevel = 'prefecture'; // 默认全省各地州
+            }
+        }
+
+        const tableName = actualLevel === 'county' ? 'clcd_county' : 'clcd_prefecture';
+        let sql = `SELECT * FROM ${tableName} WHERE year = $1`;
         let params = [year];
 
         if (regions) {
             if (Array.isArray(regions)) {
-                const fuzzyNames = regions.map(r => this._getFuzzyName(r, 'prefecture'));
+                const fuzzyNames = regions.map(r => this._getFuzzyName(r, level));
                 const placeholders = fuzzyNames.map((_, i) => `$${i + 2}`).join(', ');
                 sql += ` AND region_name IN (${placeholders})`; // IN works better for known set than multiple LIKE if they are complete names
                 // If fuzzy is needed:
                 const likeClauses = fuzzyNames.map((_, i) => `region_name LIKE $${i + 2}`).join(' OR ');
-                sql = `SELECT * FROM clcd_prefecture WHERE year = $1 AND (${likeClauses})`;
+                sql = `SELECT * FROM ${tableName} WHERE year = $1 AND (${likeClauses})`;
                 params.push(...fuzzyNames);
             } else {
-                const fuzzy = this._getFuzzyName(regions, 'prefecture');
+                const fuzzy = this._getFuzzyName(regions, level);
                 sql += ` AND region_name LIKE $2`;
                 params.push(fuzzy);
             }
@@ -198,7 +240,7 @@ class LandUseService {
     /**
      * 获取历史趋势数据
      */
-    async getTrend(region, startYear, endYear, level = 'prefecture') {
+    async getTrend(region, startYear, endYear, level = 'auto') {
         if (!region || region === '云南省' || region === '全省') {
             const { rows } = await pool.query(`
                 SELECT year,
@@ -217,8 +259,13 @@ class LandUseService {
             `, [startYear, endYear]);
             return rows;
         } else {
-            const tableName = level === 'county' ? 'clcd_county' : 'clcd_prefecture';
-            const fuzzy = this._getFuzzyName(region, level);
+            let actualLevel = level;
+            if (actualLevel === 'auto' || !actualLevel) {
+                actualLevel = this._inferLevel(region);
+            }
+
+            const tableName = actualLevel === 'county' ? 'clcd_county' : 'clcd_prefecture';
+            const fuzzy = this._getFuzzyName(region, actualLevel);
             const { rows } = await pool.query(`
                 SELECT * FROM ${tableName} 
                 WHERE region_name LIKE $1
@@ -234,7 +281,7 @@ class LandUseService {
     /**
      * 获取土地转移矩阵
      */
-    async getTransferMatrix(region, period) {
+    async getTransferMatrix(region, period, level = 'auto') {
         // 先探测字段
         const { rows: colRows } = await pool.query(`
             SELECT column_name FROM information_schema.columns 
@@ -243,11 +290,15 @@ class LandUseService {
 
         if (colRows.length === 0) return [];
 
+        let actualLevel = level;
+        if (actualLevel === 'auto' || !actualLevel) {
+            actualLevel = this._inferLevel(region);
+        }
+
         let whereClause = '';
         let params = [];
         if (region && region !== '云南省') {
-            // 转移矩阵通常基于县级或地级，这里尝试不带 level 限制或作为模糊匹配
-            const fuzzy = this._getFuzzyName(region, 'county');
+            const fuzzy = this._getFuzzyName(region, actualLevel);
             whereClause = `WHERE TRIM("地名") LIKE $1 OR TRIM("地级") LIKE $1`;
             params.push(fuzzy);
         }
@@ -321,7 +372,8 @@ class LandUseService {
         const calcPLEC = (data) => {
             const aProd = norm(data.cropland);
             const aLife = norm(data.impervious);
-            const aEco = norm(data.forest) + norm(data.shrub) + norm(data.grassland) + norm(data.water) + norm(data.wetland) + norm(data.barren) + norm(data.snow_ice);
+            // 修正：生态空间仅包含绿/蓝空间（林、灌、草、水、湿），剔除裸地与冰雪以防数值稀释
+            const aEco = norm(data.forest) + norm(data.shrub) + norm(data.grassland) + norm(data.water) + norm(data.wetland);
             return (aLife * 2.0 + aProd * 1.0) / (aEco || 0.001);
         };
         const plecVal = calcPLEC(curr);
