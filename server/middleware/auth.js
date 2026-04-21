@@ -1,15 +1,6 @@
 import jwt from 'jsonwebtoken';
 import logger from '../config/logger.js';
-
-const JWT_SECRET = process.env.JWT_SECRET;
-
-if (!JWT_SECRET) {
-    if (process.env.NODE_ENV === 'production') {
-        throw new Error('FATAL: JWT_SECRET environment variable is not defined!');
-    }
-    console.warn('WARNING: JWT_SECRET is not defined, using insecure default for development only.');
-}
-const ACTUAL_SECRET = JWT_SECRET || 'dev_insecure_secret_change_me';
+import { JWT_SECRET } from '../config/jwt.js';
 
 export const authMiddleware = (req, res, next) => {
     const token = req.headers.authorization?.split(' ')[1];
@@ -19,7 +10,7 @@ export const authMiddleware = (req, res, next) => {
     }
 
     try {
-        const decoded = jwt.verify(token, ACTUAL_SECRET);
+        const decoded = jwt.verify(token, JWT_SECRET);
         req.user = decoded;
         next();
     } catch (err) {

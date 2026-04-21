@@ -39,18 +39,23 @@ import apiRoutes from './routes/index.js';
 // ==================== 智能数据工具注册 ====================
 import './utils/tools/clcdTool.js';       // 核心地类分析工具
 import './utils/tools/transferTool.js';   // 土地流转分析工具
+import './utils/tools/dashboardTool.js';  // 仪表盘综合指标工具
+import './utils/tools/spatialStatsTool.js'; // 空间特征统计工具
 import { checkOllamaStatus } from './utils/ai/checkOllama.js';
 
 const app = express();
 app.set('trust proxy', 1); // 信任一级代理 (Nginx/Cloudflare)
 
-// 1. 安全性增强 (Security Hardening)
+// 1. 日志记录 (Logging) - 移至最前端以捕捉所有请求
+app.use(requestLogger);
+
+// 2. 安全性增强 (Security Hardening)
 app.use(helmet({
   contentSecurityPolicy: false, // 由 Nginx 或前端单独配置，避免与 Cesium 资源冲突
   crossOriginEmbedderPolicy: false
 }));
 
-// 2. 限流 (Rate Limiting) - 防止滥用
+// 3. 限流 (Rate Limiting) - 防止滥用
 const limiter = rateLimit({
   windowMs: 15 * 60 * 1000, // 15 分钟
   max: 500, // 限制每个 IP 在 windowMs 内最多 500 个请求
@@ -60,7 +65,7 @@ const limiter = rateLimit({
 });
 app.use('/api/', limiter);
 
-// 3. CORS 配置
+// 4. CORS 配置
 const corsOptions = {
   origin: process.env.NODE_ENV === 'production'
     ? [/\.cloudflare/, /localhost/, /127\.0\.0\.1/] // 在生产中根据需要缩减
@@ -72,10 +77,9 @@ app.use(cors(corsOptions));
 
 app.use(express.json({ limit: '10mb' }));
 
-// 注册统一响应处理中间件
+// 5. 注册统一响应处理中间件
 import { responseHandler } from './middleware/responseHandler.js';
 app.use(responseHandler);
-app.use(requestLogger);
 
 // 健康检查（无需认证）
 app.get('/health', async (_req, res) => {
