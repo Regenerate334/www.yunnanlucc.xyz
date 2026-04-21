@@ -30,13 +30,18 @@ const transferTool = {
             period: {
                 type: 'string',
                 description: '可选：直接指定周期编码，如 "y0023" 表示 2000-2023。'
+            },
+            level: {
+                type: 'string',
+                enum: ['province', 'prefecture', 'county'],
+                description: '行政级别。'
             }
         },
         required: []
     },
 
     async query(args, entities, year = 2023) {
-        let { region, start_year, end_year, period } = args;
+        let { region, start_year, end_year, period, level } = args;
         let periodPrefix = period;
 
         // 1. 自动推断年份区间
@@ -49,10 +54,10 @@ const transferTool = {
         // 默认取 y0203
         if (!periodPrefix) periodPrefix = 'y0203';
 
-        logger.info(`[transferTool] 查询周期: ${periodPrefix}, 区域: ${region}`);
+        logger.info(`[transferTool] 查询周期: ${periodPrefix}, 区域: ${region}, 级别: ${level}`);
 
         try {
-            const rawData = await landUseService.getTransferMatrix(region, periodPrefix);
+            const rawData = await landUseService.getTransferMatrix(region, periodPrefix, level);
 
             const rows = [];
             Object.entries(rawData).forEach(([col, area]) => {

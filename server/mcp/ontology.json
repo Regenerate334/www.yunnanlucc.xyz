@@ -1,0 +1,209 @@
+{
+    "version": "1.1.0",
+    "name": "WebGIS-Semantic-Ontology",
+    "description": "定义 GIS 业务实体、指标计算权重及数据库映射关系",
+    "entities": {
+        "LandUseType": {
+            "categories": {
+                "cropland": {
+                    "cn": "耕地",
+                    "is_production": true,
+                    "hqi_weight": 0.3,
+                    "eres_weight": 0.4
+                },
+                "forest": {
+                    "cn": "林地",
+                    "is_ecological": true,
+                    "hqi_weight": 1.0,
+                    "eres_weight": 1.0
+                },
+                "shrub": {
+                    "cn": "灌木",
+                    "is_ecological": true,
+                    "hqi_weight": 0.8,
+                    "eres_weight": 0.7
+                },
+                "grassland": {
+                    "cn": "草地",
+                    "is_ecological": true,
+                    "hqi_weight": 0.7,
+                    "eres_weight": 0.7
+                },
+                "water": {
+                    "cn": "水体",
+                    "is_ecological": true,
+                    "hqi_weight": 0.9,
+                    "eres_weight": 0.8
+                },
+                "wetland": {
+                    "cn": "湿地",
+                    "is_ecological": true,
+                    "hqi_weight": 1.0,
+                    "eres_weight": 0.9
+                },
+                "impervious": {
+                    "cn": "建设用地",
+                    "is_life": true,
+                    "hqi_weight": 0,
+                    "eres_weight": 0
+                },
+                "barren": {
+                    "cn": "裸地",
+                    "is_ecological": false,
+                    "hqi_weight": 0.1,
+                    "eres_weight": 0.1
+                },
+                "snow_ice": {
+                    "cn": "冰雪",
+                    "is_ecological": false,
+                    "hqi_weight": 0.1,
+                    "eres_weight": 0.1
+                }
+            }
+        },
+        "Scale": {
+            "levels": [
+                "province",
+                "prefecture",
+                "county",
+                "grid_5km"
+            ]
+        },
+        "MonitoringIndex": {
+            "definitions": {
+                "HQI": {
+                    "full_name": "InVEST 生境质量",
+                    "description": "评估生物多样性保障能力",
+                    "unit": "0-100分"
+                },
+                "CMPI": {
+                    "full_name": "源汇碳代谢压力",
+                    "description": "碳排放与碳吸收平衡",
+                    "unit": "排放收支比"
+                },
+                "ERes": {
+                    "full_name": "全域生态韧性度",
+                    "description": "自我修复与调节能力",
+                    "unit": "0-100分"
+                },
+                "PLEC": {
+                    "full_name": "三生空间冲突度",
+                    "description": "生产、生活、生态空间博弈",
+                    "unit": "冲突强度值"
+                }
+            }
+        },
+        "Condition": {
+            "levels": {
+                "safe": {
+                    "label": "安全/协同",
+                    "range": [
+                        0,
+                        25
+                    ],
+                    "color": "green"
+                },
+                "notice": {
+                    "label": "关注/边缘",
+                    "range": [
+                        25,
+                        50
+                    ],
+                    "color": "yellow"
+                },
+                "warning": {
+                    "label": "警告/博弈",
+                    "range": [
+                        50,
+                        75
+                    ],
+                    "color": "orange"
+                },
+                "critical": {
+                    "label": "严重/侵蚀",
+                    "range": [
+                        75,
+                        100
+                    ],
+                    "color": "red"
+                }
+            }
+        },
+        "Policy": {
+            "milestones": {
+                "tianbao": {
+                    "name": "天然林保护工程",
+                    "start_year": 1998,
+                    "impact": "增加林地，禁止商业采伐"
+                },
+                "tuigeng": {
+                    "name": "退耕还林",
+                    "start_year": 1999,
+                    "impact": "耕地转化为林草"
+                },
+                "rectification": {
+                    "name": "2021流向整治",
+                    "start_year": 2021,
+                    "impact": "纠正耕地非农化"
+                }
+            }
+        },
+        "Relationships": {
+            "predicates": {
+                "contributes_to": "地类对指标的正向或负向贡献关系",
+                "located_in": "空间包含关系",
+                "adjacent_to": "空间邻接关系",
+                "impacts_at": "政策在特定年份产生的影响",
+                "mapped_to_condition": "分值映射到风险等级",
+                "transfers_path": "地类间的动态演变轨迹"
+            }
+        }
+    },
+    "database_mapping": {
+        "static_tables": {
+            "clcd_province": {
+                "type": "narrow",
+                "desc": "省级长时序逐年各地类面积汇总"
+            },
+            "clcd_prefecture": {
+                "type": "wide",
+                "desc": "地州市级各地类面积时序统计"
+            },
+            "clcd_county": {
+                "type": "wide",
+                "desc": "县级各地类面积时序统计"
+            }
+        },
+        "spatial_tables": {
+            "spatial_county_yunnan_stats": {
+                "unit": "county",
+                "desc": "县级行政区划矢量及其长时序属性"
+            },
+            "spatial_grid_yunnan_stats": {
+                "unit": "grid_5km",
+                "desc": "5km标准格网矢量及其长时序属性"
+            },
+            "spatial_county_yunnan_transfer": {
+                "unit": "county",
+                "desc": "县级单元跨期土地利用转移拓扑"
+            },
+            "spatial_grid_yunnan_transfer": {
+                "unit": "grid_5km",
+                "desc": "5km格网单元跨期土地利用转移拓扑"
+            },
+            "yunnan_boundaries": {
+                "type": "base",
+                "desc": "云南省各级行政区划地理本底矢量边界"
+            }
+        },
+        "management_tables": {
+            "users": "用户信息与权限",
+            "audit_logs": "审计日志与操作逻辑",
+            "chat_sessions": "AI对话记录与交互历史"
+        },
+        "logic": {
+            "indicators_calc": "LandUseService._calculateMonitoringIndices",
+            "fuzzy_matching": "LandUseService._getFuzzyName"
+        }
+    }
+}

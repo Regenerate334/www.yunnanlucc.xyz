@@ -1,0 +1,94 @@
+{
+  "generated_at": "2026-04-20T03:51:03.975Z",
+  "ontology_version": "1.1.0",
+  "summary": {
+    "tables": {
+      "clcd_province": {
+        "rowCount": 315,
+        "description": "省级长时序逐年各地类面积汇总"
+      },
+      "clcd_prefecture": {
+        "rowCount": 560,
+        "description": "地州市级各地类面积时序统计"
+      },
+      "clcd_county": {
+        "rowCount": 5250,
+        "description": "县级各地类面积时序统计"
+      },
+      "spatial_county_yunnan_stats": {
+        "rowCount": 129,
+        "description": "县级行政区划矢量及其长时序属性"
+      },
+      "spatial_grid_yunnan_stats": {
+        "rowCount": 4178,
+        "description": "5km标准格网矢量及其长时序属性"
+      },
+      "spatial_county_yunnan_transfer": {
+        "rowCount": 129,
+        "description": "县级单元跨期土地利用转移拓扑"
+      },
+      "spatial_grid_yunnan_transfer": {
+        "rowCount": 4178,
+        "description": "5km格网单元跨期土地利用转移拓扑"
+      }
+    }
+  },
+  "entities": {
+    "regions": [
+      "临沧市",
+      "丽江市",
+      "保山市",
+      "大理白族自治州",
+      "德宏傣族景颇族自治州",
+      "怒江傈僳族自治州",
+      "文山壮族苗族自治州",
+      "昆明市",
+      "昭通市",
+      "普洱市",
+      "曲靖市",
+      "楚雄彝族自治州",
+      "玉溪市",
+      "红河哈尼族彝族自治州",
+      "西双版纳傣族自治州",
+      "迪庆藏族自治州"
+    ],
+    "years": [
+      1985,
+      1990,
+      1991,
+      1992,
+      1993,
+      1994,
+      1995,
+      1996,
+      1997,
+      1998,
+      1999,
+      2000,
+      2001,
+      2002,
+      2003,
+      2004,
+      2005,
+      2006,
+      2007,
+      2008,
+      2009,
+      2010,
+      2011,
+      2012,
+      2013,
+      2014,
+      2015,
+      2016,
+      2017,
+      2018,
+      2019,
+      2020,
+      2021,
+      2022,
+      2023
+    ],
+    "transfer_periods": []
+  }
+}

@@ -1,0 +1,1209 @@
+{
+  "metadata": {
+    "generated_at": "2026-04-20T04:28:25.668Z",
+    "version": "10.0.0",
+    "description": "实战对齐版：模板参数与 clcd_analysis 工具完全一致"
+  },
+  "nodes": [
+    {
+      "id": "yunnan",
+      "label": "云南省",
+      "type": "Region",
+      "level": "province"
+    },
+    {
+      "id": "pref_曲靖市",
+      "label": "曲靖市",
+      "type": "Region",
+      "level": "prefecture"
+    },
+    {
+      "id": "pref_昆明市",
+      "label": "昆明市",
+      "type": "Region",
+      "level": "prefecture"
+    },
+    {
+      "id": "pref_楚雄彝族自治州",
+      "label": "楚雄彝族自治州",
+      "type": "Region",
+      "level": "prefecture"
+    },
+    {
+      "id": "pref_昭通市",
+      "label": "昭通市",
+      "type": "Region",
+      "level": "prefecture"
+    },
+    {
+      "id": "pref_保山市",
+      "label": "保山市",
+      "type": "Region",
+      "level": "prefecture"
+    },
+    {
+      "id": "pref_普洱市",
+      "label": "普洱市",
+      "type": "Region",
+      "level": "prefecture"
+    },
+    {
+      "id": "pref_玉溪市",
+      "label": "玉溪市",
+      "type": "Region",
+      "level": "prefecture"
+    },
+    {
+      "id": "pref_红河哈尼族彝族自治州",
+      "label": "红河哈尼族彝族自治州",
+      "type": "Region",
+      "level": "prefecture"
+    },
+    {
+      "id": "pref_西双版纳傣族自治州",
+      "label": "西双版纳傣族自治州",
+      "type": "Region",
+      "level": "prefecture"
+    },
+    {
+      "id": "pref_丽江市",
+      "label": "丽江市",
+      "type": "Region",
+      "level": "prefecture"
+    },
+    {
+      "id": "pref_德宏傣族景颇族自治州",
+      "label": "德宏傣族景颇族自治州",
+      "type": "Region",
+      "level": "prefecture"
+    },
+    {
+      "id": "pref_文山壮族苗族自治州",
+      "label": "文山壮族苗族自治州",
+      "type": "Region",
+      "level": "prefecture"
+    },
+    {
+      "id": "pref_怒江傈僳族自治州",
+      "label": "怒江傈僳族自治州",
+      "type": "Region",
+      "level": "prefecture"
+    },
+    {
+      "id": "pref_临沧市",
+      "label": "临沧市",
+      "type": "Region",
+      "level": "prefecture"
+    },
+    {
+      "id": "pref_迪庆藏族自治州",
+      "label": "迪庆藏族自治州",
+      "type": "Region",
+      "level": "prefecture"
+    },
+    {
+      "id": "pref_大理白族自治州",
+      "label": "大理白族自治州",
+      "type": "Region",
+      "level": "prefecture"
+    },
+    {
+      "id": "county_华坪县",
+      "label": "华坪县",
+      "type": "Region",
+      "level": "county"
+    },
+    {
+      "id": "county_澜沧拉祜族自治县",
+      "label": "澜沧拉祜族自治县",
+      "type": "Region",
+      "level": "county"
+    },
+    {
+      "id": "county_沾益区",
+      "label": "沾益区",
+      "type": "Region",
+      "level": "county"
+    },
+    {
+      "id": "county_泸西县",
+      "label": "泸西县",
+      "type": "Region",
+      "level": "county"
+    },
+    {
+      "id": "county_个旧市",
+      "label": "个旧市",
+      "type": "Region",
+      "level": "county"
+    },
+    {
+      "id": "county_永善县",
+      "label": "永善县",
+      "type": "Region",
+      "level": "county"
+    },
+    {
+      "id": "county_临翔区",
+      "label": "临翔区",
+      "type": "Region",
+      "level": "county"
+    },
+    {
+      "id": "county_安宁市",
+      "label": "安宁市",
+      "type": "Region",
+      "level": "county"
+    },
+    {
+      "id": "county_右江区",
+      "label": "右江区",
+      "type": "Region",
+      "level": "county"
+    },
+    {
+      "id": "county_弥渡县",
+      "label": "弥渡县",
+      "type": "Region",
+      "level": "county"
+    },
+    {
+      "id": "county_西盟佤族自治县",
+      "label": "西盟佤族自治县",
+      "type": "Region",
+      "level": "county"
+    },
+    {
+      "id": "county_雷波县",
+      "label": "雷波县",
+      "type": "Region",
+      "level": "county"
+    },
+    {
+      "id": "county_得荣县",
+      "label": "得荣县",
+      "type": "Region",
+      "level": "county"
+    },
+    {
+      "id": "county_元阳县",
+      "label": "元阳县",
+      "type": "Region",
+      "level": "county"
+    },
+    {
+      "id": "county_绿春县",
+      "label": "绿春县",
+      "type": "Region",
+      "level": "county"
+    },
+    {
+      "id": "county_福贡县",
+      "label": "福贡县",
+      "type": "Region",
+      "level": "county"
+    },
+    {
+      "id": "county_陆良县",
+      "label": "陆良县",
+      "type": "Region",
+      "level": "county"
+    },
+    {
+      "id": "county_施甸县",
+      "label": "施甸县",
+      "type": "Region",
+      "level": "county"
+    },
+    {
+      "id": "county_梁河县",
+      "label": "梁河县",
+      "type": "Region",
+      "level": "county"
+    },
+    {
+      "id": "county_剑川县",
+      "label": "剑川县",
+      "type": "Region",
+      "level": "county"
+    },
+    {
+      "id": "county_富民县",
+      "label": "富民县",
+      "type": "Region",
+      "level": "county"
+    },
+    {
+      "id": "county_富宁县",
+      "label": "富宁县",
+      "type": "Region",
+      "level": "county"
+    },
+    {
+      "id": "county_镇雄县",
+      "label": "镇雄县",
+      "type": "Region",
+      "level": "county"
+    },
+    {
+      "id": "county_建水县",
+      "label": "建水县",
+      "type": "Region",
+      "level": "county"
+    },
+    {
+      "id": "county_西山区",
+      "label": "西山区",
+      "type": "Region",
+      "level": "county"
+    },
+    {
+      "id": "county_东川区",
+      "label": "东川区",
+      "type": "Region",
+      "level": "county"
+    },
+    {
+      "id": "county_永平县",
+      "label": "永平县",
+      "type": "Region",
+      "level": "county"
+    },
+    {
+      "id": "county_禄劝彝族苗族自治县",
+      "label": "禄劝彝族苗族自治县",
+      "type": "Region",
+      "level": "county"
+    },
+    {
+      "id": "county_双柏县",
+      "label": "双柏县",
+      "type": "Region",
+      "level": "county"
+    },
+    {
+      "id": "county_宜良县",
+      "label": "宜良县",
+      "type": "Region",
+      "level": "county"
+    },
+    {
+      "id": "county_盘龙区",
+      "label": "盘龙区",
+      "type": "Region",
+      "level": "county"
+    },
+    {
+      "id": "county_马龙区",
+      "label": "马龙区",
+      "type": "Region",
+      "level": "county"
+    },
+    {
+      "id": "county_镇沅彝族哈尼族拉祜族自治县",
+      "label": "镇沅彝族哈尼族拉祜族自治县",
+      "type": "Region",
+      "level": "county"
+    },
+    {
+      "id": "county_元江哈尼族彝族傣族自治县",
+      "label": "元江哈尼族彝族傣族自治县",
+      "type": "Region",
+      "level": "county"
+    },
+    {
+      "id": "county_金平苗族瑶族傣族自治县",
+      "label": "金平苗族瑶族傣族自治县",
+      "type": "Region",
+      "level": "county"
+    },
+    {
+      "id": "county_大姚县",
+      "label": "大姚县",
+      "type": "Region",
+      "level": "county"
+    },
+    {
+      "id": "county_德钦县",
+      "label": "德钦县",
+      "type": "Region",
+      "level": "county"
+    },
+    {
+      "id": "county_沧源佤族自治县",
+      "label": "沧源佤族自治县",
+      "type": "Region",
+      "level": "county"
+    },
+    {
+      "id": "county_通海县",
+      "label": "通海县",
+      "type": "Region",
+      "level": "county"
+    },
+    {
+      "id": "county_楚雄市",
+      "label": "楚雄市",
+      "type": "Region",
+      "level": "county"
+    },
+    {
+      "id": "county_会东县",
+      "label": "会东县",
+      "type": "Region",
+      "level": "county"
+    },
+    {
+      "id": "county_勐海县",
+      "label": "勐海县",
+      "type": "Region",
+      "level": "county"
+    },
+    {
+      "id": "county_西林县",
+      "label": "西林县",
+      "type": "Region",
+      "level": "county"
+    },
+    {
+      "id": "county_红河县",
+      "label": "红河县",
+      "type": "Region",
+      "level": "county"
+    },
+    {
+      "id": "county_隆阳区",
+      "label": "隆阳区",
+      "type": "Region",
+      "level": "county"
+    },
+    {
+      "id": "county_田林县",
+      "label": "田林县",
+      "type": "Region",
+      "level": "county"
+    },
+    {
+      "id": "county_永胜县",
+      "label": "永胜县",
+      "type": "Region",
+      "level": "county"
+    },
+    {
+      "id": "county_石林彝族自治县",
+      "label": "石林彝族自治县",
+      "type": "Region",
+      "level": "county"
+    },
+    {
+      "id": "county_新平彝族傣族自治县",
+      "label": "新平彝族傣族自治县",
+      "type": "Region",
+      "level": "county"
+    },
+    {
+      "id": "county_宾川县",
+      "label": "宾川县",
+      "type": "Region",
+      "level": "county"
+    },
+    {
+      "id": "county_绥江县",
+      "label": "绥江县",
+      "type": "Region",
+      "level": "county"
+    },
+    {
+      "id": "county_陇川县",
+      "label": "陇川县",
+      "type": "Region",
+      "level": "county"
+    },
+    {
+      "id": "county_鲁甸县",
+      "label": "鲁甸县",
+      "type": "Region",
+      "level": "county"
+    },
+    {
+      "id": "county_威宁彝族回族苗族自治县",
+      "label": "威宁彝族回族苗族自治县",
+      "type": "Region",
+      "level": "county"
+    },
+    {
+      "id": "county_珙县",
+      "label": "珙县",
+      "type": "Region",
+      "level": "county"
+    },
+    {
+      "id": "county_罗平县",
+      "label": "罗平县",
+      "type": "Region",
+      "level": "county"
+    },
+    {
+      "id": "county_巍山彝族回族自治县",
+      "label": "巍山彝族回族自治县",
+      "type": "Region",
+      "level": "county"
+    },
+    {
+      "id": "county_麒麟区",
+      "label": "麒麟区",
+      "type": "Region",
+      "level": "county"
+    },
+    {
+      "id": "county_富源县",
+      "label": "富源县",
+      "type": "Region",
+      "level": "county"
+    },
+    {
+      "id": "county_江川区",
+      "label": "江川区",
+      "type": "Region",
+      "level": "county"
+    },
+    {
+      "id": "county_永德县",
+      "label": "永德县",
+      "type": "Region",
+      "level": "county"
+    },
+    {
+      "id": "county_漾濞彝族自治县",
+      "label": "漾濞彝族自治县",
+      "type": "Region",
+      "level": "county"
+    },
+    {
+      "id": "county_双江拉祜族佤族布朗族傣族自治县",
+      "label": "双江拉祜族佤族布朗族傣族自治县",
+      "type": "Region",
+      "level": "county"
+    },
+    {
+      "id": "county_昌宁县",
+      "label": "昌宁县",
+      "type": "Region",
+      "level": "county"
+    },
+    {
+      "id": "county_耿马傣族佤族自治县",
+      "label": "耿马傣族佤族自治县",
+      "type": "Region",
+      "level": "county"
+    },
+    {
+      "id": "county_盈江县",
+      "label": "盈江县",
+      "type": "Region",
+      "level": "county"
+    },
+    {
+      "id": "county_兴义市",
+      "label": "兴义市",
+      "type": "Region",
+      "level": "county"
+    },
+    {
+      "id": "county_水富市",
+      "label": "水富市",
+      "type": "Region",
+      "level": "county"
+    },
+    {
+      "id": "county_赫章县",
+      "label": "赫章县",
+      "type": "Region",
+      "level": "county"
+    },
+    {
+      "id": "county_筠连县",
+      "label": "筠连县",
+      "type": "Region",
+      "level": "county"
+    },
+    {
+      "id": "county_叙州区",
+      "label": "叙州区",
+      "type": "Region",
+      "level": "county"
+    },
+    {
+      "id": "county_景东彝族自治县",
+      "label": "景东彝族自治县",
+      "type": "Region",
+      "level": "county"
+    },
+    {
+      "id": "county_易门县",
+      "label": "易门县",
+      "type": "Region",
+      "level": "county"
+    },
+    {
+      "id": "county_牟定县",
+      "label": "牟定县",
+      "type": "Region",
+      "level": "county"
+    },
+    {
+      "id": "county_大理市",
+      "label": "大理市",
+      "type": "Region",
+      "level": "county"
+    },
+    {
+      "id": "county_鹤庆县",
+      "label": "鹤庆县",
+      "type": "Region",
+      "level": "county"
+    },
+    {
+      "id": "county_瑞丽市",
+      "label": "瑞丽市",
+      "type": "Region",
+      "level": "county"
+    },
+    {
+      "id": "county_昭阳区",
+      "label": "昭阳区",
+      "type": "Region",
+      "level": "county"
+    },
+    {
+      "id": "county_彝良县",
+      "label": "彝良县",
+      "type": "Region",
+      "level": "county"
+    },
+    {
+      "id": "county_芒市",
+      "label": "芒市",
+      "type": "Region",
+      "level": "county"
+    },
+    {
+      "id": "county_景洪市",
+      "label": "景洪市",
+      "type": "Region",
+      "level": "county"
+    },
+    {
+      "id": "county_麻栗坡县",
+      "label": "麻栗坡县",
+      "type": "Region",
+      "level": "county"
+    },
+    {
+      "id": "county_玉龙纳西族自治县",
+      "label": "玉龙纳西族自治县",
+      "type": "Region",
+      "level": "county"
+    },
+    {
+      "id": "county_屏山县",
+      "label": "屏山县",
+      "type": "Region",
+      "level": "county"
+    },
+    {
+      "id": "county_南涧彝族自治县",
+      "label": "南涧彝族自治县",
+      "type": "Region",
+      "level": "county"
+    },
+    {
+      "id": "county_洱源县",
+      "label": "洱源县",
+      "type": "Region",
+      "level": "county"
+    },
+    {
+      "id": "county_云县",
+      "label": "云县",
+      "type": "Region",
+      "level": "county"
+    },
+    {
+      "id": "county_呈贡区",
+      "label": "呈贡区",
+      "type": "Region",
+      "level": "county"
+    },
+    {
+      "id": "county_宁洱哈尼族彝族自治县",
+      "label": "宁洱哈尼族彝族自治县",
+      "type": "Region",
+      "level": "county"
+    },
+    {
+      "id": "county_峨山彝族自治县",
+      "label": "峨山彝族自治县",
+      "type": "Region",
+      "level": "county"
+    },
+    {
+      "id": "county_靖西市",
+      "label": "靖西市",
+      "type": "Region",
+      "level": "county"
+    },
+    {
+      "id": "county_巧家县",
+      "label": "巧家县",
+      "type": "Region",
+      "level": "county"
+    },
+    {
+      "id": "county_威信县",
+      "label": "威信县",
+      "type": "Region",
+      "level": "county"
+    },
+    {
+      "id": "county_仁和区",
+      "label": "仁和区",
+      "type": "Region",
+      "level": "county"
+    },
+    {
+      "id": "county_华宁县",
+      "label": "华宁县",
+      "type": "Region",
+      "level": "county"
+    },
+    {
+      "id": "county_西畴县",
+      "label": "西畴县",
+      "type": "Region",
+      "level": "county"
+    },
+    {
+      "id": "county_官渡区",
+      "label": "官渡区",
+      "type": "Region",
+      "level": "county"
+    },
+    {
+      "id": "county_镇康县",
+      "label": "镇康县",
+      "type": "Region",
+      "level": "county"
+    },
+    {
+      "id": "county_弥勒市",
+      "label": "弥勒市",
+      "type": "Region",
+      "level": "county"
+    },
+    {
+      "id": "county_思茅区",
+      "label": "思茅区",
+      "type": "Region",
+      "level": "county"
+    },
+    {
+      "id": "county_师宗县",
+      "label": "师宗县",
+      "type": "Region",
+      "level": "county"
+    },
+    {
+      "id": "county_嵩明县",
+      "label": "嵩明县",
+      "type": "Region",
+      "level": "county"
+    },
+    {
+      "id": "county_宁蒗彝族自治县",
+      "label": "宁蒗彝族自治县",
+      "type": "Region",
+      "level": "county"
+    },
+    {
+      "id": "county_蒙自市",
+      "label": "蒙自市",
+      "type": "Region",
+      "level": "county"
+    },
+    {
+      "id": "county_大关县",
+      "label": "大关县",
+      "type": "Region",
+      "level": "county"
+    },
+    {
+      "id": "county_七星关区",
+      "label": "七星关区",
+      "type": "Region",
+      "level": "county"
+    },
+    {
+      "id": "county_南华县",
+      "label": "南华县",
+      "type": "Region",
+      "level": "county"
+    },
+    {
+      "id": "county_开远市",
+      "label": "开远市",
+      "type": "Region",
+      "level": "county"
+    },
+    {
+      "id": "county_盐津县",
+      "label": "盐津县",
+      "type": "Region",
+      "level": "county"
+    },
+    {
+      "id": "county_马关县",
+      "label": "马关县",
+      "type": "Region",
+      "level": "county"
+    },
+    {
+      "id": "county_泸水市",
+      "label": "泸水市",
+      "type": "Region",
+      "level": "county"
+    },
+    {
+      "id": "county_禄丰市",
+      "label": "禄丰市",
+      "type": "Region",
+      "level": "county"
+    },
+    {
+      "id": "county_祥云县",
+      "label": "祥云县",
+      "type": "Region",
+      "level": "county"
+    },
+    {
+      "id": "county_腾冲市",
+      "label": "腾冲市",
+      "type": "Region",
+      "level": "county"
+    },
+    {
+      "id": "county_孟连傣族拉祜族佤族自治县",
+      "label": "孟连傣族拉祜族佤族自治县",
+      "type": "Region",
+      "level": "county"
+    },
+    {
+      "id": "county_武定县",
+      "label": "武定县",
+      "type": "Region",
+      "level": "county"
+    },
+    {
+      "id": "county_澄江市",
+      "label": "澄江市",
+      "type": "Region",
+      "level": "county"
+    },
+    {
+      "id": "county_姚安县",
+      "label": "姚安县",
+      "type": "Region",
+      "level": "county"
+    },
+    {
+      "id": "county_元谋县",
+      "label": "元谋县",
+      "type": "Region",
+      "level": "county"
+    },
+    {
+      "id": "county_乡城县",
+      "label": "乡城县",
+      "type": "Region",
+      "level": "county"
+    },
+    {
+      "id": "county_五华区",
+      "label": "五华区",
+      "type": "Region",
+      "level": "county"
+    },
+    {
+      "id": "county_盐源县",
+      "label": "盐源县",
+      "type": "Region",
+      "level": "county"
+    },
+    {
+      "id": "county_砚山县",
+      "label": "砚山县",
+      "type": "Region",
+      "level": "county"
+    },
+    {
+      "id": "county_兰坪白族普米族自治县",
+      "label": "兰坪白族普米族自治县",
+      "type": "Region",
+      "level": "county"
+    },
+    {
+      "id": "county_文山市",
+      "label": "文山市",
+      "type": "Region",
+      "level": "county"
+    },
+    {
+      "id": "county_凤庆县",
+      "label": "凤庆县",
+      "type": "Region",
+      "level": "county"
+    },
+    {
+      "id": "county_景谷傣族彝族自治县",
+      "label": "景谷傣族彝族自治县",
+      "type": "Region",
+      "level": "county"
+    },
+    {
+      "id": "county_古城区",
+      "label": "古城区",
+      "type": "Region",
+      "level": "county"
+    },
+    {
+      "id": "county_贡山独龙族怒族自治县",
+      "label": "贡山独龙族怒族自治县",
+      "type": "Region",
+      "level": "county"
+    },
+    {
+      "id": "county_墨江哈尼族自治县",
+      "label": "墨江哈尼族自治县",
+      "type": "Region",
+      "level": "county"
+    },
+    {
+      "id": "county_宣威市",
+      "label": "宣威市",
+      "type": "Region",
+      "level": "county"
+    },
+    {
+      "id": "county_香格里拉市",
+      "label": "香格里拉市",
+      "type": "Region",
+      "level": "county"
+    },
+    {
+      "id": "county_勐腊县",
+      "label": "勐腊县",
+      "type": "Region",
+      "level": "county"
+    },
+    {
+      "id": "county_广南县",
+      "label": "广南县",
+      "type": "Region",
+      "level": "county"
+    },
+    {
+      "id": "county_盘州市",
+      "label": "盘州市",
+      "type": "Region",
+      "level": "county"
+    },
+    {
+      "id": "county_永仁县",
+      "label": "永仁县",
+      "type": "Region",
+      "level": "county"
+    },
+    {
+      "id": "county_寻甸回族彝族自治县",
+      "label": "寻甸回族彝族自治县",
+      "type": "Region",
+      "level": "county"
+    },
+    {
+      "id": "county_屏边苗族自治县",
+      "label": "屏边苗族自治县",
+      "type": "Region",
+      "level": "county"
+    },
+    {
+      "id": "county_芒康县",
+      "label": "芒康县",
+      "type": "Region",
+      "level": "county"
+    },
+    {
+      "id": "county_会泽县",
+      "label": "会泽县",
+      "type": "Region",
+      "level": "county"
+    },
+    {
+      "id": "county_高县",
+      "label": "高县",
+      "type": "Region",
+      "level": "county"
+    },
+    {
+      "id": "county_石屏县",
+      "label": "石屏县",
+      "type": "Region",
+      "level": "county"
+    },
+    {
+      "id": "county_云龙县",
+      "label": "云龙县",
+      "type": "Region",
+      "level": "county"
+    },
+    {
+      "id": "county_维西傈僳族自治县",
+      "label": "维西傈僳族自治县",
+      "type": "Region",
+      "level": "county"
+    },
+    {
+      "id": "county_红塔区",
+      "label": "红塔区",
+      "type": "Region",
+      "level": "county"
+    },
+    {
+      "id": "county_河口瑶族自治县",
+      "label": "河口瑶族自治县",
+      "type": "Region",
+      "level": "county"
+    },
+    {
+      "id": "county_晋宁区",
+      "label": "晋宁区",
+      "type": "Region",
+      "level": "county"
+    },
+    {
+      "id": "county_江城哈尼族彝族自治县",
+      "label": "江城哈尼族彝族自治县",
+      "type": "Region",
+      "level": "county"
+    },
+    {
+      "id": "county_丘北县",
+      "label": "丘北县",
+      "type": "Region",
+      "level": "county"
+    },
+    {
+      "id": "county_龙陵县",
+      "label": "龙陵县",
+      "type": "Region",
+      "level": "county"
+    },
+    {
+      "id": "cropland",
+      "label": "耕地",
+      "type": "LandUseType",
+      "cn": "耕地",
+      "is_production": true,
+      "hqi_weight": 0.3,
+      "eres_weight": 0.4,
+      "action_template": {
+        "query_type": "structure",
+        "region": "$REGION",
+        "year": "$YEAR",
+        "land_type": "cropland"
+      }
+    },
+    {
+      "id": "forest",
+      "label": "林地",
+      "type": "LandUseType",
+      "cn": "林地",
+      "is_ecological": true,
+      "hqi_weight": 1,
+      "eres_weight": 1,
+      "action_template": {
+        "query_type": "structure",
+        "region": "$REGION",
+        "year": "$YEAR",
+        "land_type": "forest"
+      }
+    },
+    {
+      "id": "shrub",
+      "label": "灌木",
+      "type": "LandUseType",
+      "cn": "灌木",
+      "is_ecological": true,
+      "hqi_weight": 0.8,
+      "eres_weight": 0.7,
+      "action_template": {
+        "query_type": "structure",
+        "region": "$REGION",
+        "year": "$YEAR",
+        "land_type": "shrub"
+      }
+    },
+    {
+      "id": "grassland",
+      "label": "草地",
+      "type": "LandUseType",
+      "cn": "草地",
+      "is_ecological": true,
+      "hqi_weight": 0.7,
+      "eres_weight": 0.7,
+      "action_template": {
+        "query_type": "structure",
+        "region": "$REGION",
+        "year": "$YEAR",
+        "land_type": "grassland"
+      }
+    },
+    {
+      "id": "water",
+      "label": "水体",
+      "type": "LandUseType",
+      "cn": "水体",
+      "is_ecological": true,
+      "hqi_weight": 0.9,
+      "eres_weight": 0.8,
+      "action_template": {
+        "query_type": "structure",
+        "region": "$REGION",
+        "year": "$YEAR",
+        "land_type": "water"
+      }
+    },
+    {
+      "id": "wetland",
+      "label": "湿地",
+      "type": "LandUseType",
+      "cn": "湿地",
+      "is_ecological": true,
+      "hqi_weight": 1,
+      "eres_weight": 0.9,
+      "action_template": {
+        "query_type": "structure",
+        "region": "$REGION",
+        "year": "$YEAR",
+        "land_type": "wetland"
+      }
+    },
+    {
+      "id": "impervious",
+      "label": "建设用地",
+      "type": "LandUseType",
+      "cn": "建设用地",
+      "is_life": true,
+      "hqi_weight": 0,
+      "eres_weight": 0,
+      "action_template": {
+        "query_type": "structure",
+        "region": "$REGION",
+        "year": "$YEAR",
+        "land_type": "impervious"
+      }
+    },
+    {
+      "id": "barren",
+      "label": "裸地",
+      "type": "LandUseType",
+      "cn": "裸地",
+      "is_ecological": false,
+      "hqi_weight": 0.1,
+      "eres_weight": 0.1,
+      "action_template": {
+        "query_type": "structure",
+        "region": "$REGION",
+        "year": "$YEAR",
+        "land_type": "barren"
+      }
+    },
+    {
+      "id": "snow_ice",
+      "label": "冰雪",
+      "type": "LandUseType",
+      "cn": "冰雪",
+      "is_ecological": false,
+      "hqi_weight": 0.1,
+      "eres_weight": 0.1,
+      "action_template": {
+        "query_type": "structure",
+        "region": "$REGION",
+        "year": "$YEAR",
+        "land_type": "snow_ice"
+      }
+    },
+    {
+      "id": "HQI",
+      "label": "InVEST 生境质量",
+      "type": "Indicator",
+      "action_template": {
+        "query_type": "monitoring",
+        "region": "$REGION",
+        "year": "$YEAR"
+      },
+      "note": "该指标包含在监测分析结果中，无需单独传 index 字段。"
+    },
+    {
+      "id": "CMPI",
+      "label": "源汇碳代谢压力",
+      "type": "Indicator",
+      "action_template": {
+        "query_type": "monitoring",
+        "region": "$REGION",
+        "year": "$YEAR"
+      },
+      "note": "该指标包含在监测分析结果中，无需单独传 index 字段。"
+    },
+    {
+      "id": "ERes",
+      "label": "全域生态韧性度",
+      "type": "Indicator",
+      "action_template": {
+        "query_type": "monitoring",
+        "region": "$REGION",
+        "year": "$YEAR"
+      },
+      "note": "该指标包含在监测分析结果中，无需单独传 index 字段。"
+    },
+    {
+      "id": "PLEC",
+      "label": "三生空间冲突度",
+      "type": "Indicator",
+      "action_template": {
+        "query_type": "monitoring",
+        "region": "$REGION",
+        "year": "$YEAR"
+      },
+      "note": "该指标包含在监测分析结果中，无需单独传 index 字段。"
+    },
+    {
+      "id": "policy_tianbao",
+      "label": "天然林保护工程",
+      "type": "Policy",
+      "desc": "增加林地，禁止商业采伐"
+    },
+    {
+      "id": "policy_tuigeng",
+      "label": "退耕还林",
+      "type": "Policy",
+      "desc": "耕地转化为林草"
+    },
+    {
+      "id": "policy_rectification",
+      "label": "2021流向整治",
+      "type": "Policy",
+      "desc": "纠正耕地非农化"
+    }
+  ],
+  "links": []
+}

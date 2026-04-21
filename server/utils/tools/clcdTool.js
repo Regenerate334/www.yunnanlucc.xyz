@@ -46,7 +46,7 @@ const clcdTool = {
     },
 
     async query(args, entities, year = 2023) {
-        let { query_type, region, year: targetYear, year_range, land_type, top_n = 10 } = args;
+        let { query_type, region, level, year: targetYear, year_range, land_type, top_n = 10 } = args;
         targetYear = targetYear || year;
 
         // 规范化 region
@@ -67,44 +67,29 @@ const clcdTool = {
 
                 // 如果是多个区域的趋势，并行获取
                 if (isMultiRegion) {
-                    const allTrends = await Promise.all(regions.map(r => landUseService.getTrend(r, start, end)));
+                    const allTrends = await Promise.all(regions.map(r => landUseService.getTrend(r, start, end, level)));
                     const rows = allTrends.flat();
                     return { type: 'trend', rows, region: regions.join('和'), multi: true };
                 }
 
                 const targetRegion = regions[0];
-                // 自适应年份采样逻辑 (Adaptive Year Cycle)
-                const span = end - start;
-                let rows = [];
-
-                if (span > 15) {
-                    logger.info(`[clcdTool] 检测到大跨度趋势分析 (span=${span}), 启用 5 年周期采样`);
-                    const yearsToQuery = [];
-                    for (let y = start; y < end; y += 5) {
-                        yearsToQuery.push(y);
-                    }
-                    if (!yearsToQuery.includes(end)) yearsToQuery.push(end);
-
-                    const results = await Promise.all(yearsToQuery.map(y =>
-                        targetRegion === '云南省' ? landUseService.getProvinceSummary(y) : landUseService.getTrend(targetRegion, y, y)
-                    ));
-                    rows = results.flat().filter(r => !!r);
-                } else {
-                    rows = await landUseService.getTrend(targetRegion, start, end);
-                }
-
+                const rows = await landUseService.getTrend(targetRegion, start, end, level);
                 return { type: 'trend', rows, region: targetRegion };
             }
 
             if (query_type === 'ranking' || query_type === 'comparison') {
                 // 如果指定了具体区域，只对比这些区域
-                const rows = await landUseService.getPrefectureData(targetYear, isMultiRegion ? regions : null);
+                const rows = await landUseService.getRegionData(targetYear, isMultiRegion ? regions : null, level);
                 return { type: 'comparison', rows, year: targetYear, region: isMultiRegion ? regions.join('和') : '全省各地市' };
             }
 
             if (query_type === 'monitoring') {
                 const targetRegion = regions[0];
-                const data = await landUseService.getRegionMonitoring(targetYear, targetRegion, isMultiRegion ? 'prefecture' : 'province');
+                let actualLevel = level;
+                if (!actualLevel || actualLevel === 'auto') {
+                    actualLevel = landUseService._inferLevel(targetRegion);
+                }
+                const data = await landUseService.getRegionMonitoring(targetYear, targetRegion, actualLevel);
                 return { type: 'monitoring', ...data, region: targetRegion };
             }
 
@@ -113,7 +98,7 @@ const clcdTool = {
                 const row = await landUseService.getProvinceSummary(targetYear);
                 return { type: 'structure', rows: row ? [row] : [], year: targetYear, region: '云南省' };
             } else {
-                const rows = await landUseService.getPrefectureData(targetYear, regions);
+                const rows = await landUseService.getRegionData(targetYear, regions, level);
                 return { type: 'structure', rows, year: targetYear, region: regions.join('和') };
             }
         } catch (err) {
@@ -168,7 +153,16 @@ const clcdTool = {
             } else {
                 label = r.region_name || r.name || '—';
             }
-            const cells = cols.map(c => formatKm2(r[c]));
+
+            let total = 0;
+            ['cropland', 'forest', 'shrub', 'grassland', 'water', 'wetland', 'impervious', 'barren', 'snow_ice'].forEach(c => total += (Number(r[c]) || 0));
+
+            const cells = cols.map(c => {
+                const val = Number(r[c]) || 0;
+                const km2 = (val / 1e6).toFixed(2);
+                const pct = total > 0 ? ((val / total) * 100).toFixed(2) + '%' : '0.00%';
+                return `${km2} (${pct})`;
+            });
             return `| ${label} | ${cells.join(' | ')} |`;
         });
 
