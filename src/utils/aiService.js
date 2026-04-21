@@ -87,6 +87,14 @@ export async function analyzeDataStream({ messages, year, landData, componentCon
         const reader = response.body.getReader();
         const decoder = new TextDecoder();
         let buffer = '';
+        let doneEmitted = false;
+
+        const emitDone = () => {
+            if (!doneEmitted) {
+                doneEmitted = true;
+                onDone?.();
+            }
+        };
 
         while (true) {
             const { done, value } = await reader.read();
@@ -94,40 +102,39 @@ export async function analyzeDataStream({ messages, year, landData, componentCon
 
             buffer += decoder.decode(value, { stream: true });
             const lines = buffer.split('\n');
-
-            // 保留最后一行（可能不完整）
-            buffer = lines.pop();
+            buffer = lines.pop(); // 保留可能不完整的最后一行
 
             for (const line of lines) {
                 if (!line.startsWith('data: ')) continue;
-
                 try {
                     const data = JSON.parse(line.slice(6));
+                    if (!data) continue;
+
                     if (data.content || data.thinking) {
-                        onChunk(data);
+                        onChunk?.(data);
                     }
                     if (data.done) {
-                        onDone?.();
+                        emitDone();
                     }
                     if (data.error) {
                         onError?.(data.error);
                     }
                 } catch (e) {
-                    // console.error('[AI Service] 解析 SSE 行失败:', e.message, 'Line:', line);
+                    // console.error('[AI Service] SSE Parse Error:', e.message, line);
                 }
             }
         }
 
-        // 处理剩余缓冲区
-        if (buffer.startsWith('data: ')) {
+        // 处理最后的 buffer
+        if (buffer && buffer.startsWith('data: ')) {
             try {
                 const data = JSON.parse(buffer.slice(6));
-                if (data.content || data.thinking) onChunk(data);
-                if (data.done) onDone?.();
+                if (data.content || data.thinking) onChunk?.(data);
+                if (data.done) emitDone();
             } catch (e) { }
         }
 
-        onDone?.();
+        emitDone();
     } catch (error) {
         if (error.name === 'AbortError') {
             // console.log('[AI Service] 请求被用户中止');
