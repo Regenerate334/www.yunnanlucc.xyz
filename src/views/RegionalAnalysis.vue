@@ -85,7 +85,12 @@
     <AnalysisLegend 
       :title="selectedYear + '年' + currentAttributeLabel + '面积(km²)'"
       :items="analysisLegendItems"
-      style="position: fixed; bottom: 40px; right: 30px; z-index: 1000;"
+      side="right"
+      y-anchor="bottom"
+      :right="28"
+      :bottom="52"
+      :width="560"
+      :z-index="1000"
     />
 
 
