@@ -200,10 +200,11 @@ export class EntityExtractor {
             if (q.includes(county)) {
                 found.push(county);
             } else if (county.length > 2) {
-                // 如果原始地名较长（如“五华区”），尝试匹配前两个字（如“五华”）
-                const short = county.substring(0, county.length - 1);
-                if (q.includes(short) && short.length >= 2) {
-                    // 避免误触，如“昆明”匹配到了“昆明市”是OK的，但“安宁”匹配到“安宁市”
+                // 如果原始地名较长（如“巧家县”），尝试匹配“巧家”
+                const short = county.replace(/(县|市|区|自治县|族自治县)$/, '');
+                // 增加正则边界检查，避免“红河县”简写“红河”误撞“红河州”
+                const regex = new RegExp(`${short}(?![州|级])`);
+                if (regex.test(q) && short.length >= 2) {
                     if (!found.includes(county)) found.push(county);
                 }
             }
@@ -315,7 +316,13 @@ export class StatisticalAnalyzer {
         const startVal = Number(start[landTypeEn]) || 0;
         const endVal = Number(end[landTypeEn]) || 0;
         const delta = (endVal - startVal) / 1e6; // km²
-        const percentChange = startVal !== 0 ? (delta * 1e6 / startVal) * 100 : 0;
+
+        let percentChange = 0;
+        if (startVal === 0 && endVal > 0) {
+            percentChange = 100; // 或者返回 Infinity 表示新增
+        } else if (startVal !== 0) {
+            percentChange = (delta * 1e6 / startVal) * 100;
+        }
 
         const years = end.year - start.year;
         const cagr = (startVal > 0 && endVal > 0 && years > 0)
@@ -422,11 +429,18 @@ export class ContextBuilder {
                 const regionRows = rows.filter(r => r.region_name === region).sort((a, b) => a.year - b.year);
                 output.push('', `#### ${region}`);
 
-                const headerCells = ['年份', ...cols.map(c => `${this.translateCol(c)}(km²)`)];
+                const headerCells = ['年份', ...cols.map(c => `${this.translateCol(c)}(km²及占比)`)];
                 output.push(`| ${headerCells.join(' | ')} |`);
                 output.push(`|${headerCells.map(() => '---').join('|')}|`);
                 regionRows.forEach(r => {
-                    const cells = cols.map(c => this.formatKm2(r[c]));
+                    let total = 0;
+                    Object.keys(LAND_USE_CONFIG).forEach(c => total += (Number(r[c]) || 0));
+                    const cells = cols.map(c => {
+                        const val = Number(r[c]) || 0;
+                        const km2 = (val / 1e6).toFixed(2);
+                        const pct = total > 0 ? ((val / total) * 100).toFixed(2) + '%' : '0.00%';
+                        return `${km2} (${pct})`;
+                    });
                     output.push(`| ${r.year} | ${cells.join(' | ')} |`);
                 });
 
@@ -446,11 +460,18 @@ export class ContextBuilder {
         }
 
         // ── 单区域趋势（原有逻辑）──
-        const headerCells = ['年份', ...cols.map(c => `${this.translateCol(c)}(km²)`)];
+        const headerCells = ['年份', ...cols.map(c => `${this.translateCol(c)}(km²及占比)`)];
         const header = `| ${headerCells.join(' | ')} |`;
         const sep = `|${headerCells.map(() => '---').join('|')}|`;
         const dataRows = rows.map(r => {
-            const cells = cols.map(c => this.formatKm2(r[c]));
+            let total = 0;
+            ['cropland', 'forest', 'shrub', 'grassland', 'water', 'wetland', 'impervious', 'barren', 'snow_ice'].forEach(c => total += (Number(r[c]) || 0));
+            const cells = cols.map(c => {
+                const val = Number(r[c]) || 0;
+                const km2 = (val / 1e6).toFixed(2);
+                const pct = total > 0 ? ((val / total) * 100).toFixed(2) + '%' : '0.00%';
+                return `${km2} (${pct})`;
+            });
             return `| ${r.year} | ${cells.join(' | ')} |`;
         });
 
@@ -473,11 +494,18 @@ export class ContextBuilder {
 
     buildComparisonTable(rows, entities) {
         const cols = this._getRelevantCols(entities);
-        const headerCells = ['地区', ...cols.map(c => `${this.translateCol(c)}(km²)`)];
+        const headerCells = ['地区', ...cols.map(c => `${this.translateCol(c)}(km²及占比)`)];
         const header = `| ${headerCells.join(' | ')} |`;
         const sep = `|${headerCells.map(() => '---').join('|')}|`;
         const dataRows = rows.map(r => {
-            const cells = cols.map(c => this.formatKm2(r[c]));
+            let total = 0;
+            ['cropland', 'forest', 'shrub', 'grassland', 'water', 'wetland', 'impervious', 'barren', 'snow_ice'].forEach(c => total += (Number(r[c]) || 0));
+            const cells = cols.map(c => {
+                const val = Number(r[c]) || 0;
+                const km2 = (val / 1e6).toFixed(2);
+                const pct = total > 0 ? ((val / total) * 100).toFixed(2) + '%' : '0.00%';
+                return `${km2} (${pct})`;
+            });
             return `| ${r.region_name || r.name || '未知'} | ${cells.join(' | ')} |`;
         });
         return [`### 区域对比数据（共 ${rows.length} 个区域）`, '', header, sep, ...dataRows].join('\n');
@@ -518,14 +546,21 @@ export class ContextBuilder {
 
         for (const region of regions) {
             text += `**${region}**\n\n`;
-            const headerCells = ['年份', ...cols.map(c => `${this.translateCol(c)}(km²)`)];
+            const headerCells = ['年份', ...cols.map(c => `${this.translateCol(c)}(km²及占比)`)];
             text += `| ${headerCells.join(' | ')} |\n`;
             text += `|${headerCells.map(() => '---').join('|')}|\n`;
 
             for (const y of sortedYears) {
                 const r = byYear[y]?.[region];
                 if (!r) continue;
-                const cells = cols.map(c => this.formatKm2(r[c]));
+                let total = 0;
+                ['cropland', 'forest', 'shrub', 'grassland', 'water', 'wetland', 'impervious', 'barren', 'snow_ice'].forEach(c => total += (Number(r[c]) || 0));
+                const cells = cols.map(c => {
+                    const val = Number(r[c]) || 0;
+                    const km2 = (val / 1e6).toFixed(2);
+                    const pct = total > 0 ? ((val / total) * 100).toFixed(2) + '%' : '0.00%';
+                    return `${km2} (${pct})`;
+                });
                 text += `| ${y} | ${cells.join(' | ')} |\n`;
             }
 
@@ -550,11 +585,18 @@ export class ContextBuilder {
     buildStructureTable(rows, entities) {
         if (rows.length === 0) return '';
         const cols = this._getRelevantCols(entities).filter(k => k in rows[0]);
-        let table = `### 土地利用结构 (km²)\n\n`;
+        let table = `### 土地利用结构 (km²及占比)\n\n`;
         table += `| 地区 | ${cols.map(c => this.translateCol(c)).join(' | ')} |\n`;
         table += `|---${cols.map(() => '|---').join('')}|\n`;
         rows.forEach(r => {
-            const values = cols.map(c => this.formatKm2(r[c]));
+            let total = 0;
+            ['cropland', 'forest', 'shrub', 'grassland', 'water', 'wetland', 'impervious', 'barren', 'snow_ice'].forEach(c => total += (Number(r[c]) || 0));
+            const values = cols.map(c => {
+                const val = Number(r[c]) || 0;
+                const km2 = (val / 1e6).toFixed(2);
+                const pct = total > 0 ? ((val / total) * 100).toFixed(2) + '%' : '0.00%';
+                return `${km2} (${pct})`;
+            });
             table += `| ${r.region_name || r.year || '云南省'} | ${values.join(' | ')} |\n`;
         });
         return table;
@@ -638,6 +680,17 @@ export class DataRouter {
             case 'province_trend':
                 return { type: 'trend', rows: await this.getProvinceTrendData() };
             case 'prefecture_pie':
+                if (ctx.region) {
+                    const [currentRows, trendRows] = await Promise.all([
+                        this.getPrefectureCurrentData(ctx.region, year),
+                        this.getPrefectureTrendData(ctx.region)
+                    ]);
+                    return {
+                        type: 'comparison', year: year, rows: currentRows,
+                        extra: { type: 'trend', region: ctx.region, rows: trendRows },
+                        multiBlock: true
+                    };
+                }
                 return { type: 'comparison', rows: await this.getAllPrefectureData(year) };
             case 'county_pie':
                 return { type: 'comparison', region: ctx.region, rows: await this.getCountyData(ctx.region, year) };
@@ -735,15 +788,30 @@ export class DataRouter {
                 }
             }
 
-            // 多地级市对比
-            if (prefectures.length >= 2) {
-                const rows = await this.getMultiplePrefectureData(prefectures, targetYear);
-                return { type: 'comparison', year: targetYear, rows };
+            if (prefectures.length === 1) {
+                // 单地级市结构查询 + 隐式包含趋势
+                const [currentRows, trendRows] = await Promise.all([
+                    this.getPrefectureCurrentData(prefectures[0], targetYear),
+                    this.getPrefectureTrendData(prefectures[0])
+                ]);
+                return {
+                    type: 'structure', region: prefectures[0], year: targetYear, rows: currentRows,
+                    extra: { type: 'trend', region: prefectures[0], rows: trendRows },
+                    multiBlock: true
+                };
+            } else {
+                // 多个市结构对比 + 隐式包含趋势
+                const targetYear = (years.length > 0) ? years[0] : 2023;
+                const [currentRows, trendRowsArr] = await Promise.all([
+                    this.getMultiplePrefectureData(prefectures, targetYear),
+                    Promise.all(prefectures.map(p => this.getPrefectureTrendData(p)))
+                ]);
+                return {
+                    type: 'comparison', year: targetYear, rows: currentRows,
+                    extra: { type: 'trend', region: prefectures.join('和'), rows: trendRowsArr.flat(), multi: true },
+                    multiBlock: true
+                };
             }
-
-            // 单地级市结构查询
-            const rows = await this.getPrefectureCurrentData(prefectures[0], targetYear);
-            return { type: 'structure', region: prefectures[0], year: targetYear, rows };
         }
 
         // ════════════════════════════ 省级场景 ════════════════════════════════

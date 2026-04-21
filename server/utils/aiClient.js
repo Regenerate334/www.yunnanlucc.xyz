@@ -16,8 +16,8 @@ import logger from '../config/logger.js';
 /**
  * 动态获取模型配置，确保在 dotenv 加载后读取最新值
  */
-export const getReportModel = () => process.env.REPORT_MODEL || process.env.OLLAMA_MODEL || 'gpt-oss:120b-cloud';
-export const getChatModel = () => process.env.OLLAMA_MODEL || 'gpt-oss:120b-cloud';
+export const getReportModel = () => process.env.REPORT_MODEL || process.env.OLLAMA_MODEL || 'deepseek-v3.1:671b-cloud';
+export const getChatModel = () => process.env.OLLAMA_MODEL || 'deepseek-v3.1:671b-cloud';
 
 /**
  * 非流式调用：让模型输出纯 JSON。
@@ -98,8 +98,8 @@ export function extractJSON(rawText) {
     try {
         return JSON.parse(cleaned);
     } catch (_) {
-        // 3. 提取第一个 { ... } 块（AI 可能在 JSON 前后加了解释文字）
-        const match = cleaned.match(/\{[\s\S]*\}/);
+        // 3. 提取第一个 { ... } 或 [ ... ] 块（AI 可能在 JSON 前后加了解释文字）
+        const match = cleaned.match(/[\[{][\s\S]*[\]}]/);
         if (match) {
             try {
                 return JSON.parse(match[0]);
@@ -110,11 +110,3 @@ export function extractJSON(rawText) {
         throw new Error(`未找到 JSON 对象\n原始内容(前500字):\n${rawText.slice(0, 500)}`);
     }
 }
-
-// ── 工具函数 ──────────────────────────────────────────────────────────────────
-
-function sleep(ms) {
-    return new Promise(resolve => setTimeout(resolve, ms));
-}
-
-export { };
