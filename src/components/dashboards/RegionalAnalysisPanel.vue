@@ -75,6 +75,7 @@
             :title="currentAttributeLabel" 
             :breaks="legendBreaks" 
             :colors="colorScale"
+            :floating="false"
             unit="km²"
           />
         </div>
@@ -196,10 +197,11 @@ async function loadAndRender() {
     const breaks = calculateBreaks(values, 5);
     legendBreaks.value = breaks;
 
-    // 加载 GeoJSON
+    // 加载 GeoJSON，移除 clampToGround 以加速面渲染
     const ds = await Cesium.GeoJsonDataSource.load(geojson, {
       fill: Cesium.Color.TRANSPARENT,
-      clampToGround: true
+      stroke: Cesium.Color.TRANSPARENT,
+      strokeWidth: 0
     });
 
     // 根据属性值着色
@@ -492,7 +494,8 @@ onUnmounted(() => {
 .analysis-legend-container {
   position: fixed;
   bottom: 30px;
-  right: 30px;
+  left: 24px;
+  right: auto;
   z-index: 3000;
 }
 

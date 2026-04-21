@@ -9,9 +9,12 @@
 <template>
   <Teleport to="body">
     <transition name="modal-fade">
-      <div v-if="visible" class="ai-modal-overlay" @click.self="handleClose">
-        <div class="ai-modal-container">
-          <div class="sidebar">
+      <div v-if="visible" class="ai-modal-overlay" @click="handleClose"></div>
+    </transition>
+
+    <transition name="modal-fade">
+      <div v-if="visible" class="ai-modal-container" @click.stop>
+        <div class="sidebar">
             <div class="sidebar-header">
               <button class="new-chat-btn" @click="createNewSession">
                 <div class="plus-circle">
@@ -67,7 +70,7 @@
                   <div class="input-pill">
                     <div class="input-area">
                       <textarea v-model="inputText" placeholder="Send a message..." @keydown.enter.prevent="handleEnter"
-                        :disabled="loading" rows="1" ref="inputField"></textarea>
+                        @input="adjustInputHeight" :disabled="loading" rows="1" ref="inputField"></textarea>
                     </div>
 
                     <div class="input-controls">
@@ -81,7 +84,9 @@
                           </svg>
                         </div>
                         <transition name="dropdown-fade">
-                          <div v-if="showModelDropdown" class="model-dropdown-menu">
+                          <div v-if="showModelDropdown" 
+                            class="model-dropdown-menu" 
+                            style="background-color: #0f172a !important; background: #0f172a !important; opacity: 1 !important; visibility: visible !important; backdrop-filter: blur(30px) !important; border: 1px solid rgba(255, 255, 255, 0.1) !important;">
                             <div v-for="model in availableModels" :key="model.value" class="model-dropdown-item"
                               :class="{ active: selectedModel === model.value }" @click.stop="selectModel(model.value)">
                               <div class="model-info">
@@ -140,16 +145,10 @@
                   <div
                     v-if="msg.role === 'assistant' && (parseMessage(msg).thinking || (loading && index === messages.length - 1))"
                     class="thinking-process">
-                    <div class="thinking-header" @click="toggleThinking(index)">
+                    <div class="thinking-header">
                       <div class="thinking-title">
-                        <!-- 展开时显示向下箭头 -->
-                        <svg v-if="expandedThinking[index]" class="arrow-icon-svg" width="16" height="16"
-                          viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"
-                          stroke-linejoin="round">
-                          <polyline points="6 9 12 15 18 9"></polyline>
-                        </svg>
-                        <!-- 折叠时显示灯泡 -->
-                        <svg v-else class="thinking-icon-svg"
+                        <!-- 默认显示灯泡 icon -->
+                        <svg class="thinking-icon-svg"
                           :class="{ 'is-thinking': loading && index === messages.length - 1 }" width="16" height="16"
                           viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"
                           stroke-linejoin="round">
@@ -163,11 +162,9 @@
                         <span v-else>耗时 {{ msg.thinkTime || '几' }} 秒完成分析</span>
                       </div>
                     </div>
-                    <transition name="fade">
-                      <div v-if="expandedThinking[index]" class="thinking-content">
-                        {{ parseMessage(msg).thinking }}
-                      </div>
-                    </transition>
+                    <div v-if="parseMessage(msg).thinking" class="thinking-content">
+                      {{ parseMessage(msg).thinking }}
+                    </div>
                   </div>
 
                   <!-- 工业级状态步进器 (Industrial Progress Stepper) -->
@@ -181,7 +178,6 @@
                       </div>
                       <div class="step-content">
                         <div class="step-label">{{ status.label }}</div>
-                        <div class="step-detail" v-if="status.detail">{{ status.detail }}</div>
                       </div>
                     </div>
                   </div>
@@ -232,7 +228,7 @@
               <div class="input-pill">
                 <div class="input-area">
                   <textarea v-model="inputText" placeholder="Send a message..." @keydown.enter.prevent="handleEnter"
-                    :disabled="loading" rows="1" ref="inputField"></textarea>
+                    @input="adjustInputHeight" :disabled="loading" rows="1" ref="inputField"></textarea>
                 </div>
 
                 <div class="input-controls">
@@ -246,7 +242,9 @@
                       </svg>
                     </div>
                     <transition name="dropdown-fade">
-                      <div v-if="showModelDropdown" class="model-dropdown-menu">
+                      <div v-if="showModelDropdown" 
+                        class="model-dropdown-menu"
+                        style="background-color: #0f172a !important; background: #0f172a !important; opacity: 1 !important; visibility: visible !important; backdrop-filter: blur(30px) !important; border: 1px solid rgba(255, 255, 255, 0.1) !important;">
                         <div v-for="model in availableModels" :key="model.value" class="model-dropdown-item"
                           :class="{ active: selectedModel === model.value }" @click.stop="selectModel(model.value)">
                           <div class="model-info">
@@ -275,8 +273,7 @@
               <div class="footer-hint">AI可能会犯错，请核对重要信息。</div>
             </div>
           </div>
-        </div>
-      </div>
+        </div> <!-- end .ai-modal-container -->
     </transition>
   </Teleport>
 
@@ -350,6 +347,7 @@
 <script setup>
 import { ref, watch, nextTick, computed, onMounted, onUnmounted } from 'vue';
 import { analyzeDataStream, generateQuickQuestions } from '@/utils/aiService.js';
+import { useMapStore } from '@/stores/map.ts';
 import MarkdownIt from 'markdown-it';
 import DOMPurify from 'dompurify';
 import hljs from 'highlight.js';
@@ -383,91 +381,120 @@ const md = new MarkdownIt({
 const parseCache = new Map();
 const renderCache = new Map();
 
-const _parseMessage = (msg) => {
+const _parseMessage = (msg, skipCache = false) => {
   if (!msg) return { thinking: '', content: '', statuses: [] };
   
   let thinking = msg.thinking || '';
   let content = msg.content || '';
   const cacheKey = typeof msg === 'string' ? msg : (msg.content || '') + (msg.thinking || '');
 
-  if (parseCache.has(cacheKey)) return parseCache.get(cacheKey);
+  // 流式输出期间跳过缓存，确保每次 chunk 后都能获取最新解析结果
+  if (!skipCache && parseCache.has(cacheKey)) return parseCache.get(cacheKey);
 
-  // 1. 解析 <think> 标签
-  if (content.includes('<think>')) {
-    const thinkMatch = content.match(/<think>([\s\S]*?)(?:<\/think>|$)/i);
-    if (thinkMatch) {
-      thinking = (thinking ? thinking + '\n' : '') + thinkMatch[1].trim();
-      content = content.replace(/<think>[\s\S]*?<\/think>/gi, '')
-        .replace(/<think>[\s\S]*/gi, '')
-        .trim();
-    }
-  }
-
-  // 2. 解析 [SEARCH] 和 [ANALYSIS] 状态标签 (工业级去重解析)
   const statuses = [];
-  const checkIcon = `<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg>`;
-  const searchIcon = `<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>`;
-  const analysisIcon = `<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z"></path><path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z"></path></svg>`;
+  const brainIcon = `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9.5 2A2.5 2.5 0 0 1 12 4.5v15a2.5 2.5 0 0 1-4.96.44 2.5 2.5 0 0 1-2.96-3.08 3 3 0 0 1-.34-5.58 2.5 2.5 0 0 1 1.32-4.24 2.5 2.5 0 0 1 1.98-3A2.5 2.5 0 0 1 9.5 2Z"/><path d="M14.5 2A2.5 2.5 0 0 0 12 4.5v15a2.5 2.5 0 0 0 4.96.44 2.5 2.5 0 0 0 2.96-3.08 3 3 0 0 0 .34-5.58 2.5 2.5 0 0 0-1.32-4.24 2.5 2.5 0 0 0-1.98-3A2.5 2.5 0 0 0 14.5 2Z"/></svg>`;
+  const toolIcon = `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a6 6 0 0 1-7.94 7.94l-6.91 6.91a2.12 2.12 0 0 1-3-3l6.91-6.91a6 6 0 0 1 7.94-7.94l-3.76 3.76z"/></svg>`;
+  const codeIcon = `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="16 18 22 12 16 6"></polyline><polyline points="8 6 2 12 8 18"></polyline></svg>`;
+  const radarIcon = `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M12 2v20"/><path d="M2 12h20"/><circle cx="12" cy="12" r="4"/></svg>`;
+  const searchIcon = `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>`;
+  const analysisIcon = `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z"></path><path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z"></path></svg>`;
 
-  const hasAnalysis = content.includes('[ANALYSIS]');
-  const isSearchDone = hasAnalysis || !loading.value;
-  
-  // 使用 Set 记录已处理的 detail，防止流式输出中的正则重复匹配导致的 UI 抽搐
   const seenDetails = new Set();
+  const pushUniqueStatus = (statusObj) => {
+    const key = `${statusObj.label}_${statusObj.detail}`;
+    if (!seenDetails.has(key)) {
+      statuses.push(statusObj);
+      seenDetails.add(key);
+    }
+  };
 
-  // 匹配 [SEARCH]
-  const searchMatches = content.match(/\[SEARCH\].*?(\n|$)/g);
-  if (searchMatches) {
-    searchMatches.forEach(match => {
-      const detail = match.replace(/\[SEARCH\]\s*/, '').trim();
-      if (detail && !seenDetails.has(detail)) {
-        statuses.push({
-          type: 'search',
-          done: isSearchDone,
-          label: isSearchDone ? '检索完成' : '智能检索中',
-          detail,
-          icon: isSearchDone ? checkIcon : searchIcon
-        });
-        seenDetails.add(detail);
+  // 1. 统一提取所有动作和思考块 (Chronological Parsing)
+  const blockRegex = /(?:\[SEARCH\]|\[ANALYSIS\]|Thought:|Action Input:|Action:|Observation:)[\s\S]*?(?=(?:\n\[SEARCH\]|\n\[ANALYSIS\]|\nThought:|\nAction Input:|\nAction:|\nObservation:|\nAnswer:|$))/gi;
+  const blocks = content.match(blockRegex);
+  
+  if (blocks) {
+    blocks.forEach(block => {
+      const matchTypeArray = block.match(/^(?:\[(SEARCH|ANALYSIS)\]|(Thought|Action Input|Action|Observation):)/i);
+      if (!matchTypeArray) return;
+      
+      const rawTag = (matchTypeArray[1] || matchTypeArray[2]).toUpperCase();
+      let detail = block.replace(/^(?:\[(?:SEARCH|ANALYSIS)\]|(?:Thought|Action Input|Action|Observation):)\s*/i, '').trim();
+
+      let type = 'analysis'; 
+      let label = '';
+      let iconUrl = '';
+
+      if (rawTag === 'THOUGHT') {
+        type = 'analysis';
+        label = `深度思考: ${detail.length > 200 ? detail.slice(0, 200) + '...' : detail}`;
+        detail = '';
+        iconUrl = brainIcon;
+      } else if (rawTag === 'ACTION INPUT') {
+        type = 'search';
+        label = `参数构造: ${detail.replace(/[\n\r]+/g, ' ')}`;
+        detail = '';
+        iconUrl = codeIcon;
+      } else if (rawTag === 'ACTION') {
+        type = 'search';
+        label = `调度工具: ${detail}`;
+        detail = '';
+        iconUrl = toolIcon;
+      } else if (rawTag === 'OBSERVATION') {
+        type = 'analysis';
+        label = `获取数据: ${detail.length > 200 ? detail.slice(0, 200) + '...' : detail}`;
+        detail = '';
+        iconUrl = radarIcon;
+      } else if (rawTag === 'SEARCH') {
+        type = 'search';
+        label = detail || (loading.value ? 'AI数据感知核心引擎动作' : '服务挂载完毕');
+        detail = '';
+        iconUrl = searchIcon;
+      } else if (rawTag === 'ANALYSIS') {
+        type = 'analysis';
+        label = detail || (loading.value ? 'AI数据感知核心引擎分析' : '分析调度闭环完成');
+        detail = '';
+        iconUrl = analysisIcon;
+      }
+
+      if (detail || label) {
+        pushUniqueStatus({ type, done: false, label, detail, icon: iconUrl });
       }
     });
+
+    content = content.replace(blockRegex, '').trim();
   }
 
-  // 匹配 [ANALYSIS]
-  const analysisMatches = content.match(/\[ANALYSIS\].*?(\n|$)/g);
-  if (analysisMatches) {
-    analysisMatches.forEach(match => {
-      const detail = match.replace(/\[ANALYSIS\]\s*/, '').trim();
-      if (detail && !seenDetails.has(detail)) {
-        const isDone = !loading.value;
-        statuses.push({
-          type: 'analysis',
-          done: isDone,
-          label: isDone ? '分析完成' : '深度分析中',
-          detail,
-          icon: isDone ? checkIcon : analysisIcon
-        });
-        seenDetails.add(detail);
-      }
-    });
+  // 2. 移除可能的前缀和冗余内部标签
+  if (content.startsWith('Answer:')) {
+    content = content.replace(/^Answer:\s*/i, '').trim();
+  }
+  content = content.replace(/\[\[MAP_COMMAND:.*?\]\]/g, '').trim();
+
+  // 原生 <think> 标签保留原有拦截逻辑（针对如 DeepSeek 等有内置思考块的模型）
+  const thinkMatch = content.match(/<think>([\s\S]*?)(?:<\/think>|$)/i);
+  if (thinkMatch) {
+    thinking = (thinking ? thinking + '\n' : '') + thinkMatch[1].trim();
+    content = content.replace(/<think>[\s\S]*?<\/think>/gi, '').replace(/<think>[\s\S]*/gi, '').trim();
   }
 
-  // 3. 从正文中移除这些标签
-  const cleanContent = content
-    .replace(/\[SEARCH\].*?(\n|$)/g, '')
-    .replace(/\[ANALYSIS\].*?(\n|$)/g, '')
-    .trim();
+  // 3. 步进器动效：如果进行中，仅高亮最后一条；否则全部设为完成态
+  statuses.forEach((status, idx) => {
+    status.done = (!loading.value) || (idx < statuses.length - 1);
+  });
 
-  const result = { thinking, content: cleanContent, statuses };
-  if (parseCache.size > 100) parseCache.clear();
-  parseCache.set(cacheKey, result);
+  const result = { thinking, content, statuses };
+  if (!skipCache) {
+    if (parseCache.size > 100) parseCache.clear();
+    parseCache.set(cacheKey, result);
+  }
   return result;
 };
 
-const getRenderedMarkdown = (text) => {
+const getRenderedMarkdown = (text, isStreaming = false) => {
   if (!text) return '';
   const cacheKey = text;
-  if (renderCache.has(cacheKey)) return renderCache.get(cacheKey);
+  // 流式输出期间跳过 renderCache，确保实时渲染
+  if (!isStreaming && renderCache.has(cacheKey)) return renderCache.get(cacheKey);
 
   let result = md.render(text);
   
@@ -484,8 +511,10 @@ const getRenderedMarkdown = (text) => {
   // 给 table 增加包装层
   result = result.replace(/<table>/g, '<div class="table-container"><table>').replace(/<\/table>/g, '</table></div>');
 
-  if (renderCache.size > 200) renderCache.clear();
-  renderCache.set(cacheKey, result);
+  if (!isStreaming) {
+    if (renderCache.size > 200) renderCache.clear();
+    renderCache.set(cacheKey, result);
+  }
   return result;
 };
 
@@ -507,6 +536,7 @@ const abortController = ref(null);
 const messagesContainer = ref(null);
 const inputField = ref(null);
 const expandedThinking = ref({});
+const mapStore = useMapStore();
 
 // 会话管理状态
 const sessions = ref([]);
@@ -614,7 +644,7 @@ const deleteSession = async (sessionId) => {
   }
 };
 
-const saveMessage = async (role, content) => {
+const saveMessage = async (role, content, thinking = '', thinkTime = 0) => {
   if (!currentSessionId.value) return;
   try {
     await fetch(`/api/chat-sessions/${currentSessionId.value}/messages`, {
@@ -623,7 +653,7 @@ const saveMessage = async (role, content) => {
         'Content-Type': 'application/json',
         'Authorization': `Bearer ${localStorage.getItem('auth_token')}`
       },
-      body: JSON.stringify({ role, content })
+      body: JSON.stringify({ role, content, thinking, thinkTime })
     });
   } catch (err) {
     console.error('保存消息失败:', err);
@@ -639,14 +669,12 @@ const isReasoningModel = computed(() => {
 const deepThinking = computed(() => isReasoningModel.value);
 
 // 模型选择
-const selectedModel = ref('gpt-oss:120b-cloud');
+const selectedModel = ref('deepseek-v3.1:671b-cloud');
 const showModelDropdown = ref(false);
 const availableModels = [
-  { value: 'gpt-oss:120b-cloud', label: 'GPT-OSS 120B (Cloud)', desc: '云端超大模型 · 最强推理能力' },
-  { value: 'gpt-oss:20b', label: 'GPT-OSS 20B', desc: '高性能模式 · 适合复杂分析' },
+  { value: 'deepseek-v3.1:671b-cloud', label: 'DeepSeek-V3.1 671B', desc: '云端超大模型 · 最强推理能力' },
   { value: 'deepseek-r1:8b', label: 'DeepSeek-R1 8B', desc: '标准模式 · 性能平衡' },
-  { value: 'gemma3:4b', label: 'Gemma 3 4B', desc: '快速模式 · 响应灵敏' },
-  { value: 'deepseek-r1:1.5b', label: 'DeepSeek-R1 1.5B', desc: '极速模式 · 秒级响应' }
+  { value: 'gemma4:e4b', label: 'Gemma 4', desc: '快速模式 · 响应灵敏' }
 ];
 
 const getModelLabel = computed(() => {
@@ -726,6 +754,20 @@ const handleEnter = (e) => {
   }
 };
 
+/**
+ * 动态调整输入框高度
+ */
+const adjustInputHeight = () => {
+  nextTick(() => {
+    const el = inputField.value;
+    if (el) {
+      el.style.height = 'auto';
+      // 这里的 1.5 * 15 是 line-height * font-size
+      el.style.height = (el.scrollHeight) + 'px';
+    }
+  });
+};
+
 const stopGeneration = () => {
   if (abortController.value) {
     // console.log('[AI Modal] 用户点击停止生成');
@@ -739,11 +781,72 @@ const clearMessages = () => {
   createNewSession();
 };
 
+/**
+ * 处理 AI 发出的地图控制指令
+ * 识别 [[MAP_COMMAND:action,params]] 格式
+ */
+const handleMapCommand = (content) => {
+  if (!content || !content.includes('[[MAP_COMMAND:')) return;
+
+  // 匹配所有指令标签
+  const matches = content.match(/\[\[MAP_COMMAND:(.*?)\]\]/g);
+  if (!matches) return;
+
+  matches.forEach(match => {
+    try {
+      const raw = match.replace('[[MAP_COMMAND:', '').replace(']]', '');
+      
+      // 尝试按 JSON 解析 (MCP 标准格式)
+      let command;
+      if (raw.trim().startsWith('{')) {
+        command = JSON.parse(raw);
+      } else {
+        // 兼容旧的逗号分隔格式 (Legacy)
+        const [action, ...params] = raw.split(',');
+        command = { action, params };
+      }
+      
+      const { action, params } = command;
+      console.log(`[AI Modal] 执行地图指令: ${action}`, params);
+
+      // 核心调度器 (Command Dispatcher)
+      if (action === 'set_region') {
+        const regionName = params.region || params[0];
+        const entity = mapStore.findEntityByName(regionName);
+        if (entity) {
+          mapStore.flyToRegion(entity);
+        } else {
+          console.warn(`[AI Modal] 未找到区域实体: ${regionName}`);
+        }
+      } else if (action === 'fly_to') {
+        const lnglat = params.lnglat || (params[0] ? params[0].split('/').map(Number) : null);
+        const zoom = params.zoom || 25000;
+        if (lnglat && !isNaN(lnglat[0]) && !isNaN(lnglat[1])) {
+          mapStore.viewer?.camera.flyTo({
+            destination: window.Cesium.Cartesian3.fromDegrees(lnglat[0], lnglat[1], zoom)
+          });
+        }
+      } else if (action === 'zoom_in') {
+        mapStore.viewer?.camera.zoomIn(2000);
+      } else if (action === 'zoom_out') {
+        mapStore.viewer?.camera.zoomOut(2000);
+      } else if (action === 'fly_to_yunnan') {
+        mapStore.flyToYunnan();
+      }
+    } catch (err) {
+      console.error('[AI Modal] 地图指令解析失败:', err, match);
+    }
+  });
+};
+
+const userInteractedThinking = ref(false); // 追踪用户是否手动调整过折叠状态
+
 const sendMessage = async (text) => {
   if (!text || !text.trim() || loading.value) return;
 
   const userMessage = text.trim();
   inputText.value = '';
+  nextTick(() => adjustInputHeight()); // 发送后重置高度
 
   messages.value.push({
     role: 'user',
@@ -766,7 +869,7 @@ const sendMessage = async (text) => {
 
   // 初始自动展开
   expandedThinking.value[assistantMsgIndex] = true;
-  const userInteractedThinking = ref(false); // 追踪用户是否手动调整过折叠状态
+  userInteractedThinking.value = false; 
 
   try {
     // 发送前保存用户消息
@@ -796,8 +899,10 @@ const sendMessage = async (text) => {
       (chunkObj) => {
         if (chunkObj.content) {
           messages.value[assistantMsgIndex].content += chunkObj.content;
-          // 只有用户没动过，我们才根据内容自动控制展开
-          if (chunkObj.content.includes('<think>') && !userInteractedThinking.value) {
+          // 只有用户没动过，我们才根据全量内容实时控制展开
+          const fullContent = messages.value[assistantMsgIndex].content;
+          const hasThinking = fullContent.includes('<think>') || fullContent.includes('Thought:') || fullContent.includes('Action:');
+          if (hasThinking && !userInteractedThinking.value) {
             expandedThinking.value[assistantMsgIndex] = true;
           }
         }
@@ -834,8 +939,11 @@ const sendMessage = async (text) => {
           lastMsg.content = "> 模型响应结束，但未产生有效内容。这可能是由于：\n1. 上下文窗口超限\n2. AI 模型运行异常\n3. 系统提示词过长导致小模型无法理解\n\n建议尝试切换更强的模型（如 DeepSeek-R1 8B）或刷新重试。";
         }
 
-        // 完成后保存 AI 消息
-        await saveMessage('assistant', lastMsg.content);
+        // 处理地图指令同步
+        handleMapCommand(lastMsg.content);
+
+        // 完成后保存 AI 消息 (持久化所有逻辑字段)
+        await saveMessage('assistant', lastMsg.content, lastMsg.thinking, lastMsg.thinkTime);
         
         // 延迟 2 秒刷新会话列表，确保后端 AI 已完成标题生成
         setTimeout(() => {
@@ -885,12 +993,17 @@ const toggleThinking = (index) => {
   }
 };
 
-const parseMessage = _parseMessage;
+// 智能包装：当消息正在流式生成时（当前回答的最后一条），自动跳过缓存
+const parseMessage = (msg) => {
+  // 正在生成的 assistant 消息 = messages 数组最后一条 + loading 中
+  const isStreaming = loading.value && msg === messages.value[messages.value.length - 1];
+  return _parseMessage(msg, isStreaming);
+};
 const renderMarkdown = getRenderedMarkdown;
 
-const copyMessage = (text) => {
-  const { content } = parseMessage(text);
-  navigator.clipboard.writeText(content).then(() => {
+const copyMessage = (msg) => {
+  const { content } = parseMessage(msg);
+  navigator.clipboard.writeText(content || msg.content || '').then(() => {
     alert('内容已复制到剪贴板');
   });
 };
@@ -918,7 +1031,7 @@ const lastReportMsgSlice = ref(null);
  * 将 Markdown 文本转为完整优化排版的 HTML 报告字符串。
  * 无需任何后端调用。
  */
-const buildDirectReportHtml = (title, markdownContent, meta) => {
+const buildDirectReportHtml = (title, markdownContent, meta, modelLabel = '未知模型') => {
   // 把已有的 renderMarkdown 转换Markdown → HTML
   const bodyHtml = renderMarkdown(markdownContent);
   const now = new Date().toLocaleString('zh-CN', { hour12: false });
@@ -1147,7 +1260,7 @@ const buildDirectReportHtml = (title, markdownContent, meta) => {
       <div class="tag">AI 分析报告 · GIS Intelligence Platform</div>
       <h1>${title}</h1>
       <div class="meta">
-        ${regionInfo ? `<span>${regionInfo}</span>` : ''}
+        <span>AI 模型：${modelLabel}</span>
         <span>生成时间：${now}</span>
       </div>
     </div>
@@ -1155,7 +1268,7 @@ const buildDirectReportHtml = (title, markdownContent, meta) => {
       <div class="md-content">${bodyHtml}</div>
     </div>
     <div class="report-footer">
-      <span>© GIS 智能分析平台</span>
+      <span>© 昆明理工大学国土资源工程学院 彭派GIS课题组</span>
       <span>${now}</span>
     </div>
   </div>
@@ -1172,9 +1285,18 @@ const generateReport = (msgSlice) => {
   const lastAssistantMsg = [...msgSlice].reverse().find(m => m.role === 'assistant');
 
   if (!lastUserMsg || !lastAssistantMsg) return;
-
-  // 标题：取用户问题前 40 字
-  const title = lastUserMsg.content.trim().slice(0, 40) + (lastUserMsg.content.trim().length > 40 ? '...' : '');
+  
+  // 标题处理逻辑：优先从 AI 回答的 "Answer: ##" 标记中提取
+  let title = '';
+  const assistantContent = lastAssistantMsg.content || '';
+  const titleMatch = assistantContent.match(/Answer:\s*##\s*(.*?)(\n|$)/i);
+  
+  if (titleMatch && titleMatch[1]) {
+    title = titleMatch[1].trim();
+  } else {
+    // 兜底逻辑：取用户问题前 40 字
+    title = lastUserMsg.content.trim().slice(0, 40) + (lastUserMsg.content.trim().length > 40 ? '...' : '');
+  }
 
   // 内容：AI 回复的纯 Markdown（去掉 <think> 思考块）
   const markdownContent = parseMessage(lastAssistantMsg).content;
@@ -1194,7 +1316,7 @@ const generateReport = (msgSlice) => {
     const html = buildDirectReportHtml(title, markdownContent, {
       region: props.region,
       year:   props.year
-    });
+    }, getModelLabel.value);
     const blob = new Blob([html], { type: 'text/html;charset=utf-8' });
     reportHtmlUrl.value = URL.createObjectURL(blob);
   } catch (err) {
@@ -1247,8 +1369,9 @@ const retryReport = () => {
 .ai-modal-overlay {
   position: fixed;
   inset: 0;
-  background: rgba(0, 0, 0, 0.4);
-  backdrop-filter: blur(4px);
+  /* 调亮遮罩层背景，去除高强度全局模糊，让底部的地图能够透过毛玻璃显示真实色彩 */
+  background: rgba(5, 12, 28, 0.3);
+  backdrop-filter: blur(2px);
   z-index: 9999;
   display: flex;
   align-items: center;
@@ -1256,17 +1379,23 @@ const retryReport = () => {
 }
 
 .ai-modal-container {
+  position: fixed;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  z-index: 10000;
   width: 95vw;
   height: 90vh;
-  max-width: 1600px; /* 恢复 1600px 大尺寸窗口 */
-  background: rgba(15, 23, 42, 0.6);
-  backdrop-filter: blur(20px);
-  border-radius: 24px;
+  max-width: 1600px;
+  /* 还原为最干净深邃的毛玻璃（与全屏图表仪表盘统一），因为已经在 HTML 中提取为遮罩平级，Chrome 不再丢失堆叠滤镜上下文 */
+  background: rgba(7, 16, 36, 0.6);
+  backdrop-filter: blur(24px);
+  -webkit-backdrop-filter: blur(24px);
+  border-radius: 16px;
   display: flex;
   overflow: hidden;
-  box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5);
+  box-shadow: 0 24px 64px rgba(0, 0, 0, 0.5);
   border: 1px solid rgba(255, 255, 255, 0.08);
-  position: relative;
   transition: all 0.3s ease;
 }
 
@@ -1277,8 +1406,8 @@ const retryReport = () => {
 
 .sidebar {
   width: 260px;
-  background: rgba(15, 23, 42, 0.6);
-  border-right: 1px solid rgba(255, 255, 255, 0.05);
+  background: rgba(15, 23, 42, 0.1);
+  border-right: 1px solid rgba(255, 255, 255, 0.08); /* 加深分割线 */
   display: flex;
   flex-direction: column;
   padding: 16px;
@@ -1423,7 +1552,7 @@ const retryReport = () => {
   flex-direction: column;
   height: 100%;
   position: relative;
-  background: rgba(13, 25, 48, 0.6);
+  background: transparent;
   overflow: hidden;
 }
 
@@ -1600,17 +1729,20 @@ const retryReport = () => {
 .input-pill {
   max-width: 1000px; /* 增加宽度，对齐消息气泡 */
   margin: 0 auto;
-  background: rgba(30, 41, 59, 0.5);
-  border: 1px solid rgba(59, 130, 246, 0.2);
+  background: rgba(15, 23, 42, 0.7);
+  backdrop-filter: blur(24px);
+  -webkit-backdrop-filter: blur(24px);
+  border: 1px solid rgba(255, 255, 255, 0.1);
   border-radius: 16px;
-  padding: 12px 16px;
+  padding: 8px 16px;
   transition: all 0.3s ease;
+  box-shadow: 0 4px 24px rgba(0, 0, 0, 0.4);
 }
 
 .input-pill:focus-within {
-  border-color: rgba(59, 130, 246, 0.5);
-  background: rgba(30, 41, 59, 0.8);
-  box-shadow: 0 0 20px rgba(59, 130, 246, 0.1);
+  border-color: rgba(59, 130, 246, 0.6);
+  background: rgba(15, 23, 42, 0.85);
+  box-shadow: 0 0 20px rgba(59, 130, 246, 0.2), 0 4px 24px rgba(0, 0, 0, 0.5);
 }
 
 .input-area textarea {
@@ -1622,7 +1754,9 @@ const retryReport = () => {
   resize: none;
   outline: none;
   line-height: 1.5;
+  height: 22.5px; /* 1.5 * 15px */
   max-height: 200px;
+  overflow-y: auto;
 }
 
 .input-controls {
@@ -1630,7 +1764,7 @@ const retryReport = () => {
   align-items: center;
   justify-content: flex-end;
   gap: 12px;
-  margin-top: 8px;
+  margin-top: 4px;
 }
 
 .model-selector-wrapper {
@@ -1669,30 +1803,43 @@ const retryReport = () => {
   bottom: calc(100% + 12px);
   right: 0;
   left: auto;
-  min-width: 240px;
-  background: #1e293b;
-  border: 1px solid rgba(59, 130, 246, 0.5);
+  min-width: 280px;
+  background-color: #0f172a !important; /* 强制纯色深蓝背景，绝不透明 */
+  background: #0f172a !important; 
+  opacity: 1 !important;
+  backdrop-filter: blur(30px) !important; /* 深度模糊 */
+  -webkit-backdrop-filter: blur(30px) !important;
+  border: 1px solid rgba(255, 255, 255, 0.1) !important; /* 取消亮边，改为极弱的浅灰色分割线 */
   border-radius: 12px;
-  box-shadow: 0 10px 40px rgba(0, 0, 0, 0.8);
+  box-shadow: 0 20px 50px rgba(0, 0, 0, 0.9), 
+              0 0 30px rgba(59, 130, 246, 0.2);
   overflow: hidden;
-  z-index: 99999;
-  backdrop-filter: blur(10px);
+  z-index: 1000000 !important; /* 极致层级 */
   pointer-events: all;
+  transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
 .welcome-container .model-dropdown-menu {
-  bottom: auto;
-  top: calc(100% + 8px);
-  right: 0;
-  left: auto;
+  bottom: calc(100% + 12px); /* 统一向上展开 */
+  top: auto;
+  left: 50%;
+  transform: translateX(-50%) !important;
+  margin-left: 0;
+  background-color: #0f172a !important;
+  background: #0f172a !important;
 }
 
 .model-dropdown-item {
-  padding: 10px 16px;
+  padding: 14px 18px;
+  background-color: #0f172a !important; /* 强制项背景也为纯色 */
   cursor: pointer;
   transition: all 0.2s;
   text-align: left;
-  border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.1); /* 加深分割线 */
+}
+
+.model-dropdown-item:hover {
+  background: rgba(59, 130, 246, 0.12) !important; /* 对齐滚动词条的悬停感 */
 }
 
 .model-dropdown-item:last-child {
@@ -1954,6 +2101,7 @@ const retryReport = () => {
   display: flex;
   align-items: center;
   gap: 8px;
+  flex: 1;
 }
 
 .optimized-tag {
@@ -2086,10 +2234,8 @@ const retryReport = () => {
   padding: 20px;
   padding-top: 40px;
   border-top: none;
-  /* 复合背景：底层实心深色防止漏光 + 上层渐变消失效果 */
-  background: 
-    linear-gradient(to top, rgba(13, 25, 48, 1) 70%, rgba(13, 25, 48, 0) 100%),
-    rgba(13, 25, 48, 1);
+  /* 弱化底部实色渐变，让毛玻璃更纯粹，仅保留微弱阴影托底 */
+  background: linear-gradient(to top, rgba(7, 16, 36, 0.85) 0%, rgba(7, 16, 36, 0) 100%);
   z-index: 10;
   overflow: visible !important;
 }
@@ -2101,90 +2247,122 @@ const retryReport = () => {
   color: #64748b;
 }
 
-/* Markdown 渲染优化 */
+/* Markdown 中文排版深度优化 */
 .markdown-body {
-  font-size: 16px;
-  line-height: 1.8;
+  font-size: 15px;
+  line-height: 2; /* 宽裕的中式行距 */
   color: #e2e8f0;
-  text-align: justify;
-  text-justify: inter-word;
+  text-align: justify; /* 两端对齐，使版面整齐 */
+  text-justify: inter-ideograph;
+  letter-spacing: 0.5px;
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", sans-serif;
 }
 
+/* 核心：段落首行缩进 2 字符 */
+.markdown-body :deep(p) {
+  text-indent: 2em;
+  margin-bottom: 16px;
+  margin-top: 0;
+}
+
+/* 标题不需要缩进，加粗且保持适当间距 */
 .markdown-body :deep(h1),
 .markdown-body :deep(h2),
-.markdown-body :deep(h3) {
-  color: #f1f5f9;
-  margin-top: 32px;
-  margin-bottom: 16px;
+.markdown-body :deep(h3),
+.markdown-body :deep(h4) {
+  text-indent: 0; 
+  color: #f8fafc;
+  margin-top: 24px;
+  margin-bottom: 12px;
   font-weight: 600;
   text-align: left;
-  /* 标题保持左对齐 */
 }
 
-.markdown-body :deep(p) {
-  margin-bottom: 16px;
-}
+.markdown-body :deep(h1) { font-size: 22px; }
+.markdown-body :deep(h2) { font-size: 18px; }
+.markdown-body :deep(h3) { font-size: 16px; }
 
+/* 列表不随段落缩进，使用自身 padding */
 .markdown-body :deep(ul),
 .markdown-body :deep(ol) {
-  padding-left: 20px;
+  text-indent: 0;
+  padding-left: 2em;
   margin-bottom: 16px;
+  margin-top: 0;
 }
 
 .markdown-body :deep(li) {
-  margin-bottom: 8px;
+  margin-bottom: 6px;
 }
 
 .markdown-body :deep(strong) {
   color: #60a5fa;
+  font-weight: 600;
 }
 
-/* 表格容器：支持居中与滚动 */
+.markdown-body :deep(blockquote) {
+  text-indent: 0;
+  border-left: 4px solid rgba(96, 165, 250, 0.5);
+  margin: 16px 0;
+  padding: 8px 16px;
+  background: rgba(255, 255, 255, 0.05);
+  color: #cbd5e1;
+  border-radius: 0 4px 4px 0;
+}
+
+/* 表格排版优化：取消强制 100% 宽度，支持按内容自适应并横向滚动 */
 .markdown-body :deep(.table-container) {
   width: 100%;
-  display: flex;
-  justify-content: center;
+  text-align: center; /* 配合 inline-table 实现安全居中 */
   overflow-x: auto;
-  margin: 24px 0;
-  padding: 4px; /* 给阴影留点空间 */
+  margin: 20px 0;
+  text-indent: 0; /* 表格内绝不缩进 */
+  padding-bottom: 8px; /* 为滚动条留出空间 */
 }
 
 .markdown-body :deep(table) {
+  display: inline-table; /* 核心修改：确保溢出时左侧内容不丢失 */
   border-collapse: separate;
   border-spacing: 0;
-  width: auto;
-  min-width: 300px;
-  background: rgba(15, 23, 42, 0.6);
-  backdrop-filter: blur(8px);
-  border-radius: 12px;
-  border: 1px solid rgba(255, 255, 255, 0.08);
-  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
-}
-
-.markdown-body :deep(th),
-.markdown-body :deep(td) {
-  border: 0.5px solid rgba(255, 255, 255, 0.05);
-  padding: 8px 16px;
-  text-align: center;
-  font-size: 14px;
-  white-space: normal;
-  word-wrap: break-word;
-  word-break: break-all;
-  min-width: 80px;
-  max-width: 400px; /* 适当放宽单元格限制，但在 1000px 容器内依然强制换行 */
+  width: auto; /* 改为自适应内容 */
+  max-width: 100%;
+  min-width: 60%; /* 保证表格不会太窄 */
+  background: rgba(15, 23, 42, 0.4);
+  border-radius: 8px;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  overflow: hidden;
+  table-layout: auto;
 }
 
 .markdown-body :deep(th) {
-  background: rgba(59, 130, 246, 0.15);
+  padding: 12px 18px;
+  background: rgba(255, 255, 255, 0.05);
   color: #93c5fd;
   font-weight: 600;
-  border-bottom: 1px solid rgba(59, 130, 246, 0.3);
+  text-align: center;
+  font-size: 14px;
+  line-height: 1.5;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+  white-space: nowrap; /* 表头强制不换行，确保视觉整齐 */
 }
 
-.markdown-body :deep(tr:last-child td:first-child) { border-bottom-left-radius: 12px; }
-.markdown-body :deep(tr:last-child td:last-child) { border-bottom-right-radius: 12px; }
+.markdown-body :deep(td) {
+  padding: 10px 18px;
+  text-align: center;
+  font-size: 13.5px;
+  line-height: 1.6;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+  white-space: normal; /* 允许内容换行 */
+  word-break: keep-all; /* 核心：防止年份、数字等被强制截断换行 */
+  overflow-wrap: break-word; /* 针对超长连续字符（如URL）强制折行 */
+  min-width: 60px; /* 给短文本预留基本宽度 */
+}
 
-.markdown-body :deep(tr:hover) {
+.markdown-body :deep(tr:last-child td) {
+  border-bottom: none;
+}
+
+.markdown-body :deep(tr:hover td) {
   background: rgba(255, 255, 255, 0.03);
 }
 
