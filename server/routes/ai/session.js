@@ -87,7 +87,7 @@ router.get('/:id/messages', authMiddleware, async (req, res) => {
 // 保存消息并更新会话
 router.post('/:id/messages', authMiddleware, async (req, res) => {
     try {
-        const { role, content } = req.body;
+        const { role, content, thinking, thinkTime } = req.body;
         const { rows } = await pool.query(
             'SELECT messages, title FROM chat_sessions WHERE id = $1 AND user_id = $2',
             [req.params.id, req.user.id]
@@ -101,7 +101,15 @@ router.post('/:id/messages', authMiddleware, async (req, res) => {
         let title = rows[0].title;
         const isFirstUserMessage = role === 'user' && (title === '新对话' || !title);
 
-        messages.push({ role, content, created_at: new Date().toISOString() });
+        // 构建增强版消息对象
+        const messageObj = {
+            role,
+            content,
+            thinking: thinking || '',
+            thinkTime: thinkTime || 0,
+            created_at: new Date().toISOString()
+        };
+        messages.push(messageObj);
 
         if (isFirstUserMessage) {
             title = content.length > 20 ? content.substring(0, 17) + '...' : content;

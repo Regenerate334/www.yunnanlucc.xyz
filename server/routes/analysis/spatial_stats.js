@@ -1,121 +1,175 @@
 import express from 'express';
-import { handleError } from '../../middleware/logger.js';
-import { queryTransferGeoJSON } from './transfer_flow.js';
 import * as turf from '@turf/turf';
 import pool from '../../config/db.js';
-import { getAvailablePeriods, findOverlappingPeriods, sortPeriods, decodePeriod } from '../../utils/period_encoder.js';
+import { handleError } from '../../middleware/logger.js';
+import { queryTransferGeoJSON } from './transfer_flow.js';
+import {
+  getAvailablePeriods,
+  findOverlappingPeriods,
+  sortPeriods,
+  decodePeriod
+} from '../../utils/period_encoder.js';
 
 const router = express.Router();
 
-/**
- * 获取时序流转空间的 标准差椭圆 与 重心轨迹
- * 请求: GET /api/analysis/spatial-stats/transfer-series?yearStart=1985&yearEnd=2020&fromClass=1&toClass=2&unit=county
- */
+const TABLE_BY_UNIT = {
+  county: 'spatial_county_yunnan_transfer',
+  grid: 'spatial_grid_yunnan_transfer'
+};
+
+function parseRequiredInt(value, field) {
+  const parsed = Number.parseInt(value, 10);
+  if (!Number.isInteger(parsed)) {
+    const err = new Error(`Invalid parameter: ${field}`);
+    err.statusCode = 400;
+    throw err;
+  }
+  return parsed;
+}
+
 router.get('/transfer-series', async (req, res) => {
-    const { yearStart, yearEnd, fromClass, toClass, unit } = req.query;
+  const { unit, region } = req.query;
 
-    if (!yearStart || !yearEnd || !fromClass || !toClass || !unit) {
-        return res.status(400).json({ error: 'Missing required parameters' });
+  let yearStartNum;
+  let yearEndNum;
+  let fromClassNum;
+  let toClassNum;
+
+  try {
+    yearStartNum = parseRequiredInt(req.query.yearStart, 'yearStart');
+    yearEndNum = parseRequiredInt(req.query.yearEnd, 'yearEnd');
+    fromClassNum = parseRequiredInt(req.query.fromClass, 'fromClass');
+    toClassNum = parseRequiredInt(req.query.toClass, 'toClass');
+  } catch (err) {
+    return res.status(err.statusCode || 400).json({ error: err.message });
+  }
+
+  if (!TABLE_BY_UNIT[unit]) {
+    return res.status(400).json({ error: 'Invalid parameter: unit' });
+  }
+  if (yearStartNum > yearEndNum) {
+    return res.status(400).json({ error: 'Invalid parameter: yearStart must be <= yearEnd' });
+  }
+  if (fromClassNum < 1 || fromClassNum > 9 || toClassNum < 1 || toClassNum > 9) {
+    return res.status(400).json({ error: 'Invalid parameter: class code must be within [1, 9]' });
+  }
+
+  try {
+    const tableName = TABLE_BY_UNIT[unit];
+    const allPeriods = await getAvailablePeriods(pool, tableName);
+    const activePeriods = sortPeriods(findOverlappingPeriods(allPeriods, yearStartNum, yearEndNum));
+
+    if (activePeriods.length === 0) {
+      return res.json({
+        type: 'FeatureCollection',
+        features: [],
+        meta: {
+          yearStart: yearStartNum,
+          yearEnd: yearEndNum,
+          fromClass: fromClassNum,
+          toClass: toClassNum,
+          periods: [],
+          message: '指定年份范围内无可用 period'
+        }
+      });
     }
 
-    try {
-        const tableName = unit === 'county' ? 'spatial_county_yunnan_transfer' : 'spatial_grid_yunnan_transfer';
+    const features = [];
+    const centersByPeriod = new Map();
 
-        // 1. 获取该范围内的所有期间列表
-        const allPeriodsStr = await getAvailablePeriods(pool, tableName);
-        let activePeriods = findOverlappingPeriods(allPeriodsStr, parseInt(yearStart), parseInt(yearEnd));
+    for (const period of activePeriods) {
+      const [pStart, pEnd] = decodePeriod(period);
 
-        // 确保 period 严格按年份排序 (解决 y0001 < y8590 的问题)
-        activePeriods = sortPeriods(activePeriods);
+      const geoJSON = await queryTransferGeoJSON(
+        tableName,
+        pStart,
+        pEnd,
+        fromClassNum,
+        toClassNum,
+        unit,
+        region
+      );
 
-        if (activePeriods.length === 0) {
-            return res.json({ type: 'FeatureCollection', features: [], message: 'No periods found' });
+      if (!geoJSON.features || geoJSON.features.length === 0) {
+        continue;
+      }
+
+      const points = [];
+      for (const feature of geoJSON.features) {
+        if ((feature?.properties?.transfer_area || 0) <= 0) continue;
+        try {
+          const center = turf.centroid(feature);
+          center.properties = { weight: feature.properties.transfer_area };
+          points.push(center);
+        } catch (_err) {
+          // Skip malformed feature geometry
         }
+      }
 
-        const features = [];
-        const centersByPeriod = new Map(); // 用于后续构建轨迹
+      if (points.length === 0) continue;
 
-        // 2. 针对每一个 period 独立计算
-        for (const period of activePeriods) {
-            const [pStart, pEnd] = decodePeriod(period);
+      const pointCollection = turf.featureCollection(points);
+      const meanCenter = turf.centerOfMass(pointCollection, { weight: 'weight' });
+      meanCenter.properties = {
+        type: 'center',
+        period,
+        yearStart: pStart,
+        yearEnd: pEnd,
+        fromClass: fromClassNum,
+        toClass: toClassNum
+      };
 
-            // 查询单个时间段的数据
-            const geoJSON = await queryTransferGeoJSON(
-                tableName, pStart, pEnd,
-                parseInt(fromClass), parseInt(toClass),
-                unit
-            );
+      if (points.length >= 3) {
+        const sde = turf.standardDeviationalEllipse(pointCollection, { weight: 'weight', steps: 64 });
+        sde.properties = {
+          type: 'sde',
+          period,
+          yearStart: pStart,
+          yearEnd: pEnd,
+          fromClass: fromClassNum,
+          toClass: toClassNum
+        };
+        features.push(sde);
+      }
 
-            if (!geoJSON.features || geoJSON.features.length === 0) {
-                continue;
-            }
-
-            // 提取质心并赋权重
-            const points = [];
-            geoJSON.features.forEach(f => {
-                if (f.properties.transfer_area > 0) {
-                    const center = turf.centroid(f);
-                    center.properties = { weight: f.properties.transfer_area };
-                    points.push(center);
-                }
-            });
-
-            if (points.length < 3) {
-                // 如果点太少无法生成椭圆，但至少能生成重心
-                if (points.length > 0) {
-                    const pointCollection = turf.featureCollection(points);
-                    const meanCenter = turf.centerOfMass(pointCollection, { weight: 'weight' });
-                    meanCenter.properties = {
-                        type: 'center', period, yearStart: pStart, yearEnd: pEnd, fromClass, toClass
-                    };
-                    features.push(meanCenter);
-                    centersByPeriod.set(period, meanCenter);
-                }
-                continue;
-            }
-
-            const pointCollection = turf.featureCollection(points);
-
-            // 计算椭圆和重心
-            const sde = turf.standardDeviationalEllipse(pointCollection, { weight: 'weight', steps: 64 });
-            const meanCenter = turf.centerOfMass(pointCollection, { weight: 'weight' });
-
-            // 补充标识属性
-            sde.properties = {
-                type: 'sde', period, yearStart: pStart, yearEnd: pEnd, fromClass, toClass
-            };
-            meanCenter.properties = {
-                type: 'center', period, yearStart: pStart, yearEnd: pEnd, fromClass, toClass
-            };
-
-            features.push(sde);
-            features.push(meanCenter);
-            centersByPeriod.set(period, meanCenter);
-        }
-
-        // 3. 构建迁移轨迹线 (确保按 activePeriods 顺序连接)
-        const trajectoryCoords = [];
-        for (const p of activePeriods) {
-            const c = centersByPeriod.get(p);
-            if (c) trajectoryCoords.push(c.geometry.coordinates);
-        }
-
-        if (trajectoryCoords.length >= 2) {
-            const trajectory = turf.lineString(trajectoryCoords, {
-                type: 'trajectory', yearStart, yearEnd, fromClass, toClass
-            });
-            features.push(trajectory);
-        }
-
-        res.json({
-            type: 'FeatureCollection',
-            features,
-            meta: { yearStart, yearEnd, fromClass, toClass, periods: activePeriods }
-        });
-
-    } catch (err) {
-        handleError(res, err);
+      features.push(meanCenter);
+      centersByPeriod.set(period, meanCenter);
     }
+
+    const trajectoryCoords = [];
+    for (const period of activePeriods) {
+      const center = centersByPeriod.get(period);
+      if (center?.geometry?.coordinates) {
+        trajectoryCoords.push(center.geometry.coordinates);
+      }
+    }
+
+    if (trajectoryCoords.length >= 2) {
+      const trajectory = turf.lineString(trajectoryCoords, {
+        type: 'trajectory',
+        yearStart: yearStartNum,
+        yearEnd: yearEndNum,
+        fromClass: fromClassNum,
+        toClass: toClassNum
+      });
+      features.push(trajectory);
+    }
+
+    res.json({
+      type: 'FeatureCollection',
+      features,
+      meta: {
+        yearStart: yearStartNum,
+        yearEnd: yearEndNum,
+        fromClass: fromClassNum,
+        toClass: toClassNum,
+        periods: activePeriods
+      }
+    });
+  } catch (err) {
+    handleError(res, err);
+  }
 });
 
 export default router;
+
