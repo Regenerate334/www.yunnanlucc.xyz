@@ -60,7 +60,7 @@ export const UI_CONFIG = {
         highlightWidth: 4.0,    // 选中/高亮线宽
         provinceColor: '#FF0000', // 省级：红色
         cityColor: '#9C27B0',     // 地级市：紫色
-        countyColor: '#00FFFF',    // 县级：青色
+        countyColor: '#00FFFF',    // 县级：亮青色 (已恢复)
         highlightColor: '#FFFF00'  // 选中高亮：黄色
     }
 };
