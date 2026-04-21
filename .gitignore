@@ -76,13 +76,12 @@ $RECYCLE.BIN/
 *.sqlite3
 *.sql
 *.dump
-dump.rdb
+*.rdb
+dump_messages.js
 
 # GIS Data & Large Assets
-# Exclude large datasets and raw GIS formats that shouldn't be in Git
-src/assets/data/*.json
-public/data/*.json
-public/data/*.zip
+# Exclude large datasets and raw GIS formats
+# We ignore all JSON in data folders, but keep root config
 *.shp
 *.dbf
 *.shx
@@ -90,6 +89,7 @@ public/data/*.zip
 *.tif
 *.tiff
 *.geotiff
+*.cpk
 *.osm
 *.pbf
 *.mbtiles
@@ -97,6 +97,20 @@ public/data/*.zip
 *.kml
 *.kmz
 
-# AI Agent
+# Folders containing large data
+geoserver/
+public/data/
+src/assets/data/
+
+# AI Agent & Dev Tools
 .agent/cache/
 tmp/
+.shared/
+auto-imports.d.ts
+components.d.ts
+
+# Python environment & cache
+venv/
+.venv/
+__pycache__/
+*.pyc
