@@ -142,6 +142,35 @@ export const useMapStore = defineStore('map', () => {
         })
     }
 
+    /**
+     * 根据名称查找实体
+     */
+    function findEntityByName(name: string): Cesium.Entity | null {
+        if (!name) return null
+
+        // 遍历所有数据源查找
+        const levels: Array<'province' | 'cities' | 'counties'> = ['counties', 'cities', 'province']
+        for (const level of levels) {
+            const ds = dataSources.value[level]
+            if (ds && ds.entities) {
+                const entity = ds.entities.values.find(e => {
+                    const eName = e.name || (e.properties && e.properties.name && e.properties.name.getValue());
+                    if (!eName) return false;
+
+                    // 1. 完全匹配
+                    if (eName === name) return true;
+
+                    // 2. 模糊匹配 (处理 "宣威" -> "宣威市" 等情况)
+                    const cleanName = name.replace(/市|县|区|自治州|省/g, '');
+                    const cleanEName = typeof eName === 'string' ? eName.replace(/市|县|区|自治州|省/g, '') : '';
+                    return cleanName && cleanEName && cleanName === cleanEName;
+                })
+                if (entity) return entity
+            }
+        }
+        return null
+    }
+
     // ============================================
     // 返回 Store API
     // ============================================
@@ -166,6 +195,7 @@ export const useMapStore = defineStore('map', () => {
         hideInfoCard,
         resetMapState,
         flyToRegion,
-        flyToYunnan
+        flyToYunnan,
+        findEntityByName
     }
 })

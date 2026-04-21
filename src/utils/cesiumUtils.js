@@ -81,13 +81,15 @@ export function applyThickPolygonOutlineForEntity(entity, color, width, Cesium) 
                 positions: positions,
                 width: width,
                 material: color,
-                clampToGround: true // 开启贴地才能支持 Windows Chrome 显示比 1 宽的线条
+                clampToGround: false, // 关闭贴地以极大提升十万顶点级数据的渲染速度
+                arcType: Cesium.ArcType.NONE // 禁用测地线插值，直接两点连线，减少海量冗余顶点
             });
         } else {
             entity.polyline.positions = positions;
             entity.polyline.width = width;
             entity.polyline.material = color;
-            entity.polyline.clampToGround = true;
+            entity.polyline.clampToGround = false;
+            entity.polyline.arcType = Cesium.ArcType.NONE;
             entity.polyline.show = true;
         }
     }

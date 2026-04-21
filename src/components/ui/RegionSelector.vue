@@ -199,7 +199,7 @@ function onProvinceSelect() {
   globalStore.setScope('province', '530000', '云南省');
   selectedCity.value = '';
   selectedCounty.value = '';
-  isExpanded.value = false;
+  globalStore.setActivePanel(null);
 }
 
 function onCitySelect(city) {
@@ -212,7 +212,7 @@ function onCountySelect(county) {
   const cName = county.name || county;
   selectedCounty.value = cName;
   globalStore.setScope('county', county.code || '', cName);
-  isExpanded.value = false;
+  globalStore.setActivePanel(null);
 }
 
 function onResultClick(res) {
