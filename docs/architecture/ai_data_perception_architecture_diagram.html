@@ -1,0 +1,353 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+
+<head>
+    <meta charset="UTF-8">
+    <title>AI 数据感知层专项架构图</title>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Noto+Sans+SC:wght@400;500;700&display=swap');
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Noto Sans SC', 'Microsoft YaHei', sans-serif;
+            background: #fff;
+            display: flex;
+            justify-content: center;
+            padding: 26px;
+            color: #1d2433;
+        }
+
+        .diagram {
+            width: 980px;
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        }
+
+        .title {
+            text-align: center;
+            font-size: 21px;
+            font-weight: 700;
+            letter-spacing: 2px;
+            margin-bottom: 8px;
+            color: #1a2a40;
+        }
+
+        .subtitle {
+            text-align: center;
+            font-size: 12px;
+            color: #5a687c;
+            margin-bottom: 12px;
+        }
+
+        .layer {
+            display: flex;
+            align-items: stretch;
+            border-radius: 10px;
+            overflow: hidden;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+        }
+
+        .layer-label {
+            width: 94px;
+            min-width: 94px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            text-align: center;
+            font-size: 14px;
+            font-weight: 700;
+            color: #fff;
+            line-height: 1.35;
+            padding: 12px 6px;
+        }
+
+        .layer-content {
+            flex: 1;
+            display: flex;
+            flex-wrap: wrap;
+            gap: 10px;
+            align-items: center;
+            justify-content: center;
+            padding: 14px 18px;
+        }
+
+        .layer-ui .layer-label {
+            background: #455a64;
+        }
+
+        .layer-ui .layer-content {
+            background: #eceff1;
+        }
+
+        .layer-orchestrator .layer-label {
+            background: #0288d1;
+        }
+
+        .layer-orchestrator .layer-content {
+            background: #e1f5fe;
+        }
+
+        .layer-perception .layer-label {
+            background: #2e7d32;
+        }
+
+        .layer-perception .layer-content {
+            background: #e8f5e9;
+            align-items: flex-start;
+        }
+
+        .layer-semantic .layer-label {
+            background: #5e35b1;
+        }
+
+        .layer-semantic .layer-content {
+            background: #ede7f6;
+            border: 2px dashed #7e57c2;
+        }
+
+        .layer-data .layer-label {
+            background: #ef6c00;
+        }
+
+        .layer-data .layer-content {
+            background: #fff3e0;
+        }
+
+        .card {
+            background: #fff;
+            border: 1px solid #d2d8e1;
+            border-radius: 8px;
+            padding: 9px 12px;
+            min-width: 180px;
+            box-shadow: 0 1px 4px rgba(0, 0, 0, 0.06);
+        }
+
+        .card .name {
+            font-size: 13px;
+            font-weight: 700;
+            color: #1f2a44;
+            margin-bottom: 3px;
+        }
+
+        .card .desc {
+            font-size: 11px;
+            color: #5e6b81;
+            line-height: 1.45;
+        }
+
+        .card.path {
+            border-color: #b3e5fc;
+        }
+
+        .card.data {
+            border-color: #ffe0b2;
+        }
+
+        .module {
+            flex: 1;
+            min-width: 250px;
+            border: 1.5px solid #a5d6a7;
+            border-radius: 8px;
+            background: rgba(255, 255, 255, 0.65);
+            padding: 10px;
+        }
+
+        .module .module-title {
+            font-size: 12px;
+            font-weight: 700;
+            color: #2e7d32;
+            text-align: center;
+            border-bottom: 1px solid #c8e6c9;
+            padding-bottom: 6px;
+            margin-bottom: 8px;
+        }
+
+        .module .items {
+            display: flex;
+            flex-direction: column;
+            gap: 5px;
+        }
+
+        .module .item {
+            background: #fff;
+            border: 1px solid #c8e6c9;
+            border-radius: 6px;
+            padding: 5px 8px;
+            font-size: 12px;
+            text-align: center;
+            color: #314139;
+        }
+
+        .arrow-row {
+            display: flex;
+            justify-content: center;
+            padding: 2px 0;
+        }
+
+        .arrow {
+            font-size: 17px;
+            color: #94a1b3;
+            letter-spacing: 10px;
+        }
+
+        .note {
+            margin-top: 8px;
+            border: 1px solid #d7deea;
+            border-radius: 8px;
+            padding: 10px 12px;
+            background: #fafbfd;
+            font-size: 12px;
+            line-height: 1.6;
+            color: #3a4a63;
+        }
+
+        .note b {
+            color: #22314d;
+        }
+    </style>
+</head>
+
+<body>
+    <div class="diagram">
+        <div class="title">AI 数据感知中枢架构图（代码可追溯版）</div>
+        <div class="subtitle">核心接口：`POST /api/ai/analyze-stream`；（可选）图谱接口：`knowledge_query`（MCP 工具）；图谱资产：`server/mcp/knowledge_graph.json`</div>
+
+        <div class="layer layer-ui">
+            <div class="layer-label">交互层</div>
+            <div class="layer-content">
+                <div class="card">
+                    <div class="name">src/components/ui/AIAnalysisModal.vue</div>
+                    <div class="desc">问题输入与会话展示入口，渲染 SSE 分段结果，并解析 `[[MAP_COMMAND:...]]` 驱动地图联动</div>
+                </div>
+                <div class="card">
+                    <div class="name">src/utils/aiService.js</div>
+                    <div class="desc">`analyzeDataStream()` 调用 `POST /api/ai/analyze-stream`，按 `data: {content|done|error}` 解析 SSE</div>
+                </div>
+                <div class="card">
+                    <div class="name">src/views/Workbench.vue</div>
+                    <div class="desc">地图主场景与分析面板容器（viewer 由 `mapStore` 挂载），承载专题图层与监测面板联动</div>
+                </div>
+            </div>
+        </div>
+
+        <div class="arrow-row"><span class="arrow">▼ ▼ ▼ ▼</span></div>
+
+        <div class="layer layer-orchestrator">
+            <div class="layer-label">接口与编排层</div>
+            <div class="layer-content">
+                <div class="card path">
+                    <div class="name">POST /api/ai/analyze-stream</div>
+                    <div class="desc">统一入口（`server/routes/ai/chat.js`）：鉴权、会话编排、流式回传</div>
+                </div>
+                <div class="card path">
+                    <div class="name">ReActAgent + CallbackManager</div>
+                    <div class="desc">使用 llamaindex ReActAgent 调用工具；CallbackManager 捕获 tool-start/tool-end 事件</div>
+                </div>
+                <div class="card path">
+                    <div class="name">SSE Stream Writer</div>
+                    <div class="desc">持续下发 `data: {...}` 分段消息，回传推理进度、工具结果与 `done/error` 状态</div>
+                </div>
+                <div class="card path">
+                    <div class="name">Tool Calling Trace</div>
+                    <div class="desc">将 tool-start/tool-end 事件写入 SSE 文本提示（如 `[SEARCH]/[ANALYSIS]`），并可回传地图指令标签</div>
+                </div>
+            </div>
+        </div>
+
+        <div class="arrow-row"><span class="arrow">▼ ▼ ▼ ▼</span></div>
+
+        <div class="layer layer-perception">
+            <div class="layer-label">AI 规则与工具层</div>
+            <div class="layer-content">
+                <div class="module">
+                    <div class="module-title">认知治理中枢（aiMiddleware）</div>
+                    <div class="items">
+                        <div class="item">`validateInput`：输入安全校验（注入/越权/离题检测）</div>
+                        <div class="item">`buildSystemPrompt`：领域约束 + 反杜撰规则 + 输出格式（统一口径）</div>
+                        <div class="item">基本原则：优先工具取证；结论必须可追溯到工具/数据库/技能库</div>
+                    </div>
+                </div>
+                <div class="module">
+                    <div class="module-title">执行调度中枢（agentTools）</div>
+                    <div class="items">
+                        <div class="item">专题分析：`clcd_analysis`、`dashboard_analysis`</div>
+                        <div class="item">空间与业务：`spatial_stats_analysis`、`land_transfer_analysis`</div>
+                        <div class="item">知识与交互：`knowledge_base_lookup`、`map_control`、`weather_query`（可选）</div>
+                        <div class="item">说明：工具调用事件会被回传到前端，形成可解释的执行轨迹</div>
+                    </div>
+                </div>
+                <div class="module">
+                    <div class="module-title">上下文路由（DataRouter，可选扩展）</div>
+                    <div class="items">
+                        <div class="item">EntityExtractor：识别地区、年份、地类与分析意图（感知输入）</div>
+                        <div class="item">ContextBuilder：拼装结构化上下文，降低工具调用歧义（提高可复现性）</div>
+                        <div class="item">备注：现阶段主链路以 ReAct 工具调用为主；DataRouter 用于快速预取/扩展接入</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="arrow-row"><span class="arrow">▼ ▼ ▼ ▼</span></div>
+
+        <div class="layer layer-semantic">
+            <div class="layer-label">语义层（MCP）</div>
+            <div class="layer-content">
+                <div class="card">
+                    <div class="name">server/mcp/index.js</div>
+                    <div class="desc">MCP Server（STDIO），提供独立的语义增强通道（tools/list + tools/call）</div>
+                </div>
+                <div class="card">
+                    <div class="name">knowledge_query</div>
+                    <div class="desc">图谱查询工具：`metadata / search / traverse / resolve / path`（独立通道，可按需接入）</div>
+                </div>
+                <div class="card">
+                    <div class="name">知识图谱（Graph）</div>
+                    <div class="desc">以实体-关系网络组织区域、地类、指标、政策等语义对象，支持关联解释</div>
+                </div>
+                <div class="card">
+                    <div class="name">资源与技能</div>
+                    <div class="desc">`mcp://gis/skills` 与专家技能文档，支持可解释回答与规则复用</div>
+                </div>
+            </div>
+        </div>
+
+        <div class="arrow-row"><span class="arrow">▼ ▼ ▼ ▼</span></div>
+
+        <div class="layer layer-data">
+            <div class="layer-label">数据与模型层</div>
+            <div class="layer-content">
+                <div class="card data">
+                    <div class="name">PostgreSQL / PostGIS</div>
+                    <div class="desc">承载 `clcd_*`、`spatial_county_yunnan_*` 等核心业务数据</div>
+                </div>
+                <div class="card data">
+                    <div class="name">知识资产（UTF-8）</div>
+                    <div class="desc">`server/mcp/knowledge_base.json`（知识摘要）与 `server/utils/ai/skills/*.md`（专家技能库）</div>
+                </div>
+                <div class="card data">
+                    <div class="name">知识图谱资产（UTF-8）</div>
+                    <div class="desc">`server/mcp/knowledge_graph.json`（实体、关系、路径信息）</div>
+                </div>
+                <div class="card data">
+                    <div class="name">Ollama 推理引擎</div>
+                    <div class="desc">承载 ReAct 对话推理与工具选择决策</div>
+                </div>
+            </div>
+        </div>
+
+        <div class="note">
+            <b>主链路：</b>用户提问 → `POST /api/ai/analyze-stream` → ReActAgent 选择并调用工具 → 数据/知识检索 → SSE 实时回传。<br>
+            <b>工具调用链（可解释）：</b>tool-start/tool-end → 工具执行（统计/业务/知识）→ 结果归并 → 结论输出，减少“黑盒回答”。<br>
+            <b>知识图谱增强链路（可选）：</b>通过 MCP 工具 `knowledge_query` 访问 `server/mcp/knowledge_graph.json`，返回实体关系/路径证据用于解释。<br>
+            <b>审稿关注点：</b>链路可追踪（SSE 分段）、结论可解释（工具与数据取证）、能力可扩展（MCP 语义层）。
+        </div>
+    </div>
+</body>
+
+</html>

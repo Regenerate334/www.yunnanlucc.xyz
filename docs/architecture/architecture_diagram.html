@@ -1,0 +1,500 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+
+<head>
+    <meta charset="UTF-8">
+    <title>系统总体架构图</title>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Noto+Sans+SC:wght@400;500;700&display=swap');
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Noto Sans SC', 'Microsoft YaHei', sans-serif;
+            background: #fff;
+            display: flex;
+            justify-content: center;
+            padding: 30px;
+        }
+
+        .diagram {
+            width: 920px;
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        }
+
+        .title {
+            text-align: center;
+            font-size: 20px;
+            font-weight: 700;
+            color: #1a1a2e;
+            margin-bottom: 12px;
+            letter-spacing: 4px;
+        }
+
+        /* ── 层容器 ── */
+        .layer {
+            display: flex;
+            align-items: stretch;
+            border-radius: 10px;
+            overflow: hidden;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+        }
+
+        .layer-label {
+            width: 80px;
+            min-width: 80px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 15px;
+            font-weight: 700;
+            color: #fff;
+            letter-spacing: 2px;
+            writing-mode: horizontal-tb;
+            padding: 10px 0;
+        }
+
+        .layer-content {
+            flex: 1;
+            padding: 16px 20px;
+            display: flex;
+            flex-wrap: wrap;
+            gap: 10px;
+            align-items: center;
+            justify-content: center;
+        }
+
+        /* ── 接入层 ── */
+        .layer-access .layer-label {
+            background: #37474F;
+        }
+
+        .layer-access .layer-content {
+            background: #ECEFF1;
+        }
+
+        .acc-comp {
+            background: #fff;
+            border: 1.5px solid #90a4ae;
+            border-radius: 8px;
+            padding: 10px 16px;
+            text-align: center;
+            min-width: 160px;
+        }
+
+        .acc-comp .acc-icon {
+            font-size: 26px;
+            margin-bottom: 4px;
+        }
+
+        .acc-comp .acc-name {
+            font-size: 13px;
+            font-weight: 700;
+            color: #37474F;
+        }
+
+        .acc-comp .acc-desc {
+            font-size: 11px;
+            color: #666;
+        }
+
+        .acc-comp .acc-tags {
+            font-size: 10px;
+            color: #999;
+            margin-top: 3px;
+        }
+
+        /* ── 表示层 ── */
+        .layer-presentation .layer-label {
+            background: #2196F3;
+        }
+
+        .layer-presentation .layer-content {
+            background: #E3F2FD;
+        }
+
+        /* ── 应用层 ── */
+        .layer-app .layer-label {
+            background: #4CAF50;
+        }
+
+        .layer-app .layer-content {
+            background: #E8F5E9;
+            align-items: flex-start;
+            gap: 12px;
+        }
+
+        /* ── AI 中间层 ── */
+        .layer-middleware .layer-label {
+            background: linear-gradient(135deg, #7C4DFF, #448AFF);
+        }
+
+        .layer-middleware .layer-content {
+            background: linear-gradient(135deg, #EDE7F6, #E8EAF6);
+            border: 2px dashed #7C4DFF;
+            position: relative;
+        }
+
+        .layer-middleware .layer-content::before {
+            content: '★ 新增';
+            position: absolute;
+            top: 4px;
+            right: 8px;
+            font-size: 11px;
+            color: #7C4DFF;
+            font-weight: 700;
+        }
+
+        /* ── 服务层 ── */
+        .layer-service .layer-label {
+            background: #00ACC1;
+        }
+
+        .layer-service .layer-content {
+            background: #E0F7FA;
+        }
+
+        /* ── 数据层 ── */
+        .layer-data .layer-label {
+            background: #FF9800;
+        }
+
+        .layer-data .layer-content {
+            background: #FFF8E1;
+        }
+
+        /* ── 组件卡片 ── */
+        .comp {
+            background: #fff;
+            border: 1px solid #ddd;
+            border-radius: 6px;
+            padding: 8px 14px;
+            font-size: 13px;
+            font-weight: 500;
+            color: #333;
+            text-align: center;
+            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.06);
+            transition: transform 0.2s;
+        }
+
+        .comp:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 3px 8px rgba(0, 0, 0, 0.12);
+        }
+
+        /* ── 模块组 ── */
+        .module-group {
+            flex: 1;
+            min-width: 240px;
+            border: 1.5px solid #a5d6a7;
+            border-radius: 8px;
+            background: rgba(255, 255, 255, 0.6);
+            padding: 10px;
+        }
+
+        .module-group-title {
+            font-size: 13px;
+            font-weight: 700;
+            color: #2e7d32;
+            text-align: center;
+            margin-bottom: 8px;
+            padding-bottom: 6px;
+            border-bottom: 1px solid #c8e6c9;
+        }
+
+        .module-group .items {
+            display: flex;
+            flex-direction: column;
+            gap: 5px;
+        }
+
+        .module-item {
+            background: #fff;
+            border: 1px solid #c8e6c9;
+            border-radius: 4px;
+            padding: 5px 10px;
+            font-size: 12px;
+            color: #333;
+            text-align: center;
+        }
+
+        /* ── 中间层组件 ── */
+        .mw-comp {
+            background: #fff;
+            border: 1.5px solid #b39ddb;
+            border-radius: 8px;
+            padding: 10px 14px;
+            text-align: center;
+            min-width: 130px;
+            position: relative;
+        }
+
+        .mw-comp .mw-icon {
+            font-size: 22px;
+            margin-bottom: 4px;
+        }
+
+        .mw-comp .mw-name {
+            font-size: 12px;
+            font-weight: 700;
+            color: #5C6BC0;
+        }
+
+        .mw-comp .mw-desc {
+            font-size: 11px;
+            color: #666;
+            margin-top: 2px;
+        }
+
+        /* ── 箭头 ── */
+        .arrow-row {
+            display: flex;
+            justify-content: center;
+            padding: 2px 0;
+        }
+
+        .arrow-row .arrow {
+            font-size: 18px;
+            color: #999;
+            letter-spacing: 12px;
+        }
+
+        /* ── 服务层图标组件 ── */
+        .svc-comp {
+            background: #fff;
+            border: 1.5px solid #80deea;
+            border-radius: 8px;
+            padding: 10px 16px;
+            text-align: center;
+            min-width: 120px;
+        }
+
+        .svc-comp .svc-icon {
+            font-size: 26px;
+            margin-bottom: 4px;
+        }
+
+        .svc-comp .svc-name {
+            font-size: 13px;
+            font-weight: 700;
+            color: #00838F;
+        }
+
+        .svc-comp .svc-desc {
+            font-size: 11px;
+            color: #666;
+        }
+
+        /* ── 数据层图标组件 ── */
+        .data-comp {
+            background: #fff;
+            border: 1.5px solid #ffe0b2;
+            border-radius: 8px;
+            padding: 10px 16px;
+            text-align: center;
+            min-width: 110px;
+        }
+
+        .data-comp .data-icon {
+            font-size: 26px;
+            margin-bottom: 4px;
+        }
+
+        .data-comp .data-name {
+            font-size: 13px;
+            font-weight: 700;
+            color: #E65100;
+        }
+
+        .data-comp .data-desc {
+            font-size: 11px;
+            color: #666;
+        }
+
+        /* ── 流动箭头 ── */
+        .flow-arrow {
+            font-size: 20px;
+            color: #b39ddb;
+            display: flex;
+            align-items: center;
+        }
+    </style>
+</head>
+
+<body>
+    <div class="diagram">
+        <div class="title">云南省国土空间规划监测预警平台 — 系统总体架构</div>
+
+
+
+        <!-- ═══ 表示层 ═══ -->
+        <div class="layer layer-presentation">
+            <div class="layer-label">表示层</div>
+            <div class="layer-content">
+                <div class="comp">Vue3 前端框架</div>
+                <div class="comp">Cesium 三维地图引擎</div>
+                <div class="comp">Cesium Ion 地图服务</div>
+                <div class="comp">ECharts 数据可视化</div>
+                <div class="comp">Markdown 渲染引擎</div>
+                <div class="comp">AI 对话窗口</div>
+                <div class="comp">报告导出模块</div>
+            </div>
+        </div>
+
+        <div class="arrow-row"><span class="arrow">▼ ▼ ▼ ▼</span></div>
+
+        <!-- ═══ 应用层 ═══ -->
+        <div class="layer layer-app">
+            <div class="layer-label">应用层</div>
+            <div class="layer-content">
+                <!-- 监测模块 -->
+                <div class="module-group">
+                    <div class="module-group-title">LUCC 时空演变与转移监测模块</div>
+                    <div class="items">
+                        <div class="module-item">土地利用时空演进动态监测</div>
+                        <div class="module-item">土地利用结构演变监测</div>
+                        <div class="module-item">区域景观指数时空动态监测</div>
+                        <div class="module-item">地类时空转换特征监测</div>
+                        <div class="module-item">土地源被流向与转移分析</div>
+                        <div class="module-item">地类面积净盈亏时序监测</div>
+                    </div>
+                </div>
+                <!-- 预警模块 -->
+                <div class="module-group">
+                    <div class="module-group-title">LUCC 生态预警模块</div>
+                    <div class="items">
+                        <div class="module-item">区域生境质量演变与生态风险预警</div>
+                        <div class="module-item">碳源/汇空间格局演变与失衡预警</div>
+                        <div class="module-item">国土空间格局生态韧性评估与预警</div>
+                        <div class="module-item">"三生"空间格局冲突识别与预警</div>
+                    </div>
+                </div>
+                <!-- AI模块 -->
+                <div class="module-group">
+                    <div class="module-group-title">AI 智能分析评估板块</div>
+                    <div class="items">
+                        <div class="module-item">空间格局与演化轨迹解析</div>
+                        <div class="module-item">土地利用时空演变 AI 辅助研判</div>
+                        <div class="module-item">AI 交互式数据问答</div>
+                        <div class="module-item">AI 结构化报告生成</div>
+                        <div class="module-item">驱动因子 AI 智能分析</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="arrow-row"><span class="arrow">▼ ▼ ▼ ▼</span></div>
+
+        <!-- ═══ AI 中间层 ═══ -->
+        <div class="layer layer-middleware">
+            <div class="layer-label">AI数据<br>感知层</div>
+            <div class="layer-content">
+                <div class="mw-comp">
+                    <div class="mw-icon">🔍</div>
+                    <div class="mw-name">EntityExtractor</div>
+                    <div class="mw-desc">实体抽取器</div>
+                </div>
+                <div class="flow-arrow">→</div>
+                <div class="mw-comp">
+                    <div class="mw-icon">🔀</div>
+                    <div class="mw-name">DataRouter</div>
+                    <div class="mw-desc">数据路由引擎</div>
+                </div>
+                <div class="flow-arrow">→</div>
+                <div class="mw-comp">
+                    <div class="mw-icon">📊</div>
+                    <div class="mw-name">ContextBuilder</div>
+                    <div class="mw-desc">上下文构建器</div>
+                </div>
+                <div class="flow-arrow">→</div>
+                <div class="mw-comp">
+                    <div class="mw-icon">🧩</div>
+                    <div class="mw-name">ToolRegistry</div>
+                    <div class="mw-desc">工具注册中心</div>
+                </div>
+                <div class="flow-arrow">→</div>
+                <div class="mw-comp">
+                    <div class="mw-icon">🛡️</div>
+                    <div class="mw-name">aiMiddleware</div>
+                    <div class="mw-desc">统一接口层</div>
+                </div>
+            </div>
+        </div>
+
+        <div class="arrow-row"><span class="arrow">▼ ▼ ▼ ▼</span></div>
+
+        <!-- ═══ 服务层 ═══ -->
+        <div class="layer layer-service">
+            <div class="layer-label">服务层</div>
+            <div class="layer-content">
+                <div class="svc-comp">
+                    <div class="svc-icon">🌐</div>
+                    <div class="svc-name">PostGIS</div>
+                    <div class="svc-desc">空间数据库</div>
+                </div>
+                <div class="svc-comp">
+                    <div class="svc-icon">🐘</div>
+                    <div class="svc-name">PostgreSQL</div>
+                    <div class="svc-desc">后端数据库</div>
+                </div>
+                <div class="svc-comp">
+                    <div class="svc-icon">⚙️</div>
+                    <div class="svc-name">Nginx</div>
+                    <div class="svc-desc">反向代理 / 负载均衡</div>
+                </div>
+                <div class="svc-comp">
+                    <div class="svc-icon">🌍</div>
+                    <div class="svc-name">GeoServer</div>
+                    <div class="svc-desc">网格地图服务</div>
+                </div>
+                <div class="svc-comp">
+                    <div class="svc-icon">🤖</div>
+                    <div class="svc-name">Ollama</div>
+                    <div class="svc-desc">本地AI推理引擎</div>
+                </div>
+            </div>
+        </div>
+
+        <div class="arrow-row"><span class="arrow">▼ ▼ ▼ ▼</span></div>
+
+        <!-- ═══ 数据层 ═══ -->
+        <div class="layer layer-data">
+            <div class="layer-label">数据层</div>
+            <div class="layer-content">
+                <div class="data-comp">
+                    <div class="data-icon">🌐</div>
+                    <div class="data-name">基础地理数据</div>
+                    <div class="data-desc">行政边界 / DEM</div>
+                </div>
+                <div class="data-comp">
+                    <div class="data-icon">🗺️</div>
+                    <div class="data-name">土地利用数据</div>
+                    <div class="data-desc">CLCD 1985-2023</div>
+                </div>
+                <div class="data-comp">
+                    <div class="data-icon">🔄</div>
+                    <div class="data-name">流转矩阵数据</div>
+                    <div class="data-desc">地类转移统计</div>
+                </div>
+                <div class="data-comp">
+                    <div class="data-icon">📋</div>
+                    <div class="data-name">表格统计数据</div>
+                    <div class="data-desc">省/州/县级汇总</div>
+                </div>
+                <div class="data-comp">
+                    <div class="data-icon">📁</div>
+                    <div class="data-name">其他资料</div>
+                    <div class="data-desc">文档 / 元数据</div>
+                </div>
+            </div>
+        </div>
+    </div>
+</body>
+
+</html>
