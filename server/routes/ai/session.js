@@ -87,7 +87,7 @@ router.get('/:id/messages', authMiddleware, async (req, res) => {
 // 保存消息并更新会话
 router.post('/:id/messages', authMiddleware, async (req, res) => {
     try {
-        const { role, content, thinking, thinkTime } = req.body;
+        const { role, content, thinking, thinkTime, workflow } = req.body;
         const { rows } = await pool.query(
             'SELECT messages, title FROM chat_sessions WHERE id = $1 AND user_id = $2',
             [req.params.id, req.user.id]
@@ -107,6 +107,7 @@ router.post('/:id/messages', authMiddleware, async (req, res) => {
             content,
             thinking: thinking || '',
             thinkTime: thinkTime || 0,
+            workflow: Array.isArray(workflow) ? workflow : [],
             created_at: new Date().toISOString()
         };
         messages.push(messageObj);

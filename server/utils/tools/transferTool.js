@@ -92,6 +92,48 @@ const transferTool = {
         const classes = [...allClasses].sort((a, b) => a - b);
         const classNames = classes.map(c => LAND_CLASS_NAMES[c] || `类${c}`);
 
+        const toKm2 = (m2) => (Number(m2) || 0) / 1e6;
+        const fmt2 = (val) => (Number(val) || 0).toFixed(2);
+
+        // 汇总：净变化/交换变化/保持等（源自转移矩阵分解口径）
+        const classStats = classes.map((code) => {
+            const persistence = Number(matrix[code]?.[code] || 0);
+
+            let outTotal = 0;
+            let inTotal = 0;
+            classes.forEach((to) => { outTotal += Number(matrix[code]?.[to] || 0); });
+            classes.forEach((from) => { inTotal += Number(matrix[from]?.[code] || 0); });
+
+            const loss = Math.max(0, outTotal - persistence);
+            const gain = Math.max(0, inTotal - persistence);
+            const net = gain - loss;
+            const gross = gain + loss;
+            const swap = Math.max(0, gross - Math.abs(net)); // = 2 * min(gain, loss)
+
+            return {
+                code,
+                name: LAND_CLASS_NAMES[code] || `类${code}`,
+                persistence,
+                gain,
+                loss,
+                net,
+                swap
+            };
+        });
+
+        const transitions = [];
+        classes.forEach((from) => {
+            classes.forEach((to) => {
+                if (from === to) return;
+                const area = Number(matrix[from]?.[to] || 0);
+                if (area > 0) transitions.push({ from, to, area });
+            });
+        });
+        transitions.sort((a, b) => b.area - a.area);
+
+        const totalPersistence = classStats.reduce((s, x) => s + x.persistence, 0);
+        const totalChange = transitions.reduce((s, x) => s + x.area, 0);
+
         const header = `| 转出↓ 转入→ | ${classNames.join(' | ')} | 合计(km²) |`;
         const sep = `|${Array(classes.length + 2).fill('---').join('|')}|`;
 
@@ -102,14 +144,37 @@ const transferTool = {
                 const area = matrix[from]?.[to] || 0;
                 rowTotal += area;
                 if (from === to) return '_（不变）_';
-                const km2 = (area / 1e6).toFixed(2);
+                const km2 = fmt2(toKm2(area));
                 return km2 === '0.00' ? '—' : km2;
             });
-            return `| **${fromName}** | ${cells.join(' | ')} | ${(rowTotal / 1e6).toFixed(2)} |`;
+            return `| **${fromName}** | ${cells.join(' | ')} | ${fmt2(toKm2(rowTotal))} |`;
+        });
+
+        const topTransitions = transitions.slice(0, 8).map((t) => {
+            const fromName = LAND_CLASS_NAMES[t.from] || `类${t.from}`;
+            const toName = LAND_CLASS_NAMES[t.to] || `类${t.to}`;
+            return `- ${fromName}→${toName}: ${fmt2(toKm2(t.area))} km²`;
+        });
+
+        const statsHeader = `| 地类 | 转入(km²) | 转出(km²) | 净变化(km²) | 交换变化(km²) | 保持(km²) |`;
+        const statsSep = `|---|---:|---:|---:|---:|---:|`;
+        const statsRows = classStats.map((s) => {
+            return `| ${s.name} | ${fmt2(toKm2(s.gain))} | ${fmt2(toKm2(s.loss))} | ${fmt2(toKm2(s.net))} | ${fmt2(toKm2(s.swap))} | ${fmt2(toKm2(s.persistence))} |`;
         });
 
         return [
             `## 数据背景：${region} 土地利用转移矩阵 (${period} 序列, 单位: km²)`,
+            '',
+            `### 变化汇总（仅基于转移矩阵）`,
+            `- 总变化面积(非对角线合计): ${fmt2(toKm2(totalChange))} km²`,
+            `- 总保持面积(对角线合计): ${fmt2(toKm2(totalPersistence))} km²`,
+            topTransitions.length > 0 ? `- 主要转化方向(Top ${topTransitions.length}):` : `- 主要转化方向: —`,
+            ...topTransitions,
+            '',
+            `### 地类变化分解（转入/转出/净变化/交换变化）`,
+            statsHeader,
+            statsSep,
+            ...statsRows,
             '',
             header,
             sep,
