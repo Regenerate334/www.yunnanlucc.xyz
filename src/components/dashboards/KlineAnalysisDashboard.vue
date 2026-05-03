@@ -58,7 +58,7 @@
 </template>
 
 <script setup>
-import { ref, computed, watch, onMounted } from 'vue';
+import { ref, computed, watch } from 'vue';
 import RegionalKlineChart from '../charts/RegionalKlineChart.vue';
 import RegionCascader from '../cards/RegionCascader.vue';
 import { clcdApi } from '../../api/index.js';
@@ -81,10 +81,6 @@ const selectedRegion = computed({
 
 const trendData = ref([]);
 const isLoading = ref(false);
-
-onMounted(() => {
-    fetchTrendData();
-});
 
 async function fetchTrendData() {
     if (!selectedRegion.value.name) return;

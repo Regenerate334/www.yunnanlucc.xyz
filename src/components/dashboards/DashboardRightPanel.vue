@@ -62,7 +62,7 @@
             <div class="card-clip-mark"></div>
             
             <div class="card-header-row">
-              <span class="card-name" :title="item.title">{{ item.title }}</span>
+              <span class="card-name" :title="item.title">{{ item.shortTitle || item.title }}</span>
               <div class="card-status-badge">
                 <span class="badge-light" :style="{ backgroundColor: item.color }"></span>
                 <span class="badge-text" :style="{ color: item.color }">{{ item.levelText }}</span>
@@ -114,10 +114,11 @@ const LEVELS = {
 };
 
 const warningIndicators = ref([
-  { id: 'hq',   title: 'InVEST生境质量', level: 'safe', levelText: '优(GEP)', color: '#00c864', valueText: '0.00', score: 0, unit: 'Idx', desc: '正在计算中...', formula: 'Sharp(2020) InVEST: Σ(P_i × 适宜性度)×100' },
-  { id: 'cmp',  title: '源汇碳代谢压力', level: 'safe', levelText: '低压(汇)', color: '#00c864', valueText: '0.00', score: 0, unit: '倍', desc: '正在计算中...', formula: '赵荣钦(2022) 双碳评估: Σ碳源 / Σ碳汇' },
-  { id: 'eres', title: '全域生态韧性度', level: 'safe', levelText: '强韧', color: '#00c864', valueText: '0.00', score: 0, unit: 'Idx', desc: '正在计算中...', formula: 'Peng(2023) 韧性城市: 景观阻抗与恢复赋权' },
-  { id: 'plec', title: '三生空间冲突度', level: 'safe', levelText: '低频', color: '#00c864', valueText: '0.00', score: 0, unit: '比', desc: '正在计算中...', formula: '刘彦随(2020) 国土规划: 生产生活区 / 生态区' }
+  // 说明：本面板展示的 HQ/CMP/ERes/PLEC 为“面积统计代理指标”，权威口径以服务端 landUseService.getRegionMonitoring 为准。
+  { id: 'hq',   shortTitle: '生境支持指数HQ',   title: '生境支持指数（HQ proxy）', level: 'safe', levelText: '优', color: '#00c864', valueText: '0.00', score: 0, unit: 'Idx', desc: '正在计算中...', formula: 'HQ = Σ(Area_i×w_i)/Total×100' },
+  { id: 'cmp',  shortTitle: '土地利用碳压CMP',  title: '土地利用碳压指数（CMP proxy）', level: 'safe', levelText: '低压', color: '#00c864', valueText: '0.00', score: 0, unit: '倍', desc: '正在计算中...', formula: 'CMP = (碳源/碳汇)×(1+建设占比)' },
+  { id: 'eres', shortTitle: '生态韧性ERes', title: '生态韧性指数（ERes proxy）', level: 'safe', levelText: '强韧', color: '#00c864', valueText: '0.00', score: 0, unit: 'Idx', desc: '正在计算中...', formula: 'ERes = Σ(Area_i×r_i)/Total×100' },
+  { id: 'plec', shortTitle: '三生空间压力PLEC', title: '三生空间压力比（PLEC proxy）', level: 'safe', levelText: '低压', color: '#00c864', valueText: '0.00', score: 0, unit: '比', desc: '正在计算中...', formula: 'PLEC = (2×生活+生产)/生态' }
 ]);
 
 const gaugeChartRef = ref(null);
@@ -143,7 +144,7 @@ function getRangeText(key) {
 
 /**
  * 专业级四级预警评价引擎 (Academic-Grade Grading Engine)
- * 依据: 参考《国土空间规划监测评估年度报告技术指南》及相关 LUCC 土地利用变化研究论文
+ * 依据: 本项目的阈值断点为工程设定（便于可视化分级），非国家统一标准；算法口径以服务端 `landUseService.getRegionMonitoring` 为准。
  * 
  * @param {number} val - 计算出的指标原始值
  * @param {number[]} breaks - 阈值断点 [b1, b2, b3]
@@ -184,11 +185,6 @@ function setIndicator(id, rawValue, result, unit, desc) {
   item.unit = unit;
   item.desc = desc;
 }
-
-// 监听全局区域变化
-watch(() => globalStore.scope, () => {
-    fetchData();
-}, { deep: true });
 
 // 监听年份变化
 watch(() => props.year, () => {
@@ -363,7 +359,6 @@ function initGaugeChart() {
 }
 
 onMounted(fetchData);
-watch(() => props.year, calculateWarnings);
 </script>
 
 <style scoped>
@@ -379,6 +374,7 @@ watch(() => props.year, calculateWarnings);
   user-select: none;
   -webkit-user-select: none;
   overflow: visible;
+  max-width: 100%;
 
   /* 此处不再设置 clip-path，改由 ::before 伪元素设置，以允许子元素（如提示框）溢出边界 */
 }
@@ -588,11 +584,14 @@ watch(() => props.year, calculateWarnings);
 /* ===== 指标卡片网格 (还原定制版) ===== */
 .indicators-grid {
   display: grid;
-  grid-template-columns: 1fr 1fr;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
   row-gap: 20px; /* 加大第一行与第二行的间距 */
   column-gap: 12px;
   margin-top: auto; /* 使用 auto 自动吸收上方全部剩余空间，将网格牢牢压在主容器最下端 */
   flex-shrink: 0; 
+  width: 100%;
+  max-width: 100%;
+  box-sizing: border-box;
 }
 .indicator-card {
   position: relative;
@@ -605,6 +604,7 @@ watch(() => props.year, calculateWarnings);
   /* 小切角 */
   clip-path: polygon(0 0, calc(100% - 10px) 0, 100% 10px, 100% 100%, 10px 100%, 0 calc(100% - 10px));
   transition: background 0.3s, transform 0.3s, border-color 0.3s;
+  box-sizing: border-box;
 }
 .indicator-card:hover {
   background: rgba(52, 131, 241, 0.95);
@@ -627,6 +627,7 @@ watch(() => props.year, calculateWarnings);
   justify-content: space-between;
   margin-bottom: 6px;
   gap: 4px;
+  max-width: 100%;
 }
 .card-name {
   font-size: 13px;
@@ -637,6 +638,7 @@ watch(() => props.year, calculateWarnings);
   overflow: hidden;
   text-overflow: ellipsis;
   flex: 1; /* allow shrinking while pushing badge left if needed, but flex:1 pushes it right mostly */
+  min-width: 0;
 }
 .card-status-badge {
   display: flex;

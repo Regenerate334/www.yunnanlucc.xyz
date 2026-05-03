@@ -62,7 +62,7 @@
 </template>
 
 <script setup>
-import { ref, computed, watch, onMounted } from 'vue';
+import { ref, computed, watch } from 'vue';
 import RegionalTrendChart from '../charts/RegionalTrendChart.vue';
 import RegionCascader from '../cards/RegionCascader.vue';
 import { clcdApi } from '../../api/index.js';
@@ -85,11 +85,6 @@ const selectedRegion = computed({
 
 const trendData = ref([]);
 const isLoading = ref(false);
-
-onMounted(() => {
-    // 初始加载趋势数据
-    fetchTrendData();
-});
 
 // 获取趋势数据
 async function fetchTrendData() {

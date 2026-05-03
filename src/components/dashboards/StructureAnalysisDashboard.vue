@@ -59,7 +59,7 @@
 </template>
 
 <script setup>
-import { ref, shallowRef, onUnmounted, watch, nextTick, computed, onMounted } from 'vue';
+import { ref, shallowRef, onUnmounted, watch, nextTick, computed } from 'vue';
 import * as echarts from 'echarts';
 import { centerOfMass, area } from '@turf/turf';
 import bbox from '@turf/bbox';
@@ -157,6 +157,7 @@ let regionsData = []; // 用于存储当前地图中的区域信息
 let landUseData = []; // 初始化为空数组而非 null，防止趋势视图 map 崩溃
 let prefectureList = []; // 用于地级市代码查找
 let flashInterval = null;
+const hasBootstrapped = ref(false);
 
 const landUseColors = CLCD_COLORS;
 const landUseNames = LANDUSE_NAMES;
@@ -544,7 +545,13 @@ function toggleModal() {
     globalStore.setActivePanel(null);
   } else {
     globalStore.setActivePanel(panelName);
-    nextTick(() => initChart());
+    nextTick(async () => {
+      if (!hasBootstrapped.value) {
+        hasBootstrapped.value = true;
+        await bootstrapPanelData();
+      }
+      initChart();
+    });
   }
 }
 
@@ -586,9 +593,7 @@ watch(currentYear, async () => {
   }
 });
 
-onMounted(async () => {
-  window.addEventListener('resize', handleResize);
-  
+async function bootstrapPanelData() {
   // 初始化全局及局部层级列表
   try {
     const hier = await regionApi.getRegionHierarchy();
@@ -613,7 +618,9 @@ onMounted(async () => {
   } catch (e) {
     console.error('Failed to fetch years:', e);
   }
-});
+}
+
+window.addEventListener('resize', handleResize);
 
 onUnmounted(() => {
   window.removeEventListener('resize', handleResize);

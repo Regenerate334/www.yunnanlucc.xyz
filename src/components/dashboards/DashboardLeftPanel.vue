@@ -312,7 +312,6 @@ async function fetchData() {
 }
 
 onMounted(fetchData);
-watch(() => props.year, fetchData);
 </script>
 
 <style scoped>
