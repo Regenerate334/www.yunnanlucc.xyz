@@ -1,4 +1,4 @@
-﻿<!--
+<!--
   工作台主视图 (Workbench View)
   职责：系统核心业务交互中心，集成 Cesium 3D 地图引擎，负责土地利用数据渲染、时空演变分析及各类专题计算的逻辑调度。
   
@@ -11,6 +11,11 @@
   <div id="cesiumContainerWrapper">
     <div class="background-layer"></div>
     <div id="cesiumContainer"></div>
+    <transition name="region-switch-tip-fade">
+      <div v-if="autoSwitchTipVisible" class="region-switch-tip">
+        已退出专题并切换到 CLCD，可继续行政区划选择
+      </div>
+    </transition>
 
     <div v-if="isRegionalAnalysisMode" class="analysis-header floating-glass">
       <div class="header-left">
@@ -104,13 +109,19 @@
 
     <transition name="wing-fade-left">
       <div v-if="showAnalysisPanels" class="analysis-wing left">
-        <DashboardLeftPanel v-model:year="selectedYear" />
+        <TransferLeftPanel v-if="globalStore.activeTheme === 'transfer'" v-model:year="selectedYear" />
+        <RateLeftPanel v-else-if="globalStore.activeTheme === 'rate'" v-model:year="selectedYear" />
+        <SpatialStatsLeftPanel v-else-if="globalStore.activeTheme === 'spatial_stats'" v-model:year="selectedYear" />
+        <DashboardLeftPanel v-else v-model:year="selectedYear" />
       </div>
     </transition>
 
     <transition name="wing-fade-right">
       <div v-if="showAnalysisPanels" class="analysis-wing right">
-        <DashboardRightPanel v-model:year="selectedYear" />
+        <TransferRightPanel v-if="globalStore.activeTheme === 'transfer'" v-model:year="selectedYear" />
+        <RateRightPanel v-else-if="globalStore.activeTheme === 'rate'" v-model:year="selectedYear" />
+        <SpatialStatsRightPanel v-else-if="globalStore.activeTheme === 'spatial_stats'" v-model:year="selectedYear" />
+        <DashboardRightPanel v-else v-model:year="selectedYear" />
       </div>
     </transition>
 
@@ -179,6 +190,15 @@ const currentYearData = ref({});
 const showAnalysisPanels = ref(true);
 const isDashboardMode = showAnalysisPanels; // Keep for compatibility if needed elsewhere
 
+// 专题面板：按 activeTheme 切换展示（CLCD 为默认）
+// 说明：专题面板与 CLCD 风险面板拆分，避免在单个组件里堆大量 v-if 逻辑。
+import TransferLeftPanel from '../components/dashboards/TransferLeftPanel.vue';
+import TransferRightPanel from '../components/dashboards/TransferRightPanel.vue';
+import RateLeftPanel from '../components/dashboards/RateLeftPanel.vue';
+import RateRightPanel from '../components/dashboards/RateRightPanel.vue';
+import SpatialStatsLeftPanel from '../components/dashboards/SpatialStatsLeftPanel.vue';
+import SpatialStatsRightPanel from '../components/dashboards/SpatialStatsRightPanel.vue';
+
 // State for Regional Analysis Mode
 const isRegionalAnalysisMode = ref(false); // Can be removed or ignored
 const isLoading = ref(false); 
@@ -188,6 +208,8 @@ const spatialUnit = computed({
   set: (val) => globalStore.setActiveLayer(val)
 });
 const selectedAttribute = ref('cropland');
+const autoSwitchTipVisible = ref(false);
+let autoSwitchTipTimer = null;
 const wmsLayerCache = new Map(); // Map<cacheKey, Cesium.ImageryLayer>
 const clcdLayerCache = new Map(); // 用于 Standard (CLCD) 模式的平滑切换缓存
 const breaksCache = new Map(); // 缓存 API 返回的分级断点，消除请求延迟
@@ -200,6 +222,55 @@ const currentClipWKT = ref(null); // 当前用于裁剪的 WKT 字符串
 const lastTransferParams = ref(null);
 const lastRateParams = ref(null);
 const lastSpatialStatsParams = ref(null);
+const YUNNAN_VIEW_RECT = {
+  west: 97.5,
+  south: 21.1,
+  east: 106.2,
+  north: 29.3
+};
+const YUNNAN_RESET_CAMERA = {
+  lon: 101.8,
+  lat: 25.2,
+  height: 1900000
+};
+const SPATIAL_STATS_LINE_HEIGHT = 260;
+
+function getYunnanRectangle() {
+  return Cesium.Rectangle.fromDegrees(
+    YUNNAN_VIEW_RECT.west,
+    YUNNAN_VIEW_RECT.south,
+    YUNNAN_VIEW_RECT.east,
+    YUNNAN_VIEW_RECT.north
+  );
+}
+
+function getYunnanCameraOptions() {
+  return {
+    destination: Cesium.Cartesian3.fromDegrees(
+      YUNNAN_RESET_CAMERA.lon,
+      YUNNAN_RESET_CAMERA.lat,
+      YUNNAN_RESET_CAMERA.height
+    ),
+    orientation: {
+      heading: 0,
+      pitch: Cesium.Math.toRadians(-90),
+      roll: 0
+    }
+  };
+}
+
+function setYunnanFullView() {
+  if (!viewer.value || viewer.value.isDestroyed()) return;
+  viewer.value.camera.setView(getYunnanCameraOptions());
+}
+
+function flyToYunnanFullView(duration = 1.5) {
+  if (!viewer.value || viewer.value.isDestroyed()) return;
+  viewer.value.camera.flyTo({
+    ...getYunnanCameraOptions(),
+    duration
+  });
+}
 
 // LRU 缓存管理：添加图层到缓存，超限自动淘汰最旧图层
 function addToCache(key, layer) {
@@ -263,6 +334,18 @@ const cachedGeoJSON = {
   pinyinMap: null
 };
 
+function showAutoSwitchTip() {
+  if (autoSwitchTipTimer) {
+    window.clearTimeout(autoSwitchTipTimer);
+    autoSwitchTipTimer = null;
+  }
+  autoSwitchTipVisible.value = true;
+  autoSwitchTipTimer = window.setTimeout(() => {
+    autoSwitchTipVisible.value = false;
+    autoSwitchTipTimer = null;
+  }, 1500);
+}
+
 // 辅助：GeoJSON 转 WKT (支持 Polygon 和 MultiPolygon 并合并)
 // 增加坐标精度控制和简单抽稀，防止 URL 过长导致 HTTP 431
 function geojsonToWKT(features) {
@@ -324,10 +407,23 @@ function geojsonToWKT(features) {
 watch([() => globalStore.scope, () => mapStore.viewer], async ([newScope, newViewer], [oldScope, oldViewer]) => {
   if (!newViewer || !newScope) return;
 
-  // [Special Rule] 行政区划选择仅 CLCD 生效。在专题分析模式下，忽略非省级视角切换
+  // 行政区划选择优先：当处于专题模式且用户选择了非省级区域时，
+  // 自动退出专题并切回 CLCD，再继续执行区域切换，避免“必须先手动重置”的问题。
   if (globalStore.activeTheme && newScope.level !== 'province') {
-    console.log('[Workbench] Region selection ignored for thematic mode:', globalStore.activeTheme);
-    return;
+    cleanupThemeLayers('all');
+    clearSpatialStatsEntities();
+    transferWmsLayer = null;
+    rateWmsLayer = null;
+    lastTransferParams.value = null;
+    lastRateParams.value = null;
+    lastSpatialStatsParams.value = null;
+    globalStore.setActiveTheme(null);
+    globalStore.clearThemeContext('all');
+    globalStore.clearLegend();
+    globalStore.setActivePanel(null);
+    globalStore.setActiveLayer('clcd');
+    selectedAttribute.value = 'cropland';
+    showAutoSwitchTip();
   }
 
   const viewer = newViewer;
@@ -411,6 +507,9 @@ watch([() => globalStore.scope, () => mapStore.viewer], async ([newScope, newVie
         if (py) pinyins = [py];
     }
 
+    // 基础县域底图：普通模式不显示文字；专题白底模式再统一开启，避免重复叠字。
+    updateCountyBackdrop(false, false);
+
     // 最终防御：如果此时已经有新的请求，则彻底放弃当前请求的结果，防止旧图层在清理后残留
     if (currentRid !== scopeRequestId) return;
 
@@ -441,7 +540,10 @@ watch([() => globalStore.scope, () => mapStore.viewer], async ([newScope, newVie
         const entity = entities[i];
         if (entity.polygon) {
             entity.polygon.fill = false;
-            applyThickPolygonOutlineForEntity(entity, boundaryColor, UI_CONFIG.BOUNDARY_STYLE.highlightWidth, Cesium);
+            const boundaryWidth = newScope.level === 'province'
+              ? UI_CONFIG.BOUNDARY_STYLE.provinceWidth
+              : UI_CONFIG.BOUNDARY_STYLE.highlightWidth;
+            applyThickPolygonOutlineForEntity(entity, boundaryColor, boundaryWidth, Cesium);
         }
     }
     
@@ -522,6 +624,18 @@ watch([() => globalStore.scope, () => mapStore.viewer], async ([newScope, newVie
   }
 }, { deep: true, immediate: true });
 
+watch(() => globalStore.activeTheme, (newTheme, oldTheme) => {
+  // 主题被清空时，兜底清理专题残留与 loading，避免出现“正在计算/处理”卡住。
+  if (!newTheme && oldTheme) {
+    cleanupThemeLayers(oldTheme);
+    isLoading.value = false;
+    if (bottomNavRef.value?.transferControl?.setLoading) bottomNavRef.value.transferControl.setLoading(false);
+    if (bottomNavRef.value?.rateControl?.setLoading) bottomNavRef.value.rateControl.setLoading(false);
+    setSpatialStatsLoading(false);
+  }
+}, { flush: 'post' });
+
+
 // ================================================================
 const isPreloading = ref(false);
 const PRELOAD_RANGE = 3; // 提升预加载深度，提前拉取前后 3 年的瓦片与断点数据
@@ -533,6 +647,16 @@ const popupStyle = ref({ left: '0px', top: '0px' });
 let clickHandler = null;
 let hoverDebounceTimer = null;
 let lastPickPosition = null;
+let isPopupPostRenderBound = false;
+let countyLabelMoveEndHandler = null;
+
+const handleClearCountyHighlight = () => {
+  selectedEntity.value = null;
+  lastPickPosition = null;
+  popupStyle.value.display = 'none';
+  syncPopupPostRenderListener();
+  clearHighlight();
+};
 
 // Constant definitions
 // Constants now imported from @/constants/landuse.js
@@ -554,6 +678,8 @@ const currentColorScale = computed(() => {
 
 const currentAttributeLabel = computed(() => {
   if (selectedAttribute.value === 'transfer') return '土地流转';
+  if (selectedAttribute.value === 'reclamation') return '垦殖率';
+  if (selectedAttribute.value === 'conversion') return '转换率';
   const attr = attributes.value.find(a => a.value === selectedAttribute.value);
   return attr ? attr.label : selectedAttribute.value;
 });
@@ -623,6 +749,10 @@ async function refreshMapLayer(forceClearCache = false) {
   
   // 流转模式由 handleTransferQuery 独立管理图层生命周期，此处不干预
   if (unit === 'land_transfer') return;
+  // 专题分析模式由各自的 handler 独立管理图层生命周期与 loading 状态
+  if (globalStore.activeTheme === 'rate' || globalStore.activeTheme === 'transfer' || globalStore.activeTheme === 'spatial_stats') {
+    return;
+  }
 
   if (forceClearCache) {
     clearWMSCache();
@@ -667,6 +797,15 @@ watch(
     refreshMapLayer(needsCleanup);
   }, 
   { deep: false }
+);
+
+watch(
+  [spatialUnit, () => globalStore.activeTheme, yunnanDataSource],
+  () => {
+    // 非“空白行政边界”模式下，县级/格网默认显示县域边界
+    syncCountyBoundaryOverlay();
+  },
+  { deep: false, flush: 'post' }
 );
 
 // 年份变化处理入口 (保留?UI 事件)
@@ -773,6 +912,9 @@ let currentRateColors = []; // 用于共享给图例更?
 async function handleRateQuery(params) {
   // [Decoupling] 专题层强制全省视角：如果当前不是省级，则重置为省级并退出（由重置引发的 watcher 再进入）
   if (globalStore.scope.level !== 'province') {
+    // Cache params first so the scope watcher can automatically re-run after scope resets.
+    lastRateParams.value = params;
+    globalStore.setActiveTheme('rate');
     globalStore.setScope('province', '530000', '云南省');
     return;
   }
@@ -783,6 +925,13 @@ async function handleRateQuery(params) {
   cleanupThemeLayers(globalStore.activeTheme);
   globalStore.setActiveTheme('rate');
 
+  // [Critical Fix] 同步设置 attribute 与空间单元，避免全局 watcher 刷新常规 WMS 图层
+  // 干扰专题图层（垦殖率/转换率）显示。
+  if (params?.attribute === 'reclamation' || params?.attribute === 'conversion') {
+    selectedAttribute.value = params.attribute;
+  }
+  globalStore.setActiveLayer('county');
+
   isLoading.value = true;
   if (bottomNavRef.value?.rateControl?.setLoading) bottomNavRef.value.rateControl.setLoading(true);
 
@@ -790,22 +939,49 @@ async function handleRateQuery(params) {
     const token = localStorage.getItem('auth_token');
     const { year, year_start, year_end, from_class, to_class, attribute, unit, legendTitle } = params;
 
-    // 1. 获取分级斂
-    let breaksUrl = `/api/clcd/breaks?mode=rate&attr=${attribute}&year=${year}&unit=${unit}&classes=10&method=jenks`;
-    if (attribute === 'conversion') {
-      breaksUrl += `&year_start=${year_start}&year_end=${year_end}`;
-      if (from_class !== '') breaksUrl += `&from_class=${from_class}`;
-      if (to_class   !== '') breaksUrl += `&to_class=${to_class}`;
+    // 1. 获取分级断点（按模式动态拼参，避免 year=undefined 触发后端校验失败）
+    const query = new URLSearchParams({
+      mode: 'rate',
+      attr: String(attribute || ''),
+      unit: String(unit || 'county'),
+      classes: '10',
+      method: 'jenks'
+    });
+    if (attribute === 'reclamation') {
+      query.set('year', String(year));
+    } else if (attribute === 'conversion') {
+      query.set('year_start', String(year_start));
+      query.set('year_end', String(year_end));
+      if (from_class !== '' && from_class !== null && from_class !== undefined) {
+        query.set('from_class', String(from_class));
+      }
+      if (to_class !== '' && to_class !== null && to_class !== undefined) {
+        query.set('to_class', String(to_class));
+      }
     }
+    const breaksUrl = `/api/clcd/breaks?${query.toString()}`;
 
     const bResp = await fetch(breaksUrl, { headers: { 'Authorization': `Bearer ${token}` } });
-    if (!bResp.ok) throw new Error(`Breaks API error: ${bResp.status}`);
+    if (!bResp.ok) {
+      const errData = await bResp.json().catch(() => ({}));
+      throw new Error(errData.error || `Breaks API error: ${bResp.status}`);
+    }
     const breaksData = await bResp.json();
     // console.log('[Rate] Breaks data:', breaksData);
 
     if (!breaksData.breaks || breaksData.breaks.length === 0) {
       throw new Error('该参数下无有效计算数据，请检查年份或流转方向');
     }
+
+    // 1. 记录专题上下文：用于左右面板“专题监测”适配
+    globalStore.setThemeContext('rate', {
+      params,
+      stats: breaksData.stats || {},
+      breaks: breaksData.breaks || [],
+      field: breaksData.field,
+      unit_label: breaksData.unit_label || '%',
+      top_units: breaksData.top_units || []
+    });
 
     // 2. 隐藏现有图层
     wmsLayerCache.forEach(layer => { layer.show = false; layer.alpha = 0; });
@@ -833,6 +1009,8 @@ async function handleRateQuery(params) {
     const wmsProvider = new Cesium.WebMapServiceImageryProvider({
       url: GEOSERVER_CONFIG.wmsUrl,
       layers: 'WebGIS:spatial_county_yunnan_stats',
+      tileWidth: 512,
+      tileHeight: 512,
       enablePickFeatures: true,
       parameters: {
         service: 'WMS',
@@ -840,7 +1018,10 @@ async function handleRateQuery(params) {
         request: 'GetMap',
         transparent: 'true',
         format: 'image/png',
-        styles: `WebGIS:${activeStyle}`,
+        interpolations: 'nearest neighbor',
+        // GeoServer WMS does not reliably resolve namespaced styles via STYLES=ws:style.
+        // Use plain style name and rely on the virtual service (/geoserver/WebGIS/wms) workspace context.
+        styles: activeStyle,
         env: envParams,
         info_format: 'application/json'
       }
@@ -867,7 +1048,9 @@ async function handleRateQuery(params) {
 
   } catch (err) {
     console.error('[Rate] Error:', err);
-    if (bottomNavRef.value?.rateControl?.setError) bottomNavRef.value.rateControl.setError(err.message);
+    if (bottomNavRef.value?.rateControl?.setError) {
+      bottomNavRef.value.rateControl.setError(err.message || '查询失败，请检查服务器连接');
+    }
   } finally {
     isLoading.value = false;
     if (bottomNavRef.value?.rateControl?.setLoading) bottomNavRef.value.rateControl.setLoading(false);
@@ -878,96 +1061,390 @@ async function handleRateQuery(params) {
 let blankBoundaryWmsLayer = null;
 const sdeColors = SDE_COLORS;
 const spatialStatsVisibility = ref({ trajectory: true, sde: true });
+const countyBackdropState = ref({ show: false, labels: false });
 
 const spatialStatsDataSource = ref(null);
 
 function handleSpatialStatsVisibility(visibility) {
-  spatialStatsVisibility.value = visibility;
+  spatialStatsVisibility.value = {
+    trajectory: visibility?.trajectory !== false,
+    sde: visibility?.sde !== false
+  };
   if (!viewer.value || viewer.value.isDestroyed()) return;
 
   const entities = viewer.value.entities.values.filter(ent => ent._isSpatialStats);
+  const allowCenter = spatialStatsVisibility.value.sde;
   entities.forEach(ent => {
     const type = ent._spatialType || '';
     if (type === 'trajectory') {
-      ent.show = visibility.trajectory;
-    } else if (type === 'sde' || type === 'center') {
-      ent.show = visibility.sde;
+      ent.show = spatialStatsVisibility.value.trajectory;
+    } else if (type === 'sde') {
+      ent.show = spatialStatsVisibility.value.sde;
+    } else if (type === 'center') {
+      // 高性能模式：仅在椭圆开启时显示重心点，减少实体绘制压力。
+      ent.show = allowCenter;
     }
   });
+  if (viewer.value) {
+    viewer.value.scene.canvas.style.cursor = 'default';
+  }
+  requestSceneRender();
+}
+
+function clearSpatialStatsEntities() {
+  if (!viewer.value || viewer.value.isDestroyed()) return;
+  const toRemove = viewer.value.entities.values.filter((e) => e?._isSpatialStats === true);
+  toRemove.forEach((e) => viewer.value.entities.remove(e));
+  requestSceneRender();
+}
+
+function setSpatialStatsLoading(loading) {
+  const target = bottomNavRef.value?.spatialStatsControl
+    || bottomNavRef.value?.trajectoryControl
+    || bottomNavRef.value?.sdeControl;
+  if (target?.setLoading) {
+    target.setLoading(loading);
+  }
+}
+
+function requestSceneRender() {
+  try {
+    if (viewer.value?.scene?.requestRender) {
+      viewer.value.scene.requestRender();
+    }
+  } catch (_e) {}
+}
+
+function getEntityPropText(entity, keys = []) {
+  const props = entity?.properties;
+  for (const key of keys) {
+    const raw = props?.[key];
+    let value = raw;
+    if (raw && typeof raw.getValue === 'function') {
+      try {
+        value = raw.getValue(Cesium.JulianDate.now());
+      } catch (_e) {
+        value = null;
+      }
+    }
+    if (typeof value === 'string' && value.trim()) {
+      return value.trim();
+    }
+  }
+  if (typeof entity?.name === 'string' && entity.name.trim()) {
+    return entity.name.trim();
+  }
+  return '';
+}
+
+function getEntityPolygonAnchor(entity) {
+  if (!entity?.polygon?.hierarchy) return null;
+  let hierarchy = null;
+  try {
+    hierarchy = typeof entity.polygon.hierarchy.getValue === 'function'
+      ? entity.polygon.hierarchy.getValue(Cesium.JulianDate.now())
+      : entity.polygon.hierarchy;
+  } catch (_e) {
+    hierarchy = null;
+  }
+  const positions = Array.isArray(hierarchy?.positions) ? hierarchy.positions : [];
+  if (positions.length < 3) return null;
+
+  const sphere = Cesium.BoundingSphere.fromPoints(positions);
+  if (!sphere?.center) return null;
+  const cartographic = Cesium.Cartographic.fromCartesian(sphere.center);
+  if (!cartographic) return null;
+
+  const lon = Cesium.Math.toDegrees(cartographic.longitude);
+  const lat = Cesium.Math.toDegrees(cartographic.latitude);
+  if (!Number.isFinite(lon) || !Number.isFinite(lat)) return null;
+  return Cesium.Cartesian3.fromDegrees(lon, lat, 0);
+}
+
+function getEntityPolygonRingLonLat(entity) {
+  if (!entity?.polygon?.hierarchy) return [];
+  let hierarchy = null;
+  try {
+    hierarchy = typeof entity.polygon.hierarchy.getValue === 'function'
+      ? entity.polygon.hierarchy.getValue(Cesium.JulianDate.now())
+      : entity.polygon.hierarchy;
+  } catch (_e) {
+    hierarchy = null;
+  }
+  const positions = Array.isArray(hierarchy?.positions) ? hierarchy.positions : [];
+  if (positions.length < 3) return [];
+  const ring = positions
+    .map((p) => {
+      const c = Cesium.Cartographic.fromCartesian(p);
+      if (!c) return null;
+      const lon = Cesium.Math.toDegrees(c.longitude);
+      const lat = Cesium.Math.toDegrees(c.latitude);
+      if (!Number.isFinite(lon) || !Number.isFinite(lat)) return null;
+      return [lon, lat];
+    })
+    .filter(Boolean);
+  return ensureClosedRing(ring);
+}
+
+function applyCountyLabelLayout() {
+  if (!viewer.value || viewer.value.isDestroyed() || !yunnanDataSource.value) return;
+
+  const showLabels = countyBackdropState.value.show && countyBackdropState.value.labels;
+  const entities = yunnanDataSource.value.entities.values || [];
+  if (!showLabels) {
+    entities.forEach((entity) => {
+      if (entity?.label) entity.label.show = false;
+    });
+    return;
+  }
+
+  const scene = viewer.value.scene;
+  const canvas = scene?.canvas;
+  if (!scene || !canvas) return;
+
+  const camHeight = Number(viewer.value.camera?.positionCartographic?.height || 0);
+  const maxLabels = camHeight > 1800000 ? 26 : camHeight > 1300000 ? 40 : camHeight > 900000 ? 62 : 90;
+  const minAreaKm2 = camHeight > 1800000 ? 5200 : camHeight > 1300000 ? 2400 : camHeight > 900000 ? 1200 : 350;
+
+  const candidates = [];
+  for (let i = 0; i < entities.length; i += 1) {
+    const entity = entities[i];
+    if (!entity?.label || !entity?.position) continue;
+
+    const area = Number(entity._countyAreaKm2 || 0);
+    if (!Number.isFinite(area) || area < minAreaKm2) {
+      entity.label.show = false;
+      continue;
+    }
+
+    const world = typeof entity.position.getValue === 'function'
+      ? entity.position.getValue(Cesium.JulianDate.now())
+      : entity.position;
+    if (!world) {
+      entity.label.show = false;
+      continue;
+    }
+
+    const screen = Cesium.SceneTransforms.worldToWindowCoordinates(scene, world);
+    if (!screen || !Number.isFinite(screen.x) || !Number.isFinite(screen.y)) {
+      entity.label.show = false;
+      continue;
+    }
+
+    const text = getEntityPropText(entity, ['name', 'NAME', '地名', 'county', 'region']) || '';
+    const width = Math.max(40, Math.min(148, text.length * 12));
+    const height = 20;
+    const x = screen.x - width / 2;
+    const y = screen.y - height / 2;
+
+    candidates.push({ entity, area, rect: { x, y, width, height } });
+  }
+
+  candidates.sort((a, b) => b.area - a.area);
+
+  const selectedRects = [];
+  let shown = 0;
+  const pad = 6;
+  const maxX = canvas.clientWidth - 8;
+  const maxY = canvas.clientHeight - 8;
+  const minX = 8;
+  const minY = 8;
+
+  for (let i = 0; i < candidates.length; i += 1) {
+    const c = candidates[i];
+    const r = { ...c.rect };
+
+    if (r.x < minX) r.x = minX;
+    if (r.y < minY) r.y = minY;
+    if (r.x + r.width > maxX) r.x = Math.max(minX, maxX - r.width);
+    if (r.y + r.height > maxY) r.y = Math.max(minY, maxY - r.height);
+
+    let collide = false;
+    for (let j = 0; j < selectedRects.length; j += 1) {
+      const s = selectedRects[j];
+      const hit = !(
+        r.x + r.width + pad < s.x ||
+        s.x + s.width + pad < r.x ||
+        r.y + r.height + pad < s.y ||
+        s.y + s.height + pad < r.y
+      );
+      if (hit) {
+        collide = true;
+        break;
+      }
+    }
+
+    if (!collide && shown < maxLabels) {
+      c.entity.label.show = true;
+      c.entity.label.pixelOffset = new Cesium.Cartesian2(
+        Math.round(r.x + r.width / 2 - (c.rect.x + c.rect.width / 2)),
+        Math.round(r.y + r.height / 2 - (c.rect.y + c.rect.height / 2))
+      );
+      selectedRects.push(r);
+      shown += 1;
+    } else {
+      c.entity.label.show = false;
+    }
+  }
+}
+
+function elevateEntityPolyline(entity, height = 80) {
+  if (!entity?.polyline?.positions) return;
+  let positions = null;
+  try {
+    positions = typeof entity.polyline.positions.getValue === 'function'
+      ? entity.polyline.positions.getValue(Cesium.JulianDate.now())
+      : entity.polyline.positions;
+  } catch (_e) {
+    positions = null;
+  }
+  if (!Array.isArray(positions) || positions.length === 0) return;
+
+  const lifted = positions.map((p) => {
+    const c = Cesium.Cartographic.fromCartesian(p);
+    if (!c) return p;
+    const h = Number.isFinite(c.height) ? Math.max(c.height, height) : height;
+    return Cesium.Cartesian3.fromRadians(c.longitude, c.latitude, h);
+  });
+  entity.polyline.positions = lifted;
+}
+
+function updateCountyBackdrop(showBackdrop = false, showLabels = false) {
+  if (!yunnanDataSource.value) return;
+  const entities = yunnanDataSource.value.entities.values || [];
+  yunnanDataSource.value.show = true;
+  countyBackdropState.value = {
+    show: !!showBackdrop,
+    labels: !!showLabels
+  };
+
+  const fillColor = showBackdrop
+    ? Cesium.Color.WHITE
+    : Cesium.Color.WHITE.withAlpha(0.01);
+  const lineColor = showBackdrop
+    ? Cesium.Color.fromCssColorString('#2f2f2f').withAlpha(0.9)
+    : Cesium.Color.TRANSPARENT;
+  const lineWidth = showBackdrop ? 1.15 : 0.1;
+
+  for (let i = 0; i < entities.length; i += 1) {
+    const entity = entities[i];
+    if (entity.polygon) {
+      entity.polygon.fill = true;
+      entity.polygon.material = fillColor;
+      entity.polygon.outline = false;
+      applyThickPolygonOutlineForEntity(entity, lineColor, lineWidth, Cesium);
+      if (entity.polyline) {
+        elevateEntityPolyline(entity, 80);
+        entity.polyline.clampToGround = false;
+        entity.polyline.arcType = Cesium.ArcType.NONE;
+        entity.polyline.show = showBackdrop;
+      }
+    }
+
+    if (!entity._countyLabelInit) {
+      const labelText = getEntityPropText(entity, ['name', 'NAME', '地名', 'county', 'region']);
+      const anchor = getEntityPolygonAnchor(entity);
+      if (labelText && anchor) {
+        const ring = getEntityPolygonRingLonLat(entity);
+        const areaKm2 = calcPolygonAreaKm2(ring);
+        entity._countyAreaKm2 = Number.isFinite(areaKm2) ? areaKm2 : 0;
+        entity.position = anchor;
+        entity.label = new Cesium.LabelGraphics({
+          text: labelText,
+          font: '600 12px "Microsoft YaHei", "PingFang SC", sans-serif',
+          fillColor: Cesium.Color.fromCssColorString('#505050'),
+          outlineColor: Cesium.Color.WHITE.withAlpha(0.95),
+          outlineWidth: 2,
+          style: Cesium.LabelStyle.FILL_AND_OUTLINE,
+          showBackground: false,
+          pixelOffset: new Cesium.Cartesian2(0, 0),
+          heightReference: Cesium.HeightReference.CLAMP_TO_GROUND,
+          disableDepthTestDistance: Number.POSITIVE_INFINITY,
+          scaleByDistance: new Cesium.NearFarScalar(150000, 1.05, 2500000, 0.82),
+          distanceDisplayCondition: new Cesium.DistanceDisplayCondition(0, 2200000)
+        });
+      }
+      entity._countyLabelInit = true;
+    }
+    if (entity.label) {
+      entity.label.show = showBackdrop && showLabels;
+    }
+  }
+
+  applyCountyLabelLayout();
+  requestSceneRender();
+}
+
+function syncCountyBoundaryOverlay() {
+  if (!yunnanDataSource.value) return;
+  if (countyBackdropState.value.show) return;
+
+  const shouldShowOutline = spatialUnit.value === 'county' || spatialUnit.value === 'grid';
+  const entities = yunnanDataSource.value.entities.values || [];
+  const lineColor = Cesium.Color.fromCssColorString(UI_CONFIG.BOUNDARY_STYLE.countyColor).withAlpha(0.75);
+  const lineWidth = UI_CONFIG.BOUNDARY_STYLE.countyWidth;
+
+  for (let i = 0; i < entities.length; i += 1) {
+    const entity = entities[i];
+    if (!entity.polygon) continue;
+
+    entity.polygon.fill = true;
+    entity.polygon.material = Cesium.Color.WHITE.withAlpha(0.01);
+    entity.polygon.outline = false;
+
+    if (!entity.polyline) {
+      applyThickPolygonOutlineForEntity(entity, lineColor, lineWidth, Cesium);
+    }
+    if (entity.polyline) {
+      elevateEntityPolyline(entity, 80);
+      entity.polyline.width = lineWidth;
+      entity.polyline.material = lineColor;
+      entity.polyline.clampToGround = false;
+      entity.polyline.arcType = Cesium.ArcType.NONE;
+      entity.polyline.show = shouldShowOutline;
+    }
+
+    if (entity.label) {
+      entity.label.show = false;
+    }
+  }
+  requestSceneRender();
+}
+
+function forceProvinceBoundaryRed() {
+  if (!regionBoundarySource.value) return;
+  regionBoundarySource.value.show = true;
+  const color = Cesium.Color.fromCssColorString(UI_CONFIG.BOUNDARY_STYLE.provinceColor);
+  const width = UI_CONFIG.BOUNDARY_STYLE.provinceWidth;
+  const entities = regionBoundarySource.value.entities.values || [];
+  for (let i = 0; i < entities.length; i += 1) {
+    const entity = entities[i];
+    if (entity.polygon) {
+      entity.polygon.fill = false;
+      applyThickPolygonOutlineForEntity(entity, color, width, Cesium);
+    }
+    if (entity.polyline) {
+      entity.polyline.show = true;
+      entity.polyline.clampToGround = true;
+      entity.polyline.arcType = Cesium.ArcType.GEODESIC;
+    }
+  }
+  requestSceneRender();
+}
+
+function syncPopupPostRenderListener() {
+  if (!viewer.value?.scene?.postRender) return;
+  const shouldBind = !!selectedEntity.value && !!lastPickPosition;
+  if (shouldBind && !isPopupPostRenderBound) {
+    viewer.value.scene.postRender.addEventListener(updatePopupPosition);
+    isPopupPostRenderBound = true;
+  } else if (!shouldBind && isPopupPostRenderBound) {
+    viewer.value.scene.postRender.removeEventListener(updatePopupPosition);
+    isPopupPostRenderBound = false;
+  }
 }
 
 // ======================== 可视化美化辅助函数  ========================
-/**
- * 生成带径向渐变的发光节点纹理
- */
-function generateGlowNodeCanvas(colorStr) {
-  const canvas = document.createElement('canvas');
-  canvas.width = 64;
-  canvas.height = 64;
-  const ctx = canvas.getContext('2d');
-  const color = Cesium.Color.fromCssColorString(colorStr);
-  const rgba = `rgba(${Math.floor(color.red * 255)},${Math.floor(color.green * 255)},${Math.floor(color.blue * 255)},`;
-
-  // 绘制外发光层
-  const gradient = ctx.createRadialGradient(32, 32, 0, 32, 32, 32);
-  gradient.addColorStop(0, rgba + '1)');
-  gradient.addColorStop(0.3, rgba + '0.4)');
-  gradient.addColorStop(0.7, rgba + '0.1)');
-  gradient.addColorStop(1, rgba + '0)');
-
-  ctx.fillStyle = gradient;
-  ctx.fillRect(0, 0, 64, 64);
-
-  // 绘制核心亮点
-  ctx.beginPath();
-  ctx.arc(32, 32, 8, 0, Math.PI * 2);
-  ctx.fillStyle = '#FFFFFF';
-  ctx.fill();
-  
-  // 绘制内层实色圆圈
-  ctx.beginPath();
-  ctx.arc(32, 32, 12, 0, Math.PI * 2);
-  ctx.strokeStyle = rgba + '1)';
-  ctx.lineWidth = 4;
-  ctx.stroke();
-
-  return canvas;
-}
-
-/**
- * 生成磨砂玻璃样式的年份标签纹理
- */
-function generateGlassLabelCanvas(text) {
-  const canvas = document.createElement('canvas');
-  canvas.width = 120;
-  canvas.height = 40;
-  const ctx = canvas.getContext('2d');
-
-  // 绘制背景（模拟磨砂玻璃）
-  ctx.beginPath();
-  // roundRect Polyfill check if needed, but modern browsers have it.
-  if (ctx.roundRect) {
-    ctx.roundRect(10, 5, 100, 30, 8);
-  } else {
-    ctx.rect(10, 5, 100, 30);
-  }
-  ctx.fillStyle = 'rgba(15, 23, 42, 0.75)';
-  ctx.fill();
-  ctx.strokeStyle = 'rgba(255, 255, 255, 0.3)';
-  ctx.lineWidth = 1.5;
-  ctx.stroke();
-
-  // 绘制文字
-  ctx.font = 'bold 18px "Inter", sans-serif';
-  ctx.textAlign = 'center';
-  ctx.textBaseline = 'middle';
-  ctx.fillStyle = '#FFFFFF';
-  ctx.shadowColor = 'rgba(0,0,0,0.5)';
-  ctx.shadowBlur = 4;
-  ctx.fillText(text, 60, 20);
-
-  return canvas;
-}
 // =========================================================================
 
 function getPeriodOrder(props = {}) {
@@ -1014,34 +1491,406 @@ function ringToDegreesArray(ring = []) {
     .filter(coord => Array.isArray(coord) && Number.isFinite(Number(coord[0])) && Number.isFinite(Number(coord[1])))
     .flatMap(coord => [Number(coord[0]), Number(coord[1])]);
 }
+
+function calcDistanceKm(lon1, lat1, lon2, lat2) {
+  const toRad = (deg) => (deg * Math.PI) / 180;
+  const dLat = toRad(lat2 - lat1);
+  const dLon = toRad(lon2 - lon1);
+  const a = Math.sin(dLat / 2) ** 2
+    + Math.cos(toRad(lat1)) * Math.cos(toRad(lat2)) * Math.sin(dLon / 2) ** 2;
+  const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+  return 6371 * c;
+}
+
+function calcPolygonAreaKm2(ring = []) {
+  if (!Array.isArray(ring) || ring.length < 4) return 0;
+  const lat0 = ring.reduce((sum, c) => sum + Number(c?.[1] || 0), 0) / ring.length;
+  const lon0 = ring.reduce((sum, c) => sum + Number(c?.[0] || 0), 0) / ring.length;
+  if (!Number.isFinite(lat0) || !Number.isFinite(lon0)) return 0;
+
+  const lat0Rad = Cesium.Math.toRadians(lat0);
+  const scaleX = 111.32 * Math.cos(lat0Rad);
+  const scaleY = 110.574;
+  if (!Number.isFinite(scaleX) || !Number.isFinite(scaleY) || scaleX <= 0 || scaleY <= 0) return 0;
+
+  const pts = ring
+    .map((c) => {
+      const lon = Number(c?.[0]);
+      const lat = Number(c?.[1]);
+      if (!Number.isFinite(lon) || !Number.isFinite(lat)) return null;
+      return {
+        x: (lon - lon0) * scaleX,
+        y: (lat - lat0) * scaleY
+      };
+    })
+    .filter(Boolean);
+
+  if (pts.length < 4) return 0;
+  let sum = 0;
+  for (let i = 0; i < pts.length - 1; i += 1) {
+    sum += pts[i].x * pts[i + 1].y - pts[i + 1].x * pts[i].y;
+  }
+  return Math.abs(sum) * 0.5;
+}
+
+function calcSdeShapeMetrics(ring = []) {
+  if (!Array.isArray(ring) || ring.length < 8) {
+    return {
+      semiMajorKm: 0,
+      semiMinorKm: 0,
+      angleDeg: 0,
+      areaKm2: 0
+    };
+  }
+
+  const unique = ring.slice(0, -1).filter((c) => Array.isArray(c) && c.length >= 2);
+  if (unique.length < 4) {
+    return {
+      semiMajorKm: 0,
+      semiMinorKm: 0,
+      angleDeg: 0,
+      areaKm2: 0
+    };
+  }
+
+  const cx = unique.reduce((sum, c) => sum + Number(c[0] || 0), 0) / unique.length;
+  const cy = unique.reduce((sum, c) => sum + Number(c[1] || 0), 0) / unique.length;
+  if (!Number.isFinite(cx) || !Number.isFinite(cy)) {
+    return {
+      semiMajorKm: 0,
+      semiMinorKm: 0,
+      angleDeg: 0,
+      areaKm2: 0
+    };
+  }
+
+  const cyRad = Cesium.Math.toRadians(cy);
+  const scaleX = 111.32 * Math.cos(cyRad);
+  const scaleY = 110.574;
+  const xy = unique
+    .map((c) => {
+      const lon = Number(c[0]);
+      const lat = Number(c[1]);
+      if (!Number.isFinite(lon) || !Number.isFinite(lat)) return null;
+      return {
+        x: (lon - cx) * scaleX,
+        y: (lat - cy) * scaleY
+      };
+    })
+    .filter(Boolean);
+
+  if (xy.length < 4) {
+    return {
+      semiMajorKm: 0,
+      semiMinorKm: 0,
+      angleDeg: 0,
+      areaKm2: calcPolygonAreaKm2(ring)
+    };
+  }
+
+  let sxx = 0;
+  let syy = 0;
+  let sxy = 0;
+  for (const p of xy) {
+    sxx += p.x * p.x;
+    syy += p.y * p.y;
+    sxy += p.x * p.y;
+  }
+  sxx /= xy.length;
+  syy /= xy.length;
+  sxy /= xy.length;
+
+  const diff = sxx - syy;
+  const root = Math.sqrt(Math.max(diff * diff + 4 * sxy * sxy, 0));
+  const lambda1 = Math.max((sxx + syy + root) / 2, 0);
+  const lambda2 = Math.max((sxx + syy - root) / 2, 0);
+  const semiMajorKm = Math.sqrt(lambda1);
+  const semiMinorKm = Math.sqrt(lambda2);
+
+  const theta = 0.5 * Math.atan2(2 * sxy, diff);
+  let angleDeg = (90 - Cesium.Math.toDegrees(theta)) % 180;
+  if (angleDeg < 0) angleDeg += 180;
+
+  return {
+    semiMajorKm,
+    semiMinorKm,
+    angleDeg,
+    areaKm2: calcPolygonAreaKm2(ring)
+  };
+}
+
+function buildSpatialStatsMetrics(features = [], params = {}) {
+  const centers = features
+    .filter((f) => f?.properties?.type === 'center' && f?.geometry?.type === 'Point')
+    .map((f, idx) => {
+      const props = f?.properties || {};
+      const coords = f?.geometry?.coordinates || [];
+      const lon = Number(coords[0]);
+      const lat = Number(coords[1]);
+      return {
+        id: `${getPeriodKey(props)}-${idx}`,
+        period: getPeriodLabel(props) || getPeriodKey(props),
+        periodKey: getPeriodKey(props),
+        yearStart: Number(props?.yearStart),
+        yearEnd: Number(props?.yearEnd),
+        lon,
+        lat
+      };
+    })
+    .filter((p) => Number.isFinite(p.lon) && Number.isFinite(p.lat))
+    .sort((a, b) => getPeriodOrder(a) - getPeriodOrder(b));
+
+  const sdeRows = [];
+  for (const feat of features) {
+    if (feat?.properties?.type !== 'sde') continue;
+    const props = feat?.properties || {};
+    const periodKey = getPeriodKey(props);
+    const periodLabel = getPeriodLabel(props) || periodKey;
+
+    if (feat?.geometry?.type === 'Polygon' && Array.isArray(feat?.geometry?.coordinates?.[0])) {
+      const ring = ensureClosedRing(feat.geometry.coordinates[0]);
+      if (ring.length < 6) continue;
+      const shape = calcSdeShapeMetrics(ring);
+      const ratio = shape.semiMinorKm > 0 ? shape.semiMajorKm / shape.semiMinorKm : 0;
+      sdeRows.push({
+        period: periodLabel,
+        periodKey,
+        yearStart: Number(props?.yearStart),
+        yearEnd: Number(props?.yearEnd),
+        areaKm2: shape.areaKm2,
+        semiMajorKm: shape.semiMajorKm,
+        semiMinorKm: shape.semiMinorKm,
+        angleDeg: shape.angleDeg,
+        axisRatio: ratio,
+        coverageRate: null
+      });
+      continue;
+    }
+
+    const sde = props?.standardDeviationalEllipse;
+    if (!sde) continue;
+    const semiMajorRaw = Number(sde?.semiMajorAxis);
+    const semiMinorRaw = Number(sde?.semiMinorAxis);
+    const lat = Number(sde?.meanCenterCoordinates?.[1]);
+    const unitScale = semiMajorRaw > 100 ? 1 / 1000 : 111.32;
+    const semiMajorKm = Number.isFinite(semiMajorRaw) ? semiMajorRaw * unitScale : 0;
+    const semiMinorKm = Number.isFinite(semiMinorRaw) ? Math.max(0, semiMinorRaw) * unitScale * Math.max(Math.cos(Cesium.Math.toRadians(lat || 0)), 0.001) : 0;
+    const areaKm2 = Math.PI * semiMajorKm * semiMinorKm;
+    const angleDegRaw = Number(sde?.angle || 0);
+    const angleDeg = ((angleDegRaw % 180) + 180) % 180;
+    const axisRatio = semiMinorKm > 0 ? semiMajorKm / semiMinorKm : 0;
+    sdeRows.push({
+      period: periodLabel,
+      periodKey,
+      yearStart: Number(props?.yearStart),
+      yearEnd: Number(props?.yearEnd),
+      centerLon: Number(sde?.meanCenterCoordinates?.[0]),
+      centerLat: Number(sde?.meanCenterCoordinates?.[1]),
+      areaKm2,
+      semiMajorKm,
+      semiMinorKm,
+      angleDeg,
+      axisRatio,
+      coverageRate: null
+    });
+  }
+
+  const sdeByKey = new Map();
+  sdeRows
+    .slice()
+    .sort((a, b) => getPeriodOrder(a) - getPeriodOrder(b))
+    .forEach((row) => {
+      sdeByKey.set(row.periodKey, row);
+    });
+
+  const centerMetrics = {
+    first: centers[0] || null,
+    last: centers[centers.length - 1] || null,
+    totalDistanceKm: 0,
+    avgStepKm: 0,
+    maxStepKm: 0,
+    stepCount: 0,
+    moveAzimuthDeg: null
+  };
+
+  const stepDistances = [];
+  for (let i = 0; i < centers.length - 1; i += 1) {
+    const from = centers[i];
+    const to = centers[i + 1];
+    const d = calcDistanceKm(from.lon, from.lat, to.lon, to.lat);
+    if (Number.isFinite(d) && d > 0) stepDistances.push(d);
+  }
+  if (stepDistances.length > 0) {
+    centerMetrics.totalDistanceKm = stepDistances.reduce((s, v) => s + v, 0);
+    centerMetrics.avgStepKm = centerMetrics.totalDistanceKm / stepDistances.length;
+    centerMetrics.maxStepKm = Math.max(...stepDistances);
+    centerMetrics.stepCount = stepDistances.length;
+  }
+
+  if (centerMetrics.first && centerMetrics.last) {
+    const dLon = centerMetrics.last.lon - centerMetrics.first.lon;
+    const dLat = centerMetrics.last.lat - centerMetrics.first.lat;
+    if (Math.abs(dLon) > 1e-9 || Math.abs(dLat) > 1e-9) {
+      let az = Cesium.Math.toDegrees(Math.atan2(dLon, dLat));
+      if (az < 0) az += 360;
+      centerMetrics.moveAzimuthDeg = az;
+    }
+  }
+
+  const sdePeriods = centers
+    .map((c) => c.periodKey)
+    .filter((k) => sdeByKey.has(k))
+    .map((k) => sdeByKey.get(k));
+
+  const angleDeltas = [];
+  const areaChanges = [];
+  for (let i = 0; i < sdePeriods.length - 1; i += 1) {
+    const a = sdePeriods[i];
+    const b = sdePeriods[i + 1];
+    const angleA = Number(a?.angleDeg);
+    const angleB = Number(b?.angleDeg);
+    if (Number.isFinite(angleA) && Number.isFinite(angleB)) {
+      let delta = Math.abs(angleB - angleA) % 180;
+      if (delta > 90) delta = 180 - delta;
+      angleDeltas.push(delta);
+    }
+    const areaA = Number(a?.areaKm2);
+    const areaB = Number(b?.areaKm2);
+    if (Number.isFinite(areaA) && Number.isFinite(areaB) && areaA > 0) {
+      areaChanges.push((areaB - areaA) / areaA);
+    }
+  }
+
+  const primary = sdePeriods[sdePeriods.length - 1] || sdeRows[sdeRows.length - 1] || null;
+  const firstSde = sdePeriods[0] || sdeRows[0] || null;
+
+  const axisRatio = Number(primary?.axisRatio || 0);
+  const majorMinorGapKm = Math.max(Number(primary?.semiMajorKm || 0) - Number(primary?.semiMinorKm || 0), 0);
+  const areaTrend = (() => {
+    if (!firstSde || !primary) return 0;
+    const a0 = Number(firstSde.areaKm2);
+    const a1 = Number(primary.areaKm2);
+    if (!Number.isFinite(a0) || !Number.isFinite(a1) || a0 <= 0) return 0;
+    return (a1 - a0) / a0;
+  })();
+
+  const rotationTrend = angleDeltas.length > 0
+    ? angleDeltas.reduce((s, v) => s + v, 0) / angleDeltas.length
+    : 0;
+
+  const areaVolatility = areaChanges.length > 0
+    ? Math.sqrt(areaChanges.reduce((s, v) => s + v * v, 0) / areaChanges.length)
+    : 0;
+
+  const periodCount = Array.isArray(params?.periods) ? params.periods.length : undefined;
+  const centerCoverage = Number.isFinite(Number(periodCount)) && Number(periodCount) > 0
+    ? Math.min(1, centers.length / Number(periodCount))
+    : 0;
+  const sdeCoverage = Number.isFinite(Number(periodCount)) && Number(periodCount) > 0
+    ? Math.min(1, sdeRows.length / Number(periodCount))
+    : 0;
+
+  return {
+    centers,
+    center_metrics: centerMetrics,
+    sde_period_metrics: sdeRows,
+    sde_summary: {
+      period: primary?.period || '',
+      area_km2: Number(primary?.areaKm2 || 0),
+      semi_major_km: Number(primary?.semiMajorKm || 0),
+      semi_minor_km: Number(primary?.semiMinorKm || 0),
+      angle_deg: Number(primary?.angleDeg || 0),
+      axis_ratio: axisRatio,
+      major_minor_gap_km: majorMinorGapKm,
+      coverage_rate: primary?.coverageRate ?? null
+    },
+    derived_metrics: {
+      center_coverage: centerCoverage,
+      sde_coverage: sdeCoverage,
+      center_total_migration_km: centerMetrics.totalDistanceKm,
+      center_avg_step_km: centerMetrics.avgStepKm,
+      center_max_step_km: centerMetrics.maxStepKm,
+      center_move_azimuth_deg: centerMetrics.moveAzimuthDeg,
+      rotation_avg_delta_deg: rotationTrend,
+      area_change_rate: areaTrend,
+      area_volatility: areaVolatility
+    }
+  };
+}
 async function handleSpatialStatsQuery(params) {
   // [Decoupling] 专题层强制全省视角
   if (globalStore.scope.level !== 'province') {
+    lastSpatialStatsParams.value = params;
+    globalStore.setActiveTheme('spatial_stats');
     globalStore.setScope('province', '530000', '云南省');
     return;
   }
 
   lastSpatialStatsParams.value = params;
   globalStore.setActiveTheme('spatial_stats');
+  globalStore.setThemeContext('spatial_stats', { params, stats: {} });
+  const runTrajectory = params?.showTrajectory !== false;
+  const runSDE = params?.showSDE !== false;
+  const shouldRunSpatialStats = runTrajectory || runSDE;
 
   try {
-    isLoading.value = true;
-    if (bottomNavRef.value?.spatialStatsControl?.setLoading) {
-      bottomNavRef.value.spatialStatsControl.setLoading(true);
-    }
-
     // 1. 清理旧图层与旧实体
     if (blankBoundaryWmsLayer) {
       viewer.value.imageryLayers.remove(blankBoundaryWmsLayer);
       blankBoundaryWmsLayer = null;
     }
-    // 强制清理旧的分析实体 (通过属性查询)
-    viewer.value.entities.values.filter(e => e._isSpatialStats).forEach(e => viewer.value.entities.remove(e));
+    // 强制清理旧的分析实体
+    clearSpatialStatsEntities();
     
     cleanupThemeLayers('all');
 
+    isLoading.value = true;
+    setSpatialStatsLoading(shouldRunSpatialStats);
+
     // 2. 发起查询
     const response = await analysisApi.getSpatialStatsSeries(params);
+
+    // 记录专题上下文：用于左右面板展示（专题监测适配）
+    try {
+      const features = Array.isArray(response.features) ? response.features : [];
+      const meta = response.meta || {};
+      const centerCount = features.filter(f => f?.properties?.type === 'center').length;
+      const sdeCount = features.filter(f => f?.properties?.type === 'sde').length;
+      const hasTrajFeature = features.some(f => f?.properties?.type === 'trajectory');
+      const periodCount = Array.isArray(meta.periods) ? meta.periods.length : 0;
+      const hasData = features.length > 0 || centerCount > 0 || sdeCount > 0 || hasTrajFeature;
+      const metricsPayload = buildSpatialStatsMetrics(features, { periods: meta.periods || [] });
+      const centerPoints = Array.isArray(metricsPayload?.centers) ? metricsPayload.centers : [];
+      const trajectorySegments = Math.max(centerPoints.length - 1, 0);
+      const hasTraj = trajectorySegments > 0 || hasTrajFeature;
+
+      let emptyReason = '';
+      if (!hasData) {
+        emptyReason = String(meta?.message || '当前参数下未生成空间统计结果').trim();
+      } else if (centerCount > 0 && sdeCount === 0) {
+        emptyReason = '部分时段样本点不足3个，无法形成标准差椭圆';
+      }
+
+      globalStore.setThemeContext('spatial_stats', {
+        params,
+        stats: {
+          period_count: periodCount,
+          center_count: centerCount,
+          sde_count: sdeCount,
+          trajectory_segments: trajectorySegments,
+          has_trajectory: hasTraj,
+          has_data: hasData,
+          empty_reason: emptyReason
+        },
+        trajectory_points: centerPoints,
+        center_metrics: metricsPayload.center_metrics,
+        sde_summary: metricsPayload.sde_summary,
+        derived_metrics: metricsPayload.derived_metrics,
+        sde_period_metrics: metricsPayload.sde_period_metrics
+      });
+    } catch (_e) {
+      // ignore: 面板只需要轻量摘要，失败不应阻断主流程
+    }
 
     // 3. 彻底隐藏背景业务图层，为白底图腾出空间
     if (params.showBlankBoundary) {
@@ -1049,29 +1898,10 @@ async function handleSpatialStatsQuery(params) {
       wmsLayerCache.forEach(layer => { layer.show = false; layer.alpha = 0; });
       if (rateWmsLayer) rateWmsLayer.show = false;
       if (transferWmsLayer) transferWmsLayer.show = false;
-      if (yunnanDataSource.value) yunnanDataSource.value.show = false;
-      if (regionBoundarySource.value) regionBoundarySource.value.show = false; // 隐藏多余的红色高亮
-
-      const layerName = 'WebGIS:yunnan_country_level_city_boundaries';
-      const styleName = 'WebGIS:blank_boundary';
-      const styleCacheBust = `${Date.now()}`;
-
-      const wmsProvider = new Cesium.WebMapServiceImageryProvider({
-        url: GEOSERVER_CONFIG.wmsUrl,
-        layers: layerName,
-        parameters: {
-          service: 'WMS',
-          version: '1.1.0',
-          request: 'GetMap',
-          transparent: 'true',
-          format: 'image/png',
-          styles: styleName,
-          _t: styleCacheBust
-        }
-      });
-      blankBoundaryWmsLayer = new Cesium.ImageryLayer(wmsProvider);
-      viewer.value.imageryLayers.add(blankBoundaryWmsLayer);
-      viewer.value.imageryLayers.raiseToTop(blankBoundaryWmsLayer);
+      // 使用单一矢量县域边界，避免 WMS 分片重复地名与模糊
+      updateCountyBackdrop(true, true);
+      // 标准差椭圆白底模式：省界必须保持红色
+      forceProvinceBoundaryRed();
     }
 
     // 4. Academic-style spatial rendering on ground surface.
@@ -1083,7 +1913,17 @@ async function handleSpatialStatsQuery(params) {
 
     const centerFeatures = features
       .filter(f => f?.properties?.type === 'center' && f?.geometry?.type === 'Point')
-      .sort((a, b) => getPeriodOrder(a.properties) - getPeriodOrder(b.properties));
+      .map((feat, idx) => ({ feat, idx }))
+      .sort((a, b) => {
+        const aProps = a.feat?.properties || {};
+        const bProps = b.feat?.properties || {};
+        const startDiff = getPeriodOrder(aProps) - getPeriodOrder(bProps);
+        if (startDiff !== 0) return startDiff;
+        const endDiff = Number(aProps.yearEnd || 0) - Number(bProps.yearEnd || 0);
+        if (Number.isFinite(endDiff) && endDiff !== 0) return endDiff;
+        return a.idx - b.idx;
+      })
+      .map((item) => item.feat);
 
     const periodKeys = [];
     const periodLabelMap = new Map();
@@ -1101,71 +1941,183 @@ async function handleSpatialStatsQuery(params) {
       const fallbackColor = sdeColors[0] || '#e41a1c';
       return Cesium.Color.fromCssColorString(colorMap.get(key) || fallbackColor);
     };
+    const parseLonLatPair = (coord = []) => {
+      if (!Array.isArray(coord) || coord.length < 2) return null;
+      const a = Number(coord[0]);
+      const b = Number(coord[1]);
+      if (!Number.isFinite(a) || !Number.isFinite(b)) return null;
 
+      const aLooksLon = a >= -180 && a <= 180;
+      const bLooksLat = b >= -90 && b <= 90;
+      if (aLooksLon && bLooksLat) return [a, b];
+
+      const bLooksLon = b >= -180 && b <= 180;
+      const aLooksLat = a >= -90 && a <= 90;
+      if (bLooksLon && aLooksLat) return [b, a];
+
+      return null;
+    };
     const centerCoords = [];
-    const centerPositions = [];
-    for (const feat of centerFeatures) {
-      const coords = feat?.geometry?.coordinates || [];
-      const lon = Number(coords[0]);
-      const lat = Number(coords[1]);
-      if (!Number.isFinite(lon) || !Number.isFinite(lat)) continue;
+    for (let idx = 0; idx < centerFeatures.length; idx += 1) {
+      const feat = centerFeatures[idx];
+      const lonLat = parseLonLatPair(feat?.geometry?.coordinates || []);
+      if (!lonLat) continue;
+      const [lon, lat] = lonLat;
 
       const props = feat.properties || {};
       const periodLabel = getPeriodLabel(props);
       const baseColor = getColorByProps(props);
 
       centerCoords.push([lon, lat, props]);
-      centerPositions.push(Cesium.Cartesian3.fromDegrees(lon, lat));
 
-      viewer.value.entities.add({
-        _isSpatialStats: true,
-        _spatialType: 'center',
-        show: spatialStatsVisibility.value.sde,
+      const showCenterLabel = centerFeatures.length <= 4;
+      const centerEntity = viewer.value.entities.add({
+        show: spatialStatsVisibility.value.trajectory || spatialStatsVisibility.value.sde,
         position: Cesium.Cartesian3.fromDegrees(lon, lat),
         point: {
-          pixelSize: 8,
-          color: baseColor,
-          outlineColor: Cesium.Color.WHITE,
-          outlineWidth: 1.5,
+          pixelSize: 9,
+          color: Cesium.Color.WHITE,
+          outlineColor: baseColor.withAlpha(0.98),
+          outlineWidth: 2,
           heightReference: Cesium.HeightReference.CLAMP_TO_GROUND,
           disableDepthTestDistance: Number.POSITIVE_INFINITY
         },
-        label: {
-          text: periodLabel ? `${periodLabel}` : '',
-          font: '13px "SimSun", sans-serif',
-          fillColor: Cesium.Color.BLACK,
-          outlineColor: Cesium.Color.WHITE,
-          outlineWidth: 2,
-          style: Cesium.LabelStyle.FILL_AND_OUTLINE,
-          showBackground: true,
-          backgroundColor: Cesium.Color.WHITE.withAlpha(0.75),
-          pixelOffset: new Cesium.Cartesian2(0, -18),
-          heightReference: Cesium.HeightReference.CLAMP_TO_GROUND,
-          disableDepthTestDistance: Number.POSITIVE_INFINITY
-        }
+        label: showCenterLabel
+          ? {
+              text: periodLabel ? `${periodLabel}` : '',
+              font: '10px "Microsoft YaHei", sans-serif',
+              fillColor: Cesium.Color.BLACK,
+              outlineColor: Cesium.Color.WHITE,
+              outlineWidth: 1,
+              style: Cesium.LabelStyle.FILL_AND_OUTLINE,
+              showBackground: true,
+              backgroundColor: Cesium.Color.WHITE.withAlpha(0.66),
+              pixelOffset: new Cesium.Cartesian2(0, -15),
+              heightReference: Cesium.HeightReference.CLAMP_TO_GROUND,
+              disableDepthTestDistance: Number.POSITIVE_INFINITY,
+              distanceDisplayCondition: new Cesium.DistanceDisplayCondition(0, 160000)
+            }
+          : undefined
       });
+      centerEntity._isSpatialStats = true;
+      centerEntity._spatialType = 'center';
     }
 
-    // Draw trajectory as thin arrow segments.
-    for (let i = 0; i < centerCoords.length - 1; i++) {
-      const [fromLon, fromLat, fromProps] = centerCoords[i];
-      const [toLon, toLat] = centerCoords[i + 1];
-      const segmentColor = getColorByProps(fromProps).withAlpha(0.95);
-
-      viewer.value.entities.add({
-        _isSpatialStats: true,
-        _spatialType: 'trajectory',
+    const addTrajectoryPolyline = (degreesArray, colorCss = '#e41a1c') => {
+      if (!Array.isArray(degreesArray) || degreesArray.length < 4) return false;
+      const elevatedDegrees = [];
+      for (let i = 0; i < degreesArray.length; i += 2) {
+        elevatedDegrees.push(degreesArray[i], degreesArray[i + 1], SPATIAL_STATS_LINE_HEIGHT);
+      }
+      const trajectoryEntity = viewer.value.entities.add({
         show: spatialStatsVisibility.value.trajectory,
         polyline: {
-          positions: Cesium.Cartesian3.fromDegreesArray([fromLon, fromLat, toLon, toLat]),
-          clampToGround: true,
+          positions: Cesium.Cartesian3.fromDegreesArrayHeights(elevatedDegrees),
+          clampToGround: false,
+          arcType: Cesium.ArcType.GEODESIC,
           width: 2.2,
-          material: new Cesium.PolylineArrowMaterialProperty(segmentColor)
+          material: Cesium.Color.fromCssColorString(colorCss).withAlpha(0.88)
         }
       });
+      trajectoryEntity._isSpatialStats = true;
+      trajectoryEntity._spatialType = 'trajectory';
+      return true;
+    };
+
+    const addTrajectoryArrowSegment = (fromLon, fromLat, toLon, toLat, colorCss = '#e41a1c') => {
+      const samePoint = Math.abs(fromLon - toLon) < 1e-7 && Math.abs(fromLat - toLat) < 1e-7;
+      if (samePoint) return false;
+
+      const color = Cesium.Color.fromCssColorString(colorCss).withAlpha(0.98);
+      const trajectoryArrowEntity = viewer.value.entities.add({
+        show: spatialStatsVisibility.value.trajectory,
+        polyline: {
+          positions: Cesium.Cartesian3.fromDegreesArrayHeights([
+            fromLon, fromLat, SPATIAL_STATS_LINE_HEIGHT,
+            toLon, toLat, SPATIAL_STATS_LINE_HEIGHT
+          ]),
+          clampToGround: false,
+          arcType: Cesium.ArcType.GEODESIC,
+          width: 2.8,
+          material: new Cesium.PolylineArrowMaterialProperty(color)
+        }
+      });
+      trajectoryArrowEntity._isSpatialStats = true;
+      trajectoryArrowEntity._spatialType = 'trajectory';
+      return true;
+    };
+
+    const centerPath = [];
+    centerCoords.forEach(([lon, lat, props]) => {
+      const prev = centerPath[centerPath.length - 1];
+      if (!prev) {
+        centerPath.push({ lon, lat, props });
+        return;
+      }
+      const samePoint = Math.abs(prev.lon - lon) < 1e-7 && Math.abs(prev.lat - lat) < 1e-7;
+      if (!samePoint) {
+        centerPath.push({ lon, lat, props });
+      }
+    });
+
+    let drewTrajectory = false;
+
+    // 优先使用 center 序列构建轨迹，按年份顺序逐段绘制箭头。
+    if (centerPath.length >= 2) {
+      const trajectoryDegrees = centerPath.flatMap((p) => [p.lon, p.lat]);
+      const firstColor = getColorByProps(centerPath[0]?.props || {}).toCssColorString();
+      addTrajectoryPolyline(trajectoryDegrees, firstColor);
+
+      let arrowCount = 0;
+      for (let i = 0; i < centerPath.length - 1; i += 1) {
+        const from = centerPath[i];
+        const to = centerPath[i + 1];
+        const segColor = getColorByProps(from?.props || {}).toCssColorString();
+        if (addTrajectoryArrowSegment(from.lon, from.lat, to.lon, to.lat, segColor)) {
+          arrowCount += 1;
+        }
+      }
+      drewTrajectory = arrowCount > 0;
     }
 
-    // SDE from backend is GeoJSON Polygon; render fill + ring.
+    // 兜底：center 序列不可用时，使用后端 trajectory 几何并按顺序补箭头。
+    if (!drewTrajectory) {
+      const trajectoryFeatures = features.filter((f) => f?.properties?.type === 'trajectory');
+      for (const trajFeat of trajectoryFeatures) {
+        if (trajFeat?.geometry?.type !== 'LineString') continue;
+        const rawCoords = Array.isArray(trajFeat?.geometry?.coordinates) ? trajFeat.geometry.coordinates : [];
+        const pathPoints = rawCoords
+          .map((coord) => parseLonLatPair(coord))
+          .filter((coord) => {
+            if (!coord) return false;
+            const [lon, lat] = coord;
+            return lon >= YUNNAN_VIEW_RECT.west - 5
+              && lon <= YUNNAN_VIEW_RECT.east + 5
+              && lat >= YUNNAN_VIEW_RECT.south - 5
+              && lat <= YUNNAN_VIEW_RECT.north + 5;
+          });
+        if (pathPoints.length < 2) continue;
+
+        const trajectoryDegrees = pathPoints.flatMap(([lon, lat]) => [lon, lat]);
+        addTrajectoryPolyline(trajectoryDegrees, '#e41a1c');
+
+        let arrowCount = 0;
+        for (let i = 0; i < pathPoints.length - 1; i += 1) {
+          const [fromLon, fromLat] = pathPoints[i];
+          const [toLon, toLat] = pathPoints[i + 1];
+          if (addTrajectoryArrowSegment(fromLon, fromLat, toLon, toLat, '#e41a1c')) {
+            arrowCount += 1;
+          }
+        }
+
+        if (arrowCount > 0) {
+          drewTrajectory = true;
+          break;
+        }
+      }
+    }
+
+    // SDE from backend is GeoJSON Polygon; render ring only (no fill).
     for (const feat of features) {
       if (feat?.properties?.type !== 'sde') continue;
       const props = feat.properties || {};
@@ -1177,29 +2129,23 @@ async function handleSpatialStatsQuery(params) {
         const ringDegrees = ringToDegreesArray(ring);
         if (ringDegrees.length < 6) continue;
 
-        const ringPositions = Cesium.Cartesian3.fromDegreesArray(ringDegrees);
-        viewer.value.entities.add({
-          _isSpatialStats: true,
-          _spatialType: 'sde',
-          show: spatialStatsVisibility.value.sde,
-          polygon: {
-            hierarchy: new Cesium.PolygonHierarchy(ringPositions),
-            material: Cesium.Color.TRANSPARENT,
-            perPositionHeight: false
-          }
-        });
-
-        viewer.value.entities.add({
-          _isSpatialStats: true,
-          _spatialType: 'sde',
+        const ringDegreesWithHeight = [];
+        for (let i = 0; i < ringDegrees.length; i += 2) {
+          ringDegreesWithHeight.push(ringDegrees[i], ringDegrees[i + 1], SPATIAL_STATS_LINE_HEIGHT);
+        }
+        const ringPositions = Cesium.Cartesian3.fromDegreesArrayHeights(ringDegreesWithHeight);
+        const sdeRingEntity = viewer.value.entities.add({
           show: spatialStatsVisibility.value.sde,
           polyline: {
             positions: ringPositions,
-            clampToGround: true,
+            clampToGround: false,
+            arcType: Cesium.ArcType.GEODESIC,
             width: 1.8,
-            material: baseColor.withAlpha(0.95)
+            material: baseColor.withAlpha(0.92)
           }
         });
+        sdeRingEntity._isSpatialStats = true;
+        sdeRingEntity._spatialType = 'sde';
       } else if (props.standardDeviationalEllipse) {
         // Backward-compatible fallback.
         const sde = props.standardDeviationalEllipse;
@@ -1208,9 +2154,7 @@ async function handleSpatialStatsQuery(params) {
         if (!Number.isFinite(lat) || !Number.isFinite(lon)) continue;
         const unitFactor = Number(sde.semiMajorAxis) > 100 ? 1 : 111320;
 
-        viewer.value.entities.add({
-          _isSpatialStats: true,
-          _spatialType: 'sde',
+        const sdeLegacyEntity = viewer.value.entities.add({
           show: spatialStatsVisibility.value.sde,
           position: Cesium.Cartesian3.fromDegrees(lon, lat),
           ellipse: {
@@ -1219,54 +2163,71 @@ async function handleSpatialStatsQuery(params) {
             rotation: Cesium.Math.toRadians(90 - Number(sde.angle || 0)),
             outline: true,
             outlineColor: baseColor,
-            outlineWidth: 2,
+            outlineWidth: 1.2,
             material: Cesium.Color.TRANSPARENT,
-            height: 0
+            height: SPATIAL_STATS_LINE_HEIGHT
           }
         });
+        sdeLegacyEntity._isSpatialStats = true;
+        sdeLegacyEntity._spatialType = 'sde';
       }
     }
 
-    // Auto focus by trajectory extent.
-    if (centerPositions.length > 0) {
-      const boundingSphere = Cesium.BoundingSphere.fromPoints(centerPositions);
-      const minRange = 6000;
-      const maxRange = 500000;
-      const range = Math.min(Math.max(boundingSphere.radius * 8, minRange), maxRange);
-      viewer.value.camera.flyToBoundingSphere(boundingSphere, {
-        duration: 1.5,
-        offset: new Cesium.HeadingPitchRange(0, Cesium.Math.toRadians(-90), range)
-      });
-    } else {
-      viewer.value.camera.flyTo({
-        destination: Cesium.Cartesian3.fromDegrees(101.5, 24.5, 1000000),
-        orientation: {
-          heading: 0,
-          pitch: Cesium.Math.toRadians(-90),
-          roll: 0
-        },
-        duration: 1.5
-      });
-    }
+    // 固定保持云南省外接范围，不再飞到重心/椭圆中心。
+    flyToYunnanFullView(1.5);
 
     // 5. 更新图例
+    // 图例拥挤优化：仅显示关键节点（最多6个）+ 总期数摘要。
+    const totalPeriods = periodKeys.length;
+    const pickSparseIndex = (size, count = 6) => {
+      if (size <= count) return Array.from({ length: size }, (_, i) => i);
+      const result = new Set([0, size - 1]);
+      const step = (size - 1) / (count - 1);
+      for (let i = 1; i < count - 1; i += 1) result.add(Math.round(i * step));
+      return Array.from(result).sort((a, b) => a - b);
+    };
+    const sparseIndices = pickSparseIndex(totalPeriods, 6);
+    const sparseItems = sparseIndices.map((idx) => {
+      const key = periodKeys[idx];
+      return {
+        label: periodLabelMap.get(key) || key,
+        color: sdeColors[idx % sdeColors.length]
+      };
+    });
+    if (totalPeriods > sparseItems.length) {
+      sparseItems.push({
+        label: `共${totalPeriods}期`,
+        color: 'rgba(148,163,184,0.85)'
+      });
+    }
     globalStore.updateLegend({
       title: params.legendTitle || '时空演变分析',
       type: 'categorical',
-      items: periodKeys.map((key, i) => ({
-        label: periodLabelMap.get(key) || key,
-        color: sdeColors[i % sdeColors.length]
-      }))
+      items: sparseItems
     });
 
   } catch (err) {
     console.error('[SpatialStats] Error:', err);
+    globalStore.setThemeContext('spatial_stats', {
+      params,
+      stats: {
+        period_count: 0,
+        center_count: 0,
+        sde_count: 0,
+        has_trajectory: false,
+        has_data: false,
+        empty_reason: err?.message || '空间统计查询失败'
+      },
+      trajectory_points: [],
+      center_metrics: null,
+      sde_summary: null,
+      derived_metrics: null,
+      sde_period_metrics: []
+    });
     alert(err.message || '分析查询失败');
   } finally {
     isLoading.value = false;
-    if (bottomNavRef.value?.spatialStatsControl?.setLoading) {
-      bottomNavRef.value.spatialStatsControl.setLoading(false);
-    }
+    setSpatialStatsLoading(false);
   }
 }
 
@@ -1290,6 +2251,7 @@ function cleanupThemeLayers(themeToClean) {
       viewer.value.dataSources.remove(transferDataSource.value, true);
       transferDataSource.value = null;
     }
+    if (bottomNavRef.value?.transferControl?.setLoading) bottomNavRef.value.transferControl.setLoading(false);
   }
 
   if (themeToClean === 'rate' || themeToClean === 'all') {
@@ -1297,9 +2259,11 @@ function cleanupThemeLayers(themeToClean) {
       viewer.value.imageryLayers.remove(rateWmsLayer, true);
       rateWmsLayer = null;
     }
+    if (bottomNavRef.value?.rateControl?.setLoading) bottomNavRef.value.rateControl.setLoading(false);
   }
 
   if (themeToClean === 'spatial_stats' || themeToClean === 'all') {
+    clearSpatialStatsEntities();
     if (spatialStatsDataSource.value) {
       viewer.value.dataSources.remove(spatialStatsDataSource.value, true);
       spatialStatsDataSource.value = null;
@@ -1308,6 +2272,8 @@ function cleanupThemeLayers(themeToClean) {
       viewer.value.imageryLayers.remove(blankBoundaryWmsLayer, true);
       blankBoundaryWmsLayer = null;
     }
+    updateCountyBackdrop(false, false);
+    setSpatialStatsLoading(false);
     // 恢复行政边界原样式（针对“空白背景”模式）
     if (yunnanDataSource.value) {
       yunnanDataSource.value.show = true;
@@ -1342,14 +2308,20 @@ function handleResetMap() {
   
   // 2. 清理流转图层和其他专属 UI
   clearAllAnalysisLayers(viewer.value);
+  clearSpatialStatsEntities();
   transferWmsLayer = null;
   rateWmsLayer = null;
+  if (bottomNavRef.value?.transferControl?.setLoading) bottomNavRef.value.transferControl.setLoading(false);
+  if (bottomNavRef.value?.rateControl?.setLoading) bottomNavRef.value.rateControl.setLoading(false);
+  setSpatialStatsLoading(false);
 
   // 清除专题参数缓存，防止 scope watcher 触发残留重查
   lastTransferParams.value = null;
   lastRateParams.value = null;
   lastSpatialStatsParams.value = null;
   globalStore.setActiveTheme(null);
+  globalStore.clearThemeContext('all');
+  globalStore.setActivePanel(null);
 
   if (transferDataSource.value && viewer.value && !viewer.value.isDestroyed()) {
     viewer.value.dataSources.remove(transferDataSource.value, true);
@@ -1364,6 +2336,7 @@ function handleResetMap() {
     viewer.value.imageryLayers.remove(blankBoundaryWmsLayer, true);
     blankBoundaryWmsLayer = null;
   }
+  updateCountyBackdrop(false, false);
 
   globalStore.clearLegend();
   
@@ -1374,14 +2347,7 @@ function handleResetMap() {
 
   // 4. 视角复位到云南全境
   if (viewer.value) {
-    viewer.value.camera.flyTo({
-      destination: Cesium.Cartesian3.fromDegrees(101.8, 25.2, 1900000),
-      orientation: {
-        pitch: Cesium.Math.toRadians(-90),
-        roll: 0
-      },
-      duration: 1.5
-    });
+    flyToYunnanFullView(1.5);
   }
 
   // 5. 触发刷新
@@ -1401,6 +2367,8 @@ const transferColors = [
 async function handleTransferQuery(params) {
   // [Decoupling] 专题层强制全省视角
   if (globalStore.scope.level !== 'province') {
+    lastTransferParams.value = params;
+    globalStore.setActiveTheme('transfer');
     globalStore.setScope('province', '530000', '云南省');
     return;
   }
@@ -1424,6 +2392,14 @@ async function handleTransferQuery(params) {
 
   try {
     const { yearStart, yearEnd, fromClass, toClass, unit, legendTitle } = params;
+    const normalizedFromClass = fromClass === '' || fromClass === null || fromClass === undefined
+      ? ''
+      : Number(fromClass);
+    const normalizedToClass = toClass === '' || toClass === null || toClass === undefined
+      ? ''
+      : Number(toClass);
+    const fromClassParam = normalizedFromClass === '' ? '' : String(normalizedFromClass);
+    const toClassParam = normalizedToClass === '' ? '' : String(normalizedToClass);
 
     // 1. 记录旧图层引用用于平滑过渡 (Double Buffering)
     const oldLayer = transferWmsLayer;
@@ -1434,7 +2410,9 @@ async function handleTransferQuery(params) {
 
     // 2. 调用 breaks API（transfer 模式）获取 sumExpr + breaks
     const token = localStorage.getItem('auth_token');
-    const breaksUrl = `/api/clcd/breaks?mode=transfer&year_start=${yearStart}&year_end=${yearEnd}&from_class=${fromClass}&to_class=${toClass}&unit=${unit}&classes=10&method=jenks`;
+    // 注意：transfer 模式后端会校验 from_class/to_class 参数键是否存在。
+    // 即便前端选择“全部”，也需要显式传空值，避免被判定为 missing params。
+    const breaksUrl = `/api/clcd/breaks?mode=transfer&year_start=${yearStart}&year_end=${yearEnd}&from_class=${encodeURIComponent(fromClassParam)}&to_class=${encodeURIComponent(toClassParam)}&unit=${unit}&classes=10&method=jenks`;
 
     const response = await fetch(breaksUrl, {
       headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' }
@@ -1453,6 +2431,16 @@ async function handleTransferQuery(params) {
       if (bottomNavRef.value?.transferControl?.setError) bottomNavRef.value.transferControl.setError(msg);
       return;
     }
+
+    // 2. 记录专题上下文：用于左右面板“专题监测”适配
+    globalStore.setThemeContext('transfer', {
+      params,
+      stats: breaksData.stats || {},
+      breaks: breaksData.breaks || [],
+      field: breaksData.field,
+      unit_label: breaksData.unit_label || 'km²',
+      top_units: breaksData.top_units || []
+    });
 
     // 3. 构建 env 参数（分级阈值传递给 SLD）
     //    _transfer_sum 列单位为 km²（后端已除以 1,000,000）
@@ -1497,6 +2485,8 @@ async function handleTransferQuery(params) {
     const wmsProvider = new Cesium.WebMapServiceImageryProvider({
       url: GEOSERVER_CONFIG.wmsUrl,
       layers: layerName,
+      tileWidth: 512,
+      tileHeight: 512,
       enablePickFeatures: true,
       parameters: {
         service: 'WMS',
@@ -1504,6 +2494,7 @@ async function handleTransferQuery(params) {
         request: 'GetMap',
         transparent: true,
         format: 'image/png',
+        interpolations: 'nearest neighbor',
         styles: 'transfer_dynamic',
         env: envParams,
         info_format: 'application/json',
@@ -1512,7 +2503,7 @@ async function handleTransferQuery(params) {
     });
 
     // 调试: 输出拼接在浏览器测试的 WMS GetMap URL
-    const testUrl = `/geoserver/WebGIS/wms?service=WMS&version=1.1.1&request=GetMap&layers=${layerName}&styles=WebGIS:transfer_dynamic&format=image/png&transparent=true&width=256&height=256&srs=EPSG:4326&bbox=97.5,21.1,106.2,29.3&env=${encodeURIComponent(envParams)}`;
+    const testUrl = `/geoserver/WebGIS/wms?service=WMS&version=1.1.1&request=GetMap&layers=${layerName}&styles=transfer_dynamic&format=image/png&transparent=true&width=256&height=256&srs=EPSG:4326&bbox=97.5,21.1,106.2,29.3&env=${encodeURIComponent(envParams)}`;
     // console.log('[Transfer] 🚀 WMS Test URL:', testUrl);
 
     // 错误日志: 瓦片加载失败时输出详情（首屏输出完整信息，后续静默）
@@ -1649,24 +2640,33 @@ function setupClickHandler() {
                 const cartesian = viewer.value.camera.pickEllipsoid(position);
                 if (cartesian) {
                     lastPickPosition = cartesian;
+                    syncPopupPostRenderListener();
+                    requestSceneRender();
                 }
             } else {
                 selectedEntity.value = null;
+                lastPickPosition = null;
                 clearHighlight();
             }
         }).catch(() => {
             selectedEntity.value = null;
+            lastPickPosition = null;
             clearHighlight();
         });
     } else {
         selectedEntity.value = null;
+        lastPickPosition = null;
         clearHighlight();
     }
   }, Cesium.ScreenSpaceEventType.LEFT_CLICK);
 
-  // 2. 鼠标移动：切换手型指针
+  // 2. 鼠标移动：切换手型指针（节流，避免每帧 pick 导致主线程抖动）
+  let lastCursorPickTs = 0;
   clickHandler.setInputAction((movement) => {
     if (mapStore.activeMeasurementTool) return;
+    const now = Date.now();
+    if (now - lastCursorPickTs < 120) return;
+    lastCursorPickTs = now;
     
     const ray = viewer.value.camera.getPickRay(movement.endPosition);
     if (!ray) {
@@ -1688,6 +2688,9 @@ function setupClickHandler() {
   // 右键清除高亮和标签
   clickHandler.setInputAction(() => {
     selectedEntity.value = null;
+    lastPickPosition = null;
+    popupStyle.value.display = 'none';
+    syncPopupPostRenderListener();
     clearHighlight();
   }, Cesium.ScreenSpaceEventType.RIGHT_CLICK);
 }
@@ -1722,6 +2725,7 @@ function highlightRegion(name) {
             applyThickPolygonOutlineForEntity(target, Cesium.Color.fromCssColorString(UI_CONFIG.BOUNDARY_STYLE.highlightColor), UI_CONFIG.BOUNDARY_STYLE.highlightWidth, Cesium);
         }
         highlightedEntity.value = target;
+        requestSceneRender();
     } else {
         console.warn('[Workbench] No matching vector entity found for region:', name);
     }
@@ -1729,25 +2733,48 @@ function highlightRegion(name) {
 
 function clearHighlight() {
     if (highlightedEntity.value) {
-        // Restore original thickness using our custom polyline
+        const shouldShowBackdrop = countyBackdropState.value.show === true;
+        const shouldShowCountyOutline = spatialUnit.value === 'county' || spatialUnit.value === 'grid';
+        const restoreLineColor = shouldShowBackdrop
+          ? Cesium.Color.fromCssColorString('#2f2f2f').withAlpha(0.9)
+          : Cesium.Color.fromCssColorString(UI_CONFIG.BOUNDARY_STYLE.countyColor).withAlpha(0.75);
+        const restoreLineWidth = shouldShowBackdrop ? 1.15 : UI_CONFIG.BOUNDARY_STYLE.countyWidth;
+
+        if (highlightedEntity.value.polygon) {
+            highlightedEntity.value.polygon.fill = true;
+            highlightedEntity.value.polygon.material = shouldShowBackdrop
+              ? Cesium.Color.WHITE
+              : Cesium.Color.WHITE.withAlpha(0.01);
+        }
+
+        // Restore original thickness using current county backdrop mode
         if (highlightedEntity.value.polyline) {
-            highlightedEntity.value.polyline.width = UI_CONFIG.BOUNDARY_STYLE.countyWidth;
-            highlightedEntity.value.polyline.material = Cesium.Color.fromCssColorString(UI_CONFIG.BOUNDARY_STYLE.countyColor).withAlpha(1.0);
+            highlightedEntity.value.polyline.width = restoreLineWidth;
+            highlightedEntity.value.polyline.material = restoreLineColor;
+            highlightedEntity.value.polyline.show = shouldShowBackdrop || shouldShowCountyOutline;
         }
         highlightedEntity.value = null;
+        requestSceneRender();
     }
 }
 
 // 监听测量工具激活事件，静默清除县域标注（解决文字堆叠问题）
-window.addEventListener('clearCountyHighlight', () => {
-  selectedEntity.value = null;
-  clearHighlight();
-});
+window.addEventListener('clearCountyHighlight', handleClearCountyHighlight);
 
 onMounted(async () => {
   
   try {
-     const viewerInstance = new Cesium.Viewer("cesiumContainer", {
+    // Render profile switch (optional):
+    // - default: hq (native device pixels)
+    // - ?cesium_profile=balanced : CSS-pixel rendering (helps slow Chrome/GPU drivers)
+    let cesiumProfile = 'hq';
+    try {
+      const params = new URLSearchParams(window.location.search);
+      const p = (params.get('cesium_profile') || '').toLowerCase();
+      if (p === 'balanced' || p === 'perf' || p === 'low') cesiumProfile = 'balanced';
+    } catch (e) {}
+
+    const viewerInstance = new Cesium.Viewer("cesiumContainer", {
       
       imageryProvider: false,
       baseLayerPicker: false,
@@ -1760,8 +2787,11 @@ onMounted(async () => {
       navigationHelpButton: false,
       infoBox: false,
       fullscreenButton: false,
+      // Render at native device resolution for maximum clarity (HiDPI).
+      // Note: this is heavier in Chrome on some GPUs; if needed we can add a runtime toggle.
+      useBrowserRecommendedResolution: cesiumProfile !== 'hq',
       skyAtmosphere: false, // 彻底移除大气层
-      shouldAnimate: true,
+      shouldAnimate: false,
       contextOptions: {
         webgl: {
           alpha: true,
@@ -1769,7 +2799,7 @@ onMounted(async () => {
           stencil: true,
           antialias: true,
           powerPreference: "high-performance",
-          preserveDrawingBuffer: true,
+          preserveDrawingBuffer: false,
           failIfMajorPerformanceCaveat: false
         },
         allowTextureFilterAnisotropic: true
@@ -1779,20 +2809,27 @@ onMounted(async () => {
 
     viewer.value.scene.postProcessStages.fxaa.enabled = true;
     viewer.value.scene.highDynamicRange = true;
-    viewer.value.resolutionScale = window.devicePixelRatio || 1.0;
+    // With useBrowserRecommendedResolution=false, resolutionScale=1 means native device pixels.
+    // With useBrowserRecommendedResolution=true (balanced), resolutionScale=1 means CSS pixels.
+    viewer.value.resolutionScale = 1.0;
     
     // 渲染精度优化与环境清理
-    viewer.value.scene.globe.maximumScreenSpaceError = 2.0;
-    viewer.value.scene.globe.tileCacheSize = 50;
+    // Higher quality terrain/imagery LOD for crisp WMS/CLCD rendering (especially on HiDPI).
+    // Keep a softer profile for problematic Chrome/GPU setups via ?cesium_profile=balanced.
+    viewer.value.scene.globe.maximumScreenSpaceError = cesiumProfile === 'hq' ? 2.0 : 3.5;
+    viewer.value.scene.globe.tileCacheSize = cesiumProfile === 'hq' ? 50 : 30;
     viewer.value.scene.globe.showGroundAtmosphere = false; // 彻底禁用地面大气效果
     viewer.value.scene.fog.enabled = false; // 禁用雾效 (彻底净化)
+    viewer.value.scene.skyBox = undefined;
+    if (viewer.value.scene.skyAtmosphere) viewer.value.scene.skyAtmosphere.show = false;
+    if (viewer.value.scene.sun) viewer.value.scene.sun.show = false;
+    if (viewer.value.scene.moon) viewer.value.scene.moon.show = false;
+    viewer.value.scene.globe.enableLighting = false;
+    viewer.value.targetFrameRate = 60;
     
     // 强制锁定垂直视角：禁用倾斜交互
     viewer.value.scene.screenSpaceCameraController.enableTilt = false; 
     
-    // 监听渲染事件，实时更新提示位置与比例
-    viewer.value.scene.postRender.addEventListener(updatePopupPosition);
-
     viewer.value.cesiumWidget.creditContainer.style.display = "none";
     
     // 禁用双击缩放
@@ -1835,16 +2872,16 @@ onMounted(async () => {
 
     
     
-    viewer.value.camera.setView({
-      destination: Cesium.Cartesian3.fromDegrees(101.8, 25.2, 1900000),
-      orientation: {
-        pitch: Cesium.Math.toRadians(-90),
-        roll: 0.0
-      }
-    });
+    setYunnanFullView();
 
     window.cesiumViewer = viewer.value;
     mapStore.setViewer(viewer.value);
+
+    countyLabelMoveEndHandler = () => {
+      applyCountyLabelLayout();
+      requestSceneRender();
+    };
+    viewer.value.camera.moveEnd.addEventListener(countyLabelMoveEndHandler);
 
     // 初始化视图锁定逻辑
     setupViewLock();
@@ -1870,6 +2907,11 @@ onMounted(async () => {
 
 onUnmounted(() => {
   window.removeEventListener('keydown', handleGlobalEnter, true);
+  window.removeEventListener('clearCountyHighlight', handleClearCountyHighlight);
+  if (viewer.value?.camera && countyLabelMoveEndHandler) {
+    viewer.value.camera.moveEnd.removeEventListener(countyLabelMoveEndHandler);
+    countyLabelMoveEndHandler = null;
+  }
 });
 
 /**
@@ -1950,10 +2992,7 @@ function setupViewLock() {
       if (!outOfBoundsTimer) {
         outOfBoundsTimer = setTimeout(() => {
           // console.log('[ViewLock] 执行视角复位');
-          viewer.value.camera.flyTo({
-            destination: Cesium.Cartesian3.fromDegrees(101.8, 25.2, 1900000),
-            duration: 1.5
-          });
+          flyToYunnanFullView(1.5);
           outOfBoundsTimer = null;
         }, isTooFar ? 500 : BUFFER_TIME); // 如果缩得过大，缩短等待时间
       }
@@ -2098,15 +3137,22 @@ function loadStandardLayer(year, visible = true, rid = null) {
   }
 
   try {
+    const interpolationParam = layers
+      .split(',')
+      .map(() => 'nearest neighbor')
+      .join(',');
     const provider = new Cesium.WebMapServiceImageryProvider({
       url: GEOSERVER_CONFIG.wmsUrl,
       layers: layers,
+      tileWidth: 512,
+      tileHeight: 512,
       parameters: {
         service: 'WMS',
         version: '1.1.1',
         request: 'GetMap',
         format: 'image/png',
         transparent: true,
+        interpolations: interpolationParam,
         time: `${year}-01-01`,
         // 仅全省图层需要 clip 裁剪，县市级图层数据集已是区域范围，不需要 clip
         ...(currentClipWKT.value && globalStore.scope.level === 'province' ? { clip: currentClipWKT.value } : {})
@@ -2276,6 +3322,7 @@ async function loadWMSLayer(targetYear = null, visible = true, reqId = null) {
           request: 'GetMap',
           transparent: 'true',
           format: 'image/png',
+          interpolations: 'nearest neighbor',
           styles: styleName,
           env: envParams,
           info_format: 'application/json',
@@ -2287,6 +3334,8 @@ async function loadWMSLayer(targetYear = null, visible = true, reqId = null) {
     const wmsProvider = new Cesium.WebMapServiceImageryProvider({
       url: GEOSERVER_CONFIG.wmsUrl,
       layers: layerName,
+      tileWidth: 512,
+      tileHeight: 512,
       enablePickFeatures: true,
       parameters: wmsParameters
     });
@@ -2614,6 +3663,14 @@ function goToRegionalAnalysis() {
 }
 
 onUnmounted(() => {
+  if (autoSwitchTipTimer) {
+    window.clearTimeout(autoSwitchTipTimer);
+    autoSwitchTipTimer = null;
+  }
+  if (isPopupPostRenderBound && viewer.value?.scene?.postRender) {
+    viewer.value.scene.postRender.removeEventListener(updatePopupPosition);
+    isPopupPostRenderBound = false;
+  }
   // console.log('[Workbench] Component unmounting, starting cleanup...');
   
   // 1. 移除 CLCD 图层
@@ -2653,10 +3710,6 @@ onUnmounted(() => {
   if (clickHandler) {
       clickHandler.destroy();
       clickHandler = null;
-  }
-  
-  if (viewer.value) {
-    viewer.value.scene.postRender.removeEventListener(updatePopupPosition);
   }
 
   // console.log('[Workbench] Cleanup complete');
@@ -2707,6 +3760,19 @@ function updatePopupPosition() {
         popupStyle.value.display = 'none';
     }
 }
+
+watch(
+  () => selectedEntity.value,
+  (entity) => {
+    if (!entity) {
+      lastPickPosition = null;
+      popupStyle.value.display = 'none';
+    }
+    syncPopupPostRenderListener();
+    requestSceneRender();
+  },
+  { deep: true }
+);
 
 // 空间图层逻辑已平移
 </script>
@@ -2957,6 +4023,38 @@ html {
   /* 定位现在由 AnalysisLegend 组件内部的拖拽状态 (posX/posY) 驱动 */
 }
 
+.region-switch-tip {
+  position: fixed;
+  top: 24px;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 3200;
+  padding: 9px 16px;
+  border-radius: 8px;
+  border: 1px solid rgba(255, 255, 255, 0.3);
+  background: rgba(26, 64, 132, 0.88);
+  color: #eef5ff;
+  font-family: 'PingFang SC', 'Microsoft YaHei', sans-serif;
+  font-size: 13px;
+  font-weight: 500;
+  line-height: 1;
+  letter-spacing: 0.2px;
+  box-shadow: 0 8px 20px rgba(7, 26, 61, 0.36);
+  backdrop-filter: blur(8px);
+  pointer-events: none;
+}
+
+.region-switch-tip-fade-enter-active,
+.region-switch-tip-fade-leave-active {
+  transition: opacity 0.22s ease, transform 0.22s ease;
+}
+
+.region-switch-tip-fade-enter-from,
+.region-switch-tip-fade-leave-to {
+  opacity: 0;
+  transform: translateX(-50%) translateY(-6px);
+}
+
 /* 信息提示框 - Glassmorphism Pro Max */
 .info-tooltip {
   position: fixed;
@@ -3174,6 +4272,9 @@ html {
   filter: drop-shadow(0 0 4px rgba(0, 245, 255, 0.4));
 }
 .analysis-wing {
+  --panel-font-base: 'PingFang SC', 'Microsoft YaHei', 'Helvetica Neue', Arial, sans-serif;
+  --panel-font-title: 'YouSheBiaoTiHei', 'PingFang SC', 'Microsoft YaHei', sans-serif;
+  --panel-font-number: 'YouSheBiaoTiHei', 'Dosis', 'Orbitron', 'Consolas', sans-serif;
   position: fixed;
   top: 90px; 
   bottom: auto;
@@ -3183,6 +4284,31 @@ html {
   display: flex;
   flex-direction: column;
   overflow: visible; /* 强制父容器不裁剪子项阴影 */
+  font-family: var(--panel-font-base);
+}
+
+/* 全局面板字体统一：正文 */
+.analysis-wing .panel-shell,
+.analysis-wing .panel-shell * {
+  font-family: var(--panel-font-base) !important;
+}
+
+/* 标题字体 */
+.analysis-wing .panel-shell .head-title,
+.analysis-wing .panel-shell .step-title,
+.analysis-wing .panel-shell .route-title,
+.analysis-wing .panel-shell .list-title {
+  font-family: var(--panel-font-title) !important;
+  letter-spacing: 0.5px;
+}
+
+/* 数值字体（右图风格） */
+.analysis-wing .panel-shell .kpi strong,
+.analysis-wing .panel-shell .s-dist,
+.analysis-wing .panel-shell .p-val,
+.analysis-wing .panel-shell .metric-big-num,
+.analysis-wing .panel-shell .score-val {
+  font-family: var(--panel-font-number) !important;
 }
 
 .analysis-wing.left {

@@ -21,6 +21,14 @@ export const useGlobalStore = defineStore('global', () => {
     const activeTheme = ref<string | null>(null)   // 'transfer' | 'rate' | 'spatial_stats' | null
     const previousTheme = ref<string | null>(null)  // 记录上一次活跃的专题
 
+    // 新增：专题上下文（参数与统计摘要），用于左右面板“专题监测”适配
+    // 说明：这里不保存几何数据，仅保存 UI 展示所需的轻量信息（params/stats/breaks 等）。
+    const themeContext = ref<Record<string, any>>({
+        transfer: null,
+        rate: null,
+        spatial_stats: null
+    })
+
 
     // 新增：当前切片拼音列表 (用于 CLCD 图层动态拼装)
     const currentPinyins = ref<string[]>([])
@@ -40,7 +48,7 @@ export const useGlobalStore = defineStore('global', () => {
     }
 
     function setActivePanel(panel: string | null) {
-        activePanel.value = activePanel.value === panel ? null : panel
+        activePanel.value = panel
     }
 
     function toggleMetric() {
@@ -79,6 +87,18 @@ export const useGlobalStore = defineStore('global', () => {
         activeTheme.value = theme
     }
 
+    function setThemeContext(theme: 'transfer' | 'rate' | 'spatial_stats', context: any) {
+        themeContext.value[theme] = context
+    }
+
+    function clearThemeContext(theme: 'transfer' | 'rate' | 'spatial_stats' | 'all' = 'all') {
+        if (theme === 'all') {
+            themeContext.value = { transfer: null, rate: null, spatial_stats: null }
+            return
+        }
+        themeContext.value[theme] = null
+    }
+
     function setCurrentPinyins(pinyins: string[]) {
         currentPinyins.value = pinyins
     }
@@ -98,6 +118,7 @@ export const useGlobalStore = defineStore('global', () => {
         previousLayer,
         activeTheme,
         previousTheme,
+        themeContext,
         currentPinyins,
         setYear,
         setRange,
@@ -110,6 +131,8 @@ export const useGlobalStore = defineStore('global', () => {
         setActiveLayer,
         restorePreviousLayer,
         setActiveTheme,
+        setThemeContext,
+        clearThemeContext,
         setCurrentPinyins
     }
 })

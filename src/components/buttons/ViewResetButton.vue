@@ -3,7 +3,6 @@
   @description 视角复位工具，一键将地图相机返回定位至云南省默认观察范围
   @props 无
   @emits 无
-  @dependencies Cesium (地图引擎)
 -->
 <template>
   <div class="view-reset-control">
@@ -14,31 +13,13 @@
 </template>
 
 <script setup>
-import * as Cesium from 'cesium';
 import resetIcon from '../../assets/icons/map/reset.svg';
 
 const emit = defineEmits(['reset-map']);
 
 function resetView() {
-  const viewer = window.cesiumViewer;
-
-  if (!viewer) {
-    return;
-  }
-
-  // 1. 发出重置图层信号
+  // 相机范围统一交给 Workbench 的复位逻辑处理，避免不同入口视图参数不一致。
   emit('reset-map');
-
-  // 2. 执行视角飞行
-  viewer.camera.flyTo({
-    destination: Cesium.Cartesian3.fromDegrees(101.8, 25.2, 1900000),
-    orientation: {
-      heading: Cesium.Math.toRadians(0),
-      pitch: Cesium.Math.toRadians(-90),
-      roll: 0.0
-    },
-    duration: 2.0
-  });
 }
 </script>
 

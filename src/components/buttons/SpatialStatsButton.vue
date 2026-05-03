@@ -15,7 +15,8 @@
 
         <transition name="bubble-pop">
             <SpatialStatsControl
-                v-if="isVisible"
+                v-show="isVisible"
+                :visible="isVisible"
                 ref="innerControlRef"
                 @close="closeModal"
                 @stats-query="$emit('stats-query', $event)"

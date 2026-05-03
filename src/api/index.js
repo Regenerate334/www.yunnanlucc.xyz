@@ -4,6 +4,38 @@
  */
 import { API_BASE_URL } from '../config/index.js';
 
+const inflightRequestMap = new Map();
+const responseCacheMap = new Map();
+
+function dedupedRequest(cacheKey, requester, ttlMs = 0) {
+    const now = Date.now();
+    if (ttlMs > 0) {
+        const cached = responseCacheMap.get(cacheKey);
+        if (cached && cached.expireAt > now) {
+            return Promise.resolve(cached.value);
+        }
+    }
+
+    const inflight = inflightRequestMap.get(cacheKey);
+    if (inflight) return inflight;
+
+    const task = (async () => {
+        const value = await requester();
+        if (ttlMs > 0) {
+            responseCacheMap.set(cacheKey, {
+                value,
+                expireAt: Date.now() + ttlMs
+            });
+        }
+        return value;
+    })().finally(() => {
+        inflightRequestMap.delete(cacheKey);
+    });
+
+    inflightRequestMap.set(cacheKey, task);
+    return task;
+}
+
 // 基础请求函数
 async function request(url, options = {}) {
     // 从 localStorage 获取 Token
@@ -74,13 +106,24 @@ export const clcdApi = {
     getYears: () => request(`${API_BASE_URL}/clcd/years`),
 
     // 获取全省统计数据
-    getProvinceTrend: () => request(`${API_BASE_URL}/clcd/province`),
+    getProvinceTrend: () => dedupedRequest(
+        'clcd:province',
+        () => request(`${API_BASE_URL}/clcd/province`),
+        10000
+    ),
 
     // 获取某年汇总数据
     getYearSummary: (year) => request(`${API_BASE_URL}/clcd/${year}/summary`),
 
     // 获取区域趋势数据
-    getRegionalTrend: (level, name) => request(`${API_BASE_URL}/clcd/trend/${level}/${encodeURIComponent(name)}`),
+    getRegionalTrend: (level, name) => {
+        const encodedName = encodeURIComponent(name);
+        return dedupedRequest(
+            `clcd:trend:${level}:${encodedName}`,
+            () => request(`${API_BASE_URL}/clcd/trend/${level}/${encodedName}`),
+            10000
+        );
+    },
 
     // 获取所有地级市全量数据
     getAllPrefectureData: () => request(`${API_BASE_URL}/clcd/prefecture`),
@@ -113,10 +156,17 @@ export const clcdApi = {
     getBreaks: (attr, year, method = 'quantile', classes = 8, unit = 'county') => request(`${API_BASE_URL}/clcd/breaks?attr=${attr}&year=${year}&method=${method}&classes=${classes}&unit=${unit}`),
 
     // 获取所有可用的年份列表
-    getAvailableYears: () => request(`${API_BASE_URL}/clcd/years`),
+    getAvailableYears: () => dedupedRequest(
+        'clcd:years',
+        () => request(`${API_BASE_URL}/clcd/years`),
+        60000
+    ),
 
-    // 获取区域实时监测指标 (2021-2026 权威算法)
-    getMonitoring: (level, name, year) => request(`${API_BASE_URL}/clcd/monitoring/${level}/${encodeURIComponent(name)}/${year}`)
+    // 获取区域实时监测指标（核验重构算法）
+    getMonitoring: (level, name, year, policy = '') => {
+        const qs = policy ? `?policy=${encodeURIComponent(policy)}` : '';
+        return request(`${API_BASE_URL}/clcd/monitoring/${level}/${encodeURIComponent(name)}/${year}${qs}`);
+    }
 };
 
 // 行政区划相关接口

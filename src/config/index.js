@@ -24,12 +24,13 @@ export const API_CONFIG = {
 
 // 2. Cesium 地图默认配置
 export const CESIUM_CONFIG = {
-    // 默认视角 (云南省中心附近)
+    // 默认视角 (云南省全域)
     defaultView: {
-        destination: {
-            longitude: 102.712251,
-            latitude: 25.040609,
-            height: 1000000
+        rectangle: {
+            west: 97.5,
+            south: 21.1,
+            east: 106.2,
+            north: 29.3
         }
     }
 };

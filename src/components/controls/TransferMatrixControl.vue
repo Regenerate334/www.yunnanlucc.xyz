@@ -16,7 +16,8 @@
         <transition name="bubble-pop">
             <LandTransferControl 
                 ref="innerControlRef"
-                v-if="isVisible" 
+                v-show="isVisible"
+                :visible="isVisible"
                 @close="closeModal" 
                 @transfer-query="$emit('transfer-query', $event)"
                 @reset="$emit('reset-map')"

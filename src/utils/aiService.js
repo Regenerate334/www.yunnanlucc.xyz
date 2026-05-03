@@ -49,7 +49,7 @@ export async function analyzeData({ question, year, landData, context }) {
  * @param {Function} onDone - 完成时的回调 () => void
  * @param {Function} onError - 错误时的回调 (error: string) => void
  */
-export async function analyzeDataStream({ messages, year, landData, componentContext, region, deepThinking, model }, onChunk, onDone, onError, signal) {
+export async function analyzeDataStream({ messages, year, landData, componentContext, region, deepThinking, model, sessionId }, onChunk, onDone, onError, signal) {
     try {
         // 清理消息历史,只保留 role 和 content,避免 Vue 响应式对象的干扰
         const sanitizedMessages = messages.map(m => ({
@@ -70,16 +70,22 @@ export async function analyzeDataStream({ messages, year, landData, componentCon
                 componentContext,
                 region,
                 deepThinking,
-                model
+                model,
+                sessionId
             }),
             signal // 支持取消请求
         });
 
         if (!response.ok) {
             let errMsg = `HTTP ${response.status}`;
-            try { const b = await response.json(); errMsg = b?.error || b?.message || errMsg; } catch { }
+            let bodyJson = null;
+            try {
+                bodyJson = await response.json();
+                errMsg = bodyJson?.error || bodyJson?.message || errMsg;
+            } catch { }
             if (response.status === 503) errMsg = 'AI 模型当前暂不可用（可能正在加载），请稍后重试。';
             else if (response.status === 401) errMsg = '登录已过期，请重新登录。';
+            else if (response.status === 413) errMsg = bodyJson?.error || '当前会话上下文过长，建议新建对话后继续。';
             else if (response.status >= 500) errMsg = `服务器错误（${response.status}），请稍后重试。`;
             throw new Error(errMsg);
         }
@@ -110,7 +116,7 @@ export async function analyzeDataStream({ messages, year, landData, componentCon
                     const data = JSON.parse(line.slice(6));
                     if (!data) continue;
 
-                    if (data.content || data.thinking) {
+                    if (data.content || data.thinking || data.workflow) {
                         onChunk?.(data);
                     }
                     if (data.done) {
@@ -129,7 +135,7 @@ export async function analyzeDataStream({ messages, year, landData, componentCon
         if (buffer && buffer.startsWith('data: ')) {
             try {
                 const data = JSON.parse(buffer.slice(6));
-                if (data.content || data.thinking) onChunk?.(data);
+                if (data.content || data.thinking || data.workflow) onChunk?.(data);
                 if (data.done) emitDone();
             } catch (e) { }
         }

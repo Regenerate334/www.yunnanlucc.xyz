@@ -317,6 +317,16 @@ async function initCesium() {
       return;
     }
 
+    // Render profile switch (optional):
+    // - default: hq (native device pixels)
+    // - ?cesium_profile=balanced : CSS-pixel rendering (helps slow Chrome/GPU drivers)
+    let cesiumProfile = 'hq';
+    try {
+      const params = new URLSearchParams(window.location.search);
+      const p = (params.get('cesium_profile') || '').toLowerCase();
+      if (p === 'balanced' || p === 'perf' || p === 'low') cesiumProfile = 'balanced';
+    } catch (e) {}
+
     const viewerInstance = new Cesium.Viewer("cesiumContainer", {
       imageryProvider: false,
       baseLayerPicker: false,
@@ -329,6 +339,7 @@ async function initCesium() {
       navigationHelpButton: false,
       infoBox: false,
       fullscreenButton: false,
+      useBrowserRecommendedResolution: cesiumProfile !== 'hq',
       shouldAnimate: true,
       contextOptions: {
         webgl: {
@@ -349,7 +360,9 @@ async function initCesium() {
     // 基础设置
     viewer.value.scene.postProcessStages.fxaa.enabled = true;
     viewer.value.scene.highDynamicRange = true;
-    viewer.value.resolutionScale = window.devicePixelRatio || 1.0;
+    // With useBrowserRecommendedResolution=false, resolutionScale=1 means native device pixels.
+    // With useBrowserRecommendedResolution=true (balanced), resolutionScale=1 means CSS pixels.
+    viewer.value.resolutionScale = 1.0;
     viewer.value.cesiumWidget.creditContainer.style.display = "none";
     
     // 禁用双击缩放 (用户反馈双击会导致视角倾斜)
@@ -641,6 +654,7 @@ async function loadWMSLayer(targetYear = null, visible = true) {
           request: 'GetMap',
           transparent: 'true',
           format: 'image/png',
+          interpolations: 'nearest neighbor',
           styles: styleName,
           env: envParams,
           info_format: 'application/json'
@@ -649,6 +663,8 @@ async function loadWMSLayer(targetYear = null, visible = true) {
     const wmsProvider = new Cesium.WebMapServiceImageryProvider({
       url: GEOSERVER_CONFIG.wmsUrl,
       layers: layerName,
+      tileWidth: 512,
+      tileHeight: 512,
       enablePickFeatures: true,
       parameters: wmsParameters
     });

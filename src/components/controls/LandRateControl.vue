@@ -147,8 +147,12 @@
 <script setup>
 import { ref, onMounted, onUnmounted, computed, watch, nextTick } from 'vue';
 import { useGlobalStore } from '../../stores/global';
+import { TRANSFER_CLASS_OPTIONS } from '../../constants/landuse.js';
 
 const globalStore = useGlobalStore();
+const props = defineProps({
+  visible: { type: Boolean, default: false }
+});
 const emit = defineEmits(['close', 'rate-query', 'reset']);
 
 const containerRef = ref(null);
@@ -158,8 +162,8 @@ const mode          = ref('reclamation');
 const reclamYear    = ref(1985);
 const convYearStart = ref(1985);
 const convYearEnd   = ref(2023);
-const fromClass     = ref(1);   // 耕地
-const toClass       = ref(2);   // 林地
+const fromClass     = ref(1);   // 支持 null（表示全部）
+const toClass       = ref(null);   // 默认“耕地净流出”口径
 
 const loading       = ref(false);
 const errorMsg      = ref('');
@@ -195,17 +199,9 @@ watch(reclamYear, (nv, ov) => reactSnap(nv, ov, v => reclamYear.value = v));
 watch(convYearStart, (nv, ov) => reactSnap(nv, ov, v => { convYearStart.value = v; validateYear(); }));
 watch(convYearEnd, (nv, ov) => reactSnap(nv, ov, v => { convYearEnd.value = v; validateYear(); }));
 
-const landClasses = [
-  { label: '耕地',   value: 1 },
-  { label: '林地',   value: 2 },
-  { label: '灌木',   value: 3 },
-  { label: '草地',   value: 4 },
-  { label: '水域',   value: 5 },
-  { label: '湿地',   value: 6 },
-  { label: '建设用地', value: 7 },
-  { label: '裸地',   value: 8 },
-  { label: '冰雪',   value: 9 },
-];
+// conversion 转换率复用 transfer 宽表列名规则（yXXXX_fromto），这里的编码必须与后端 breaks(rate,conversion) 保持一致。
+// 注意：该编码与 CLCD(1..9) 不同。
+const landClasses = TRANSFER_CLASS_OPTIONS;
 
 const swapLandTypes = () => {
   const temp = fromClass.value;
@@ -237,6 +233,10 @@ const validateYear = () => {
 
 const handleQuery = () => {
   errorMsg.value = '';
+
+  // 状态接管：率专题固定使用县域空间单元（与 WMS 图层一致）
+  globalStore.setActiveLayer('county');
+
   if (mode.value === 'reclamation') {
     loading.value = true;
     emit('rate-query', {
@@ -250,9 +250,19 @@ const handleQuery = () => {
       errorMsg.value = '起始年份必须小于截止年份';
       return;
     }
+    if (fromClass.value !== null && toClass.value !== null && fromClass.value === toClass.value) {
+      errorMsg.value = '地类不能相同';
+      return;
+    }
     loading.value = true;
-    const fromLabel = fromClass.value === null ? '各地类' : (landClasses.find(c => c.value === fromClass.value)?.label || '');
-    const toLabel   = toClass.value   === null ? '各地类' : (landClasses.find(c => c.value === toClass.value)?.label   || '');
+    const fromLabel = fromClass.value === null ? '全部地类' : (landClasses.find(c => c.value === fromClass.value)?.label || '');
+    const toLabel   = toClass.value   === null ? '全部地类' : (landClasses.find(c => c.value === toClass.value)?.label   || '');
+    const directionLabel = (() => {
+      if (fromClass.value !== null && toClass.value === null) return `${fromLabel}净流出`;
+      if (fromClass.value === null && toClass.value !== null) return `${toLabel}净流入`;
+      if (fromClass.value === null && toClass.value === null) return '总流转';
+      return `${fromLabel}转${toLabel}`;
+    })();
     emit('rate-query', {
       attribute:   'conversion',
       year:        convYearEnd.value,
@@ -261,12 +271,13 @@ const handleQuery = () => {
       from_class:  fromClass.value !== null ? fromClass.value : '',
       to_class:    toClass.value   !== null ? toClass.value   : '',
       unit:        'county',
-      legendTitle: `${convYearStart.value}-${convYearEnd.value}年\n${fromLabel}转${toLabel}强度(%)`
+      legendTitle: `${convYearStart.value}-${convYearEnd.value}年\n${directionLabel}强度(%)`
     });
   }
 };
 
 const handleClickOutside = (event) => {
+  if (!props.visible) return;
   const path = event.composedPath();
   const isInside  = containerRef.value && path.includes(containerRef.value);
   const isTrigger = path.some(el => el.classList && el.classList.contains('rate-control'));

@@ -100,3 +100,37 @@ export const ATTRIBUTE_LABELS = {
     barren: '裸地面积',
     snow_ice: '冰雪面积'
 };
+
+/**
+ * 转移专题（spatial_*_yunnan_transfer 宽表）使用的地类编码（项目内口径）
+ * 说明：该编码与 CLCD_CLASS_MAP(1..9) 不同，此处以转移相关后端工具与宽表字段为准。
+ * 适用范围：
+ * - /api/clcd/breaks?mode=transfer
+ * - /api/clcd/breaks?mode=rate&attr=conversion（内部累加 transfer 宽表列）
+ * - /api/analysis/transfer-flow、/api/analysis/spatial-stats 等
+ */
+export const TRANSFER_CLASS_NAMES = {
+    1: '耕地',
+    2: '林地',
+    3: '草地',
+    4: '水体',
+    5: '建设用地',
+    6: '裸地',
+    7: '冰雪',
+    8: '湿地'
+};
+
+export const TRANSFER_CLASS_OPTIONS = Object.entries(TRANSFER_CLASS_NAMES)
+    .map(([value, label]) => ({ label, value: Number(value) }))
+    .sort((a, b) => a.value - b.value);
+
+export const TRANSFER_CLASS_TO_LANDUSE_KEY = {
+    1: 'cropland',
+    2: 'forest',
+    3: 'grassland',
+    4: 'water',
+    5: 'impervious',
+    6: 'barren',
+    7: 'snow_ice',
+    8: 'wetland'
+};

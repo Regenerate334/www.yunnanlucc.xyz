@@ -50,6 +50,7 @@
         <RegionSelector />
         <ViewResetButton @reset-map="$emit('reset-map')" />
         <DistanceMeasureButton />
+        <AreaMeasureButton />
       </div>
 
       <!-- 中央主页按钮 -->
@@ -61,9 +62,8 @@
         </div>
       </div>
 
-      <!-- 右侧组：高级分析与可视化 (7个) -->
+      <!-- 右侧组：高级分析与可视化 (8个) -->
       <div class="nav-group right">
-        <AreaMeasureButton />
         <SpatialStatsButton
           ref="spatialStatsControl"
           @stats-query="(val) => $emit('stats-query', val)"
@@ -149,7 +149,13 @@ function goToAdmin() {
   router.push('/admin');
 }
 
-defineExpose({ transferControl, rateControl, spatialStatsControl });
+defineExpose({
+  transferControl,
+  rateControl,
+  spatialStatsControl,
+  trajectoryControl: spatialStatsControl,
+  sdeControl: spatialStatsControl
+});
 </script>
 
 <style scoped>
@@ -191,27 +197,27 @@ defineExpose({ transferControl, rateControl, spatialStatsControl });
 .nav-group {
   display: flex;
   align-items: center;
-  gap: 30px; /* 增加一点间距，避免紧凑 */
+  gap: 18px; /* 调整为更紧凑的间距 */
 }
 
-/* 底部导航栏控制按钮拱形自适应 - 7个左侧 */
-.nav-group.left > :deep(*:nth-child(1)) { transform: translateY(26px) !important; }
-.nav-group.left > :deep(*:nth-child(2)) { transform: translateY(26px) !important; }
-.nav-group.left > :deep(*:nth-child(3)) { transform: translateY(25px) !important; }
-.nav-group.left > :deep(*:nth-child(4)) { transform: translateY(24px) !important; }
-.nav-group.left > :deep(*:nth-child(5)) { transform: translateY(22px) !important; }
-.nav-group.left > :deep(*:nth-child(6)) { transform: translateY(20px) !important; }
-.nav-group.left > :deep(*:nth-child(7)) { transform: translateY(18px) !important; }
+/* 底部导航栏控制按钮拱形自适应 - 8个左侧 */
+.nav-group.left > :deep(*:nth-child(1)) { transform: translateY(27px) !important; }
+.nav-group.left > :deep(*:nth-child(2)) { transform: translateY(27px) !important; }
+.nav-group.left > :deep(*:nth-child(3)) { transform: translateY(26px) !important; }
+.nav-group.left > :deep(*:nth-child(4)) { transform: translateY(25px) !important; }
+.nav-group.left > :deep(*:nth-child(5)) { transform: translateY(23px) !important; }
+.nav-group.left > :deep(*:nth-child(6)) { transform: translateY(21px) !important; }
+.nav-group.left > :deep(*:nth-child(7)) { transform: translateY(19px) !important; }
+.nav-group.left > :deep(*:nth-child(8)) { transform: translateY(17px) !important; }
 
-/* 底部导航栏控制按钮拱形自适应 - 8个右侧 */
-.nav-group.right > :deep(*:nth-child(1)) { transform: translateY(18px) !important; }
-.nav-group.right > :deep(*:nth-child(2)) { transform: translateY(20px) !important; }
-.nav-group.right > :deep(*:nth-child(3)) { transform: translateY(21px) !important; }
-.nav-group.right > :deep(*:nth-child(4)) { transform: translateY(23px) !important; }
-.nav-group.right > :deep(*:nth-child(5)) { transform: translateY(24px) !important; }
-.nav-group.right > :deep(*:nth-child(6)) { transform: translateY(25px) !important; }
-.nav-group.right > :deep(*:nth-child(7)) { transform: translateY(26px) !important; }
-.nav-group.right > :deep(*:nth-child(8)) { transform: translateY(26px) !important; }
+/* 底部导航栏控制按钮拱形自适应 - 7个右侧 */
+.nav-group.right > :deep(*:nth-child(1)) { transform: translateY(17px) !important; }
+.nav-group.right > :deep(*:nth-child(2)) { transform: translateY(21px) !important; }
+.nav-group.right > :deep(*:nth-child(3)) { transform: translateY(23px) !important; }
+.nav-group.right > :deep(*:nth-child(4)) { transform: translateY(25px) !important; }
+.nav-group.right > :deep(*:nth-child(5)) { transform: translateY(26px) !important; }
+.nav-group.right > :deep(*:nth-child(6)) { transform: translateY(27px) !important; }
+.nav-group.right > :deep(*:nth-child(7)) { transform: translateY(27px) !important; }
 
 /* 深度选择器：让所有控制按钮透明，融入背景设计图 */
 :deep(.control-btn),

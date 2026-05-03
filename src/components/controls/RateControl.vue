@@ -9,7 +9,7 @@
 <template>
     <div class="rate-control">
         <!-- 侧边栏入口按钮 -->
-        <button @click="toggleModal" class="control-btn" :class="{ active: isVisible }" title="垦殖与转换率分析">
+        <button @click="toggleModal" class="control-btn" :class="{ active: isThemeActive || isVisible }" title="垦殖与转换率分析">
             <img :src="rateIcon" class="rate-icon" alt="图标" />
             <span class="btn-label">垦殖转换</span>
         </button>
@@ -17,7 +17,8 @@
         <transition name="bubble-pop">
             <LandRateControl
                 ref="innerControlRef"
-                v-if="isVisible"
+                v-show="isVisible"
+                :visible="isVisible"
                 @close="closeModal"
                 @rate-query="$emit('rate-query', $event)"
                 @reset="$emit('reset-map')"
@@ -37,6 +38,7 @@ const panelName = 'rate';
 
 const emit = defineEmits(['rate-query', 'reset-map']);
 const isVisible = computed(() => globalStore.activePanel === panelName);
+const isThemeActive = computed(() => globalStore.activeTheme === 'rate');
 const innerControlRef = ref(null);
 
 function toggleModal() {

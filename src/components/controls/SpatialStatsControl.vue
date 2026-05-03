@@ -52,7 +52,7 @@
               <ul v-if="fromOpen" class="select-options">
                 <li :class="{ active: fromClass === null }" @click="selectOption('from', null)">
                   全部
-                  <svg v-if="fromClass === opt.value" viewBox="0 0 24 24" width="15" height="15" stroke="currentColor" stroke-width="1.8" fill="none">
+                  <svg v-if="fromClass === null" viewBox="0 0 24 24" width="15" height="15" stroke="currentColor" stroke-width="1.8" fill="none">
                     <path d="M20 6L9 17l-5-5" />
                   </svg>
                 </li>
@@ -110,25 +110,6 @@
         </div>
       </div>
 
-      <!-- 显示选项 -->
-      <div class="control-section">
-        <div class="section-label">显示选项</div>
-        <div class="options-grid">
-          <label class="checkbox-wrapper">
-            <input type="checkbox" v-model="showBlankBoundary" />
-            <span class="checkbox-text">空白行政边界</span>
-          </label>
-          <label class="checkbox-wrapper">
-            <input type="checkbox" v-model="showTrajectory" />
-            <span class="checkbox-text">显示时空轨迹</span>
-          </label>
-          <label class="checkbox-wrapper">
-            <input type="checkbox" v-model="showSDE" />
-            <span class="checkbox-text">显示标准差椭圆</span>
-          </label>
-        </div>
-      </div>
-
       <!-- 执行按钮 -->
       <div class="footer-actions">
         <!-- 重置地图数据 -->
@@ -156,21 +137,22 @@
 <script setup>
 import { ref, onMounted, onUnmounted, computed, watch, nextTick } from 'vue';
 import { useGlobalStore } from '../../stores/global';
+import { TRANSFER_CLASS_OPTIONS } from '../../constants/landuse.js';
 
 const globalStore = useGlobalStore();
-const emit = defineEmits(['close', 'stats-query', 'reset', 'update-visibility']);
+const props = defineProps({
+  visible: { type: Boolean, default: false }
+});
+const emit = defineEmits(['close', 'stats-query', 'reset']);
 
 const containerRef = ref(null);
 const availableYears = computed(() => globalStore.yearsAll);
 
 const yearStart = ref(1985);
 const yearEnd   = ref(2023);
-const fromClass = ref(1);   // 耕地
-const toClass   = ref(7);   // 建设用地
+const fromClass = ref(1);   // 支持 null（表示全部）
+const toClass   = ref(null);   // 默认“耕地净流出”口径
 const unit      = ref('county');
-const showBlankBoundary = ref(true); 
-const showTrajectory    = ref(true);
-const showSDE           = ref(true);
 
 const loading   = ref(false);
 const errorMsg  = ref('');
@@ -178,17 +160,8 @@ const fromOpen  = ref(false);
 const toOpen    = ref(false);
 const rotateDeg = ref(0);
 
-const landClasses = [
-  { label: '耕地',   value: 1 },
-  { label: '林地',   value: 2 },
-  { label: '灌木',   value: 3 },
-  { label: '草地',   value: 4 },
-  { label: '水域',   value: 5 },
-  { label: '湿地',   value: 6 },
-  { label: '建设用地', value: 7 },
-  { label: '裸地',   value: 8 },
-  { label: '冰雪',   value: 9 },
-];
+// 空间统计专题同样使用 transfer 宽表编码（与 /api/analysis/spatial-stats、/api/analysis/transfer-flow 一致）
+const landClasses = TRANSFER_CLASS_OPTIONS;
 
 const reactSnap = (newVal, oldVal, updateFn) => {
   const years = availableYears.value;
@@ -245,37 +218,32 @@ const handleQuery = () => {
     errorMsg.value = '起始年份必须小于截止年份';
     return;
   }
-  if (fromClass.value === null || toClass.value === null) {
-      errorMsg.value = '请指定具体的流转方向(暂不支持全部)';
-      return;
-  }
-
   loading.value = true;
 
-  const fromLabel = landClasses.find(c => c.value === fromClass.value)?.label || '';
-  const toLabel   = landClasses.find(c => c.value === toClass.value)?.label   || '';
+  const fromLabel = fromClass.value === null ? '全部地类' : (landClasses.find(c => c.value === fromClass.value)?.label || '');
+  const toLabel   = toClass.value === null ? '全部地类' : (landClasses.find(c => c.value === toClass.value)?.label || '');
+  const directionLabel = (() => {
+    if (fromClass.value !== null && toClass.value === null) return `${fromLabel}净流出`;
+    if (fromClass.value === null && toClass.value !== null) return `${toLabel}净流入`;
+    if (fromClass.value === null && toClass.value === null) return '总流转';
+    return `${fromLabel}转${toLabel}`;
+  })();
 
   emit('stats-query', {
     yearStart: yearStart.value,
     yearEnd:   yearEnd.value,
-    fromClass: fromClass.value,
-    toClass:   toClass.value,
+    fromClass: fromClass.value !== null ? fromClass.value : '',
+    toClass:   toClass.value !== null ? toClass.value : '',
     unit:      unit.value,
-    showBlankBoundary: showBlankBoundary.value,
-    showTrajectory:    showTrajectory.value,
-    showSDE:           showSDE.value,
-    legendTitle: `${yearStart.value}-${yearEnd.value}年 ${fromLabel}转${toLabel} `
+    showBlankBoundary: true,
+    showTrajectory:    true,
+    showSDE:           true,
+    legendTitle: `${yearStart.value}-${yearEnd.value}年 ${directionLabel} `
   });
 };
 
-watch([showTrajectory, showSDE], () => {
-    emit('update-visibility', {
-        trajectory: showTrajectory.value,
-        sde: showSDE.value
-    });
-});
-
 const handleClickOutside = (event) => {
+  if (!props.visible) return;
   const path = event.composedPath();
   const isInside  = containerRef.value && path.includes(containerRef.value);
   const isTrigger = path.some(el => el.classList && el.classList.contains('spatial-stats-entry-btn'));
@@ -392,10 +360,6 @@ defineExpose({ setLoading, setError });
 .section-label { position: relative; font-size: 12px; font-weight: 700; color: rgba(255, 255, 255, 0.85); padding-left: 10px; display: flex; align-items: center; }
 .section-label::before { content: ''; position: absolute; left: 0; top: 50%; transform: translateY(-50%); width: 2px; height: 12px; background: #3B76E1; border-radius: 1px; }
 .segmented-control { display: flex; background: rgba(0, 0, 0, 0.25); padding: 4px; border-radius: 10px; border: 1px solid rgba(255, 255, 255, 0.05); }
-.options-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 4px 12px; }
-.checkbox-wrapper { display: flex; align-items: center; gap: 8px; cursor: pointer; padding: 4px 0; }
-.checkbox-wrapper input { width: 16px; height: 16px; cursor: pointer; accent-color: #3B76E1; }
-.checkbox-text { font-size: 13px; color: rgba(255, 255, 255, 0.8); }
 .segmented-control button { flex: 1; padding: 6px 0; background: transparent; border: none; color: #94A3B8; font-size: 12px; font-weight: 600; cursor: pointer; border-radius: 7px; transition: all 0.3s; }
 .segmented-control button.active { background: #3B76E1; color: white; box-shadow: 0 4px 12px rgba(226, 66, 144, 0.3); }
 .year-range-picker { display: flex; align-items: center; background: rgba(0, 0, 0, 0.2); border-radius: 10px; border: 1px solid rgba(255, 255, 255, 0.1); padding: 6px 10px; }

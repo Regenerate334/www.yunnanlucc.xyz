@@ -169,6 +169,10 @@
 
                   <!-- 工业级状态步进器 (Industrial Progress Stepper) -->
                   <div v-if="msg.role === 'assistant' && parseMessage(msg).statuses.length > 0" class="industrial-stepper">
+                    <div class="workflow-header">
+                      <span class="workflow-title">数据工作流</span>
+                      <span class="workflow-subtitle">工具调用与数据链路追踪</span>
+                    </div>
                     <div v-for="(status, sIdx) in parseMessage(msg).statuses" :key="sIdx"
                       :class="['step-item', status.type, status.done ? 'done' : 'active']">
                       <div class="step-line" v-if="sIdx < parseMessage(msg).statuses.length - 1"></div>
@@ -383,91 +387,508 @@ const renderCache = new Map();
 
 const _parseMessage = (msg, skipCache = false) => {
   if (!msg) return { thinking: '', content: '', statuses: [] };
-  
+
   let thinking = msg.thinking || '';
   let content = msg.content || '';
-  const cacheKey = typeof msg === 'string' ? msg : (msg.content || '') + (msg.thinking || '');
+  const cacheKey = typeof msg === 'string'
+    ? msg
+    : (msg.content || '') + (msg.thinking || '') + JSON.stringify(msg.workflow || []);
 
   // 流式输出期间跳过缓存，确保每次 chunk 后都能获取最新解析结果
   if (!skipCache && parseCache.has(cacheKey)) return parseCache.get(cacheKey);
 
   const statuses = [];
-  const brainIcon = `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9.5 2A2.5 2.5 0 0 1 12 4.5v15a2.5 2.5 0 0 1-4.96.44 2.5 2.5 0 0 1-2.96-3.08 3 3 0 0 1-.34-5.58 2.5 2.5 0 0 1 1.32-4.24 2.5 2.5 0 0 1 1.98-3A2.5 2.5 0 0 1 9.5 2Z"/><path d="M14.5 2A2.5 2.5 0 0 0 12 4.5v15a2.5 2.5 0 0 0 4.96.44 2.5 2.5 0 0 0 2.96-3.08 3 3 0 0 0 .34-5.58 2.5 2.5 0 0 0-1.32-4.24 2.5 2.5 0 0 0-1.98-3A2.5 2.5 0 0 0 14.5 2Z"/></svg>`;
-  const toolIcon = `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a6 6 0 0 1-7.94 7.94l-6.91 6.91a2.12 2.12 0 0 1-3-3l6.91-6.91a6 6 0 0 1 7.94-7.94l-3.76 3.76z"/></svg>`;
-  const codeIcon = `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="16 18 22 12 16 6"></polyline><polyline points="8 6 2 12 8 18"></polyline></svg>`;
-  const radarIcon = `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M12 2v20"/><path d="M2 12h20"/><circle cx="12" cy="12" r="4"/></svg>`;
-  const searchIcon = `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>`;
-  const analysisIcon = `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z"></path><path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z"></path></svg>`;
+  const icons = {
+    brain: `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9.5 2A2.5 2.5 0 0 1 12 4.5v15a2.5 2.5 0 0 1-4.96.44 2.5 2.5 0 0 1-2.96-3.08 3 3 0 0 1-.34-5.58 2.5 2.5 0 0 1 1.32-4.24 2.5 2.5 0 0 1 1.98-3A2.5 2.5 0 0 1 9.5 2Z"/><path d="M14.5 2A2.5 2.5 0 0 0 12 4.5v15a2.5 2.5 0 0 0 4.96.44 2.5 2.5 0 0 0 2.96-3.08 3 3 0 0 0 .34-5.58 2.5 2.5 0 0 0-1.32-4.24 2.5 2.5 0 0 0-1.98-3A2.5 2.5 0 0 0 14.5 2Z"/></svg>`,
+    tool: `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a6 6 0 0 1-7.94 7.94l-6.91 6.91a2.12 2.12 0 0 1-3-3l6.91-6.91a6 6 0 0 1 7.94-7.94l-3.76 3.76z"/></svg>`,
+    code: `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="16 18 22 12 16 6"></polyline><polyline points="8 6 2 12 8 18"></polyline></svg>`,
+    database: `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><ellipse cx="12" cy="5" rx="9" ry="3"></ellipse><path d="M3 5v14c0 1.66 4.03 3 9 3s9-1.34 9-3V5"></path><path d="M3 12c0 1.66 4.03 3 9 3s9-1.34 9-3"></path></svg>`,
+    radar: `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M12 2v20"/><path d="M2 12h20"/><circle cx="12" cy="12" r="4"/></svg>`,
+    search: `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>`,
+    analysis: `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z"></path><path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z"></path></svg>`,
+    map: `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14.5 4.5 9.5 2 3 5.5v16l6.5-3.5 5 2.5 6.5-3.5v-16z"></path><path d="M9.5 2v16"></path><path d="M14.5 4.5v16"></path></svg>`,
+    check: `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"></path></svg>`
+  };
 
-  const seenDetails = new Set();
-  const pushUniqueStatus = (statusObj) => {
-    const key = `${statusObj.label}_${statusObj.detail}`;
-    if (!seenDetails.has(key)) {
-      statuses.push(statusObj);
-      seenDetails.add(key);
+  const workflowIconMap = {
+    brain: icons.brain,
+    tool: icons.tool,
+    code: icons.code,
+    database: icons.database,
+    radar: icons.radar,
+    search: icons.search,
+    analysis: icons.analysis,
+    map: icons.map,
+    check: icons.check
+  };
+
+  const normalizeWhitespace = (text = '') => text.replace(/\s+/g, ' ').trim();
+  const summarizeDetail = (text = '', maxLen = 140) => {
+    const t = normalizeWhitespace(text);
+    if (!t) return '';
+    return t.length > maxLen ? `${t.slice(0, maxLen)}...` : t;
+  };
+  const summarizeTitleDetail = (text = '', maxLen = 38) => {
+    const t = normalizeWhitespace(text)
+      .replace(/\[\[MAP_COMMAND:.*?\]\]/g, '')
+      .replace(/[#*_`>|[\]-]+/g, ' ')
+      .replace(/\s+/g, ' ')
+      .trim();
+    if (!t) return '';
+    return t.length > maxLen ? `${t.slice(0, maxLen)}...` : t;
+  };
+  const withTitleDetail = (label, detail, maxLen = 38) => {
+    const suffix = summarizeTitleDetail(detail, maxLen);
+    if (!suffix || label.includes(suffix)) return label;
+    return `${label} · ${suffix}`;
+  };
+
+  const parseJsonLoose = (text = '') => {
+    const raw = text.trim();
+    if (!raw) return null;
+    try {
+      return JSON.parse(raw);
+    } catch {
+      const jsonLike = raw.match(/\{[\s\S]*\}|\[[\s\S]*\]/)?.[0];
+      if (!jsonLike) return null;
+      try {
+        return JSON.parse(jsonLike);
+      } catch {
+        return null;
+      }
     }
   };
 
-  // 1. 统一提取所有动作和思考块 (Chronological Parsing)
-  const blockRegex = /(?:\[SEARCH\]|\[ANALYSIS\]|Thought:|Action Input:|Action:|Observation:)[\s\S]*?(?=(?:\n\[SEARCH\]|\n\[ANALYSIS\]|\nThought:|\nAction Input:|\nAction:|\nObservation:|\nAnswer:|$))/gi;
-  const blocks = content.match(blockRegex);
-  
-  if (blocks) {
-    blocks.forEach(block => {
-      const matchTypeArray = block.match(/^(?:\[(SEARCH|ANALYSIS)\]|(Thought|Action Input|Action|Observation):)/i);
-      if (!matchTypeArray) return;
-      
-      const rawTag = (matchTypeArray[1] || matchTypeArray[2]).toUpperCase();
-      let detail = block.replace(/^(?:\[(?:SEARCH|ANALYSIS)\]|(?:Thought|Action Input|Action|Observation):)\s*/i, '').trim();
+  const toolMetaMap = {
+    clcd_analysis: {
+      name: 'CLCD土地利用分析工具',
+      start: 'AgentTools → 调用 FunctionTool: clcd_analysis（CLCD土地利用分析）',
+      params: 'ReAct Router → 组装 clcd_analysis 参数',
+      done: 'FunctionTool: clcd_analysis → CLCD数据返回成功',
+      icon: icons.database
+    },
+    dashboard_analysis: {
+      name: '综合指标仪表盘工具',
+      start: 'AgentTools → 调用 FunctionTool: dashboard_analysis（综合指标仪表盘）',
+      params: 'ReAct Router → 组装 dashboard_analysis 参数',
+      done: 'FunctionTool: dashboard_analysis → 综合指标返回成功',
+      icon: icons.database
+    },
+    spatial_stats_analysis: {
+      name: '空间统计分析工具',
+      start: 'AgentTools → 调用 FunctionTool: spatial_stats_analysis（空间统计分析）',
+      params: 'ReAct Router → 组装 spatial_stats_analysis 参数',
+      done: 'FunctionTool: spatial_stats_analysis → 空间统计返回成功',
+      icon: icons.radar
+    },
+    land_transfer_analysis: {
+      name: '土地利用转移矩阵工具',
+      start: 'AgentTools → 调用 FunctionTool: land_transfer_analysis（土地转移矩阵）',
+      params: 'ReAct Router → 组装 land_transfer_analysis 参数',
+      done: 'FunctionTool: land_transfer_analysis → LUCC转移矩阵返回成功',
+      icon: icons.database
+    },
+    weather_query: {
+      name: '气象观测查询工具',
+      start: 'AgentTools → 调用 FunctionTool: weather_query（气象观测查询）',
+      params: 'ReAct Router → 组装 weather_query 参数',
+      done: 'FunctionTool: weather_query → 气象观测返回成功',
+      icon: icons.search
+    },
+    knowledge_base_lookup: {
+      name: '专家知识库检索工具',
+      start: 'AgentTools → 调用 FunctionTool: knowledge_base_lookup（专家知识库）',
+      params: 'ReAct Router → 组装 knowledge_base_lookup 参数',
+      done: 'FunctionTool: knowledge_base_lookup → 专家知识返回成功',
+      icon: icons.search
+    },
+    map_control: {
+      name: 'WebGIS地图控制工具',
+      start: 'AgentTools → 调用 FunctionTool: map_control（WebGIS地图控制）',
+      params: 'ReAct Router → 组装 map_control 参数',
+      done: 'FunctionTool: map_control → 地图指令返回成功',
+      icon: icons.map
+    }
+  };
 
-      let type = 'analysis'; 
-      let label = '';
-      let iconUrl = '';
+  const argLabelMap = {
+    query_type: '查询类型',
+    region: '区域',
+    level: '行政级别',
+    year: '年份',
+    year_range: '年份范围',
+    start_year: '起始年份',
+    end_year: '结束年份',
+    period: '周期',
+    land_type: '地类',
+    top_n: '数量',
+    yearStart: '起始年份',
+    yearEnd: '结束年份',
+    fromClassStr: '转出地类',
+    toClassStr: '转入地类',
+    city: '城市',
+    skill_name: '知识模块',
+    action: '地图动作',
+    lnglat: '经纬度',
+    zoom: '缩放层级'
+  };
 
-      if (rawTag === 'THOUGHT') {
-        type = 'analysis';
-        label = `深度思考: ${detail.length > 200 ? detail.slice(0, 200) + '...' : detail}`;
-        detail = '';
-        iconUrl = brainIcon;
-      } else if (rawTag === 'ACTION INPUT') {
-        type = 'search';
-        label = `参数构造: ${detail.replace(/[\n\r]+/g, ' ')}`;
-        detail = '';
-        iconUrl = codeIcon;
-      } else if (rawTag === 'ACTION') {
-        type = 'search';
-        label = `调度工具: ${detail}`;
-        detail = '';
-        iconUrl = toolIcon;
-      } else if (rawTag === 'OBSERVATION') {
-        type = 'analysis';
-        label = `获取数据: ${detail.length > 200 ? detail.slice(0, 200) + '...' : detail}`;
-        detail = '';
-        iconUrl = radarIcon;
-      } else if (rawTag === 'SEARCH') {
-        type = 'search';
-        label = detail || (loading.value ? 'AI数据感知核心引擎动作' : '服务挂载完毕');
-        detail = '';
-        iconUrl = searchIcon;
-      } else if (rawTag === 'ANALYSIS') {
-        type = 'analysis';
-        label = detail || (loading.value ? 'AI数据感知核心引擎分析' : '分析调度闭环完成');
-        detail = '';
-        iconUrl = analysisIcon;
+  const formatArgs = (value) => {
+    const parsed = typeof value === 'string' ? parseJsonLoose(value) : value;
+    if (!parsed || typeof parsed !== 'object' || Array.isArray(parsed)) {
+      return summarizeDetail(typeof value === 'string' ? value : JSON.stringify(value || ''), 180);
+    }
+    const pairs = Object.entries(parsed)
+      .filter(([, item]) => item !== undefined && item !== null && item !== '')
+      .map(([key, item]) => {
+        const label = argLabelMap[key] || key;
+        const rendered = Array.isArray(item) ? item.join(' - ') : String(item);
+        return `${label}: ${rendered}`;
+      });
+    return pairs.length ? pairs.join('，') : summarizeDetail(JSON.stringify(parsed), 180);
+  };
+
+  const inferToolName = (text = '') => {
+    const normalized = normalizeWhitespace(text).toLowerCase();
+    const direct = normalized.match(/functiontool\s*:\s*(clcd_analysis|dashboard_analysis|spatial_stats_analysis|land_transfer_analysis|weather_query|knowledge_base_lookup|map_control)\b|\b(clcd_analysis|dashboard_analysis|spatial_stats_analysis|land_transfer_analysis|weather_query|knowledge_base_lookup|map_control)\b/i);
+    const directName = direct?.[1] || direct?.[2];
+    if (directName) return directName;
+    if (/clcd|遥感|土地利用状态|土地利用遥感/.test(normalized)) return 'clcd_analysis';
+    if (/仪表盘|综合指标|动态度|预警/.test(normalized)) return 'dashboard_analysis';
+    if (/空间重心|椭圆|轨迹|空间统计/.test(normalized)) return 'spatial_stats_analysis';
+    if (/转移矩阵|流转|lucc|转化/.test(normalized)) return 'land_transfer_analysis';
+    if (/气象|天气|风力|气温/.test(normalized)) return 'weather_query';
+    if (/知识库|知识图谱|专家知识|技能|spatial_reasoning|monitoring_indices/.test(normalized)) return 'knowledge_base_lookup';
+    if (/地图|webgis|视角|定位|缩放|飞行/.test(normalized)) return 'map_control';
+    return '';
+  };
+
+  const resolveThoughtLabel = (detail = '') => {
+    const normalized = normalizeWhitespace(detail);
+    if (/sql|select|from|where|group by|order by|数据库|查询语句/i.test(normalized)) return 'ReAct Router → 规划SQL数据查询';
+    if (/意图|用户|问题|需求|asked|request|want|需要/.test(normalized)) return 'AI分析专家 → 解析业务意图';
+    if (/工具|调用|tool|function|参数|argument/i.test(normalized)) return 'ReAct Router → 选择Agent工具';
+    if (/知识库|知识图谱|政策|算法|指标/.test(normalized)) return 'MCP知识服务 → 规划知识检索';
+    if (/地图|图层|视角|空间|坐标|区域/.test(normalized)) return 'GeoServer/Cesium → 规划空间联动';
+    if (/比较|趋势|变化|转移|占比|排名|分析/.test(normalized)) return 'AI分析专家 → 推导分析方法';
+    return 'AI分析专家 → 推理分析路径';
+  };
+
+  const inferAnswerTopic = (text = '') => {
+    const normalized = normalizeWhitespace(text);
+    if (/转移矩阵|流转|转化|转入|转出|LUCC/i.test(normalized)) return '土地利用转移分析';
+    if (/动态度|变化率|增速|趋势|多年|时间序列/.test(normalized)) return '土地利用变化趋势分析';
+    if (/重心|标准差椭圆|轨迹|方向|迁移/.test(normalized)) return '空间格局演变分析';
+    if (/预警|风险|生态|胁迫|保护/.test(normalized)) return '生态风险与预警研判';
+    if (/耕地|林地|草地|水域|建设用地|未利用地|湿地/.test(normalized)) return '地类结构分析';
+    if (/地图|定位|图层|视角|缩放/.test(normalized)) return '地图联动与空间定位';
+    if (/政策|规划|建议|治理|管控/.test(normalized)) return '规划政策建议生成';
+    return '综合空间智能分析';
+  };
+
+  let pendingMapStatuses = [];
+
+  const appendAnswerWorkflow = () => {
+    if (!content) return;
+    const normalized = normalizeWhitespace(content);
+    const topic = inferAnswerTopic(content);
+    const years = [...new Set((normalized.match(/\b(?:19[8-9]\d|20[0-4]\d)\b/g) || []))].slice(0, 4);
+    const regions = [...new Set((normalized.match(/[\u4e00-\u9fa5]{2,14}(?:省|州|市|县|区|自治县|城市群)/g) || []))]
+      .filter((item) => !/土地利用|建设用地|政策建议|核心发现|生态风险|分析结果/.test(item))
+      .slice(0, 4);
+    const landTypes = ['耕地', '林地', '草地', '水域', '湿地', '建设用地', '城乡', '未利用地', '裸地']
+      .filter((item) => normalized.includes(item))
+      .slice(0, 4);
+    const dataHints = [
+      /CLCD|遥感|土地利用/.test(normalized) ? 'CLCD土地利用数据' : '',
+      /动态度|变化率|趋势|面积|占比|排名/.test(normalized) ? '综合指标数据' : '',
+      /转移矩阵|转入|转出|流转|LUCC/i.test(normalized) ? '转移矩阵数据' : '',
+      /重心|椭圆|轨迹|空间/.test(normalized) ? '空间统计数据' : '',
+      /政策|规划|建议|管控|治理|保护/.test(normalized) ? '政策知识库' : ''
+    ].filter(Boolean);
+    const needsMapLane = pendingMapStatuses.length || /地图|定位|图层|视角|缩放|空间/.test(normalized);
+    const needsKnowledgeLane = /政策|规划|建议|治理|管控|保护|知识|算法|指标/.test(normalized);
+    const needsRiskLane = /生态|风险|预警|保护|胁迫|压力/.test(normalized);
+    const needsChangeLane = /对比|相比|呈现|明显|增加|减少|扩张|收缩|占比|变化|趋势|转化|流转|转移/.test(normalized);
+
+    const labelExists = (pattern) => statuses.some((item) => pattern.test(item.label));
+    const pushSemantic = (label, detail, icon = icons.analysis, type = 'analysis', titleMaxLen = 42, insertBeforeMap = true) => {
+      if (labelExists(new RegExp(label.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')))) return;
+      const statusObj = {
+        label,
+        type,
+        detail,
+        icon,
+        titleDetail: detail,
+        titleMaxLen
+      };
+      if (!insertBeforeMap) {
+        pushStatus(statusObj);
+        return;
       }
+      pushStatus(statusObj);
+    };
 
-      if (detail || label) {
-        pushUniqueStatus({ type, done: false, label, detail, icon: iconUrl });
-      }
+    if (!labelExists(/App用户端|提交问题/)) {
+      pushSemantic('App用户端 → 提交空间分析问题', topic, icons.brain, 'analysis', 30);
+    }
+    if (!labelExists(/AI分析专家|解析/)) {
+      pushSemantic('AI分析专家 → 解析业务意图', topic, icons.brain, 'analysis', 30);
+    }
+    if ((regions.length || years.length) && !labelExists(/AI分析专家 → 提取时空约束/)) {
+      pushSemantic('AI分析专家 → 提取时空约束', [
+        regions.length ? `区域: ${regions.join('、')}` : '',
+        years.length ? `年份: ${years.join('、')}` : ''
+      ].filter(Boolean).join('，'), icons.map, 'analysis', 54);
+    }
+    if (!labelExists(/POST接口|SSE流/)) {
+      pushSemantic('POST接口 → 建立SSE流式响应', '前端请求进入AI分析接口并持续接收工作流事件', icons.search, 'search', 40);
+    }
+    if (!labelExists(/AI Middleware|注入/)) {
+      pushSemantic('AI Middleware → 注入地图与会话上下文', [
+        regions.length ? `区域: ${regions.slice(0, 2).join('、')}` : '',
+        years.length ? `年份: ${years.slice(0, 2).join('、')}` : ''
+      ].filter(Boolean).join('，') || '加载当前地图、年份与历史会话', icons.map, 'analysis', 46);
+    }
+    if (!labelExists(/ReAct Router|规划工具链/)) {
+      pushSemantic('ReAct Router → 规划工具链路', dataHints.length ? dataHints.slice(0, 3).join('、') : topic, icons.tool, 'analysis', 44);
+    }
+    if (dataHints.length && !labelExists(/AgentTools|匹配/)) {
+      pushSemantic('AgentTools → 匹配业务分析工具', dataHints.slice(0, 3).join('、'), icons.tool, 'search', 46);
+    }
+    if (dataHints.some((item) => /CLCD|综合指标|转移矩阵|空间统计/.test(item)) && !labelExists(/PostgreSQL\/PostGIS|读取/)) {
+      pushSemantic('PostgreSQL/PostGIS → 读取时空业务数据', dataHints.slice(0, 3).join('、'), icons.database, 'search', 48);
+    }
+    if (needsKnowledgeLane && !labelExists(/MCP知识服务|专家知识/)) {
+      pushSemantic('MCP知识服务 → 检索专家知识图谱', '政策、指标、空间推理与规划建议线索', icons.search, 'search', 46);
+    }
+    if (landTypes.length && !labelExists(/AgentTools → 提取地类变化信号/)) {
+      pushSemantic('AgentTools → 提取地类变化信号', landTypes.join('、'), icons.database, 'analysis', 42);
+    }
+    if (needsRiskLane && !labelExists(/AI分析专家 → 评估生态风险/)) {
+      pushSemantic('AI分析专家 → 评估生态风险与预警因子', '生态、农业、城镇空间压力关系', icons.radar, 'analysis', 44);
+    }
+    if (needsChangeLane && !labelExists(/AI分析专家 → 归纳空间变化/)) {
+      pushSemantic('AI分析专家 → 归纳空间变化特征', summarizeDetail(content, 90), icons.analysis, 'analysis', 42);
+    }
+    if (/核心发现|发现|建议|应当|需要|可以|因此|表明/.test(normalized) && !labelExists(/Result Aggregator|证据链/)) {
+      pushSemantic('Result Aggregator → 汇总发现与证据链', summarizeDetail(content, 90), icons.check, 'analysis', 42);
+    }
+    if (needsMapLane && !labelExists(/GeoServer\/Cesium|准备地图联动/)) {
+      pushSemantic('GeoServer/Cesium → 准备地图联动', '同步区域定位、图层状态或空间视角', icons.map, 'search', 42);
+    }
+    if (pendingMapStatuses.length && !labelExists(/下发地图联动指令/)) {
+      pendingMapStatuses.forEach((status) => pushStatus(status));
+    }
+    if (!labelExists(/Ollama|生成/)) {
+      pushSemantic('Ollama LLM → 生成专业分析结论', topic, icons.analysis, 'analysis', 36);
+    }
+    if (!labelExists(/SSE流|回传/)) {
+      pushSemantic('SSE流 → 回传答案与工作流状态', '前端实时渲染分析结果和链路节点', icons.check, 'analysis', 42, false);
+    }
+  };
+
+  let activeToolName = '';
+
+  const pushStatus = (statusObj) => {
+    if (!statusObj?.label) return;
+    const prev = statuses[statuses.length - 1];
+    const safeDetail = summarizeDetail(statusObj.detail || '', statusObj.maxLen || 160);
+    const titleDetail = statusObj.titleDetail === false ? '' : statusObj.titleDetail ?? safeDetail;
+    const next = {
+      type: statusObj.type || 'analysis',
+      done: statusObj.done !== false,
+      label: withTitleDetail(statusObj.label, titleDetail, statusObj.titleMaxLen || 38),
+      detail: safeDetail,
+      icon: statusObj.icon || icons.analysis
+    };
+    const prevKey = prev ? `${prev.type}|${prev.label}|${normalizeWhitespace(prev.detail || '')}` : '';
+    const nextKey = `${next.type}|${next.label}|${normalizeWhitespace(next.detail || '')}`;
+    if (prevKey !== nextKey) {
+      statuses.push(next);
+    }
+  };
+
+  if (Array.isArray(msg.workflow) && msg.workflow.length > 0) {
+    msg.workflow.forEach((node, idx) => {
+      pushStatus({
+        label: node.label,
+        type: node.type || 'analysis',
+        done: loading.value ? idx < msg.workflow.length - 1 : node.done,
+        icon: workflowIconMap[node.iconKey] || icons.analysis,
+        detail: '',
+        titleDetail: false
+      });
     });
+  }
 
-    content = content.replace(blockRegex, '').trim();
+  const resolveStatusMeta = (rawTag, detail) => {
+    const normalized = normalizeWhitespace(detail || '');
+    const inferredToolName = inferToolName(normalized);
+    const toolName = inferredToolName || activeToolName;
+    const toolMeta = toolMetaMap[toolName];
+
+    if (rawTag === 'THOUGHT') {
+      return {
+        label: resolveThoughtLabel(normalized),
+        type: 'analysis',
+        detail: normalized,
+        icon: icons.brain,
+        maxLen: 180,
+        titleMaxLen: 34
+      };
+    }
+
+    if (rawTag === 'ACTION') {
+      activeToolName = inferredToolName || normalized.match(/^([a-z_][a-z0-9_]*)/i)?.[1] || activeToolName;
+      const actionTool = toolMetaMap[activeToolName];
+      return {
+        label: actionTool ? actionTool.start : `AgentTools → 调用 FunctionTool: ${activeToolName || 'unknown'}`.trim(),
+        type: 'search',
+        detail: normalized,
+        icon: actionTool?.icon || icons.tool,
+        titleDetail: actionTool ? false : normalized
+      };
+    }
+
+    if (rawTag === 'ACTION INPUT') {
+      const argsTitle = formatArgs(normalized);
+      return {
+        label: toolMeta?.params || '构造工具调用参数',
+        type: 'search',
+        detail: argsTitle,
+        icon: icons.code,
+        maxLen: 220,
+        titleDetail: argsTitle,
+        titleMaxLen: 52
+      };
+    }
+
+    if (rawTag === 'OBSERVATION') {
+      return {
+        label: toolMeta?.done || '数据检索成功',
+        type: 'analysis',
+        detail: normalized,
+        icon: icons.check,
+        maxLen: 190,
+        titleMaxLen: 36
+      };
+    }
+
+    if (rawTag === 'SEARCH') {
+      if (inferredToolName) activeToolName = inferredToolName;
+      if (/挂载|同步地理|地理空间上下文|上下文/i.test(normalized)) {
+        return { label: 'AI Middleware → 挂载地理空间上下文', type: 'search', detail: normalized, icon: icons.map, titleDetail: false };
+      }
+      if (/重试|尝试|链路波动/i.test(normalized)) {
+        return { label: 'POST接口 → 重试模型调用链路', type: 'search', detail: normalized, icon: icons.search, titleMaxLen: 28 };
+      }
+      if (toolMeta) {
+        return { label: toolMeta.start, type: 'search', detail: normalized, icon: toolMeta.icon, titleDetail: false };
+      }
+      if (/sql|查询语句|数据库/i.test(normalized)) {
+        return { label: 'ReAct Router → 编写并提交SQL查询', type: 'search', detail: normalized, icon: icons.code, titleMaxLen: 34 };
+      }
+      if (/检索|查询|提取|获取|汇总|执行|同步|分析/i.test(normalized)) {
+        return { label: 'AgentTools → 检索时空业务数据', type: 'search', detail: normalized, icon: icons.search, titleMaxLen: 34 };
+      }
+      return { label: 'POST接口 → 数据链路准备中', type: 'search', detail: normalized, icon: icons.search, titleMaxLen: 30 };
+    }
+
+    if (rawTag === 'ANALYSIS') {
+      if (/备用模型|切换/i.test(normalized)) {
+        return { label: 'Ollama LLM → 切换备用模型继续分析', type: 'analysis', detail: normalized, icon: icons.analysis, titleMaxLen: 30 };
+      }
+      if (/深入思考|思考|推理|逻辑引擎/i.test(normalized)) {
+        return { label: 'Ollama LLM → 解析意图并规划分析路径', type: 'analysis', detail: normalized, icon: icons.brain, titleDetail: false };
+      }
+      if (/地理数据查询完成|分析链条处理完成|完成|成功|闭环/i.test(normalized)) {
+        return { label: toolMeta?.done || '阶段处理完成', type: 'analysis', detail: normalized, icon: icons.check, titleDetail: false };
+      }
+      return { label: 'Result Aggregator → 组织分析结论', type: 'analysis', detail: normalized, icon: icons.analysis, titleMaxLen: 34 };
+    }
+
+    return null;
+  };
+
+  const normalizeTagLine = (line) => {
+    if (!line) return null;
+    const searchMatch = line.match(/^\s*\[(SEARCH|ANALYSIS)\]\s*(.*)$/i);
+    if (searchMatch) {
+      return { tag: searchMatch[1].toUpperCase(), value: (searchMatch[2] || '').trim() };
+    }
+    const reactMatch = line.match(/^\s*(Thought|Action Input|Action|Observation|Answer)\s*:\s*(.*)$/i);
+    if (reactMatch) {
+      return { tag: reactMatch[1].toUpperCase(), value: (reactMatch[2] || '').trim() };
+    }
+    return null;
+  };
+
+  // 1. 按行抽取 trace 块，避免状态文本残留到正文
+  const lines = content.replace(/\r\n/g, '\n').split('\n');
+  const cleanLines = [];
+  let activeBlock = null;
+  const flushBlock = () => {
+    if (!activeBlock) return;
+    const detail = activeBlock.lines.join('\n').trim();
+    const meta = resolveStatusMeta(activeBlock.tag, detail);
+    if (meta) pushStatus(meta);
+    activeBlock = null;
+  };
+
+  lines.forEach((line) => {
+    const tagged = normalizeTagLine(line);
+    if (!tagged) {
+      if (activeBlock) {
+        activeBlock.lines.push(line);
+      } else {
+        cleanLines.push(line);
+      }
+      return;
+    }
+
+    if (tagged.tag === 'ANSWER') {
+      flushBlock();
+      if (tagged.value) cleanLines.push(tagged.value);
+      return;
+    }
+
+    flushBlock();
+    activeBlock = { tag: tagged.tag, lines: [] };
+    if (tagged.value) activeBlock.lines.push(tagged.value);
+  });
+  flushBlock();
+
+  content = cleanLines.join('\n').trim();
+
+  // 兜底清理：处理极端流式切片导致的残余 trace 行
+  content = content
+    .replace(/^\s*\[(SEARCH|ANALYSIS)\].*$/gim, '')
+    .replace(/^\s*(Thought|Action Input|Action|Observation)\s*:.*$/gim, '')
+    .trim();
+
+  // 保留足够长的可解释链路，避免只剩少量标签
+  if (statuses.length > 24) {
+    statuses.splice(0, statuses.length - 24);
   }
 
   // 2. 移除可能的前缀和冗余内部标签
   if (content.startsWith('Answer:')) {
     content = content.replace(/^Answer:\s*/i, '').trim();
   }
+  const mapCommandMatches = [...content.matchAll(/\[\[MAP_COMMAND:(.*?)\]\]/g)];
+  mapCommandMatches.forEach((match) => {
+    const command = parseJsonLoose(match[1]);
+    const params = command?.params ? formatArgs(command.params) : '';
+    pendingMapStatuses.push({
+      label: 'App用户端 → 执行地图联动指令',
+      type: 'search',
+      detail: [command?.action, params].filter(Boolean).join('，') || '地图指令已生成',
+      icon: icons.map,
+      maxLen: 180,
+      titleMaxLen: 46
+    });
+  });
   content = content.replace(/\[\[MAP_COMMAND:.*?\]\]/g, '').trim();
 
   // 原生 <think> 标签保留原有拦截逻辑（针对如 DeepSeek 等有内置思考块的模型）
@@ -475,6 +896,10 @@ const _parseMessage = (msg, skipCache = false) => {
   if (thinkMatch) {
     thinking = (thinking ? thinking + '\n' : '') + thinkMatch[1].trim();
     content = content.replace(/<think>[\s\S]*?<\/think>/gi, '').replace(/<think>[\s\S]*/gi, '').trim();
+  }
+
+  if (!Array.isArray(msg.workflow) || msg.workflow.length === 0) {
+    appendAnswerWorkflow();
   }
 
   // 3. 步进器动效：如果进行中，仅高亮最后一条；否则全部设为完成态
@@ -644,7 +1069,7 @@ const deleteSession = async (sessionId) => {
   }
 };
 
-const saveMessage = async (role, content, thinking = '', thinkTime = 0) => {
+const saveMessage = async (role, content, thinking = '', thinkTime = 0, workflow = []) => {
   if (!currentSessionId.value) return;
   try {
     await fetch(`/api/chat-sessions/${currentSessionId.value}/messages`, {
@@ -653,7 +1078,7 @@ const saveMessage = async (role, content, thinking = '', thinkTime = 0) => {
         'Content-Type': 'application/json',
         'Authorization': `Bearer ${localStorage.getItem('auth_token')}`
       },
-      body: JSON.stringify({ role, content, thinking, thinkTime })
+      body: JSON.stringify({ role, content, thinking, thinkTime, workflow })
     });
   } catch (err) {
     console.error('保存消息失败:', err);
@@ -864,7 +1289,8 @@ const sendMessage = async (text) => {
     role: 'assistant',
     content: '',
     thinking: '',
-    thinkTime: 0
+    thinkTime: 0,
+    workflow: []
   });
 
   // 初始自动展开
@@ -897,6 +1323,13 @@ const sendMessage = async (text) => {
         model: selectedModel.value
       },
       (chunkObj) => {
+        if (chunkObj.workflow) {
+          const wf = messages.value[assistantMsgIndex].workflow || [];
+          const exists = wf.some((item) => item.id && item.id === chunkObj.workflow.id);
+          if (!exists) {
+            messages.value[assistantMsgIndex].workflow = [...wf, chunkObj.workflow];
+          }
+        }
         if (chunkObj.content) {
           messages.value[assistantMsgIndex].content += chunkObj.content;
           // 只有用户没动过，我们才根据全量内容实时控制展开
@@ -943,7 +1376,7 @@ const sendMessage = async (text) => {
         handleMapCommand(lastMsg.content);
 
         // 完成后保存 AI 消息 (持久化所有逻辑字段)
-        await saveMessage('assistant', lastMsg.content, lastMsg.thinking, lastMsg.thinkTime);
+        await saveMessage('assistant', lastMsg.content, lastMsg.thinking, lastMsg.thinkTime, lastMsg.workflow || []);
         
         // 延迟 2 秒刷新会话列表，确保后端 AI 已完成标题生成
         setTimeout(() => {
@@ -1629,8 +2062,8 @@ const retryReport = () => {
   flex: 1;
   overflow-y: auto;
   overflow-x: hidden;
-  padding: 20px;
-  padding-bottom: 200px;
+  padding: 14px 18px;
+  padding-bottom: 150px;
   display: flex;
   flex-direction: column;
   scroll-behavior: smooth;
@@ -2014,18 +2447,18 @@ const retryReport = () => {
   display: flex;
   flex-direction: column;
   width: 100%;
-  max-width: 850px;
+  max-width: 1180px;
   margin: 0 auto;
 }
 
 .message.user {
   align-items: flex-end;
   /* 用户消息右对齐 */
-  margin-bottom: 32px;
+  margin-bottom: 18px;
 }
 
 .bubble-wrapper {
-  max-width: 1000px; /* 恢复 1000px 的消息输出宽度 */
+  max-width: 1180px;
   width: 100%;
   margin: 0 auto;
 }
@@ -2041,23 +2474,23 @@ const retryReport = () => {
   padding: 0;
   background: transparent;
   border: none;
-  font-size: 16px;
-  line-height: 1.8;
+  font-size: 14px;
+  line-height: 1.62;
   color: #e2e8f0;
-  text-align: justify;
-  text-justify: inter-word;
-  word-break: break-all; /* 强制长文本/URL换行，防止溢出 */
+  text-align: left;
+  word-break: normal;
+  overflow-wrap: anywhere;
 }
 
 .user .bubble {
   color: #ffffff;
   background: #3b82f6;
   /* 蓝色背景 */
-  padding: 12px 20px;
+  padding: 10px 16px;
   border-radius: 16px 16px 4px 16px;
   /* 气泡圆角 */
   font-weight: 500;
-  font-size: 16px;
+  font-size: 14px;
   box-shadow: 0 4px 12px rgba(59, 130, 246, 0.3);
   text-align: left;
 }
@@ -2069,17 +2502,17 @@ const retryReport = () => {
 .thinking-process {
   background: transparent;
   border-radius: 0;
-  margin-bottom: 8px;
+  margin-bottom: 6px;
   border: none;
 }
 
 .thinking-header {
-  padding: 6px 0;
+  padding: 2px 0;
   display: flex;
   justify-content: flex-start;
   align-items: center;
   cursor: pointer;
-  font-size: 14px;
+  font-size: 13px;
   color: #94a3b8;
   user-select: none;
   background: transparent;
@@ -2164,7 +2597,7 @@ const retryReport = () => {
 }
 
 .message-actions {
-  margin-top: 8px;
+  margin-top: 4px;
   display: flex;
   justify-content: flex-start;
   opacity: 1;
@@ -2194,11 +2627,11 @@ const retryReport = () => {
 }
 
 .thinking-content {
-  padding: 4px 0 12px 24px;
-  font-size: 14px;
+  padding: 2px 0 8px 20px;
+  font-size: 13px;
   color: #94a3b8;
   white-space: pre-wrap;
-  line-height: 1.6;
+  line-height: 1.5;
 }
 
 .thinking-expand-mask:hover {
@@ -2231,8 +2664,8 @@ const retryReport = () => {
   bottom: -1px; /* 稍微下移防止亚像素间隙 */
   left: 0;
   right: 0;
-  padding: 20px;
-  padding-top: 40px;
+  padding: 14px 18px;
+  padding-top: 28px;
   border-top: none;
   /* 弱化底部实色渐变，让毛玻璃更纯粹，仅保留微弱阴影托底 */
   background: linear-gradient(to top, rgba(7, 16, 36, 0.85) 0%, rgba(7, 16, 36, 0) 100%);
@@ -2241,27 +2674,25 @@ const retryReport = () => {
 }
 
 .footer-hint {
-  margin-top: 12px;
+  margin-top: 8px;
   text-align: center;
-  font-size: 12px;
+  font-size: 11px;
   color: #64748b;
 }
 
 /* Markdown 中文排版深度优化 */
 .markdown-body {
-  font-size: 15px;
-  line-height: 2; /* 宽裕的中式行距 */
+  font-size: 14px;
+  line-height: 1.62;
   color: #e2e8f0;
-  text-align: justify; /* 两端对齐，使版面整齐 */
-  text-justify: inter-ideograph;
-  letter-spacing: 0.5px;
+  text-align: left;
+  letter-spacing: 0.15px;
   font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", sans-serif;
 }
 
-/* 核心：段落首行缩进 2 字符 */
 .markdown-body :deep(p) {
-  text-indent: 2em;
-  margin-bottom: 16px;
+  text-indent: 0;
+  margin-bottom: 8px;
   margin-top: 0;
 }
 
@@ -2272,27 +2703,28 @@ const retryReport = () => {
 .markdown-body :deep(h4) {
   text-indent: 0; 
   color: #f8fafc;
-  margin-top: 24px;
-  margin-bottom: 12px;
+  margin-top: 14px;
+  margin-bottom: 6px;
   font-weight: 600;
   text-align: left;
 }
 
-.markdown-body :deep(h1) { font-size: 22px; }
-.markdown-body :deep(h2) { font-size: 18px; }
-.markdown-body :deep(h3) { font-size: 16px; }
+.markdown-body :deep(h1) { font-size: 19px; }
+.markdown-body :deep(h2) { font-size: 16px; }
+.markdown-body :deep(h3) { font-size: 15px; }
 
 /* 列表不随段落缩进，使用自身 padding */
 .markdown-body :deep(ul),
 .markdown-body :deep(ol) {
   text-indent: 0;
-  padding-left: 2em;
-  margin-bottom: 16px;
+  padding-left: 1.4em;
+  margin-bottom: 8px;
   margin-top: 0;
 }
 
 .markdown-body :deep(li) {
-  margin-bottom: 6px;
+  margin-bottom: 2px;
+  line-height: 1.55;
 }
 
 .markdown-body :deep(strong) {
@@ -2303,8 +2735,8 @@ const retryReport = () => {
 .markdown-body :deep(blockquote) {
   text-indent: 0;
   border-left: 4px solid rgba(96, 165, 250, 0.5);
-  margin: 16px 0;
-  padding: 8px 16px;
+  margin: 10px 0;
+  padding: 6px 12px;
   background: rgba(255, 255, 255, 0.05);
   color: #cbd5e1;
   border-radius: 0 4px 4px 0;
@@ -2315,9 +2747,9 @@ const retryReport = () => {
   width: 100%;
   text-align: center; /* 配合 inline-table 实现安全居中 */
   overflow-x: auto;
-  margin: 20px 0;
+  margin: 10px 0;
   text-indent: 0; /* 表格内绝不缩进 */
-  padding-bottom: 8px; /* 为滚动条留出空间 */
+  padding-bottom: 4px;
 }
 
 .markdown-body :deep(table) {
@@ -2335,27 +2767,55 @@ const retryReport = () => {
 }
 
 .markdown-body :deep(th) {
-  padding: 12px 18px;
+  padding: 8px 12px;
   background: rgba(255, 255, 255, 0.05);
   color: #93c5fd;
   font-weight: 600;
   text-align: center;
-  font-size: 14px;
+  font-size: 13px;
   line-height: 1.5;
   border-bottom: 1px solid rgba(255, 255, 255, 0.08);
   white-space: nowrap; /* 表头强制不换行，确保视觉整齐 */
 }
 
 .markdown-body :deep(td) {
-  padding: 10px 18px;
+  padding: 7px 12px;
   text-align: center;
-  font-size: 13.5px;
-  line-height: 1.6;
+  font-size: 12.5px;
+  line-height: 1.45;
   border-bottom: 1px solid rgba(255, 255, 255, 0.08);
   white-space: normal; /* 允许内容换行 */
   word-break: keep-all; /* 核心：防止年份、数字等被强制截断换行 */
   overflow-wrap: break-word; /* 针对超长连续字符（如URL）强制折行 */
   min-width: 60px; /* 给短文本预留基本宽度 */
+}
+
+/* 双栏排版：仅助手正文，适配论文截图信息密度 */
+.assistant .markdown-body {
+  column-count: 2;
+  column-gap: 28px;
+  column-rule: 1px solid rgba(148, 163, 184, 0.2);
+}
+
+.assistant .markdown-body :deep(h1),
+.assistant .markdown-body :deep(h2),
+.assistant .markdown-body :deep(h3),
+.assistant .markdown-body :deep(h4),
+.assistant .markdown-body :deep(blockquote),
+.assistant .markdown-body :deep(pre),
+.assistant .markdown-body :deep(.table-container) {
+  break-inside: avoid;
+  -webkit-column-break-inside: avoid;
+  page-break-inside: avoid;
+}
+
+/* 小屏自动回退单栏，避免拥挤 */
+@media (max-width: 1280px) {
+  .assistant .markdown-body {
+    column-count: 1;
+    column-gap: 0;
+    column-rule: none;
+  }
 }
 
 .markdown-body :deep(tr:last-child td) {
@@ -2368,20 +2828,42 @@ const retryReport = () => {
 
 /* ── AI 步进器 (Industrial Progress Stepper) ────────────────────────────────── */
 .industrial-stepper {
-  margin: 12px 0 20px 4px;
+  margin: 6px 0 14px 0;
+  padding: 10px 12px 8px 0;
   display: flex;
   flex-direction: column;
-  gap: 0;
+  gap: 2px;
   position: relative;
+  opacity: 0.96;
+}
+
+.workflow-header {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  margin: 0 0 9px 0;
+}
+
+.workflow-title {
+  font-size: 12.5px;
+  font-weight: 700;
+  color: #e2e8f0;
+  letter-spacing: 0.2px;
+}
+
+.workflow-subtitle {
+  font-size: 11px;
+  color: #7890a5;
 }
 
 .step-item {
   display: flex;
-  gap: 16px;
+  align-items: flex-start;
+  gap: 9px;
   position: relative;
-  padding-bottom: 20px;
+  padding: 0 0 11px 0;
   opacity: 0;
-  transform: translateX(-10px);
+  transform: translateX(-6px);
   animation: stepAppear 0.4s cubic-bezier(0.16, 1, 0.3, 1) forwards;
 }
 
@@ -2395,18 +2877,19 @@ const retryReport = () => {
 
 .step-line {
   position: absolute;
-  left: 11px;
-  top: 24px;
+  left: 8.5px;
+  top: 19px;
   bottom: -4px;
-  width: 2px;
-  background: rgba(255, 255, 255, 0.08);
+  width: 1px;
+  background: linear-gradient(to bottom, rgba(52, 211, 153, 0.42), rgba(52, 211, 153, 0.08));
   z-index: 1;
 }
 
 .step-indicator {
   position: relative;
-  width: 24px;
-  height: 24px;
+  width: 18px;
+  height: 18px;
+  margin-top: 1px;
   flex-shrink: 0;
   z-index: 2;
   display: flex;
@@ -2417,35 +2900,36 @@ const retryReport = () => {
 .step-icon {
   width: 100%;
   height: 100%;
-  background: #1e293b;
-  border: 1px solid rgba(255, 255, 255, 0.1);
+  background: rgba(6, 78, 59, 0.22);
+  border: 1px solid rgba(52, 211, 153, 0.42);
   border-radius: 50%;
   display: flex;
   align-items: center;
   justify-content: center;
-  color: #94a3b8;
+  color: #34d399;
   transition: all 0.3s ease;
+  box-shadow: 0 0 0 3px rgba(16, 185, 129, 0.05);
 }
 
 .step-item.done .step-icon {
-  background: rgba(16, 185, 129, 0.1);
-  border-color: rgba(16, 185, 129, 0.4);
-  color: #10b981;
-  box-shadow: 0 0 12px rgba(16, 185, 129, 0.2);
+  background: rgba(16, 185, 129, 0.12);
+  border-color: rgba(52, 211, 153, 0.46);
+  color: #34d399;
+  box-shadow: 0 0 0 3px rgba(16, 185, 129, 0.05);
 }
 
 .step-item.active .step-icon {
-  background: rgba(59, 130, 246, 0.1);
-  border-color: rgba(59, 130, 246, 0.4);
-  color: #60a5fa;
-  box-shadow: 0 0 12px rgba(59, 130, 246, 0.2);
+  background: rgba(16, 185, 129, 0.16);
+  border-color: rgba(110, 231, 183, 0.72);
+  color: #6ee7b7;
+  box-shadow: 0 0 0 4px rgba(16, 185, 129, 0.08), 0 0 18px rgba(16, 185, 129, 0.16);
 }
 
 .step-pulse {
   position: absolute;
   inset: -4px;
   border-radius: 50%;
-  border: 2px solid rgba(59, 130, 246, 0.3);
+  border: 1px solid rgba(52, 211, 153, 0.28);
   animation: stepPulse 2s infinite;
 }
 
@@ -2456,29 +2940,34 @@ const retryReport = () => {
 }
 
 .step-content {
-  padding-top: 2px;
+  padding-top: 0;
+  min-width: 0;
+  max-width: calc(100% - 28px);
 }
 
 .step-label {
-  font-size: 14px;
-  font-weight: 600;
-  color: #e2e8f0;
-  margin-bottom: 4px;
-  font-family: "PingFang SC", sans-serif;
+  display: inline;
+  font-size: 13px;
+  font-weight: 700;
+  color: #34d399;
+  margin-bottom: 0;
+  line-height: 1.46;
+  letter-spacing: 0.1px;
+  font-family: "PingFang SC", "Microsoft YaHei", sans-serif;
+  text-shadow: 0 0 12px rgba(16, 185, 129, 0.18);
+  overflow-wrap: anywhere;
 }
 
 .step-item.done .step-label {
-  color: #10b981;
+  color: #34d399;
+}
+
+.step-item.active .step-label {
+  color: #6ee7b7;
 }
 
 .step-detail {
-  font-size: 13px;
-  color: #64748b;
-  font-family: "JetBrains Mono", monospace;
-  background: rgba(0, 0, 0, 0.15);
-  padding: 4px 10px;
-  border-radius: 6px;
-  border: 1px solid rgba(255, 255, 255, 0.05);
+  display: none;
 }
 
 .modal-fade-enter-active {

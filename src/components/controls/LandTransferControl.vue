@@ -57,13 +57,19 @@
           <div class="select-wrapper custom-select" :class="{ open: fromOpen }">
             <span class="select-hint">转出</span>
             <div class="select-trigger" @click.stop="toggleDropdown('from')">
-              <span class="selected-text">{{ landClasses.find(c => c.value === fromClass)?.label }}</span>
+              <span class="selected-text">{{ fromClass === null ? '全部' : landClasses.find(c => c.value === fromClass)?.label }}</span>
               <svg class="chevron" viewBox="0 0 24 24" width="15" height="15" stroke="currentColor" stroke-width="1.8" fill="none">
                 <path d="M6 9l6 6 6-6" />
               </svg>
             </div>
             <transition name="dropdown-fade">
               <ul v-if="fromOpen" class="select-options">
+                <li :class="{ active: fromClass === null }" @click="selectOption('from', null)">
+                  全部
+                  <svg v-if="fromClass === null" viewBox="0 0 24 24" width="15" height="15" stroke="currentColor" stroke-width="1.8" fill="none">
+                    <path d="M20 6L9 17l-5-5" />
+                  </svg>
+                </li>
                 <li 
                   v-for="opt in landClasses" 
                   :key="opt.value" 
@@ -91,13 +97,19 @@
           <div class="select-wrapper custom-select" :class="{ open: toOpen }">
             <span class="select-hint">转入</span>
             <div class="select-trigger" @click.stop="toggleDropdown('to')">
-              <span class="selected-text">{{ landClasses.find(c => c.value === toClass)?.label }}</span>
+              <span class="selected-text">{{ toClass === null ? '全部' : landClasses.find(c => c.value === toClass)?.label }}</span>
               <svg class="chevron" viewBox="0 0 24 24" width="15" height="15" stroke="currentColor" stroke-width="1.8" fill="none">
                 <path d="M6 9l6 6 6-6" />
               </svg>
             </div>
             <transition name="dropdown-fade">
               <ul v-if="toOpen" class="select-options">
+                <li :class="{ active: toClass === null }" @click="selectOption('to', null)">
+                  全部
+                  <svg v-if="toClass === null" viewBox="0 0 24 24" width="7" height="7" stroke="currentColor" stroke-width="1.2" fill="none">
+                    <path d="M20 6L9 17l-5-5" />
+                  </svg>
+                </li>
                 <li 
                   v-for="opt in landClasses" 
                   :key="opt.value" 
@@ -141,7 +153,11 @@
 <script setup>
 import { ref, computed, onMounted, onUnmounted, watch, nextTick } from 'vue';
 import { useGlobalStore } from '../../stores/global.ts';
+import { TRANSFER_CLASS_OPTIONS } from '../../constants/landuse.js';
 
+const props = defineProps({
+  visible: { type: Boolean, default: false }
+});
 const emit = defineEmits(['close', 'transfer-query', 'reset']);
 
 const containerRef = ref(null);
@@ -152,8 +168,8 @@ const MAX_YEAR = 2023;
 const unit = ref('county');
 const yearStart = ref(1985);
 const yearEnd = ref(1990);
-const fromClass = ref(1); // 耕地
-const toClass = ref(2);   // 林地
+const fromClass = ref(1); // 支持 null（表示全部）
+const toClass = ref(null);   // 默认“耕地净流出”
 const loading = ref(false);
 const errorMsg = ref('');
 const fromOpen = ref(false);
@@ -225,20 +241,21 @@ const validateYear = () => {
   }
 };
 
-const landClasses = [
-  { label: '耕地', value: 1 },
-  { label: '林地', value: 2 },
-  { label: '草地', value: 3 },
-  { label: '水域', value: 4 },
-  { label: '冰雪', value: 5 },
-  { label: '裸地', value: 6 },
-  { label: '建设用地', value: 7 },
-  { label: '湿地', value: 8 },
-];
+// 说明：转移专题使用的地类编码与 CLCD(1..9) 不同，此处必须与后端 transfer 宽表字段保持一致。
+const landClasses = TRANSFER_CLASS_OPTIONS;
 
 const dynamicTitle = computed(() => {
-  const fromName = landClasses.find(c => c.value === fromClass.value)?.label || '';
-  const toName = landClasses.find(c => c.value === toClass.value)?.label || '';
+  const fromName = fromClass.value === null ? '全部地类' : (landClasses.find(c => c.value === fromClass.value)?.label || '');
+  const toName = toClass.value === null ? '全部地类' : (landClasses.find(c => c.value === toClass.value)?.label || '');
+  if (fromClass.value !== null && toClass.value === null) {
+    return `${yearStart.value}-${yearEnd.value}年${fromName}净流出面积(km²)`;
+  }
+  if (fromClass.value === null && toClass.value !== null) {
+    return `${yearStart.value}-${yearEnd.value}年${toName}净流入面积(km²)`;
+  }
+  if (fromClass.value === null && toClass.value === null) {
+    return `${yearStart.value}-${yearEnd.value}年地类总流转面积(km²)`;
+  }
   return `${yearStart.value}-${yearEnd.value}年${fromName}转为${toName}面积(km²)`;
 });
 
@@ -247,7 +264,7 @@ const handleQuery = () => {
     errorMsg.value = '起始年份必须小于结束年份';
     return;
   }
-  if (fromClass.value === toClass.value) {
+  if (fromClass.value !== null && toClass.value !== null && fromClass.value === toClass.value) {
     errorMsg.value = '地类不能相同';
     return;
   }
@@ -260,14 +277,15 @@ const handleQuery = () => {
   emit('transfer-query', {
     yearStart: yearStart.value,
     yearEnd: yearEnd.value,
-    fromClass: fromClass.value,
-    toClass: toClass.value,
+    fromClass: fromClass.value !== null ? fromClass.value : '',
+    toClass: toClass.value !== null ? toClass.value : '',
     unit: unit.value,
     legendTitle: dynamicTitle.value
   });
 };
 
 const handleClickOutside = (event) => {
+  if (!props.visible) return;
   const path = event.composedPath();
   const isInside = containerRef.value && path.includes(containerRef.value);
   const isTrigger = path.some(el => el.classList && el.classList.contains('transfer-matrix-control'));
@@ -294,7 +312,12 @@ onUnmounted(() => {
 
 const setLoading = (val) => { loading.value = val; };
 const setError = (msg) => {
-  errorMsg.value = msg;
+  const raw = String(msg || '');
+  if (raw.includes('Missing transfer params')) {
+    errorMsg.value = '流转参数异常，请重新选择流转方向后再试。';
+  } else {
+    errorMsg.value = raw;
+  }
   loading.value = false;
 };
 

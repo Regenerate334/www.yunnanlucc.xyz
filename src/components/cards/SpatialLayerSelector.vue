@@ -161,6 +161,12 @@ function toggleDropdown() {
 
 function selectMainLayer(layerId) {
   activeMainLayer.value = layerId;
+
+  // 退出专题分析并回到常规图层模式，防止按钮“处理中”与专题状态残留。
+  if (layerId === 'clcd' || layerId === 'county' || layerId === 'grid') {
+    globalStore.setActiveTheme(null);
+    globalStore.clearThemeContext('all');
+  }
   
   // 优化：切换维度时立即触发更新，不再等待指标点击
   if (props.modelValue !== layerId) {
@@ -169,6 +175,10 @@ function selectMainLayer(layerId) {
 }
 
 function selectAttribute(attrValue) {
+  // 选择常规指标时，强制退出专题分析态。
+  globalStore.setActiveTheme(null);
+  globalStore.clearThemeContext('all');
+
   // 确保维度状态同步
   if (props.modelValue !== activeMainLayer.value) {
     emit('update:modelValue', activeMainLayer.value);
