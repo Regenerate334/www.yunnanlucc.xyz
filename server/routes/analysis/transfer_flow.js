@@ -3,8 +3,7 @@ import pool from '../../config/db.js';
 import { handleError } from '../../middleware/logger.js';
 import {
   getAvailablePeriods,
-  findOverlappingPeriods,
-  buildColumnNames
+  findOverlappingPeriods
 } from '../../utils/period_encoder.js';
 
 const router = express.Router();
@@ -28,21 +27,29 @@ function parseRequiredInt(value, field) {
   return parsed;
 }
 
+function parseOptionalClass(value, field) {
+  if (value === undefined || value === null || value === '') return null;
+  return parseRequiredInt(value, field);
+}
+
 function validateTransferRequest(query, forcedUnit = null) {
   const yearStart = parseRequiredInt(query.yearStart, 'yearStart');
   const yearEnd = parseRequiredInt(query.yearEnd, 'yearEnd');
-  const fromClass = parseRequiredInt(query.fromClass, 'fromClass');
-  const toClass = parseRequiredInt(query.toClass, 'toClass');
+  const fromClass = parseOptionalClass(query.fromClass, 'fromClass');
+  const toClass = parseOptionalClass(query.toClass, 'toClass');
   const unit = forcedUnit || query.unit;
 
   if (!ALLOWED_TABLES[unit]) {
     throw httpError(400, 'Invalid parameter: unit');
   }
-  if (yearStart > yearEnd) {
-    throw httpError(400, 'Invalid parameter: yearStart must be <= yearEnd');
+  if (yearStart >= yearEnd) {
+    throw httpError(400, 'Invalid parameter: yearStart must be < yearEnd');
   }
-  if (fromClass < 1 || fromClass > 9 || toClass < 1 || toClass > 9) {
-    throw httpError(400, 'Invalid parameter: class code must be within [1, 9]');
+  if (fromClass !== null && (fromClass < 1 || fromClass > 8)) {
+    throw httpError(400, 'Invalid parameter: fromClass must be within [1, 8]');
+  }
+  if (toClass !== null && (toClass < 1 || toClass > 8)) {
+    throw httpError(400, 'Invalid parameter: toClass must be within [1, 8]');
   }
 
   return {
@@ -55,6 +62,35 @@ function validateTransferRequest(query, forcedUnit = null) {
   };
 }
 
+function buildColumnNamesByDirection(periods, fromClass, toClass) {
+  const columns = [];
+  const allClasses = Array.from({ length: 8 }, (_, i) => i + 1);
+  for (const p of periods) {
+    if (fromClass !== null && toClass !== null) {
+      columns.push(`${p}_${fromClass}${toClass}`);
+      continue;
+    }
+    if (fromClass !== null && toClass === null) {
+      allClasses
+        .filter((cls) => cls !== fromClass)
+        .forEach((cls) => columns.push(`${p}_${fromClass}${cls}`));
+      continue;
+    }
+    if (fromClass === null && toClass !== null) {
+      allClasses
+        .filter((cls) => cls !== toClass)
+        .forEach((cls) => columns.push(`${p}_${cls}${toClass}`));
+      continue;
+    }
+    allClasses.forEach((f) => {
+      allClasses
+        .filter((t) => t !== f)
+        .forEach((t) => columns.push(`${p}_${f}${t}`));
+    });
+  }
+  return columns;
+}
+
 function normalizeRegion(region) {
   if (typeof region !== 'string') return null;
   const trimmed = region.trim();
@@ -63,7 +99,7 @@ function normalizeRegion(region) {
   return cleaned || trimmed;
 }
 
-export async function queryTransferGeoJSON(tableName, yearStart, yearEnd, fromClass, toClass, unit, region = null) {
+export async function queryTransferGeoJSON(tableName, yearStart, yearEnd, fromClass, toClass, unit, region = null, options = {}) {
   const safeName = ALLOWED_TABLES[unit];
   if (!safeName) {
     throw httpError(400, `Invalid spatial unit: ${unit}`);
@@ -73,7 +109,13 @@ export async function queryTransferGeoJSON(tableName, yearStart, yearEnd, fromCl
   }
 
   const allPeriods = await getAvailablePeriods(pool, safeName);
-  const activePeriods = findOverlappingPeriods(allPeriods, yearStart, yearEnd);
+  const forcedPeriods = Array.isArray(options?.periods)
+    ? options.periods.map((p) => String(p)).filter(Boolean)
+    : null;
+
+  const activePeriods = forcedPeriods && forcedPeriods.length > 0
+    ? forcedPeriods.filter((p) => allPeriods.includes(p))
+    : findOverlappingPeriods(allPeriods, yearStart, yearEnd);
 
   if (activePeriods.length === 0) {
     return {
@@ -83,7 +125,7 @@ export async function queryTransferGeoJSON(tableName, yearStart, yearEnd, fromCl
     };
   }
 
-  const columns = buildColumnNames(activePeriods, fromClass, toClass);
+  const columns = buildColumnNamesByDirection(activePeriods, fromClass, toClass);
   const existingColsRes = await pool.query(`
     SELECT column_name
     FROM information_schema.columns
@@ -214,4 +256,3 @@ router.get('/grid', async (req, res) => {
 });
 
 export default router;
-

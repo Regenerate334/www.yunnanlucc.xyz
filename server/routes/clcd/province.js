@@ -51,11 +51,12 @@ router.get('/trend/:level/:name', async (req, res) => {
     } catch (err) { res.error('获取趋势数据失败', 500, err); }
 });
 
-// 获取区域实时监测指标 (2021-2026 权威算法)
+// 获取区域实时监测指标（核验重构算法）
 router.get('/monitoring/:level/:name/:year', async (req, res) => {
     const { level, name, year } = req.params;
+    const { policy } = req.query;
     try {
-        const data = await landUseService.getRegionMonitoring(Number(year), name, level);
+        const data = await landUseService.getRegionMonitoring(Number(year), name, level, { policy });
         if (!data) return res.error('计算监测指标失败，可能由于该年份或区域数据缺失', 404);
         res.success(data);
     } catch (err) { res.error('获取监测指标失败', 500, err); }

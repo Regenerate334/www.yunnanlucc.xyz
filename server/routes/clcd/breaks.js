@@ -32,8 +32,8 @@ router.get('/', [
     query('classes').optional().isInt({ min: 3, max: 12 }),
     query('year_start').optional().isInt({ min: 1980, max: 2030 }),
     query('year_end').optional().isInt({ min: 1980, max: 2030 }),
-    query('from_class').optional().isInt({ min: 1, max: 9 }),
-    query('to_class').optional().isInt({ min: 1, max: 9 })
+    query('from_class').optional({ checkFalsy: true }).isInt({ min: 1, max: 9 }),
+    query('to_class').optional({ checkFalsy: true }).isInt({ min: 1, max: 9 })
 ], async (req, res) => {
     const errors = validationResult(req);
     if (!errors.isEmpty()) {
@@ -61,8 +61,8 @@ router.get('/', [
     // ===== 转移矩阵模式 =====
     if (mode === 'transfer') {
         try {
-            if (!year_start || !year_end || !from_class || !to_class) {
-                return res.status(400).json({ error: 'Missing transfer params: year_start, year_end, from_class, to_class' });
+            if (!year_start || !year_end) {
+                return res.status(400).json({ error: 'Missing transfer params: year_start, year_end' });
             }
 
             const tableName = unit === 'grid'
@@ -71,14 +71,17 @@ router.get('/', [
             const numClasses = Math.min(Math.max(parseInt(classes), 3), 12);
             const start = parseInt(year_start);
             const end = parseInt(year_end);
-            const from = parseInt(from_class);
-            const to = parseInt(to_class);
+            const from = from_class !== undefined && from_class !== '' ? parseInt(from_class) : null;
+            const to = to_class !== undefined && to_class !== '' ? parseInt(to_class) : null;
+            if (!Number.isInteger(start) || !Number.isInteger(end) || start >= end) {
+                return res.status(400).json({ error: 'Invalid transfer period: year_start must be less than year_end' });
+            }
 
-            // 1. 构建列名
-            const columns = [];
+            // 1. 构建年份片段
+            const periods = [];
             for (let y = start; y < end; y++) {
                 if (y === 1985 && end >= 1990) {
-                    columns.push(`y8590_${from}${to}`);
+                    periods.push('y8590');
                     y = 1989;
                     continue;
                 }
@@ -86,36 +89,73 @@ router.get('/', [
                 const yy2 = (y + 1) % 100;
                 const s1 = yy1 < 10 ? `0${yy1}` : `${yy1}`;
                 const s2 = yy2 < 10 ? `0${yy2}` : `${yy2}`;
-                columns.push(`y${s1}${s2}_${from}${to}`);
+                periods.push(`y${s1}${s2}`);
             }
 
-            if (columns.length === 0) {
+            if (periods.length === 0) {
+                return res.json({ breaks: [], sumExpr: '', stats: {}, message: 'No valid periods in the given range' });
+            }
+
+            // 2. 根据方向口径构建候选列
+            // from!=null,to!=null: 指定方向 A->B
+            // from!=null,to==null: 某地类净流出 A->*
+            // from==null,to!=null: 某地类净流入 *->B
+            // from==null,to==null: 总流转 *->*（排除同类）
+            const candidateColumns = [];
+            const allClasses = Array.from({ length: 9 }, (_, i) => i + 1);
+            for (const p of periods) {
+                if (from !== null && to !== null) {
+                    candidateColumns.push(`${p}_${from}${to}`);
+                    continue;
+                }
+                if (from !== null && to === null) {
+                    allClasses
+                        .filter((cls) => cls !== from)
+                        .forEach((cls) => candidateColumns.push(`${p}_${from}${cls}`));
+                    continue;
+                }
+                if (from === null && to !== null) {
+                    allClasses
+                        .filter((cls) => cls !== to)
+                        .forEach((cls) => candidateColumns.push(`${p}_${cls}${to}`));
+                    continue;
+                }
+                // from === null && to === null
+                allClasses.forEach((f) => {
+                    allClasses
+                        .filter((t) => t !== f)
+                        .forEach((t) => candidateColumns.push(`${p}_${f}${t}`));
+                });
+            }
+
+            if (candidateColumns.length === 0) {
                 return res.json({ breaks: [], sumExpr: '', stats: {} });
             }
 
-            // 2. 验证列存在性
+            // 3. 验证列存在性
             const validColsRes = await pool.query(`
                 SELECT column_name 
                 FROM information_schema.columns 
                 WHERE table_schema = 'public' 
                 AND table_name = $1
                 AND column_name = ANY($2)
-            `, [tableName, columns]);
+            `, [tableName, candidateColumns]);
             const validCols = validColsRes.rows.map(r => r.column_name);
 
             if (validCols.length === 0) {
                 return res.json({ breaks: [], sumExpr: '', stats: {}, message: 'No matching columns found' });
             }
 
-            // 3. 构建 SUM 表达式
+            // 4. 构建 SUM 表达式
             const sumExpr = validCols.map(c => `COALESCE("${c}", 0)`).join(' + ');
 
-            // 4. 查询统计 + 数据（单位 m²，转 km²）
+            // 5. 查询统计 + 数据（单位 m²，转 km²）
             const statsSql = `
                 SELECT 
                     min(val) / 1000000.0 as min_val,
                     max(val) / 1000000.0 as max_val,
                     avg(val) / 1000000.0 as avg_val,
+                    sum(val) / 1000000.0 as sum_val,
                     count(*) as count_val
                 FROM (
                     SELECT (${sumExpr}) as val 
@@ -128,10 +168,11 @@ router.get('/', [
                 min: Number(statsRow?.min_val || 0),
                 max: Number(statsRow?.max_val || 0),
                 avg: Number(statsRow?.avg_val || 0),
+                sum: Number(statsRow?.sum_val || 0),
                 count: Number(statsRow?.count_val || 0)
             };
 
-            // 5. Jenks 分级
+            // 6. Jenks 分级
             const dataSql = `
                 SELECT (${sumExpr}) / 1000000.0 as val 
                 FROM public."${tableName}" 
@@ -155,7 +196,7 @@ router.get('/', [
 
             logger.info(`[breaks] Transfer mode: ${validCols.length} cols, ${stats.count} rows, breaks:`, breaks);
 
-            // 5b. [Critical Fix] 恢复物理表更新：WMS 渲染依赖 _transfer_sum 物理列
+            // 6b. [Critical Fix] 恢复物理表更新：WMS 渲染依赖 _transfer_sum 物理列
             // 由于 Geoserver 中的 SLD 使用了 env('attr') 且默认为 _transfer_sum，
             // 必须先将计算结果写入物理表以便 WMS 同步渲染。
             await pool.query(`
@@ -169,6 +210,47 @@ router.get('/', [
             `);
 
             logger.info(`[breaks] Transfer mode computed & updated: ${validCols.length} cols, ${stats.count} rows`);
+
+            // 6c. TopN 热点单元（用于专题面板摘要，避免前端额外拉 GeoJSON）
+            let top_units = [];
+            try {
+                const TOP_N = 8;
+                if (unit === 'grid') {
+                    const { rows: topRows } = await pool.query(`
+                        SELECT
+                            grid_id AS name,
+                            grid_id AS adcode,
+                            "_transfer_sum" AS value
+                        FROM public."${tableName}"
+                        WHERE "_transfer_sum" > 0
+                        ORDER BY "_transfer_sum" DESC
+                        LIMIT ${TOP_N}
+                    `);
+                    top_units = topRows.map(r => ({
+                        name: r.name,
+                        adcode: r.adcode,
+                        value: Number(r.value) || 0
+                    }));
+                } else {
+                    const { rows: topRows } = await pool.query(`
+                        SELECT
+                            TRIM(CAST("地名" AS TEXT)) AS name,
+                            "区划码" AS adcode,
+                            "_transfer_sum" AS value
+                        FROM public."${tableName}"
+                        WHERE "_transfer_sum" > 0
+                        ORDER BY "_transfer_sum" DESC
+                        LIMIT ${TOP_N}
+                    `);
+                    top_units = topRows.map(r => ({
+                        name: r.name,
+                        adcode: r.adcode,
+                        value: Number(r.value) || 0
+                    }));
+                }
+            } catch (e) {
+                logger.warn('[breaks] Transfer top_units query failed (ignored):', e?.message || e);
+            }
 
             return res.json({
                 mode: 'transfer',
@@ -184,7 +266,8 @@ router.get('/', [
                 classes: numClasses,
                 breaks,
                 stats,
-                unit_label: 'km²'
+                unit_label: 'km²',
+                top_units
             });
 
         } catch (err) {
@@ -208,17 +291,22 @@ router.get('/', [
                 ADD COLUMN IF NOT EXISTS "${RATE_COL}" double precision DEFAULT 0
             `);
 
+            // 1b. 预读统计表列名，用于 TopN 输出（同时避免后续重复查询）
+            const statCols = await getTableColumns(STATS_TABLE);
+            const nameCol = statCols.find(c => ['地名', 'name_zh', '县级', 'name', 'region_name', 'NAME'].includes(c)) || statCols[0];
+            const adcodeCol = statCols.find(c => ['区划码', 'adcode', 'code', 'ADCODE'].includes(c)) || null;
+            const q = (id) => `"${String(id).replace(/"/g, '""')}"`;
+
             // ---- 垦殖率 ----
             if (attr === 'reclamation') {
                 if (!year) {
                     return res.status(400).json({ error: 'reclamation rate requires year param' });
                 }
                 const targetYear = parseInt(year);
-                const dbCols = await getTableColumns(STATS_TABLE);
                 const prefix = ATTR_PREFIX_MAP['cropland'];
                 const croplandCol = `${prefix}_${targetYear}`;
 
-                if (!dbCols.includes(croplandCol)) {
+                if (!statCols.includes(croplandCol)) {
                     return res.status(400).json({ error: `Cannot find cropland column for year ${targetYear}` });
                 }
 
@@ -238,36 +326,48 @@ router.get('/', [
                 const from = from_class !== undefined && from_class !== '' ? parseInt(from_class) : null;
                 const to = to_class !== undefined && to_class !== '' ? parseInt(to_class) : null;
 
-                if (!start || !end || start >= end) {
+                if (!Number.isInteger(start) || !Number.isInteger(end) || start >= end) {
                     return res.status(400).json({ error: 'conversion rate requires valid year_start and year_end' });
                 }
 
                 // 构建需要累加的转换列名（与 transfer 模式列名逻辑完全一致）
+                const periods = [];
+                for (let y = start; y < end; y++) {
+                    if (y === 1985 && end >= 1990) {
+                        periods.push('y8590');
+                        y = 1989;
+                        continue;
+                    }
+                    const yy1 = String(y % 100).padStart(2, '0');
+                    const yy2 = String((y + 1) % 100).padStart(2, '0');
+                    periods.push(`y${yy1}${yy2}`);
+                }
+
                 const columns = [];
-                if (from !== null && to !== null) {
-                    // 指定流转方向
-                    for (let y = start; y < end; y++) {
-                        if (y === 1985 && end >= 1990) { columns.push(`y8590_${from}${to}`); y = 1989; continue; }
-                        const yy1 = String(y % 100).padStart(2, '0');
-                        const yy2 = String((y + 1) % 100).padStart(2, '0');
-                        columns.push(`y${yy1}${yy2}_${from}${to}`);
+                const allClasses = Array.from({ length: 9 }, (_, i) => i + 1);
+                for (const p of periods) {
+                    if (from !== null && to !== null) {
+                        columns.push(`${p}_${from}${to}`);
+                        continue;
                     }
-                } else {
-                    // 全类型转换（排除自身到自身）
-                    const periods = [];
-                    for (let y = start; y < end; y++) {
-                        if (y === 1985 && end >= 1990) { periods.push('y8590'); y = 1989; continue; }
-                        const yy1 = String(y % 100).padStart(2, '0');
-                        const yy2 = String((y + 1) % 100).padStart(2, '0');
-                        periods.push(`y${yy1}${yy2}`);
+                    if (from !== null && to === null) {
+                        allClasses
+                            .filter((cls) => cls !== from)
+                            .forEach((cls) => columns.push(`${p}_${from}${cls}`));
+                        continue;
                     }
-                    const allTransferCols = await getTableColumns(TRANSFER_TABLE);
-                    const regex = new RegExp(`^(${periods.join('|')})_\\d{2}$`);
-                    allTransferCols.filter(c => {
-                        if (!regex.test(c)) return false;
-                        const ft = c.split('_').pop();
-                        return ft[0] !== ft[1]; // 排除同类转换
-                    }).forEach(c => columns.push(c));
+                    if (from === null && to !== null) {
+                        allClasses
+                            .filter((cls) => cls !== to)
+                            .forEach((cls) => columns.push(`${p}_${cls}${to}`));
+                        continue;
+                    }
+                    // from === null && to === null
+                    allClasses.forEach((f) => {
+                        allClasses
+                            .filter((t) => t !== f)
+                            .forEach((t) => columns.push(`${p}_${f}${t}`));
+                    });
                 }
 
                 if (columns.length === 0) {
@@ -343,6 +443,29 @@ router.get('/', [
 
             logger.info(`[breaks/rate] attr=${attr}, ${stats.count} rows, classes=${numClasses}, breaks:`, breaks);
 
+            // 4. TopN 热点县（用于专题面板摘要）
+            let top_units = [];
+            try {
+                const TOP_N = 8;
+                const { rows: topRows } = await pool.query(`
+                    SELECT
+                        TRIM(CAST(s.${q(nameCol)} AS TEXT)) AS name,
+                        ${adcodeCol ? `s.${q(adcodeCol)} AS adcode,` : 'NULL AS adcode,'}
+                        s.${q(RATE_COL)} AS value
+                    FROM public."${STATS_TABLE}" s
+                    WHERE s.${q(RATE_COL)} > 0
+                    ORDER BY s.${q(RATE_COL)} DESC
+                    LIMIT ${TOP_N}
+                `);
+                top_units = topRows.map(r => ({
+                    name: r.name,
+                    adcode: r.adcode,
+                    value: Number(r.value) || 0
+                }));
+            } catch (e) {
+                logger.warn('[breaks/rate] top_units query failed (ignored):', e?.message || e);
+            }
+
             return res.json({
                 mode: 'rate',
                 attr,
@@ -352,7 +475,8 @@ router.get('/', [
                 classes: numClasses,
                 breaks,
                 stats,
-                unit_label: '%'
+                unit_label: '%',
+                top_units
             });
 
         } catch (err) {

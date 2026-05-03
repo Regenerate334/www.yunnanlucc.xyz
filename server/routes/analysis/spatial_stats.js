@@ -27,6 +27,11 @@ function parseRequiredInt(value, field) {
   return parsed;
 }
 
+function parseOptionalClass(value, field) {
+  if (value === undefined || value === null || value === '') return null;
+  return parseRequiredInt(value, field);
+}
+
 router.get('/transfer-series', async (req, res) => {
   const { unit, region } = req.query;
 
@@ -38,8 +43,8 @@ router.get('/transfer-series', async (req, res) => {
   try {
     yearStartNum = parseRequiredInt(req.query.yearStart, 'yearStart');
     yearEndNum = parseRequiredInt(req.query.yearEnd, 'yearEnd');
-    fromClassNum = parseRequiredInt(req.query.fromClass, 'fromClass');
-    toClassNum = parseRequiredInt(req.query.toClass, 'toClass');
+    fromClassNum = parseOptionalClass(req.query.fromClass, 'fromClass');
+    toClassNum = parseOptionalClass(req.query.toClass, 'toClass');
   } catch (err) {
     return res.status(err.statusCode || 400).json({ error: err.message });
   }
@@ -47,11 +52,14 @@ router.get('/transfer-series', async (req, res) => {
   if (!TABLE_BY_UNIT[unit]) {
     return res.status(400).json({ error: 'Invalid parameter: unit' });
   }
-  if (yearStartNum > yearEndNum) {
-    return res.status(400).json({ error: 'Invalid parameter: yearStart must be <= yearEnd' });
+  if (yearStartNum >= yearEndNum) {
+    return res.status(400).json({ error: 'Invalid parameter: yearStart must be < yearEnd' });
   }
-  if (fromClassNum < 1 || fromClassNum > 9 || toClassNum < 1 || toClassNum > 9) {
-    return res.status(400).json({ error: 'Invalid parameter: class code must be within [1, 9]' });
+  if (fromClassNum !== null && (fromClassNum < 1 || fromClassNum > 8)) {
+    return res.status(400).json({ error: 'Invalid parameter: fromClass must be within [1, 8]' });
+  }
+  if (toClassNum !== null && (toClassNum < 1 || toClassNum > 8)) {
+    return res.status(400).json({ error: 'Invalid parameter: toClass must be within [1, 8]' });
   }
 
   try {
@@ -87,7 +95,8 @@ router.get('/transfer-series', async (req, res) => {
         fromClassNum,
         toClassNum,
         unit,
-        region
+        region,
+        { periods: [period] }
       );
 
       if (!geoJSON.features || geoJSON.features.length === 0) {
@@ -109,7 +118,9 @@ router.get('/transfer-series', async (req, res) => {
       if (points.length === 0) continue;
 
       const pointCollection = turf.featureCollection(points);
-      const meanCenter = turf.centerOfMass(pointCollection, { weight: 'weight' });
+      // 重心迁移应与标准差椭圆同源：采用加权均值中心（weight=transfer_area）
+      // centerOfMass 不支持权重参数，会导致多期重心退化为同一点。
+      const meanCenter = turf.centerMean(pointCollection, { weight: 'weight' });
       meanCenter.properties = {
         type: 'center',
         period,
@@ -172,4 +183,3 @@ router.get('/transfer-series', async (req, res) => {
 });
 
 export default router;
-

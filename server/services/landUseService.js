@@ -10,6 +10,94 @@
 import pool from '../config/db.js';
 import { calculateDynamicDegree, calculateSingleDynamicDegree } from '../utils/indices/dynamicDegree.js';
 
+const MONITORING_POLICY_PROFILES = {
+    farmland_protection: {
+        name: 'farmland_protection',
+        label: '耕地保护优先',
+        cropland_floor_ratio: 1.0,
+        cropland_sensitivity: 0.05,
+        cropland_decline_sensitivity: 0.015,
+        cropland_stock_weight: 0.65,
+        cropland_flow_weight: 0.35,
+        eco_floor_ratio: 0.95,
+        urban_strategy: 'control',
+        urban_target_multiplier: 1.08,
+        urban_share_tolerance: 0.025,
+        urban_intensity_target: 0.10,
+        urban_intensity_band: 0.10,
+        subsystem_weights: { production: 0.50, living: 0.20, ecological: 0.30 },
+        composite_weights: { core: 0.50, redline: 0.25, urban: 0.10, coupling: 0.15 }
+    },
+    balanced: {
+        name: 'balanced',
+        label: '均衡协同',
+        cropland_floor_ratio: 0.97,
+        cropland_sensitivity: 0.07,
+        cropland_decline_sensitivity: 0.020,
+        cropland_stock_weight: 0.55,
+        cropland_flow_weight: 0.45,
+        eco_floor_ratio: 0.97,
+        urban_strategy: 'balanced',
+        urban_target_multiplier: 1.20,
+        urban_share_tolerance: 0.035,
+        urban_intensity_target: 0.18,
+        urban_intensity_band: 0.12,
+        subsystem_weights: { production: 0.34, living: 0.33, ecological: 0.33 },
+        composite_weights: { core: 0.55, redline: 0.15, urban: 0.15, coupling: 0.15 }
+    },
+    ecological_protection: {
+        name: 'ecological_protection',
+        label: '生态保护优先',
+        cropland_floor_ratio: 0.92,
+        cropland_sensitivity: 0.09,
+        cropland_decline_sensitivity: 0.025,
+        cropland_stock_weight: 0.45,
+        cropland_flow_weight: 0.55,
+        eco_floor_ratio: 1.00,
+        urban_strategy: 'control',
+        urban_target_multiplier: 1.10,
+        urban_share_tolerance: 0.025,
+        urban_intensity_target: 0.12,
+        urban_intensity_band: 0.10,
+        subsystem_weights: { production: 0.25, living: 0.20, ecological: 0.55 },
+        composite_weights: { core: 0.55, redline: 0.10, urban: 0.10, coupling: 0.25 }
+    },
+    urban_development: {
+        name: 'urban_development',
+        label: '城镇发展优先',
+        cropland_floor_ratio: 0.90,
+        cropland_sensitivity: 0.10,
+        cropland_decline_sensitivity: 0.030,
+        cropland_stock_weight: 0.40,
+        cropland_flow_weight: 0.60,
+        eco_floor_ratio: 0.92,
+        urban_strategy: 'encourage',
+        urban_target_multiplier: 1.40,
+        urban_share_tolerance: 0.040,
+        urban_intensity_target: 0.30,
+        urban_intensity_band: 0.16,
+        subsystem_weights: { production: 0.25, living: 0.45, ecological: 0.30 },
+        composite_weights: { core: 0.55, redline: 0.10, urban: 0.20, coupling: 0.15 }
+    },
+    reforestation: {
+        name: 'reforestation',
+        label: '退耕还林导向',
+        cropland_floor_ratio: 0.88,
+        cropland_sensitivity: 0.12,
+        cropland_decline_sensitivity: 0.035,
+        cropland_stock_weight: 0.35,
+        cropland_flow_weight: 0.65,
+        eco_floor_ratio: 1.03,
+        urban_strategy: 'control',
+        urban_target_multiplier: 1.10,
+        urban_share_tolerance: 0.025,
+        urban_intensity_target: 0.10,
+        urban_intensity_band: 0.10,
+        subsystem_weights: { production: 0.25, living: 0.20, ecological: 0.55 },
+        composite_weights: { core: 0.50, redline: 0.10, urban: 0.10, coupling: 0.30 }
+    }
+};
+
 class LandUseService {
     constructor() {
         // 常见地名简写映射，提升匹配率
@@ -309,134 +397,424 @@ class LandUseService {
 
         return dataRows[0] || {};
     }
-    /**
-     * 计算 2021-2026 范式的权威监测算法
-     * 依据：docs/LUCC_Algorithms_2021_2026.md
-     */
-    _calculateMonitoringIndices(curr, base) {
-        if (!curr || !base) return null;
+    _calcMonitoringRaw(data) {
+        if (!data) return null;
 
-        const norm = (val) => Number(val || 0) / 1000000; // 转化为 km2
-        const landTypes = ['cropland', 'forest', 'shrub', 'grassland', 'water', 'wetland', 'impervious', 'barren', 'snow_ice'];
-
-        let totalArea = 0, totalBaseArea = 0;
-        landTypes.forEach(t => {
-            totalArea += norm(curr[t]);
-            totalBaseArea += norm(base[t]);
-        });
-        if (totalArea <= 0 || totalBaseArea <= 0) return null;
-
-        /**
-         * 1. InVEST生境质量 (HQI)
-         * 权重：Forest/Wetland: 1.0, Water: 0.9, Shrub: 0.8, Grass: 0.7, Cropland: 0.3, Barren/Snow: 0.1
-         */
-        const hqWeights = { forest: 1.0, wetland: 1.0, water: 0.9, shrub: 0.8, grassland: 0.7, cropland: 0.3, barren: 0.1, snow_ice: 0.1, impervious: 0 };
-        let hqSum = 0, hqBaseSum = 0;
-        landTypes.forEach(t => {
-            hqSum += norm(curr[t]) * hqWeights[t];
-            hqBaseSum += norm(base[t]) * hqWeights[t];
-        });
-        const hqVal = (hqSum / totalArea) * 100;
-        const hqBase = (hqBaseSum / totalBaseArea) * 100;
-
-        /**
-         * 2. 源汇碳代谢压力 (CMPI)
-         * 源：Impervious: 50, Cropland: 0.42
-         * 汇：Forest: 0.58, Shrub: 0.20, Water/Wetland: 0.25, Grass: 0.02
-         */
-        const calcCMP = (data) => {
-            const emissions = norm(data.impervious) * 50 + norm(data.cropland) * 0.42;
-            const sinks = norm(data.forest) * 0.58 + norm(data.shrub) * 0.20 + (norm(data.water) + norm(data.wetland)) * 0.25 + norm(data.grassland) * 0.02;
-            return emissions / (sinks || 0.001);
+        const toKm2 = (val) => Number(val || 0) / 1000000;
+        const area = {
+            cropland: toKm2(data.cropland),
+            forest: toKm2(data.forest),
+            shrub: toKm2(data.shrub),
+            grassland: toKm2(data.grassland),
+            water: toKm2(data.water),
+            wetland: toKm2(data.wetland),
+            impervious: toKm2(data.impervious),
+            barren: toKm2(data.barren),
+            snow_ice: toKm2(data.snow_ice)
         };
-        const cmpVal = calcCMP(curr);
-        const cmpBase = calcCMP(base);
 
-        /**
-         * 3. 生态韧性度 (ERes)
-         * 权重：Forest: 1.0, Wetland: 0.9, Water: 0.8, Shrub/Grass: 0.7, Cropland: 0.4, Barren/Snow: 0.1
-         */
-        const resWeights = { forest: 1.0, wetland: 0.9, water: 0.8, shrub: 0.7, grassland: 0.7, cropland: 0.4, barren: 0.1, snow_ice: 0.1, impervious: 0 };
-        let eResSum = 0, eResBaseSum = 0;
-        landTypes.forEach(t => {
-            eResSum += norm(curr[t]) * resWeights[t];
-            eResBaseSum += norm(base[t]) * resWeights[t];
-        });
-        const eresVal = (eResSum / totalArea) * 100;
-        const eresBase = (eResBaseSum / totalBaseArea) * 100;
-
-        /**
-         * 4. 三生空间冲突度 (PLEC)
-         * 公式：(Life * 2 + Prod * 1) / Eco
-         */
-        const calcPLEC = (data) => {
-            const aProd = norm(data.cropland);
-            const aLife = norm(data.impervious);
-            // 修正：生态空间仅包含绿/蓝空间（林、灌、草、水、湿），剔除裸地与冰雪以防数值稀释
-            const aEco = norm(data.forest) + norm(data.shrub) + norm(data.grassland) + norm(data.water) + norm(data.wetland);
-            return (aLife * 2.0 + aProd * 1.0) / (aEco || 0.001);
+        const totalArea = Object.values(area).reduce((sum, val) => sum + val, 0);
+        if (totalArea <= 0) return null;
+        const ecoArea = area.forest + area.shrub + area.grassland + area.water + area.wetland;
+        const share = {
+            cropland: area.cropland / totalArea,
+            impervious: area.impervious / totalArea,
+            ecological: ecoArea / totalArea
         };
-        const plecVal = calcPLEC(curr);
-        const plecBase = calcPLEC(base);
 
-        // 统一预警级别判定逻辑
-        const getScore = (val, breaks, ascending = true) => {
-            const [b1, b2, b3] = breaks;
-            if (ascending) {
-                if (val <= b1) return (val / b1) * 25;
-                if (val <= b2) return 25 + ((val - b1) / (b2 - b1)) * 25;
-                if (val <= b3) return 50 + ((val - b2) / (b3 - b2)) * 25;
-                return 75 + ((val - b3) / b3) * 25;
+        // HJ 192-2015 生境质量相关权重（按 CLCD 类别映射）
+        const hqWeights = {
+            cropland: 0.11,
+            forest: 0.35,
+            shrub: 0.35,
+            grassland: 0.21,
+            water: 0.28,
+            wetland: 0.28,
+            impervious: 0.04,
+            barren: 0.01,
+            snow_ice: 0.01
+        };
+        const hqVal = (Object.entries(hqWeights).reduce((sum, [k, w]) => sum + area[k] * w, 0) / totalArea) * 100;
+
+        // 土地利用碳压代理：直接碳源/碳汇比值，并叠加建设用地占比压力项
+        const carbonSource = area.cropland * 0.422;
+        const carbonSink =
+            (area.forest + area.shrub) * 0.612 +
+            area.grassland * 0.021 +
+            (area.water + area.wetland) * 0.235 +
+            (area.barren + area.snow_ice) * 0.005;
+        const urbanPressureFactor = 1 + (area.impervious / totalArea);
+        const cmpVal = (carbonSource / Math.max(carbonSink, 1e-6)) * urbanPressureFactor;
+
+        // 土地利用韧性代理：基于文献系数的面积加权平均
+        const resilienceWeights = {
+            cropland: 0.5,
+            forest: 0.9,
+            shrub: 0.8,
+            grassland: 0.7,
+            water: 0.8,
+            wetland: 0.8,
+            impervious: 0.2,
+            barren: 0.1,
+            snow_ice: 0.1
+        };
+        const eresVal = (Object.entries(resilienceWeights).reduce((sum, [k, w]) => sum + area[k] * w, 0) / totalArea) * 100;
+
+        // 三生空间压力比代理：生活+生产空间对生态空间的挤压程度
+        const lifeSpace = area.impervious;
+        const prodSpace = area.cropland;
+        const plecVal = (lifeSpace * 2 + prodSpace) / Math.max(ecoArea, 1e-6);
+
+        return {
+            hq: hqVal,
+            cmp: cmpVal,
+            eres: eresVal,
+            plec: plecVal,
+            area,
+            totalArea,
+            share
+        };
+    }
+
+    _clamp(val, min = 0, max = 1) {
+        return Math.max(min, Math.min(max, Number.isFinite(val) ? val : min));
+    }
+
+    _resolveMonitoringPolicy(policyName) {
+        if (!policyName || typeof policyName !== 'string') {
+            return MONITORING_POLICY_PROFILES.farmland_protection;
+        }
+        const key = policyName.trim().toLowerCase();
+        return MONITORING_POLICY_PROFILES[key] || MONITORING_POLICY_PROFILES.farmland_protection;
+    }
+
+    _safeNormalizeWeights(weights, fallback) {
+        const entries = Object.entries(weights || {});
+        const sum = entries.reduce((s, [, v]) => s + (Number(v) || 0), 0);
+        if (!Number.isFinite(sum) || sum <= 1e-9) return fallback;
+        const normalized = {};
+        entries.forEach(([k, v]) => {
+            normalized[k] = (Number(v) || 0) / sum;
+        });
+        return normalized;
+    }
+
+    _calcPolicyRisk(rawCurrent, rawBase, rawPrev, profile, currentYear, prevYear) {
+        const targetCropland = rawBase.area.cropland * profile.cropland_floor_ratio;
+        const croplandGapRatio = (targetCropland - rawCurrent.area.cropland) / Math.max(targetCropland, 1e-9);
+        const stockRisk = this._clamp(
+            (Math.max(0, croplandGapRatio) / Math.max(profile.cropland_sensitivity, 1e-6)) * 100,
+            0,
+            100
+        );
+
+        const croplandYoY = (rawCurrent.area.cropland - rawPrev.area.cropland) / Math.max(rawPrev.area.cropland, 1e-9);
+        const croplandDeclineRatio = Math.max(0, -croplandYoY);
+        const flowRisk = this._clamp(
+            (croplandDeclineRatio / Math.max(profile.cropland_decline_sensitivity, 1e-6)) * 100,
+            0,
+            100
+        );
+        const redlineRiskWeight = this._safeNormalizeWeights(
+            {
+                stock: Number(profile.cropland_stock_weight || 0.6),
+                flow: Number(profile.cropland_flow_weight || 0.4)
+            },
+            { stock: 0.6, flow: 0.4 }
+        );
+        const redlineRisk = this._clamp(
+            redlineRiskWeight.stock * stockRisk + redlineRiskWeight.flow * flowRisk,
+            0,
+            100
+        );
+        const croplandCompliance = this._clamp(rawCurrent.area.cropland / Math.max(targetCropland, 1e-9), 0, 2);
+
+        const deltaYears = Math.max(1, Number(currentYear) - Number(prevYear));
+        const urbanIncrement = rawCurrent.area.impervious - rawPrev.area.impervious;
+        const urbanIntensity = (urbanIncrement / Math.max(rawCurrent.totalArea, 1e-9) / deltaYears) * 100;
+        const urbanTarget = Number(profile.urban_intensity_target || 0.15);
+        const urbanBand = Math.max(Number(profile.urban_intensity_band || 0.1), 0.01);
+
+        let urbanRisk = 0;
+        if (profile.urban_strategy === 'control') {
+            urbanRisk = ((urbanIntensity - urbanTarget) / urbanBand) * 100;
+        } else if (profile.urban_strategy === 'encourage') {
+            if (urbanIntensity <= urbanTarget) {
+                urbanRisk = ((urbanTarget - urbanIntensity) / urbanBand) * 100;
             } else {
-                if (val >= b1) return ((Math.max(b1 * 1.1, val) - val) / (Math.max(b1 * 1.1, val) - b1 + 0.001)) * 25;
-                if (val >= b2) return 25 + ((b1 - val) / (b1 - b2)) * 25;
-                if (val >= b3) return 50 + ((b2 - val) / (b2 - b3)) * 25;
-                return 75 + ((b3 - val) / b3) * 25;
+                urbanRisk = ((urbanIntensity - urbanTarget) / (urbanBand * 1.8)) * 100;
+            }
+        } else {
+            urbanRisk = (Math.abs(urbanIntensity - urbanTarget) / urbanBand) * 100;
+        }
+        urbanRisk = this._clamp(urbanRisk, 0, 100);
+
+        const croplandTargetShare = (rawBase.area.cropland * profile.cropland_floor_ratio) / Math.max(rawBase.totalArea, 1e-9);
+        const ecologicalBaseArea = rawBase.area.forest + rawBase.area.shrub + rawBase.area.grassland + rawBase.area.water + rawBase.area.wetland;
+        const ecologicalTargetShare = (ecologicalBaseArea * profile.eco_floor_ratio) / Math.max(rawBase.totalArea, 1e-9);
+        const urbanTargetShare = this._clamp(rawBase.share.impervious * profile.urban_target_multiplier, 0, 1);
+        const urbanShareTol = Math.max(Number(profile.urban_share_tolerance || 0.03), 1e-6);
+
+        const production = this._clamp(rawCurrent.share.cropland / Math.max(croplandTargetShare, 1e-9), 0, 1);
+        const ecological = this._clamp(rawCurrent.share.ecological / Math.max(ecologicalTargetShare, 1e-9), 0, 1);
+
+        let living = 0;
+        if (profile.urban_strategy === 'encourage') {
+            living = this._clamp(rawCurrent.share.impervious / Math.max(urbanTargetShare, 1e-9), 0, 1);
+        } else if (profile.urban_strategy === 'control') {
+            const overflow = Math.max(0, rawCurrent.share.impervious - urbanTargetShare);
+            living = this._clamp(1 - overflow / urbanShareTol, 0, 1);
+        } else {
+            living = this._clamp(1 - Math.abs(rawCurrent.share.impervious - urbanTargetShare) / urbanShareTol, 0, 1);
+        }
+
+        const subsystem = {
+            production,
+            living,
+            ecological
+        };
+        const subsystemWeights = this._safeNormalizeWeights(
+            profile.subsystem_weights,
+            { production: 1 / 3, living: 1 / 3, ecological: 1 / 3 }
+        );
+
+        const avgSubsystem = (production + living + ecological) / 3;
+        let coupling = 0;
+        if (production > 0 && living > 0 && ecological > 0 && avgSubsystem > 1e-9) {
+            const numerator = production * living * ecological;
+            const denominator = Math.pow(avgSubsystem, 3);
+            coupling = Math.pow(numerator / Math.max(denominator, 1e-9), 1 / 3);
+        }
+        coupling = this._clamp(coupling, 0, 1);
+
+        const coordination =
+            subsystemWeights.production * production +
+            subsystemWeights.living * living +
+            subsystemWeights.ecological * ecological;
+        const couplingCoordination = this._clamp(Math.sqrt(coupling * coordination), 0, 1);
+        const couplingRisk = this._clamp((1 - couplingCoordination) * 100, 0, 100);
+
+        return {
+            croplandRedline: {
+                value: croplandCompliance,
+                base: 1,
+                score: redlineRisk,
+                stock_score: stockRisk,
+                flow_score: flowRisk,
+                yoy_change_ratio: croplandYoY,
+                target_area_km2: targetCropland,
+                current_area_km2: rawCurrent.area.cropland
+            },
+            urbanExpansion: {
+                value: urbanIntensity,
+                base: urbanTarget,
+                score: urbanRisk,
+                strategy: profile.urban_strategy,
+                prev_year: prevYear,
+                delta_years: deltaYears
+            },
+            couplingCoordination: {
+                value: couplingCoordination,
+                base: 1,
+                score: couplingRisk,
+                coupling,
+                coordination,
+                subsystem,
+                subsystem_weights: subsystemWeights
             }
         };
+    }
 
-        const scores = {
-            hq: getScore(hqVal, [hqBase - 0.5, hqBase - 2.0, hqBase - 5.0], false),
-            cmp: getScore(cmpVal, [cmpBase + 0.05, cmpBase + 0.20, cmpBase + 0.50], true),
-            eres: getScore(eresVal, [eresBase - 0.5, eresBase - 2.0, eresBase - 5.0], false),
-            plec: getScore(plecVal, [plecBase + 0.02, plecBase + 0.08, plecBase + 0.20], true)
+    _calcRiskScoresBySeries(rawSeries, currentRaw) {
+        const keys = ['hq', 'cmp', 'eres', 'plec'];
+        const inverseRisk = new Set(['hq', 'eres']); // 数值越高越安全，需要反向映射为风险
+
+        const ranges = {};
+        keys.forEach((k) => {
+            const col = rawSeries.map(r => Number(r[k] || 0));
+            ranges[k] = {
+                min: Math.min(...col),
+                max: Math.max(...col)
+            };
+        });
+
+        const normalize = (val, min, max, inverse = false) => {
+            const diff = max - min;
+            if (!Number.isFinite(diff) || diff <= 1e-9) return 0;
+            let ratio = (val - min) / diff;
+            ratio = Math.max(0, Math.min(1, ratio));
+            if (inverse) ratio = 1 - ratio;
+            return ratio * 100;
         };
 
-        // 综合加权引擎 (MCE Weighting Strategy)
-        const weightedSum = scores.hq * 0.30 + scores.cmp * 0.25 + scores.eres * 0.25 + scores.plec * 0.20;
-        const maxRisk = Math.max(...Object.values(scores));
-        const compositeScore = weightedSum * 0.60 + maxRisk * 0.40;
+        const currentScores = {};
+        keys.forEach((k) => {
+            currentScores[k] = normalize(
+                Number(currentRaw[k] || 0),
+                ranges[k].min,
+                ranges[k].max,
+                inverseRisk.has(k)
+            );
+        });
+
+        const scoreSeries = rawSeries.map((row) => {
+            const s = {};
+            keys.forEach((k) => {
+                s[k] = normalize(
+                    Number(row[k] || 0),
+                    ranges[k].min,
+                    ranges[k].max,
+                    inverseRisk.has(k)
+                );
+            });
+            return s;
+        });
+
+        return { currentScores, scoreSeries };
+    }
+
+    _calcEntropyWeights(scoreSeries) {
+        const keys = ['hq', 'cmp', 'eres', 'plec'];
+        const n = scoreSeries.length;
+        const fallback = { hq: 0.25, cmp: 0.25, eres: 0.25, plec: 0.25 };
+        if (n < 2) return fallback;
+
+        const k = 1 / Math.log(n);
+        const entropy = {};
+        const divergence = {};
+
+        keys.forEach((key) => {
+            const col = scoreSeries.map(r => Math.max(Number(r[key] || 0), 0) + 1e-12);
+            const sumCol = col.reduce((s, v) => s + v, 0);
+            if (sumCol <= 0) {
+                entropy[key] = 1;
+                divergence[key] = 0;
+                return;
+            }
+
+            let e = 0;
+            col.forEach((val) => {
+                const p = val / sumCol;
+                e += p * Math.log(p);
+            });
+            e = -k * e;
+            entropy[key] = e;
+            divergence[key] = Math.max(0, 1 - e);
+        });
+
+        const sumD = keys.reduce((s, key) => s + divergence[key], 0);
+        if (!Number.isFinite(sumD) || sumD <= 1e-12) return fallback;
+
+        const weights = {};
+        keys.forEach((key) => {
+            weights[key] = divergence[key] / sumD;
+        });
+        return weights;
+    }
+
+    /**
+     * 监测算法（核验重构版）
+     * - 单指标：文献系数 + 面积统计
+     * - 综合指数：历史序列标准化 + 熵权法
+     */
+    _calculateMonitoringIndices(curr, base, seriesRows = [], options = {}) {
+        if (!curr || !base) return null;
+
+        const rawCurrent = this._calcMonitoringRaw(curr);
+        const rawBase = this._calcMonitoringRaw(base);
+        if (!rawCurrent || !rawBase) return null;
+
+        const rawSeries = (Array.isArray(seriesRows) ? seriesRows : [])
+            .map((row) => this._calcMonitoringRaw(row))
+            .filter(Boolean);
+
+        if (rawSeries.length === 0) {
+            rawSeries.push(rawBase, rawCurrent);
+        }
+
+        const { currentScores, scoreSeries } = this._calcRiskScoresBySeries(rawSeries, rawCurrent);
+        const weights = this._calcEntropyWeights(scoreSeries);
+        const coreComposite = ['hq', 'cmp', 'eres', 'plec']
+            .reduce((sum, key) => sum + (weights[key] || 0) * (currentScores[key] || 0), 0);
+
+        const currentYear = Number(curr.year);
+        const prevRow = (Array.isArray(seriesRows) ? seriesRows : [])
+            .filter((row) => Number(row.year) < currentYear)
+            .sort((a, b) => Number(b.year) - Number(a.year))[0];
+        const prevData = prevRow || base;
+        const prevYear = Number(prevData.year || base.year || currentYear - 1);
+        const rawPrev = this._calcMonitoringRaw(prevData) || rawBase;
+
+        const policyProfile = this._resolveMonitoringPolicy(options.policy);
+        const policyMetrics = this._calcPolicyRisk(rawCurrent, rawBase, rawPrev, policyProfile, currentYear, prevYear);
+        const compositeWeights = this._safeNormalizeWeights(
+            policyProfile.composite_weights,
+            { core: 0.6, redline: 0.2, urban: 0.1, coupling: 0.1 }
+        );
+        const finalComposite =
+            compositeWeights.core * coreComposite +
+            compositeWeights.redline * policyMetrics.croplandRedline.score +
+            compositeWeights.urban * policyMetrics.urbanExpansion.score +
+            compositeWeights.coupling * policyMetrics.couplingCoordination.score;
 
         return {
             year: curr.year,
             metrics: {
-                hq: { value: hqVal, base: hqBase, score: scores.hq },
-                cmp: { value: cmpVal, base: cmpBase, score: scores.cmp },
-                eres: { value: eresVal, base: eresBase, score: scores.eres },
-                plec: { value: plecVal, base: plecBase, score: scores.plec }
+                hq: { value: rawCurrent.hq, base: rawBase.hq, score: currentScores.hq },
+                cmp: { value: rawCurrent.cmp, base: rawBase.cmp, score: currentScores.cmp },
+                eres: { value: rawCurrent.eres, base: rawBase.eres, score: currentScores.eres },
+                plec: { value: rawCurrent.plec, base: rawBase.plec, score: currentScores.plec }
             },
-            compositeScore: Math.min(100, Math.max(0, compositeScore))
+            weights,
+            weighting: { method: 'entropy', sample_size: scoreSeries.length },
+            policy: {
+                name: policyProfile.name,
+                label: policyProfile.label
+            },
+            policyMetrics,
+            compositeBreakdown: {
+                core: Math.max(0, Math.min(100, coreComposite)),
+                redline: policyMetrics.croplandRedline.score,
+                urban: policyMetrics.urbanExpansion.score,
+                coupling: policyMetrics.couplingCoordination.score,
+                weights: compositeWeights
+            },
+            legacyCompositeScore: Math.max(0, Math.min(100, coreComposite)),
+            compositeScore: Math.max(0, Math.min(100, finalComposite))
         };
     }
 
     /**
      * 获取指定区域和年份的监测指数
      */
-    async getRegionMonitoring(year, region = '云南省', level = 'province') {
+    async getRegionMonitoring(year, region = '云南省', level = 'province', options = {}) {
         const baseYear = 1985;
-        let currentData, baseData;
+        let seriesRows = [];
+        let currentData = null;
+        let baseData = null;
 
         if (level === 'province' || region === '云南省') {
-            currentData = await this.getProvinceSummary(year);
-            baseData = await this.getProvinceSummary(baseYear);
+            seriesRows = await this.getTrend('云南省', baseYear, year);
+            currentData = seriesRows.find(r => Number(r.year) === Number(year)) || seriesRows[seriesRows.length - 1] || null;
+            baseData = seriesRows.find(r => Number(r.year) === baseYear) || seriesRows[0] || currentData;
+            region = '云南省';
+            level = 'province';
         } else {
-            const currentRows = await this.getTrend(region, year, year, level);
-            const baseRows = await this.getTrend(region, baseYear, baseYear, level);
-            currentData = currentRows[0];
-            baseData = baseRows[0] || currentRows[0]; // 兜底处理
+            seriesRows = await this.getTrend(region, baseYear, year, level);
+            currentData = seriesRows.find(r => Number(r.year) === Number(year)) || seriesRows[seriesRows.length - 1] || null;
+            baseData = seriesRows.find(r => Number(r.year) === baseYear) || seriesRows[0] || currentData;
         }
 
-        return this._calculateMonitoringIndices(currentData, baseData);
+        if (!currentData || !baseData) return null;
+
+        const result = this._calculateMonitoringIndices(currentData, baseData, seriesRows, options);
+        if (!result) return null;
+        return {
+            ...result,
+            region,
+            level,
+            baseYear
+        };
     }
 }
 
