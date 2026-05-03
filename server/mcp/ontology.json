@@ -8,55 +8,55 @@
                 "cropland": {
                     "cn": "耕地",
                     "is_production": true,
-                    "hqi_weight": 0.3,
-                    "eres_weight": 0.4
+                    "hqi_weight": 0.11,
+                    "eres_weight": 0.5
                 },
                 "forest": {
                     "cn": "林地",
                     "is_ecological": true,
-                    "hqi_weight": 1.0,
-                    "eres_weight": 1.0
+                    "hqi_weight": 0.35,
+                    "eres_weight": 0.9
                 },
                 "shrub": {
                     "cn": "灌木",
                     "is_ecological": true,
-                    "hqi_weight": 0.8,
-                    "eres_weight": 0.7
+                    "hqi_weight": 0.35,
+                    "eres_weight": 0.8
                 },
                 "grassland": {
                     "cn": "草地",
                     "is_ecological": true,
-                    "hqi_weight": 0.7,
+                    "hqi_weight": 0.21,
                     "eres_weight": 0.7
                 },
                 "water": {
                     "cn": "水体",
                     "is_ecological": true,
-                    "hqi_weight": 0.9,
+                    "hqi_weight": 0.28,
                     "eres_weight": 0.8
                 },
                 "wetland": {
                     "cn": "湿地",
                     "is_ecological": true,
-                    "hqi_weight": 1.0,
-                    "eres_weight": 0.9
+                    "hqi_weight": 0.28,
+                    "eres_weight": 0.8
                 },
                 "impervious": {
                     "cn": "建设用地",
                     "is_life": true,
-                    "hqi_weight": 0,
-                    "eres_weight": 0
+                    "hqi_weight": 0.04,
+                    "eres_weight": 0.2
                 },
                 "barren": {
                     "cn": "裸地",
                     "is_ecological": false,
-                    "hqi_weight": 0.1,
+                    "hqi_weight": 0.01,
                     "eres_weight": 0.1
                 },
                 "snow_ice": {
                     "cn": "冰雪",
                     "is_ecological": false,
-                    "hqi_weight": 0.1,
+                    "hqi_weight": 0.01,
                     "eres_weight": 0.1
                 }
             }
@@ -72,24 +72,24 @@
         "MonitoringIndex": {
             "definitions": {
                 "HQI": {
-                    "full_name": "InVEST 生境质量",
-                    "description": "评估生物多样性保障能力",
+                    "full_name": "生境支持指数",
+                    "description": "基于土地利用组成的生境支持能力代理",
                     "unit": "0-100分"
                 },
                 "CMPI": {
-                    "full_name": "源汇碳代谢压力",
-                    "description": "碳排放与碳吸收平衡",
+                    "full_name": "土地利用碳压指数",
+                    "description": "土地碳源汇比并叠加建设用地占比压力",
                     "unit": "排放收支比"
                 },
                 "ERes": {
-                    "full_name": "全域生态韧性度",
-                    "description": "自我修复与调节能力",
+                    "full_name": "生态韧性指数",
+                    "description": "土地利用结构对生态恢复能力的代理评估",
                     "unit": "0-100分"
                 },
                 "PLEC": {
-                    "full_name": "三生空间冲突度",
-                    "description": "生产、生活、生态空间博弈",
-                    "unit": "冲突强度值"
+                    "full_name": "三生空间压力比",
+                    "description": "生产生活空间对生态空间的挤压程度",
+                    "unit": "压力比值"
                 }
             }
         },

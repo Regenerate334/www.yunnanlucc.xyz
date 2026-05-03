@@ -95,6 +95,9 @@ server.tool(
     async (args) => {
         try {
             const kg = JSON.parse(await fs.readFile(KG_PATH, 'utf-8'));
+            const nodeIndex = new Map((kg.nodes || []).map(n => [n.id, n]));
+            const allLinks = Array.isArray(kg.links) ? kg.links : [];
+            const byRelation = (l) => !args.relation || l.relation === args.relation;
             let result = {};
 
             if (args.mode === 'metadata') {
@@ -114,42 +117,64 @@ server.tool(
                     ).slice(0, 3).map(n => ({ id: n.id, label: n.label, type: n.type }))
                 };
             } else if (args.mode === 'traverse' && args.node_id) {
-                const links = kg.links.filter(l => l.source === args.node_id && !l.is_inverse);
+                const outgoing = allLinks.filter(l => l.source === args.node_id && !l.is_inverse && byRelation(l));
+                const incoming = allLinks.filter(l => l.target === args.node_id && byRelation(l));
                 result = {
-                    node: kg.nodes.find(n => n.id === args.node_id)?.label,
-                    connections: links.slice(0, 10).map(l => ({
-                        rel: l.relation,
-                        to: kg.nodes.find(n => n.id === l.target)?.label || l.target
-                    }))
+                    node: nodeIndex.get(args.node_id)?.label,
+                    connections: [
+                        ...outgoing.slice(0, 8).map(l => ({
+                            direction: "out",
+                            rel: l.relation,
+                            to: nodeIndex.get(l.target)?.label || l.target
+                        })),
+                        ...incoming.slice(0, 8).map(l => ({
+                            direction: "in",
+                            rel: l.relation,
+                            from: nodeIndex.get(l.source)?.label || l.source
+                        }))
+                    ]
                 };
             } else if (args.mode === 'resolve' && args.term) {
                 const targetNode = kg.nodes.find(n => n.label.includes(args.term) || (n.alias && n.alias.some(a => a.includes(args.term))));
                 if (targetNode) {
-                    const related = kg.links.filter(l => l.source === targetNode.id && !l.is_inverse);
+                    const relatedOut = allLinks.filter(l => l.source === targetNode.id && !l.is_inverse);
+                    const relatedIn = allLinks.filter(l => l.target === targetNode.id);
                     result = {
                         concept: targetNode.label,
                         instruction: targetNode.action_template || "建议执行关联层级查询",
-                        context_logic: related.slice(0, 5).map(l => `${l.relation} -> ${kg.nodes.find(n => n.id === l.target)?.label}`)
+                        context_logic: [
+                            ...relatedOut.slice(0, 3).map(l => `${l.relation} -> ${nodeIndex.get(l.target)?.label || l.target}`),
+                            ...relatedIn.slice(0, 3).map(l => `${nodeIndex.get(l.source)?.label || l.source} -> ${l.relation}`)
+                        ]
                     };
                 }
             } else if (args.mode === 'path' && args.node_id && args.target_id) {
-                // 新增：简单的一跳或两跳路径发现
-                const direct = kg.links.filter(l => l.source === args.node_id && l.target === args.target_id);
+                const direct = allLinks.filter(l => l.source === args.node_id && l.target === args.target_id && byRelation(l));
                 const indirect = [];
 
-                // 二跳发现
-                const firstHops = kg.links.filter(l => l.source === args.node_id);
+                // 2-hop search using both outgoing and incoming edges.
+                const firstHops = allLinks
+                    .filter(l => (l.source === args.node_id || l.target === args.node_id) && byRelation(l))
+                    .map(l => ({
+                        rel: l.relation,
+                        via: l.source === args.node_id ? l.target : l.source,
+                        direction: l.source === args.node_id ? "out" : "in"
+                    }));
                 firstHops.forEach(h1 => {
-                    const secondHops = kg.links.filter(l => l.source === h1.target && l.target === args.target_id);
+                    const secondHops = allLinks.filter(l =>
+                        (l.source === h1.via && l.target === args.target_id) ||
+                        (l.target === h1.via && l.source === args.target_id)
+                    );
                     secondHops.forEach(h2 => {
+                        if (!byRelation(h2)) return;
                         indirect.push({
-                            step1: { rel: h1.relation, via: h1.target, via_label: kg.nodes.find(n => n.id === h1.target)?.label },
-                            step2: { rel: h2.relation, target: h2.target }
+                            step1: { rel: h1.rel, via: h1.via, via_label: nodeIndex.get(h1.via)?.label, direction: h1.direction },
+                            step2: { rel: h2.relation, target: args.target_id, target_label: nodeIndex.get(args.target_id)?.label }
                         });
                     });
                 });
 
-                result = { direct, indirect: indirect.slice(0, 3) };
+                result = { direct: direct.slice(0, 10), indirect: indirect.slice(0, 10) };
             }
 
             return { content: [{ type: "text", text: JSON.stringify(result, null, 2) }] };
