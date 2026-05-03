@@ -18,9 +18,9 @@ def get_pinyin(text):
     return "".join([item[0] for item in py_list]).replace(" ", "")
 
 def generate_map():
-    counties_path = r'c:\projects\webgis\my_webgis_project\public\data\yunnan_all_counties.geojson'
-    cities_path = r'c:\projects\webgis\my_webgis_project\public\data\yunnan_cities_boundary.geo.json'
-    output_path = r'c:\projects\webgis\my_webgis_project\public\data\region_pinyin_map.json'
+    counties_path = r'c:\projects\webgis\www.yunnanlucc.xyz\public\data\yunnan_all_counties.geojson'
+    cities_path = r'c:\projects\webgis\www.yunnanlucc.xyz\public\data\yunnan_cities_boundary.geo.json'
+    output_path = r'c:\projects\webgis\www.yunnanlucc.xyz\public\data\region_pinyin_map.json'
 
     mapping = {}
 

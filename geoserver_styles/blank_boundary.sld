@@ -18,7 +18,7 @@
             </Fill>
             <Stroke>
               <CssParameter name="stroke">#000000</CssParameter>
-              <CssParameter name="stroke-width">1.0</CssParameter>
+              <CssParameter name="stroke-width">0.4</CssParameter>
             </Stroke>
           </PolygonSymbolizer>
           <TextSymbolizer>
@@ -42,6 +42,10 @@
             </Fill>
             <VendorOption name="autoWrap">60</VendorOption>
             <VendorOption name="maxDisplacement">40</VendorOption>
+            <VendorOption name="group">true</VendorOption>
+            <VendorOption name="repeat">0</VendorOption>
+            <VendorOption name="partials">false</VendorOption>
+            <VendorOption name="conflictResolution">true</VendorOption>
           </TextSymbolizer>
         </Rule>
       </FeatureTypeStyle>
