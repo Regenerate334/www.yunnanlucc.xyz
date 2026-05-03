@@ -29,7 +29,7 @@ module.exports = {
         {
             name: "nginx",
             script: "C:\\Software Installation\\Software for learning\\nginx-1.26.3\\nginx.exe",
-            args: `-c "C:\\projects\\webgis\\my_webgis_project\\ops\\sys\\nginx\\nginx_production.conf" -p "C:\\Software Installation\\Software for learning\\nginx-1.26.3\\"`,
+            args: `-c "C:\\projects\\webgis\\www.yunnanlucc.xyz\\ops\\sys\\nginx\\nginx_production.conf" -p "C:\\Software Installation\\Software for learning\\nginx-1.26.3\\"`,
             cwd: "C:\\Software Installation\\Software for learning\\nginx-1.26.3\\",
             instances: 1,
             exec_mode: "fork",
@@ -57,7 +57,7 @@ module.exports = {
         // 4. 状态探测器 (Status Probes)
         {
             name: "postgres",
-            script: "./server/scripts/probes/status-postgres.js",
+            script: "./ops/sys/status-postgres.js",
             cwd: "./",
             instances: 1,
             exec_mode: "fork",
@@ -69,7 +69,7 @@ module.exports = {
         },
         {
             name: "geoserver",
-            script: "./server/scripts/probes/status-geoserver.js",
+            script: "./ops/sys/status-geoserver.js",
             cwd: "./",
             instances: 1,
             exec_mode: "fork",
@@ -78,7 +78,7 @@ module.exports = {
         },
         {
             name: "ai-service",
-            script: "./server/scripts/probes/status-ollama.js",
+            script: "./ops/sys/status-ollama.js",
             cwd: "./",
             instances: 1,
             exec_mode: "fork",

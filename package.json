@@ -1,5 +1,5 @@
 {
-  "name": "my_webgis_project",
+  "name": "www.yunnanlucc.xyz",
   "private": true,
   "version": "1.0.0",
   "type": "module",
@@ -12,9 +12,12 @@
     "client": "vite",
     "server": "node ./server/index.js",
     "build": "vite build",
-    "init:db": "node ./ops/data/initDb.js",
-    "sync:rate-layers": "node ./ops/data/sync_rate_layers.js",
-    "sync:sld": "node ./ops/geo/sync_all_slds.js"
+    "init:db": "node ./ops/sys/sys_init_db_schema.js",
+    "sync:rate-layers": "node ./ops/geo/gs_sync_all_rate_layers.js",
+    "sync:sld": "node ./ops/geo/gs_sync_all_slds.js",
+    "mcp:build:kb": "node ./ops/ai/build_knowledge_graph.js",
+    "mcp:build:kg": "node ./ops/ai/build_real_kg.js",
+    "mcp:build": "npm run mcp:build:kb && npm run mcp:build:kg"
   },
   "dependencies": {
     "@llamaindex/ollama": "^0.1.23",
