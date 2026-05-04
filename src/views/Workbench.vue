@@ -800,7 +800,7 @@ watch(
 );
 
 watch(
-  [spatialUnit, () => globalStore.activeTheme, yunnanDataSource],
+  [spatialUnit, () => globalStore.activeTheme, selectedAttribute, yunnanDataSource],
   () => {
     // 非“空白行政边界”模式下，县级/格网默认显示县域边界
     syncCountyBoundaryOverlay();
@@ -931,6 +931,8 @@ async function handleRateQuery(params) {
     selectedAttribute.value = params.attribute;
   }
   globalStore.setActiveLayer('county');
+  // 率专题会与县域矢量边界叠加产生“亮青色误操作线”，这里强制同步一次边界叠加状态。
+  syncCountyBoundaryOverlay();
 
   isLoading.value = true;
   if (bottomNavRef.value?.rateControl?.setLoading) bottomNavRef.value.rateControl.setLoading(true);
@@ -1380,6 +1382,11 @@ function syncCountyBoundaryOverlay() {
   if (countyBackdropState.value.show) return;
 
   const shouldShowOutline = spatialUnit.value === 'county' || spatialUnit.value === 'grid';
+  // 垦殖率/转换率专题图层本身已经是县域分片渲染，叠加亮青色县域矢量边界会造成“误操作感”。
+  // 因此在 rate 主题下禁用县域边界叠加，不影响其它专题。
+  const isRateTheme = globalStore.activeTheme === 'rate'
+    && (selectedAttribute.value === 'reclamation' || selectedAttribute.value === 'conversion');
+  const effectiveShowOutline = shouldShowOutline && !isRateTheme;
   const entities = yunnanDataSource.value.entities.values || [];
   const lineColor = Cesium.Color.fromCssColorString(UI_CONFIG.BOUNDARY_STYLE.countyColor).withAlpha(0.75);
   const lineWidth = UI_CONFIG.BOUNDARY_STYLE.countyWidth;
@@ -1392,6 +1399,13 @@ function syncCountyBoundaryOverlay() {
     entity.polygon.material = Cesium.Color.WHITE.withAlpha(0.01);
     entity.polygon.outline = false;
 
+    if (!effectiveShowOutline) {
+      // 不创建新的边界线，也隐藏已有的边界线
+      if (entity.polyline) entity.polyline.show = false;
+      if (entity.label) entity.label.show = false;
+      continue;
+    }
+
     if (!entity.polyline) {
       applyThickPolygonOutlineForEntity(entity, lineColor, lineWidth, Cesium);
     }
@@ -1401,7 +1415,7 @@ function syncCountyBoundaryOverlay() {
       entity.polyline.material = lineColor;
       entity.polyline.clampToGround = false;
       entity.polyline.arcType = Cesium.ArcType.NONE;
-      entity.polyline.show = shouldShowOutline;
+      entity.polyline.show = effectiveShowOutline;
     }
 
     if (entity.label) {
