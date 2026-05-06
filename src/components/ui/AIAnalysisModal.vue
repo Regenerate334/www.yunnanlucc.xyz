@@ -145,7 +145,16 @@
                   <div
                     v-if="msg.role === 'assistant' && (parseMessage(msg).thinking || (loading && index === messages.length - 1))"
                     class="thinking-process">
-                    <div class="thinking-header">
+                    <div
+                      class="thinking-header"
+                      role="button"
+                      tabindex="0"
+                      @click="toggleThinking(index)"
+                      @keydown.enter.stop="toggleThinking(index)"
+                      @keydown.space.prevent.stop="toggleThinking(index)"
+                      :aria-expanded="expandedThinking[index] !== false"
+                      :title="expandedThinking[index] !== false ? '点击折叠思考过程' : '点击展开思考过程'"
+                    >
                       <div class="thinking-title">
                         <!-- 默认显示灯泡 icon -->
                         <svg class="thinking-icon-svg"
@@ -160,9 +169,16 @@
                         </svg>
                         <span v-if="loading && index === messages.length - 1">AI 正在深度思考...</span>
                         <span v-else>耗时 {{ msg.thinkTime || '几' }} 秒完成分析</span>
+
+                        <!-- 展开/折叠箭头 -->
+                        <svg class="arrow-icon-svg" :class="{ open: expandedThinking[index] !== false }" width="16" height="16"
+                          viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"
+                          stroke-linejoin="round">
+                          <polyline points="6 9 12 15 18 9"></polyline>
+                        </svg>
                       </div>
                     </div>
-                    <div v-if="parseMessage(msg).thinking" class="thinking-content">
+                    <div v-if="parseMessage(msg).thinking && expandedThinking[index] !== false" class="thinking-content">
                       {{ parseMessage(msg).thinking }}
                     </div>
                   </div>
@@ -876,6 +892,10 @@ const _parseMessage = (msg, skipCache = false) => {
   if (content.startsWith('Answer:')) {
     content = content.replace(/^Answer:\s*/i, '').trim();
   }
+
+  // DeepSeek/某些推理模型可能会把工具协议标记泄露到正文（例如 DSML/tool_calls 块）。
+  // 这些内容对用户无意义，还会造成“乱码/协议失败”的观感，直接清理。
+  content = content.replace(/<\|\s*DSML\s*\|>[\s\S]*?(?=<\|\s*DSML\s*\|>|$)/gi, '').trim();
   const mapCommandMatches = [...content.matchAll(/\[\[MAP_COMMAND:(.*?)\]\]/g)];
   mapCommandMatches.forEach((match) => {
     const command = parseJsonLoose(match[1]);
@@ -1094,10 +1114,10 @@ const isReasoningModel = computed(() => {
 const deepThinking = computed(() => isReasoningModel.value);
 
 // 模型选择
-const selectedModel = ref('deepseek-v3.1:671b-cloud');
+const selectedModel = ref('deepseek-v4-flash');
 const showModelDropdown = ref(false);
 const availableModels = [
-  { value: 'deepseek-v3.1:671b-cloud', label: 'DeepSeek-V3.1 671B', desc: '云端超大模型 · 最强推理能力' },
+  { value: 'deepseek-v4-flash', label: 'DeepSeek-V4 Flash', desc: '官方云端超大模型 · 最强推理能力' },
   { value: 'deepseek-r1:8b', label: 'DeepSeek-R1 8B', desc: '标准模式 · 性能平衡' },
   { value: 'gemma4:e4b', label: 'Gemma 4', desc: '快速模式 · 响应灵敏' }
 ];
@@ -1293,8 +1313,8 @@ const sendMessage = async (text) => {
     workflow: []
   });
 
-  // 初始自动展开
-  expandedThinking.value[assistantMsgIndex] = true;
+  // 初始默认折叠（透明但不打扰阅读）
+  expandedThinking.value[assistantMsgIndex] = false;
   userInteractedThinking.value = false; 
 
   try {
@@ -1325,9 +1345,25 @@ const sendMessage = async (text) => {
       (chunkObj) => {
         if (chunkObj.workflow) {
           const wf = messages.value[assistantMsgIndex].workflow || [];
-          const exists = wf.some((item) => item.id && item.id === chunkObj.workflow.id);
-          if (!exists) {
-            messages.value[assistantMsgIndex].workflow = [...wf, chunkObj.workflow];
+          const id = chunkObj.workflow.id;
+          if (id) {
+            const idx = wf.findIndex((item) => item?.id === id);
+            if (idx >= 0) {
+              // Upsert: keep a single node per workflow id, update fields (e.g., done flips false->true)
+              const next = [...wf];
+              next[idx] = { ...next[idx], ...chunkObj.workflow };
+              messages.value[assistantMsgIndex].workflow = next;
+            } else {
+              messages.value[assistantMsgIndex].workflow = [...wf, chunkObj.workflow];
+            }
+          } else {
+            // Fallback (should be rare): append only if not identical to the last node
+            const prev = wf[wf.length - 1];
+            const prevKey = prev ? `${prev.type}|${prev.label}` : '';
+            const nextKey = `${chunkObj.workflow.type}|${chunkObj.workflow.label}`;
+            if (prevKey !== nextKey) {
+              messages.value[assistantMsgIndex].workflow = [...wf, chunkObj.workflow];
+            }
           }
         }
         if (chunkObj.content) {
@@ -1335,15 +1371,16 @@ const sendMessage = async (text) => {
           // 只有用户没动过，我们才根据全量内容实时控制展开
           const fullContent = messages.value[assistantMsgIndex].content;
           const hasThinking = fullContent.includes('<think>') || fullContent.includes('Thought:') || fullContent.includes('Action:');
-          if (hasThinking && !userInteractedThinking.value) {
-            expandedThinking.value[assistantMsgIndex] = true;
+          // 默认折叠：仅在用户未干预且当前还没显式设定时才自动展开
+          if (hasThinking && !userInteractedThinking.value && expandedThinking.value[assistantMsgIndex] === undefined) {
+            expandedThinking.value[assistantMsgIndex] = false;
           }
         }
         if (chunkObj.thinking) {
           messages.value[assistantMsgIndex].thinking += chunkObj.thinking;
-          // 收到推理分块，且用户没动过，确保展开
-          if (!userInteractedThinking.value) {
-            expandedThinking.value[assistantMsgIndex] = true;
+          // 收到推理分块时也保持默认折叠，除非用户手动展开
+          if (!userInteractedThinking.value && expandedThinking.value[assistantMsgIndex] === undefined) {
+            expandedThinking.value[assistantMsgIndex] = false;
           }
         }
 
@@ -1719,20 +1756,30 @@ const generateReport = (msgSlice) => {
 
   if (!lastUserMsg || !lastAssistantMsg) return;
   
-  // 标题处理逻辑：优先从 AI 回答的 "Answer: ##" 标记中提取
-  let title = '';
-  const assistantContent = lastAssistantMsg.content || '';
-  const titleMatch = assistantContent.match(/Answer:\s*##\s*(.*?)(\n|$)/i);
-  
-  if (titleMatch && titleMatch[1]) {
-    title = titleMatch[1].trim();
-  } else {
-    // 兜底逻辑：取用户问题前 40 字
-    title = lastUserMsg.content.trim().slice(0, 40) + (lastUserMsg.content.trim().length > 40 ? '...' : '');
-  }
-
   // 内容：AI 回复的纯 Markdown（去掉 <think> 思考块）
   const markdownContent = parseMessage(lastAssistantMsg).content;
+
+  // 标题处理逻辑：优先使用 AI 回复中的“第一个 Markdown 标题”（h1/h2/h3），
+  // 这样报告标题会更像“2005年云南省各地类面积统计”，而不是把用户提问整句当标题。
+  let title = '';
+  try {
+    const html = renderMarkdown(markdownContent || '');
+    const doc = new DOMParser().parseFromString(String(html || ''), 'text/html');
+    const h = doc.querySelector('h1, h2, h3');
+    const extracted = h?.textContent?.replace(/\s+/g, ' ').trim();
+    if (extracted) title = extracted;
+  } catch {
+    // ignore
+  }
+  if (!title) {
+    const headingMatch = String(markdownContent || '').match(/^\s{0,3}#{1,6}\s+(.+?)\s*$/m);
+    if (headingMatch && headingMatch[1]) title = headingMatch[1].replace(/\s+/g, ' ').trim();
+  }
+  if (!title) {
+    // 兜底逻辑：取用户问题前 40 字
+    const q = String(lastUserMsg.content || '').trim();
+    title = q.slice(0, 40) + (q.length > 40 ? '...' : '');
+  }
 
   lastReportMsgSlice.value = msgSlice;
   reportVisible.value = true;
@@ -1817,9 +1864,11 @@ const retryReport = () => {
   left: 50%;
   transform: translate(-50%, -50%);
   z-index: 10000;
-  width: 95vw;
-  height: 90vh;
-  max-width: 1600px;
+  /* 更接近折线图/K线图等全屏分析面板的占屏比例，避免高分辨率下内容被挤压 */
+  width: 98vw;
+  height: 94vh;
+  /* 兼容 2K/4K 屏幕：原 1600px 会导致宽屏下对话内容区域被压缩 */
+  max-width: 2400px;
   /* 还原为最干净深邃的毛玻璃（与全屏图表仪表盘统一），因为已经在 HTML 中提取为遮罩平级，Chrome 不再丢失堆叠滤镜上下文 */
   background: rgba(7, 16, 36, 0.6);
   backdrop-filter: blur(24px);
@@ -2447,7 +2496,8 @@ const retryReport = () => {
   display: flex;
   flex-direction: column;
   width: 100%;
-  max-width: 1180px;
+  /* 弹窗已放大，正文容器也需要同步放宽，否则会显得“窗口大但内容挤” */
+  max-width: 1600px;
   margin: 0 auto;
 }
 
@@ -2458,7 +2508,7 @@ const retryReport = () => {
 }
 
 .bubble-wrapper {
-  max-width: 1180px;
+  max-width: 1600px;
   width: 100%;
   margin: 0 auto;
 }
@@ -2573,10 +2623,29 @@ const retryReport = () => {
   transition: all 0.3s ease;
 }
 
+@media (max-width: 768px) {
+  .ai-modal-container {
+    width: 100vw;
+    height: 100vh;
+    max-width: none;
+    border-radius: 0;
+  }
+}
+
 .thinking-icon-svg.is-thinking {
   color: #fbbf24;
   filter: drop-shadow(0 0 8px rgba(251, 191, 36, 0.4));
   animation: pulse 2s infinite;
+}
+
+.arrow-icon-svg {
+  margin-left: auto;
+  opacity: 0.85;
+  transform-origin: center;
+}
+
+.arrow-icon-svg.open {
+  transform: rotate(180deg);
 }
 
 @keyframes pulse {
@@ -2815,6 +2884,16 @@ const retryReport = () => {
     column-count: 1;
     column-gap: 0;
     column-rule: none;
+  }
+}
+
+/* 中等屏宽时适度放宽正文但不至于过长 */
+@media (max-width: 1600px) {
+  .message {
+    max-width: 1320px;
+  }
+  .bubble-wrapper {
+    max-width: 1320px;
   }
 }
 
