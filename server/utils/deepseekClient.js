@@ -67,12 +67,21 @@ function cleanJsonSchema(value) {
 }
 
 export function toDeepSeekTools(tools = []) {
+  const baseURL = String(process.env.DEEPSEEK_BASE_URL || DEFAULT_DEEPSEEK_BASE_URL);
+  const strictEnabled = baseURL.includes('/beta');
   return tools.map((tool) => ({
     type: 'function',
     function: {
       name: tool.metadata.name,
       description: tool.metadata.description,
-      parameters: cleanJsonSchema(tool.metadata.parameters || { type: 'object', properties: {} })
+      parameters: cleanJsonSchema(tool.metadata.parameters || { type: 'object', properties: {} }),
+      ...(strictEnabled
+        ? {
+            // DeepSeek strict-mode: enforce tool-call arguments to match the JSON schema (Beta).
+            // This greatly reduces protocol drift (e.g., DSML leakage / malformed JSON).
+            strict: true
+          }
+        : {})
     }
   }));
 }
@@ -260,10 +269,16 @@ export async function createDeepSeekChatCompletion({ model, messages, tools = []
   // (When thinking mode is enabled and tool-calls happen, callers must round-trip reasoning_content.)
   if (options.thinking && typeof options.thinking === 'object') payload.thinking = options.thinking;
   if (options.reasoning_effort) payload.reasoning_effort = options.reasoning_effort;
+  if (options.user_id) payload.user_id = options.user_id;
 
   if (tools.length) {
     payload.tools = toDeepSeekTools(tools);
   }
+
+  // DeepSeek supports OpenAI-compatible `tool_choice` in non-thinking mode.
+  // Note: some client integrations report that DeepSeek V4 thinking mode may reject tool_choice,
+  // so callers should avoid passing tool_choice when thinking.type === "enabled".
+  if (options.tool_choice !== undefined) payload.tool_choice = options.tool_choice;
 
   const response = await requestDeepSeekChat(payload);
   return stream ? response : response.json();

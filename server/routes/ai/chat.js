@@ -69,13 +69,21 @@ const normalizeRole = (role) => {
 };
 const stripInternalTags = (text) => {
   if (!text) return '';
-  return String(text)
+  let content = String(text)
+    .replace(/[｜]/g, '|')
+    .replace(/[“”]/g, '"')
+    .replace(/[‘’]/g, "'")
+    .replace(/[＜]/g, '<')
+    .replace(/[＞]/g, '>')
     .replace(/\[\[MAP_COMMAND:.*?\]\]/g, '')
     .replace(/^\[(?:SEARCH|ANALYSIS)\].*$/gim, '')
-    // Some model families may leak tool-call protocol markers into plain text.
-    // These are never meant for end users; keep them out of the conversation memory.
-    .replace(/<\|\s*DSML\s*\|>[\s\S]*?(?=<\|\s*DSML\s*\|>|$)/gi, '')
     .trim();
+
+  // Some model families may leak tool-call protocol markers into plain text.
+  // These are never meant for end users; keep them out of the conversation memory.
+  const dsmlIndex = content.search(/<\|+\s*DSML/i);
+  if (dsmlIndex >= 0) content = content.slice(0, dsmlIndex).trim();
+  return content;
 };
 const parseJsonLoose = (text = '') => {
   const raw = String(text || '').trim();
@@ -102,6 +110,80 @@ const parseToolArguments = (raw) => {
   }
 };
 
+const normalizeSmartPunctuation = (text = '') => {
+  if (!text) return '';
+  return String(text)
+    .replace(/[“”]/g, '"')
+    .replace(/[‘’]/g, "'")
+    .replace(/[｜]/g, '|')
+    .replace(/[＜]/g, '<')
+    .replace(/[＞]/g, '>');
+};
+
+const extractDsmlToolCalls = (rawText = '', round = 0) => {
+  const text = normalizeSmartPunctuation(rawText);
+  // DSML markers may be truncated in streaming chunks (missing a trailing ">"),
+  // so we detect start token without requiring the closing angle bracket.
+  const startIdx = text.search(/<\|+\s*DSML\s*\|+\s*tool_calls\b/i);
+  if (startIdx < 0) return { content: rawText, tool_calls: [] };
+
+  // Keep any leading plain text before DSML as assistant content; DSML block becomes tool_calls.
+  const leading = text.slice(0, startIdx).trim();
+
+  const tool_calls = [];
+
+  // Parse each invoke block.
+  const invokeRe = /<\|+\s*DSML\s*\|+\s*invoke\s+name\s*=\s*"([^"]+)"\s*>[\s\S]*?<\/\|+\s*DSML\s*\|+\s*invoke\s*>/gi;
+  let invokeMatch;
+  let invokeIndex = 0;
+  while ((invokeMatch = invokeRe.exec(text)) !== null) {
+    const toolName = String(invokeMatch[1] || '').trim();
+    if (!toolName) continue;
+
+    const invokeBlock = invokeMatch[0] || '';
+    const args = {};
+
+    // Parse parameters inside this invoke.
+    const paramRe = /<\|+\s*DSML\s*\|+\s*parameter\s+name\s*=\s*"([^"]+)"\s+string\s*=\s*"([^"]+)"\s*>([\s\S]*?)<\/\|+\s*DSML\s*\|+\s*parameter\s*>/gi;
+    let paramMatch;
+    while ((paramMatch = paramRe.exec(invokeBlock)) !== null) {
+      const key = String(paramMatch[1] || '').trim();
+      const isString = String(paramMatch[2] || '').trim().toLowerCase() === 'true';
+      const valueRaw = String(paramMatch[3] ?? '').trim();
+      if (!key) continue;
+
+      if (isString) {
+        args[key] = valueRaw;
+        continue;
+      }
+
+      // Non-string values are JSON-encoded per DSML spec; parse best-effort.
+      try {
+        args[key] = JSON.parse(valueRaw);
+      } catch {
+        // Fallback: keep raw string so tool can still attempt to coerce.
+        args[key] = valueRaw;
+      }
+    }
+
+    tool_calls.push({
+      index: invokeIndex,
+      id: `dsml_call_${round}_${invokeIndex}`,
+      type: 'function',
+      function: {
+        name: toolName,
+        arguments: JSON.stringify(args)
+      }
+    });
+    invokeIndex += 1;
+  }
+
+  return {
+    content: leading,
+    tool_calls
+  };
+};
+
 const serializeToolOutput = (output) => {
   if (typeof output === 'string') return output;
   try {
@@ -118,6 +200,9 @@ async function streamDeepSeekResponse(response, res) {
   const decoder = new TextDecoder('utf-8');
   let buffer = '';
   let chunkCount = 0;
+  // Maintain a small rolling window so we can detect DSML markers across chunk boundaries.
+  let pendingContent = '';
+  let dsmlSuppressed = false;
 
   while (true) {
     const { value, done } = await reader.read();
@@ -142,9 +227,48 @@ async function streamDeepSeekResponse(response, res) {
         writeSSE(res, { thinking: delta.reasoning_content });
       }
       if (typeof delta.content === 'string' && delta.content) {
-        chunkCount++;
-        writeSSE(res, { content: delta.content });
+        if (!dsmlSuppressed) {
+          pendingContent += delta.content;
+          const normalized = normalizeSmartPunctuation(pendingContent);
+          const dsmlIndex = normalized.search(/<\|+\s*DSML/i);
+          if (dsmlIndex >= 0) {
+            // Flush safe prefix before DSML, then suppress the rest.
+            const safePrefix = pendingContent.slice(0, dsmlIndex);
+            const safeOut = stripInternalTags(safePrefix);
+            if (safeOut) {
+              chunkCount++;
+              writeSSE(res, { content: safeOut });
+            }
+            pendingContent = '';
+            dsmlSuppressed = true;
+            continue;
+          }
+
+          // To avoid holding large buffers, flush periodically while keeping a tail for detection.
+          if (pendingContent.length >= 256) {
+            const keepTail = 64;
+            const flushText = pendingContent.slice(0, pendingContent.length - keepTail);
+            const safeOut = stripInternalTags(flushText);
+            if (safeOut) {
+              chunkCount++;
+              writeSSE(res, { content: safeOut });
+            }
+            pendingContent = pendingContent.slice(-keepTail);
+          }
+        } else {
+          // DSML has started; suppress further `content` to avoid protocol leakage to the client.
+          // no-op: keep reading to finish stream
+        }
       }
+    }
+  }
+
+  // Flush remaining pending content if DSML never started.
+  if (!dsmlSuppressed && pendingContent) {
+    const safeOut = stripInternalTags(pendingContent);
+    if (safeOut) {
+      chunkCount++;
+      writeSSE(res, { content: safeOut });
     }
   }
 
@@ -393,11 +517,20 @@ async function runOllamaStructuredToolLoop({
 
     if (kind === 'final') {
       const answer = String(decision?.answer || '').trim();
-      if (answer && !usedTools) {
-        writeSSE(res, { content: answer });
-        return answer.length;
+      if (!answer) break;
+
+      // Enforce: every user turn must be grounded by at least one real tool call.
+      // If the model tries to return a final answer before any tool usage, force a re-plan.
+      if (!usedTools) {
+        messages.push({
+          role: 'user',
+          content: 'Observation: 你尚未调用任何业务工具获取或核验数据。请先选择一个合适的工具进行检索/计算，然后再输出最终结论。'
+        });
+        continue;
       }
-      break;
+
+      writeSSE(res, { content: answer });
+      return answer.length;
     }
 
     if (kind !== 'tool') {
@@ -544,7 +677,9 @@ async function runDeepSeekOfficialToolLoop({
   chatHistoryBase,
   lastUserMsg,
   toolTitleMap,
-  thinkingEnabled = false
+  thinkingEnabled = false,
+  sessionId = null,
+  userId = null
 }) {
   const messages = [
     { role: 'system', content: systemPrompt },
@@ -553,13 +688,15 @@ async function runDeepSeekOfficialToolLoop({
   ];
   const toolByName = new Map(agentTools.map((tool) => [tool.metadata.name, tool]));
   const apiModel = resolveDeepSeekModel(model);
-  const maxToolRounds = 4;
+  const maxToolRounds = 8;
+  let usedTools = false;
+  let toolChoiceSupported = true;
   const thinking = { type: thinkingEnabled ? 'enabled' : 'disabled' };
   const reasoning_effort = thinkingEnabled ? 'high' : undefined;
   // Allow longer answers by default (especially for province-wide or multi-year analysis).
   // Users explicitly asked to relax length limits so responses don't get truncated mid-way.
-  const finalMaxTokens = Number(process.env.DEEPSEEK_MAX_TOKENS ?? 8192);
-  const planningMaxTokens = Number(process.env.DEEPSEEK_PLANNING_MAX_TOKENS ?? 4096);
+  const stepMaxTokens = Number(process.env.DEEPSEEK_STEP_MAX_TOKENS ?? process.env.DEEPSEEK_PLANNING_MAX_TOKENS ?? 4096);
+  const deepSeekUserId = (sessionId && userId) ? `u${userId}-s${sessionId}` : (sessionId ? `s${sessionId}` : undefined);
 
   for (let round = 0; round < maxToolRounds; round++) {
     writeWorkflow(res, {
@@ -570,34 +707,90 @@ async function runDeepSeekOfficialToolLoop({
       done: false
     });
 
-    // Use streaming for planning to robustly capture tool_calls (arguments may be chunked in streams),
-    // while still not leaking planning text to the client.
-    const planningStream = await createDeepSeekChatCompletion({
-      model: apiModel,
-      messages,
-      tools: agentTools,
-      stream: true,
-      options: {
-        temperature: 0.1,
-        top_p: 0.9,
-        max_tokens: planningMaxTokens,
-        thinking,
-        ...(reasoning_effort ? { reasoning_effort } : {})
+    // Use streaming for each step to robustly capture tool_calls (arguments may be chunked in streams).
+    // IMPORTANT: DeepSeek tool-calling needs `tools` on every sub-request in the loop.
+    //
+    // Note: some DeepSeek models / modes may reject `tool_choice`. We keep tool forcing
+    // primarily at the application layer (see "must use tools" fallback below).
+    let stepStream;
+    try {
+      stepStream = await createDeepSeekChatCompletion({
+        model: apiModel,
+        messages,
+        tools: agentTools,
+        stream: true,
+        options: {
+          temperature: 0.1,
+          top_p: 0.9,
+          max_tokens: stepMaxTokens,
+          thinking,
+          user_id: deepSeekUserId,
+          ...(toolChoiceSupported ? { tool_choice: usedTools ? 'auto' : 'required' } : {}),
+          ...(reasoning_effort ? { reasoning_effort } : {})
+        }
+      });
+    } catch (err) {
+      // Some DeepSeek modes may reject tool_choice; retry without it.
+      const msg = (err?.message || String(err)).toLowerCase();
+      if (msg.includes('tool_choice')) {
+        toolChoiceSupported = false;
+        stepStream = await createDeepSeekChatCompletion({
+          model: apiModel,
+          messages,
+          tools: agentTools,
+          stream: true,
+          options: {
+            temperature: 0.1,
+            top_p: 0.9,
+            max_tokens: stepMaxTokens,
+            thinking,
+            user_id: deepSeekUserId,
+            ...(reasoning_effort ? { reasoning_effort } : {})
+          }
+        });
+      } else {
+        throw err;
       }
-    });
+    }
 
-    const assistantMessage = await consumeDeepSeekStreamToMessage(planningStream);
-    const toolCalls = assistantMessage.tool_calls || [];
+    const assistantMessage = await consumeDeepSeekStreamToMessage(stepStream);
+
+    // Some providers / edge cases may leak DeepSeek DSML tool-call blocks into `content`
+    // instead of returning a structured `tool_calls` array. Recover tool calls from DSML if needed.
+    const dsmlRecovered = (!assistantMessage.tool_calls?.length && assistantMessage.content)
+      ? extractDsmlToolCalls(assistantMessage.content, round)
+      : null;
+
+    const recoveredToolCalls = dsmlRecovered?.tool_calls || [];
+    const finalToolCalls = (assistantMessage.tool_calls && assistantMessage.tool_calls.length)
+      ? assistantMessage.tool_calls
+      : recoveredToolCalls;
+
+    const safeAssistantContent = dsmlRecovered ? dsmlRecovered.content : assistantMessage.content;
 
     messages.push({
       role: 'assistant',
-      content: assistantMessage.content || '',
+      content: safeAssistantContent || '',
       reasoning_content: assistantMessage.reasoning_content || undefined,
-      ...(toolCalls.length ? { tool_calls: toolCalls } : {})
+      ...(finalToolCalls.length ? { tool_calls: finalToolCalls } : {})
     });
 
-    if (!toolCalls.length) {
-      const finalText = assistantMessage.content || '';
+    if (!finalToolCalls.length) {
+      const reasoningText = assistantMessage.reasoning_content || '';
+      const finalText = safeAssistantContent || '';
+      if (reasoningText) writeSSE(res, { thinking: reasoningText });
+
+      // If the model tries to answer without any tool usage, enforce one tool call for stability.
+      // This prevents "memory answers" and ensures each session request is grounded in real queries.
+      if (!usedTools) {
+        // First, retry once with a strong tool_choice hint.
+        messages.push({
+          role: 'system',
+          content: '强制规范：本轮回答必须先至少调用一次业务工具获取或核验数据，再输出最终结论。请立刻发起工具调用，不要直接给出最终答案。'
+        });
+        continue;
+      }
+
       if (finalText) {
         writeSSE(res, { content: finalText });
         return finalText.length;
@@ -605,7 +798,7 @@ async function runDeepSeekOfficialToolLoop({
       break;
     }
 
-    for (const toolCall of toolCalls) {
+    for (const toolCall of finalToolCalls) {
       const toolName = toolCall.function?.name;
       const tool = toolByName.get(toolName);
       const args = parseToolArguments(toolCall.function?.arguments);
@@ -637,6 +830,8 @@ async function runDeepSeekOfficialToolLoop({
         output = `工具调用失败: ${err.message || String(err)}`;
       }
 
+      usedTools = true;
+
       writeWorkflow(res, {
         id: `tool_end_${stableToolCallKey}`,
         label: `FunctionTool: ${toolName} → ${toolName.includes('analysis') ? '分析链条处理完成' : '地理数据查询完成'}`,
@@ -647,7 +842,6 @@ async function runDeepSeekOfficialToolLoop({
       messages.push({
         role: 'tool',
         tool_call_id: toolCall.id,
-        name: toolName,
         content: serializeToolOutput(output)
       });
     }
@@ -661,6 +855,7 @@ async function runDeepSeekOfficialToolLoop({
     done: false
   });
 
+  const finalMaxTokens = Number(process.env.DEEPSEEK_MAX_TOKENS ?? 8192);
   const finalResponse = await createDeepSeekChatCompletion({
     model: apiModel,
     messages,
@@ -670,6 +865,7 @@ async function runDeepSeekOfficialToolLoop({
       top_p: 0.9,
       max_tokens: finalMaxTokens,
       thinking,
+      user_id: deepSeekUserId,
       ...(reasoning_effort ? { reasoning_effort } : {})
     }
   });
@@ -884,7 +1080,9 @@ async function handleAIStream(req, res) {
               chatHistoryBase,
               lastUserMsg,
               toolTitleMap,
-              thinkingEnabled: isThinkingEnabled
+              thinkingEnabled: isThinkingEnabled,
+              sessionId: sessionId || null,
+              userId: req.user?.id || null
             });
 
             if (localChunkCount === 0) {
