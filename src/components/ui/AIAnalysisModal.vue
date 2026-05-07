@@ -211,7 +211,7 @@
 
                   <!-- 操作按钮 (仅 AI) -->
                   <div v-if="msg.role === 'assistant' && parseMessage(msg).content" class="message-actions">
-                    <button class="action-btn" @click="copyMessage(msg.content)" title="复制内容">
+                    <button class="action-btn" @click="copyMessage(index)" title="复制内容（含问题/回答/工作流）">
                       <svg class="copy-icon-svg" width="16" height="16" viewBox="0 0 24 24" fill="none"
                         stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                         <rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect>
@@ -1471,9 +1471,56 @@ const parseMessage = (msg) => {
 };
 const renderMarkdown = getRenderedMarkdown;
 
-const copyMessage = (msg) => {
-  const { content } = parseMessage(msg);
-  navigator.clipboard.writeText(content || msg.content || '').then(() => {
+const copyMessage = (assistantIndex) => {
+  const idx = Number(assistantIndex);
+  if (!Number.isFinite(idx) || idx < 0 || idx >= messages.value.length) return;
+
+  const assistantMsg = messages.value[idx];
+  if (!assistantMsg || assistantMsg.role !== 'assistant') return;
+
+  // 回溯最近一条用户问题（同一轮对话内 user -> assistant 的 pairing）
+  let userQuestion = '';
+  for (let i = idx - 1; i >= 0; i--) {
+    const m = messages.value[i];
+    if (m?.role === 'user' && String(m.content || '').trim()) {
+      userQuestion = String(m.content || '').trim();
+      break;
+    }
+  }
+
+  const parsed = parseMessage(assistantMsg);
+
+  // 绿色“数据工作流”来源：与 UI 渲染保持一致，直接取 parseMessage 的 statuses
+  const workflowLines = Array.isArray(parsed.statuses)
+    ? parsed.statuses
+        .map((s) => String(s?.label || '').trim())
+        .filter(Boolean)
+    : [];
+
+  // 兜底清理：避免协议标记/内部 trace 进入剪贴板（UI 渲染会清理，但这里再防一层）
+  const cleanForCopy = (text) => String(text || '')
+    .replace(/<\|\s*DSML\s*\|>[\s\S]*?(?=<\|\s*DSML\s*\|>|$)/gi, '')
+    .replace(/^\s*\[(SEARCH|ANALYSIS)\].*$/gim, '')
+    .replace(/^\s*(Thought|Action Input|Action|Observation)\s*:.*$/gim, '')
+    .replace(/\[\[MAP_COMMAND:.*?\]\]/g, '')
+    .trim();
+
+  const parts = [];
+  if (userQuestion) {
+    parts.push(`用户问题：\n${cleanForCopy(userQuestion)}`);
+  }
+  if (workflowLines.length) {
+    parts.push(`数据工作流：\n- ${workflowLines.map(cleanForCopy).join('\n- ')}`);
+  }
+  const answerText = cleanForCopy(parsed.content || assistantMsg.content || '');
+  if (answerText) {
+    parts.push(`AI回答：\n${answerText}`);
+  }
+
+  const finalText = parts.join('\n\n').trim();
+  if (!finalText) return;
+
+  navigator.clipboard.writeText(finalText).then(() => {
     alert('内容已复制到剪贴板');
   });
 };
