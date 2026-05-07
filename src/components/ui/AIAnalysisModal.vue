@@ -401,6 +401,28 @@ const md = new MarkdownIt({
 const parseCache = new Map();
 const renderCache = new Map();
 
+const normalizeProtocolGlyphs = (text = '') => String(text || '')
+  .replace(/[｜]/g, '|')
+  .replace(/[＜]/g, '<')
+  .replace(/[＞]/g, '>');
+
+const stripInternalProtocolNoise = (text = '') => {
+  let content = normalizeProtocolGlyphs(text);
+  const dsmlIndex = content.search(/<\|+\s*DSML/i);
+  if (dsmlIndex >= 0) {
+    content = content.slice(0, dsmlIndex);
+  }
+  return content
+    .replace(/^\s*\[(SEARCH|ANALYSIS)\].*$/gim, '')
+    .replace(/^\s*(Thought|Action Input|Action|Observation)\s*:.*$/gim, '')
+    .trim();
+};
+
+const stripCopyArtifacts = (text = '') => stripInternalProtocolNoise(text)
+  .replace(/\[\[MAP_COMMAND:.*?\]\]/g, '')
+  .replace(/\n{3,}/g, '\n\n')
+  .trim();
+
 const _parseMessage = (msg, skipCache = false) => {
   if (!msg) return { thinking: '', content: '', statuses: [] };
 
@@ -895,7 +917,7 @@ const _parseMessage = (msg, skipCache = false) => {
 
   // DeepSeek/某些推理模型可能会把工具协议标记泄露到正文（例如 DSML/tool_calls 块）。
   // 这些内容对用户无意义，还会造成“乱码/协议失败”的观感，直接清理。
-  content = content.replace(/<\|\s*DSML\s*\|>[\s\S]*?(?=<\|\s*DSML\s*\|>|$)/gi, '').trim();
+  content = stripInternalProtocolNoise(content);
   const mapCommandMatches = [...content.matchAll(/\[\[MAP_COMMAND:(.*?)\]\]/g)];
   mapCommandMatches.forEach((match) => {
     const command = parseJsonLoose(match[1]);
@@ -1167,11 +1189,10 @@ const quickQuestions = computed(() => {
 watch(() => props.visible, async (visible) => {
   if (visible) {
     await loadSessions();
-    // 如果没有活跃会话，自动创建一个
-    if (sessions.value.length === 0 && !currentSessionId.value) {
+    // 记忆隔离：在“新窗口/新实例”首次打开时（currentSessionId 为空），默认创建新会话，
+    // 避免自动选中历史会话导致跨窗口“带记忆”。同一窗口内关闭再打开，则保持当前会话不变。
+    if (!currentSessionId.value) {
       await createNewSession();
-    } else if (!currentSessionId.value && sessions.value.length > 0) {
-      await selectSession(sessions.value[0].id);
     }
 
     nextTick(() => {
@@ -1340,7 +1361,8 @@ const sendMessage = async (text) => {
         componentContext: props.componentContext,
         region: props.region,
         deepThinking: isReasoningModel.value,
-        model: selectedModel.value
+        model: selectedModel.value,
+        sessionId: currentSessionId.value
       },
       (chunkObj) => {
         if (chunkObj.workflow) {
@@ -1498,12 +1520,7 @@ const copyMessage = (assistantIndex) => {
     : [];
 
   // 兜底清理：避免协议标记/内部 trace 进入剪贴板（UI 渲染会清理，但这里再防一层）
-  const cleanForCopy = (text) => String(text || '')
-    .replace(/<\|\s*DSML\s*\|>[\s\S]*?(?=<\|\s*DSML\s*\|>|$)/gi, '')
-    .replace(/^\s*\[(SEARCH|ANALYSIS)\].*$/gim, '')
-    .replace(/^\s*(Thought|Action Input|Action|Observation)\s*:.*$/gim, '')
-    .replace(/\[\[MAP_COMMAND:.*?\]\]/g, '')
-    .trim();
+  const cleanForCopy = (text) => stripCopyArtifacts(text);
 
   const parts = [];
   if (userQuestion) {
