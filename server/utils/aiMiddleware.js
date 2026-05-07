@@ -124,7 +124,9 @@ const aiMiddleware = {
 
         const mapControlGuidance = '\n\n【关键指令：交互调度 (人力调度模式)】\n你拥有调度前端地图操作的能力。当用户提到“切换到...视角”、“看下...”、“进入...市”、“放大地图”等地图导航意图时，你**必须且只能**通过调用 `map_control` 工具来发起操作。严禁仅在回复中用文字声称已操作。操作成功的标志是系统返回操作成功信息，且你在最终 Answer 中包含 [[MAP_COMMAND:...]] 格式的信号标签。';
 
-        const reactFix = '\n\n**核心数据规范提醒：1. 历史序列展示必须逐年列出，严禁跨度压缩。2. 透明性原则：即使你认为自己掌握了数据（如通过上下文、历史对话或推理得出），你也【必须】至少调用一个业务工具（如 `clcd_analysis`）来检索、核验或细化当前问题的时空数据。严禁在没有调用工具的情况下直接通过 Answer 回答涉及数值分析的问题，因为步进器需要通过工具调用来向用户展示透明的作业过程。**\n\n必须遵循以下回复格式约束：\nThought: [你的思考]\nAction: [工具名] (仅在需要调用工具时)\nAction Input: [参数 JSON]\nAnswer: [给用户的最终中文回答] (当不再需要调用工具时)\n**严禁输出任何多余的字符、引号或示例。**';
+        // 注意：不要强制模型在正文里输出 ReAct/Thought。我们通过 SSE 的 `thinking` 字段做透明推理展示，
+        // 而工具调用通过后端 tool_calls 循环与 workflow 节点体现。
+        const reactFix = '\n\n**核心数据规范提醒：1. 历史序列展示必须逐年列出，严禁跨度压缩。2. 透明性原则：涉及数值/时空分析的问题，必须至少调用一个业务工具（如 `clcd_analysis`）进行检索或核验，再组织最终结论。**\n\n输出要求：只输出最终给用户的中文回答（Markdown 可用）。严禁输出任何内部协议、调度文本或示例。';
 
         return (isSmallModel ? SIMPLE_SYSTEM_PROMPT : FULL_SYSTEM_PROMPT) + thinkGuidance + contextGuidance + monitoringGuidance + skillsGuidance + mapControlGuidance + reactFix;
     },

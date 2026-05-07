@@ -488,8 +488,8 @@ paths:
                   description: 组件上下文
                 model:
                   type: string
-                  enum: ["deepseek-v3.1:671b-cloud", "deepseek-r1:8b", "gemma4:e4b", "gpt-oss:20b"]
-                  default: "deepseek-v3.1:671b-cloud"
+                  enum: ["deepseek-v4-flash", "deepseek-r1:8b", "gemma4:e4b", "gpt-oss:20b"]
+                  default: "deepseek-v4-flash"
                   description: AI 模型名称
       responses:
         '200':

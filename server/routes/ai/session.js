@@ -7,6 +7,7 @@ import pool from '../../config/db.js';
 import logger from '../../config/logger.js';
 import { authMiddleware } from '../../middleware/auth.js';
 import { Ollama } from 'ollama';
+import { generateDeepSeekText, isDeepSeekOfficialModel, resolveDeepSeekModel } from '../../utils/deepseekClient.js';
 
 const router = express.Router();
 const ollama = new Ollama({ host: process.env.OLLAMA_URL || 'http://127.0.0.1:11434' });
@@ -16,19 +17,38 @@ const ollama = new Ollama({ host: process.env.OLLAMA_URL || 'http://127.0.0.1:11
  */
 async function generateSessionTitle(sessionId, userMessage) {
     try {
-        const response = await ollama.chat({
-            model: process.env.OLLAMA_MODEL || 'deepseek-r1:8b',
-            messages: [
-                {
-                    role: 'system',
-                    content: '你是一个专业的对话标题提取器。请根据用户的问题，提取一个4-8个字的极简中文标题。只输出标题文字，严禁包含"标题："、引号、标点或任何解释。'
-                },
-                { role: 'user', content: userMessage }
-            ],
-            options: { temperature: 0.3, num_ctx: 512 }
-        });
+        const desiredModel = process.env.REPORT_MODEL || process.env.CHAT_MODEL || process.env.OLLAMA_MODEL || 'deepseek-v4-flash';
+        const titlePrompt = '你是一个专业的对话标题提取器。请根据用户的问题，提取一个4-8个字的极简中文标题。只输出标题文字，严禁包含"标题："、引号、标点或任何解释。';
 
-        const title = response.message?.content?.trim().slice(0, 30) || userMessage.slice(0, 20);
+        let title = '';
+        if (isDeepSeekOfficialModel(desiredModel)) {
+            const content = await generateDeepSeekText(
+                [
+                    { role: 'system', content: titlePrompt },
+                    { role: 'user', content: userMessage }
+                ],
+                {
+                    model: resolveDeepSeekModel(desiredModel),
+                    temperature: 0.2,
+                    topP: 0.9,
+                    // 标题任务很短，限制 token 避免无意义长输出
+                    maxTokens: 64
+                }
+            );
+            title = String(content || '').trim();
+        } else {
+            const response = await ollama.chat({
+                model: desiredModel || 'deepseek-r1:8b',
+                messages: [
+                    { role: 'system', content: titlePrompt },
+                    { role: 'user', content: userMessage }
+                ],
+                options: { temperature: 0.3, num_ctx: 512 }
+            });
+            title = response.message?.content?.trim() || '';
+        }
+
+        title = title.slice(0, 30) || userMessage.slice(0, 20);
         await pool.query('UPDATE chat_sessions SET title = $1 WHERE id = $2', [title, sessionId]);
         logger.info(`[Sessions] AI 生成标题: "${title}"`);
     } catch (err) {

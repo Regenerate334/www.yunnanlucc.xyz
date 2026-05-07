@@ -69,7 +69,12 @@ const spatialStatsTool = {
                 const port = process.env.PORT || 3000;
                 const encodedRegion = encodeURIComponent(targetRegion);
                 const url = `http://127.0.0.1:${port}/api/analysis/spatial-stats/transfer-series?yearStart=${yearStart}&yearEnd=${yearEnd}&fromClass=${fromClass}&toClass=${toClass}&unit=county&region=${encodedRegion}`;
-                const resp = await fetch(url);
+                // /api/analysis 受 authMiddleware 保护，这里从环境变量注入同源 Bearer Token
+                // （避免工具调用时触发 401，导致模型拿到空轨迹数据进而产生不稳定输出）
+                const token = process.env.INTERNAL_API_TOKEN || process.env.INTERNAL_BEARER_TOKEN;
+                const resp = await fetch(url, {
+                    headers: token ? { Authorization: `Bearer ${token}` } : undefined
+                });
                 const trajResult = await resp.json();
                 if (trajResult.features) {
                     trajectoryFeatures = trajResult.features;
