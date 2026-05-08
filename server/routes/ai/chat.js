@@ -1,9 +1,19 @@
+/**
+ * AI 对话核心路由 (AI Agent Chat Routes)
+ * 职责：处理流式 (SSE) 或同步的自然语言对话请求，支持大语言模型交互。
+ *
+ * 修改提示：
+ * 1. 对话流接口使用了 Server-Sent Events (SSE) 协议，请勿设置常规响应头。
+ * 2. 会话上下文 (Context) 及历史消息需要通过中间件装载并在结束时持久化。
+ * 3. 若使用 Ollama 或 DeepSeek 客户端，需注意网络超时与降级容灾处理。
+ */
 import express from 'express';
 import { body, validationResult } from 'express-validator';
 import { agentTools } from '../../utils/agentTools.js';
 import aiMiddleware from '../../utils/aiMiddleware.js';
 import pool from '../../config/db.js';
 import { createDeepSeekChatCompletion, isDeepSeekOfficialModel, resolveDeepSeekModel } from '../../utils/deepseekClient.js';
+import logger from '../../config/logger.js';
 
 const router = express.Router();
 
@@ -36,6 +46,26 @@ const getHistoryCharLimit = () => {
 const getHistoryHardCharLimit = () => {
   const value = Number(process.env.AI_CHAT_HISTORY_HARD_MAX_CHARS ?? 42000);
   return Number.isFinite(value) ? Math.max(4000, Math.floor(value)) : 42000;
+};
+const isNumericOrSpatialQuery = (text = '') => {
+  const t = String(text || '');
+  if (!t.trim()) return false;
+  // 触发条件：TopN/排名/占比/百分比/多少km/多少度/重心/椭圆/扁率/净流入/集中度等
+  const patterns = [
+    /top\s*\d+/i,
+    /第\s*\d+\s*(名|位)/,
+    /排名|最大|最小|前\s*\d+|后\s*\d+/,
+    /占比|百分比|集中度|头部/,
+    /多少\s*(km|公里|千米)|距离|偏移|迁移/,
+    /方位角|角度|度/,
+    /重心|轨迹|路径/,
+    /标准差椭圆|椭圆|扁率|主轴/,
+    /净流入|净流出|净转入|净转出/,
+    /精确|准确|精准/,
+    // 泛化：只要用户明确在问“数据结果/统计口径/变化量”且很可能需要数值支撑，也强制走工具核验
+    /数据|统计|结果|多少|变化|增减|净增|净减|对比|趋势/
+  ];
+  return patterns.some((p) => p.test(t));
 };
 const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 const createEmptyStreamError = (modelName) => {
@@ -75,6 +105,7 @@ const stripInternalTags = (text) => {
     .replace(/[‘’]/g, "'")
     .replace(/[＜]/g, '<')
     .replace(/[＞]/g, '>')
+    // map_control 已下线，但历史数据中仍可能存在该标记：继续清理以避免污染上下文
     .replace(/\[\[MAP_COMMAND:.*?\]\]/g, '')
     .replace(/^\[(?:SEARCH|ANALYSIS)\].*$/gim, '')
     .trim();
@@ -465,6 +496,7 @@ async function runOllamaStructuredToolLoop({
   const toolByName = new Map(agentTools.map((tool) => [tool.metadata.name, tool]));
   const maxToolRounds = 4;
   let usedTools = false;
+  const mustUseTools = isNumericOrSpatialQuery(lastUserMsg);
 
   // Simple schema: keep it permissive (string/object/string) and validate ourselves.
   const plannerSchema = {
@@ -521,7 +553,7 @@ async function runOllamaStructuredToolLoop({
 
       // Enforce: every user turn must be grounded by at least one real tool call.
       // If the model tries to return a final answer before any tool usage, force a re-plan.
-      if (!usedTools) {
+      if (!usedTools && mustUseTools) {
         messages.push({
           role: 'user',
           content: 'Observation: 你尚未调用任何业务工具获取或核验数据。请先选择一个合适的工具进行检索/计算，然后再输出最终结论。'
@@ -573,19 +605,7 @@ async function runOllamaStructuredToolLoop({
       iconKey: 'check'
     });
 
-    // If the tool returned a map command object, surface it to the client as [[MAP_COMMAND:...]]
-    // so the front-end can act on it immediately (matches the old ReAct callback behavior).
-    if (output && typeof output === 'object' && output.type === 'map_command') {
-      const { action, params } = output;
-      const commandTag = `[[MAP_COMMAND:${JSON.stringify({ action, params })}]]`;
-      writeWorkflow(res, {
-        id: `map_command_${round}_${String(action || 'action')}`,
-        label: `App用户端 → 执行地图联动指令: ${action}`,
-        type: 'search',
-        iconKey: 'map'
-      });
-      writeSSE(res, { content: `\n${commandTag}\n` });
-    }
+    // map_control 已下线：不再透传 MAP_COMMAND 指令
 
     // Keep an Observation message to help local models stay consistent.
     const obs = `Observation (${toolName}): ${serializeToolOutput(output)}`;
@@ -618,8 +638,21 @@ const sanitizeHistoryMessages = (messages) => {
       const role = normalizeRole(item?.role);
       if (!role) return null;
       const content = stripInternalTags(item?.content);
-      if (!content) return null;
-      return { role, content };
+
+      // DeepSeek V4 thinking-mode tool loops require round-tripping `reasoning_content`
+      // across subsequent requests when a turn involved tool calls.
+      // Our session storage persists it as `thinking` (front-end field name).
+      // Passing it for non-tool turns is safe: the API will ignore it when unnecessary.
+      const reasoning_content = (role === 'assistant')
+        ? stripInternalTags(item?.reasoning_content || item?.thinking || '')
+        : '';
+
+      // Keep tool-only assistant messages (content empty but has reasoning_content) to preserve continuity.
+      if (!content && !(role === 'assistant' && reasoning_content)) return null;
+
+      const out = { role, content: content || '' };
+      if (role === 'assistant' && reasoning_content) out.reasoning_content = reasoning_content;
+      return out;
     })
     .filter(Boolean);
 };
@@ -630,7 +663,7 @@ const trimHistoryWindow = (messages, maxMessages, maxChars) => {
   let totalChars = 0;
   for (let i = bounded.length - 1; i >= 0; i--) {
     const item = bounded[i];
-    const len = item.content.length;
+    const len = (item?.content?.length || 0) + (item?.reasoning_content?.length || 0);
     if (picked.length > 0 && totalChars + len > maxChars) break;
     picked.push(item);
     totalChars += len;
@@ -687,9 +720,11 @@ async function runDeepSeekOfficialToolLoop({
     { role: 'user', content: lastUserMsg }
   ];
   const toolByName = new Map(agentTools.map((tool) => [tool.metadata.name, tool]));
+  const toolResultCache = new Map(); // key -> serialized tool output (per request loop)
   const apiModel = resolveDeepSeekModel(model);
   const maxToolRounds = 8;
   let usedTools = false;
+  const mustUseTools = isNumericOrSpatialQuery(lastUserMsg);
   let toolChoiceSupported = true;
   const thinking = { type: thinkingEnabled ? 'enabled' : 'disabled' };
   const reasoning_effort = thinkingEnabled ? 'high' : undefined;
@@ -725,7 +760,7 @@ async function runDeepSeekOfficialToolLoop({
           max_tokens: stepMaxTokens,
           thinking,
           user_id: deepSeekUserId,
-          ...(toolChoiceSupported ? { tool_choice: usedTools ? 'auto' : 'required' } : {}),
+          ...(toolChoiceSupported ? { tool_choice: (mustUseTools && !usedTools) ? 'required' : 'auto' } : {}),
           ...(reasoning_effort ? { reasoning_effort } : {})
         }
       });
@@ -782,7 +817,7 @@ async function runDeepSeekOfficialToolLoop({
 
       // If the model tries to answer without any tool usage, enforce one tool call for stability.
       // This prevents "memory answers" and ensures each session request is grounded in real queries.
-      if (!usedTools) {
+      if (!usedTools && mustUseTools) {
         // First, retry once with a strong tool_choice hint.
         messages.push({
           role: 'system',
@@ -825,7 +860,14 @@ async function runDeepSeekOfficialToolLoop({
 
       let output;
       try {
-        output = await tool.call(args);
+        // Avoid repeated identical tool calls within the same question (reduces latency + prevents loop storms).
+        const cacheKey = `${toolName}::${JSON.stringify(args || {})}`;
+        if (toolResultCache.has(cacheKey)) {
+          output = toolResultCache.get(cacheKey);
+        } else {
+          output = await tool.call(args);
+          toolResultCache.set(cacheKey, output);
+        }
       } catch (err) {
         output = `工具调用失败: ${err.message || String(err)}`;
       }
@@ -1005,10 +1047,18 @@ async function handleAIStream(req, res) {
       'land_transfer_analysis': (args) => `正在分析 ${args.region || '目标区域'} 土地利用转移矩阵(LUCC)...`,
       'weather_query': (args) => `正在获取 ${args.city || '目标城市'} 实时气象观测数据...`,
       'knowledge_base_lookup': (args) => `正在检索专家知识库: ${args.skill_name || '专业技能'}...`,
-      'map_control': (args) => `正在同步 WebGIS 空间视角: ${args.action || '操作中'}...`
+      // map_control 已下线
     };
 
-    const chatHistoryBase = history.slice(0, -1).map((h) => ({ role: h.role, content: h.content }));
+    // Preserve DeepSeek thinking-mode context: carry over assistant reasoning_content when present.
+    // (This improves stability for multi-round tool loops and reduces EMPTY_STREAM_RESPONSE cases.)
+    const chatHistoryBase = history
+      .slice(0, -1)
+      .map((h) => ({
+        role: h.role,
+        content: h.content,
+        ...(h.role === 'assistant' && h.reasoning_content ? { reasoning_content: h.reasoning_content } : {})
+      }));
     let lastError = null;
 
     for (let modelIndex = 0; modelIndex < modelCandidates.length; modelIndex++) {
@@ -1030,7 +1080,7 @@ async function handleAIStream(req, res) {
       });
       // Server-side audit log (helps diagnose model/provider mismatches without relying on the UI)
       try {
-        console.info('[AI][ModelRoute]', {
+        logger.info('[AI][ModelRoute]', {
           sessionId: sessionId || null,
           selectedModel,
           currentModel,
@@ -1157,7 +1207,7 @@ async function handleAIStream(req, res) {
 
     throw lastError || new Error('AI 对话失败：未知错误');
   } catch (err) {
-    console.error('Agent Error:', err);
+    logger.error('[AI][Agent Error]', { message: err?.message || String(err), stack: err?.stack });
     if (!res.writableEnded) {
       writeWorkflow(res, {
         id: 'workflow_error',

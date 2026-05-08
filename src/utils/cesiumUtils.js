@@ -1,4 +1,11 @@
 /**
+ * @module utils/cesiumUtils
+ * @description CesiumJS 核心地图工具类，封装图层加载、视角控制、实体渲染等三维地球操作。
+ * @author System
+ * @dependencies CesiumJS
+ */
+
+/**
  * Cesium 业务图层管理器
  * 实现全局互斥的分析图层调度逻辑，防止显存泄漏
  */

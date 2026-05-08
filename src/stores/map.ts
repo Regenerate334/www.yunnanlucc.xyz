@@ -1,4 +1,11 @@
 /**
+ * @module stores/map
+ * @description Pinia 状态管理：地图状态模块，维护当前加载的 GeoServer 图层配置、底图类型及三维视角参数。
+ * @author System
+ * @dependencies pinia
+ */
+
+/**
  * 地图状态 Store
  * 管理 Cesium 地图实例和交互状态
  */

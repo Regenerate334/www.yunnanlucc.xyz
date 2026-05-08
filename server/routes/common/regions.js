@@ -1,4 +1,13 @@
 /**
+ * 行政区划公共路由 (Administrative Regions Routes)
+ * 职责：提供全省、地市及区县的三级级联数据结构，供前端下拉框或级联选择器使用。
+ *
+ * 修改提示：
+ * 1. 此类接口数据更新频率极低，建议配合 Redis 或内存缓存机制优化响应速度。
+ * 2. 接口返回的层级结构 (`name`, `children`) 必须与前端 `RegionCascader` 组件严格对齐。
+ * 3. 若数据库新增区域变更，需同步更新底层缓存触发机制。
+ */
+/**
  * 区域数据路由
  * 端点：/:level (hierarchy, prefecture, county)
  */

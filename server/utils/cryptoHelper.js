@@ -10,6 +10,7 @@ import crypto from 'crypto';
 import fs from 'fs';
 import path from 'path';
 import { fileURLToPath } from 'url';
+import logger from '../config/logger.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -27,7 +28,7 @@ if (!fs.existsSync(KEY_DIR)) {
  */
 export function ensureKeys() {
     if (!fs.existsSync(PRIVATE_KEY_PATH) || !fs.existsSync(PUBLIC_KEY_PATH)) {
-        console.log('[Crypto] 正在生成新的 RSA 密钥对...');
+        logger.info('[Crypto] 正在生成新的 RSA 密钥对...');
         const { publicKey, privateKey } = crypto.generateKeyPairSync('rsa', {
             modulusLength: 2048,
             publicKeyEncoding: {
@@ -41,7 +42,7 @@ export function ensureKeys() {
         });
         fs.writeFileSync(PUBLIC_KEY_PATH, publicKey);
         fs.writeFileSync(PRIVATE_KEY_PATH, privateKey);
-        console.log('[Crypto] 密钥对生成成功并已保存。');
+        logger.info('[Crypto] 密钥对生成成功并已保存。');
     }
 }
 
@@ -73,7 +74,7 @@ export function decrypt(encryptedBase64) {
         );
         return decrypted.toString('utf8');
     } catch (err) {
-        console.error('[Crypto] 解密失败:', err.message);
+        logger.error('[Crypto] 解密失败', { message: err?.message || String(err), stack: err?.stack });
         throw new Error('无法通过私钥解密数据，请检查密钥对齐情况');
     }
 }

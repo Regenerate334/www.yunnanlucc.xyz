@@ -9,6 +9,7 @@
 
 import pool from '../config/db.js';
 import { calculateDynamicDegree, calculateSingleDynamicDegree } from '../utils/indices/dynamicDegree.js';
+import { getAvailablePeriods, findOverlappingPeriods, sortPeriods } from '../utils/period_encoder.js';
 
 const MONITORING_POLICY_PROFILES = {
     farmland_protection: {
@@ -131,8 +132,10 @@ class LandUseService {
      * 自动推断行政级别
      */
     _inferLevel(name) {
-        if (!name || name === '云南省' || name === '全省') return 'province';
-        const clean = name.replace(/市|县|区|自治州|省/g, '').trim();
+        if (!name) return 'province';
+        const trimmed = String(name).trim();
+        if (!trimmed || trimmed === '云南省' || trimmed === '全省') return 'province';
+        const clean = trimmed.replace(/市|县|区|自治州|省/g, '').trim();
         if (this.regionAliases[clean]) return 'prefecture';
         return 'county'; // 如果不是地州或省级，则默认降维到县级
     }
@@ -370,6 +373,11 @@ class LandUseService {
      * 获取土地转移矩阵
      */
     async getTransferMatrix(region, period, level = 'auto') {
+        // Normalize region: avoid accidental whitespace or "全省/云南省" variants causing
+        // empty WHERE filters (which would turn SUM(...) into all NULLs).
+        const normalizedRegion = typeof region === 'string' ? region.trim() : region;
+        const isProvinceScope = !normalizedRegion || normalizedRegion === '云南省' || normalizedRegion === '全省';
+
         // 先探测字段
         const { rows: colRows } = await pool.query(`
             SELECT column_name FROM information_schema.columns 
@@ -380,13 +388,13 @@ class LandUseService {
 
         let actualLevel = level;
         if (actualLevel === 'auto' || !actualLevel) {
-            actualLevel = this._inferLevel(region);
+            actualLevel = this._inferLevel(normalizedRegion);
         }
 
         let whereClause = '';
         let params = [];
-        if (region && region !== '云南省') {
-            const fuzzy = this._getFuzzyName(region, actualLevel);
+        if (!isProvinceScope) {
+            const fuzzy = this._getFuzzyName(normalizedRegion, actualLevel);
             whereClause = `WHERE TRIM("地名") LIKE $1 OR TRIM("地级") LIKE $1`;
             params.push(fuzzy);
         }
@@ -396,6 +404,66 @@ class LandUseService {
         const { rows: dataRows } = await pool.query(sql, params);
 
         return dataRows[0] || {};
+    }
+
+    /**
+     * 获取土地转移矩阵（按年份区间聚合）
+     * 使用数据库真实存在的 period 列进行多段求和，避免 yYYZZ 聚合列不存在导致空结果。
+     *
+     * 说明：transfer 宽表的列形如 `${period}_${from}${to}`，period 并非覆盖所有组合。
+     */
+    async getTransferMatrixByYearRange(region, yearStart, yearEnd, level = 'auto') {
+        const normalizedRegion = typeof region === 'string' ? region.trim() : region;
+        const isProvinceScope = !normalizedRegion || normalizedRegion === '云南省' || normalizedRegion === '全省';
+
+        const start = Number.parseInt(yearStart, 10);
+        const end = Number.parseInt(yearEnd, 10);
+        if (!Number.isInteger(start) || !Number.isInteger(end) || start >= end) return {};
+
+        const tableName = 'spatial_county_yunnan_transfer';
+        const allPeriods = await getAvailablePeriods(pool, tableName);
+        const periods = sortPeriods(findOverlappingPeriods(allPeriods, start, end));
+        if (!periods.length) return {};
+
+        const allCols = [];
+        for (const p of periods) {
+            const { rows } = await pool.query(`
+                SELECT column_name FROM information_schema.columns
+                WHERE table_name = $1 AND column_name LIKE $2
+            `, [tableName, `${p}_%`]);
+            rows.forEach((r) => { if (r.column_name) allCols.push(r.column_name); });
+        }
+        const uniqueCols = Array.from(new Set(allCols));
+        if (!uniqueCols.length) return {};
+
+        let actualLevel = level;
+        if (actualLevel === 'auto' || !actualLevel) {
+            actualLevel = this._inferLevel(normalizedRegion);
+        }
+
+        let whereClause = '';
+        const params = [];
+        if (!isProvinceScope) {
+            const fuzzy = this._getFuzzyName(normalizedRegion, actualLevel);
+            whereClause = `WHERE TRIM("地名") LIKE $1 OR TRIM("地级") LIKE $1`;
+            params.push(fuzzy);
+        }
+
+        const selectClaims = uniqueCols.map(c => `SUM("${c}") as "${c}"`).join(', ');
+        const sql = `SELECT ${selectClaims} FROM spatial_county_yunnan_transfer ${whereClause}`;
+        const { rows: dataRows } = await pool.query(sql, params);
+        const raw = dataRows[0] || {};
+
+        // 聚合归一：将多 period 同一方向的值合并到 `${from}${to}` 键上，
+        // 避免上层工具/模型需要理解 period 维度。
+        const matrix = {};
+        Object.entries(raw).forEach(([k, v]) => {
+            const m = String(k).match(/_(\d)(\d)$/);
+            if (!m) return;
+            const key = `${m[1]}${m[2]}`;
+            matrix[key] = (Number(matrix[key]) || 0) + (Number(v) || 0);
+        });
+        return matrix;
     }
     _calcMonitoringRaw(data) {
         if (!data) return null;

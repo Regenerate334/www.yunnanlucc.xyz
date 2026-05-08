@@ -1,4 +1,4 @@
-import pg from 'pg';
+/**\n * 系统配置模块 (System Configuration Module)\n * 职责：负责加载并向系统暴露有关 database 的全局静态配置或环境变量。\n *\n * 修改提示：\n * 1. 敏感密钥或连接串应从 .env 中读取，严禁硬编码。\n * 2. 若涉及异步操作，请务必处理 Promise 的 catch 块防止未捕获异常。\n * 3. 遵循现有的 ESLint 和团队代码规范，保持极简及高可读性。\n */\nimport pg from 'pg';
 import logger from './logger.js';
 import dotenv from 'dotenv';
 
@@ -22,7 +22,7 @@ pool.on('connect', (client) => {
 });
 
 pool.on('error', (err, client) => {
-  console.error('[DB] 数据库连接池错误:', err);
+  logger.error('[DB] 数据库连接池错误', { message: err?.message || String(err), stack: err?.stack });
 });
 
 // ==================== 数据库连接测试 ====================
@@ -34,7 +34,7 @@ export const testConnection = async () => {
     client.release();
     return true;
   } catch (err) {
-    console.error('[DB] 数据库连接测试失败:', err);
+    logger.error('[DB] 数据库连接测试失败', { message: err?.message || String(err), stack: err?.stack });
     return false;
   }
 };
@@ -45,7 +45,7 @@ export const closePool = async () => {
     await pool.end();
     logger.info('[DB] 数据库连接池已关闭');
   } catch (err) {
-    console.error('[DB] 关闭数据库连接池时出错:', err);
+    logger.error('[DB] 关闭数据库连接池时出错', { message: err?.message || String(err), stack: err?.stack });
   }
 };
 

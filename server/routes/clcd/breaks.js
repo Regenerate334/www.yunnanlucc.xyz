@@ -1,4 +1,4 @@
-/**
+/**\n * 业务模块路由 (Business Feature Routes)\n * 职责：负责 breaks 相关业务接口的 URL 映射及请求派发。\n *\n * 修改提示：\n * 1. 路由内禁止堆叠复杂逻辑，严格践行"瘦路由、胖服务"的开发范式。\n * 2. 若涉及异步操作，请务必处理 Promise 的 catch 块防止未捕获异常。\n * 3. 遵循现有的 ESLint 和团队代码规范，保持极简及高可读性。\n */\n/**
  * 分级断点计算路由
  * 端点：/breaks (统一支持单年和变化模式)
  * 核心算法：Jenks 自然断点、分位数、等间隔
@@ -8,6 +8,7 @@ import pool from '../../config/db.js';
 import logger from '../../config/logger.js';
 import { handleError } from '../../middleware/logger.js';
 import { query, validationResult } from 'express-validator';
+import { getAvailablePeriods, findOverlappingPeriods, sortPeriods } from '../../utils/period_encoder.js';
 import {
     ATTR_PREFIX_MAP,
     getAvailableYears,
@@ -32,8 +33,8 @@ router.get('/', [
     query('classes').optional().isInt({ min: 3, max: 12 }),
     query('year_start').optional().isInt({ min: 1980, max: 2030 }),
     query('year_end').optional().isInt({ min: 1980, max: 2030 }),
-    query('from_class').optional({ checkFalsy: true }).isInt({ min: 1, max: 9 }),
-    query('to_class').optional({ checkFalsy: true }).isInt({ min: 1, max: 9 })
+    query('from_class').optional({ checkFalsy: true }).isInt({ min: 1, max: 8 }),
+    query('to_class').optional({ checkFalsy: true }).isInt({ min: 1, max: 8 })
 ], async (req, res) => {
     const errors = validationResult(req);
     if (!errors.isEmpty()) {
@@ -77,20 +78,9 @@ router.get('/', [
                 return res.status(400).json({ error: 'Invalid transfer period: year_start must be less than year_end' });
             }
 
-            // 1. 构建年份片段
-            const periods = [];
-            for (let y = start; y < end; y++) {
-                if (y === 1985 && end >= 1990) {
-                    periods.push('y8590');
-                    y = 1989;
-                    continue;
-                }
-                const yy1 = y % 100;
-                const yy2 = (y + 1) % 100;
-                const s1 = yy1 < 10 ? `0${yy1}` : `${yy1}`;
-                const s2 = yy2 < 10 ? `0${yy2}` : `${yy2}`;
-                periods.push(`y${s1}${s2}`);
-            }
+            // 1. 根据数据库实际存在的 period 自动匹配覆盖范围（避免手工拼 period 导致口径漂移）
+            const allPeriods = await getAvailablePeriods(pool, tableName);
+            const periods = sortPeriods(findOverlappingPeriods(allPeriods, start, end));
 
             if (periods.length === 0) {
                 return res.json({ breaks: [], sumExpr: '', stats: {}, message: 'No valid periods in the given range' });
@@ -102,7 +92,9 @@ router.get('/', [
             // from==null,to!=null: 某地类净流入 *->B
             // from==null,to==null: 总流转 *->*（排除同类）
             const candidateColumns = [];
-            const allClasses = Array.from({ length: 9 }, (_, i) => i + 1);
+            // 转移宽表口径：项目内 spatial_*_yunnan_transfer 为 8 类（灌木已并入林地）
+            // 与前端 TRANSFER_CLASS_NAMES(1..8)、analysis/transfer_flow、analysis/spatial_stats 保持一致。
+            const allClasses = Array.from({ length: 8 }, (_, i) => i + 1);
             for (const p of periods) {
                 if (from !== null && to !== null) {
                     candidateColumns.push(`${p}_${from}${to}`);
@@ -330,21 +322,13 @@ router.get('/', [
                     return res.status(400).json({ error: 'conversion rate requires valid year_start and year_end' });
                 }
 
-                // 构建需要累加的转换列名（与 transfer 模式列名逻辑完全一致）
-                const periods = [];
-                for (let y = start; y < end; y++) {
-                    if (y === 1985 && end >= 1990) {
-                        periods.push('y8590');
-                        y = 1989;
-                        continue;
-                    }
-                    const yy1 = String(y % 100).padStart(2, '0');
-                    const yy2 = String((y + 1) % 100).padStart(2, '0');
-                    periods.push(`y${yy1}${yy2}`);
-                }
+                // 构建需要累加的转换 period（与 transfer 模式保持一致：以数据库真实 period 为准）
+                const allPeriods = await getAvailablePeriods(pool, TRANSFER_TABLE);
+                const periods = sortPeriods(findOverlappingPeriods(allPeriods, start, end));
 
                 const columns = [];
-                const allClasses = Array.from({ length: 9 }, (_, i) => i + 1);
+                // 转移宽表口径：8 类（灌木并入林地）
+                const allClasses = Array.from({ length: 8 }, (_, i) => i + 1);
                 for (const p of periods) {
                     if (from !== null && to !== null) {
                         columns.push(`${p}_${from}${to}`);

@@ -1,3 +1,10 @@
+/**
+ * @module stores/global
+ * @description Pinia 状态管理：全局核心模块，负责全站面板显隐控制、当前空间作用域及时间轴年份的统一调度。
+ * @author System
+ * @dependencies pinia
+ */
+
 import { defineStore } from 'pinia'
 import { ref } from 'vue'
 

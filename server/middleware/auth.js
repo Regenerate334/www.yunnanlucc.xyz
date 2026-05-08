@@ -1,3 +1,12 @@
+/**
+ * 身份认证与权限校验中间件 (Authentication & Authorization Middleware)
+ * 职责：拦截客户端请求，解析 JWT Token 并校验用户角色，保护敏感接口安全。
+ *
+ * 修改提示：
+ * 1. Token 校验失败时统一返回 401 Unauthorized 状态码。
+ * 2. `roleCheck` 策略采用严格匹配，支持单一或多个角色的数组校验。
+ * 3. 部分特定公开接口（如登录、资源下载）需在路由层面显式排除该中间件。
+ */
 import jwt from 'jsonwebtoken';
 import logger from '../config/logger.js';
 import { JWT_SECRET } from '../config/jwt.js';

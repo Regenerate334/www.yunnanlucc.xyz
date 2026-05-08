@@ -1,8 +1,9 @@
-/**
+/**\n * 业务模块路由 (Business Feature Routes)\n * 职责：负责 weather 相关业务接口的 URL 映射及请求派发。\n *\n * 修改提示：\n * 1. 路由内禁止堆叠复杂逻辑，严格践行"瘦路由、胖服务"的开发范式。\n * 2. 若涉及异步操作，请务必处理 Promise 的 catch 块防止未捕获异常。\n * 3. 遵循现有的 ESLint 和团队代码规范，保持极简及高可读性。\n */\n/**
  * 天气服务路由
  * 端点：/weather
  */
 import express from 'express';
+import logger from '../../config/logger.js';
 
 const router = express.Router();
 
@@ -44,7 +45,7 @@ router.get('/', async (req, res) => {
 
         res.json(data);
     } catch (err) {
-        console.error('[weather] 请求失败:', err.message);
+        logger.error('[weather] 请求失败', { message: err?.message || String(err), stack: err?.stack });
         res.status(500).json({ error: '请求天气数据失败', message: err.message });
     }
 });

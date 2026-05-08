@@ -1,3 +1,10 @@
+/**
+ * @module utils/rateHelper
+ * @description 辅助计算土地利用变化率等专项业务指标的工具。
+ * @author System
+ * @dependencies 无
+ */
+
 import { getTableColumns, ATTR_PREFIX_MAP } from './utils.js';
 
 /**

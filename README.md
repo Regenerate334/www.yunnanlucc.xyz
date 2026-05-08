@@ -308,6 +308,10 @@ sequenceDiagram
 - PostgreSQL >= 14.0 (支持空间扩展)
 - **Ollama**: 用于 AI 2.0 推理
 
+### 日志等级（生产可控）
+- `LOG_LEVEL`：控制台日志等级（默认 `info`）
+- `LOG_FILE_LEVEL`：写入 `server/logs` 的文件日志等级（默认 `info`）
+
 ### 核心指令
 ```bash
 # 1. 首次部署

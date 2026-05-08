@@ -1,3 +1,11 @@
+<!-- RegionalAnalysis: 区域分析核心视图，集成多种维度的区域空间与指标分析 -->
+<!--
+  @component RegionalAnalysis
+  @description 区域分析核心视图，集成多种维度的区域空间与指标分析
+  @props 无直接传入的 props，主要依赖路由参数或全局状态
+  @emits 视图级组件，主要进行事件监听和向下传递
+  @dependencies globalStore, authStore, vue-router 以及各类子组件
+-->
 <!--
   区域检测分析视图 (Regional Analysis View)
   职责：针对特定行政区域或格网进行高频土地利用变化检测，集成动态分级渲染图例与空间统计信息。
@@ -114,6 +122,7 @@
  * @logic 基于 Cesium 实现 WMS 分级渲染，支持县级/格网尺度的土地利用属性时空动态展示。
  */
 <script setup>
+// --- 核心业务逻辑状态与依赖注入 ---
 import { ref, shallowRef, computed, watch, onMounted, onUnmounted } from 'vue';
 import { useRouter } from 'vue-router';
 import * as Cesium from 'cesium';

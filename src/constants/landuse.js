@@ -114,9 +114,12 @@ export const TRANSFER_CLASS_NAMES = {
     2: '林地',
     3: '草地',
     4: '水体',
-    5: '建设用地',
+    // 注意：transfer 宽表为“8 类口径（灌木并入林地）”，并按顺序重编码：
+    // 1耕地 2林地(含灌木) 3草地 4水体 5冰雪 6裸地 7建设用地 8湿地
+    // 该编码必须与 spatial_*_yunnan_transfer 字段后缀一致（如 y2223_17 表示 1->7）。
+    5: '冰雪',
     6: '裸地',
-    7: '冰雪',
+    7: '建设用地',
     8: '湿地'
 };
 
@@ -129,8 +132,8 @@ export const TRANSFER_CLASS_TO_LANDUSE_KEY = {
     2: 'forest',
     3: 'grassland',
     4: 'water',
-    5: 'impervious',
+    5: 'snow_ice',
     6: 'barren',
-    7: 'snow_ice',
+    7: 'impervious',
     8: 'wetland'
 };

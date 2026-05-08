@@ -1,10 +1,11 @@
-/**
+/**\n * 业务模块路由 (Business Feature Routes)\n * 职责：负责 spatial 相关业务接口的 URL 映射及请求派发。\n *\n * 修改提示：\n * 1. 路由内禁止堆叠复杂逻辑，严格践行"瘦路由、胖服务"的开发范式。\n * 2. 若涉及异步操作，请务必处理 Promise 的 catch 块防止未捕获异常。\n * 3. 遵循现有的 ESLint 和团队代码规范，保持极简及高可读性。\n */\n/**
  * 空间数据路由
  * 端点：/spatial/county/:year, /spatial/grid/:year
  * 返回 GeoJSON 格式数据用于地图渲染
  */
 import express from 'express';
 import pool from '../../config/db.js';
+import logger from '../../config/logger.js';
 import { handleError } from '../../middleware/logger.js';
 import { getTableColumns } from './utils.js';
 import { buildRateQueryFragments, buildSafeRateExpression, quoteIdentifier } from './rateHelper.js';
@@ -17,7 +18,7 @@ router.get('/county/:year', async (req, res) => {
     const { year } = req.params;
     try {
         const colNames = await getTableColumns('spatial_county_yunnan_stats');
-        console.log('[spatial] Columns in county table:', colNames.slice(0, 10));
+        logger.info('[spatial] Columns in county table (sample)', { sample: colNames.slice(0, 10) });
 
         // 智能映射列名
         const nameCol = colNames.find(c => ['name_zh', '县级', 'name', 'region_name', 'NAME'].includes(c)) || colNames[0];
@@ -57,7 +58,7 @@ router.get('/county/:year', async (req, res) => {
 
         res.json({ type: 'FeatureCollection', features });
     } catch (err) {
-        console.error('[spatial] County API Error:', err);
+        logger.error('[spatial] County API Error', { message: err?.message || String(err), stack: err?.stack });
         handleError(res, err);
     }
 });
@@ -103,7 +104,7 @@ router.get('/grid/:year', async (req, res) => {
 
         res.json({ type: 'FeatureCollection', features });
     } catch (err) {
-        console.error('[spatial] Grid API Error:', err);
+        logger.error('[spatial] Grid API Error', { message: err?.message || String(err), stack: err?.stack });
         handleError(res, err);
     }
 });
@@ -157,7 +158,7 @@ router.get('/rates/:unit/:year', async (req, res) => {
                 try {
                     geometry = JSON.parse(row.geometry);
                 } catch (e) {
-                    console.warn('[spatial] Malformed geometry', e);
+                    logger.warn('[spatial] Malformed geometry', { message: e?.message || String(e) });
                     return null;
                 }
 
@@ -185,7 +186,7 @@ router.get('/rates/:unit/:year', async (req, res) => {
 
         res.json({ type: 'FeatureCollection', features });
     } catch (err) {
-        console.error('[spatial] Rates API Error:', err);
+        logger.error('[spatial] Rates API Error', { message: err?.message || String(err), stack: err?.stack });
         handleError(res, err);
     }
 });

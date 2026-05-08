@@ -1,8 +1,9 @@
-import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
+/**\n * 核心业务脚本 (Core Business Script)\n * 职责：处理与 index 强相关的后端底层逻辑。\n *\n * 修改提示：\n * 1. 本文件为系统底层运行机制的组成部分，修改前请仔细核对依赖关系。\n * 2. 若涉及异步操作，请务必处理 Promise 的 catch 块防止未捕获异常。\n * 3. 遵循现有的 ESLint 和团队代码规范，保持极简及高可读性。\n */\nimport { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js";
 import { z } from "zod";
 import fs from 'fs/promises';
 import path from 'path';
+import logger from '../config/logger.js';
 
 // 导入现有的业务能力
 import landUseService from '../services/landUseService.js';
@@ -190,10 +191,10 @@ server.tool(
 async function main() {
     const transport = new StdioServerTransport();
     await server.connect(transport);
-    console.error("WebGIS MCP Server 已启动 (STDIO 模式)");
+    logger.info('WebGIS MCP Server 已启动 (STDIO 模式)');
 }
 
 main().catch((err) => {
-    console.error("MCP Server 启动失败:", err);
+    logger.error('MCP Server 启动失败', { message: err?.message || String(err), stack: err?.stack });
     process.exit(1);
 });

@@ -1,3 +1,11 @@
+<!-- Workbench: 主工作台视图，承载核心的三维地球展示及各种空间分析控制面板 -->
+<!--
+  @component Workbench
+  @description 主工作台视图，承载核心的三维地球展示及各种空间分析控制面板
+  @props 无直接传入的 props，主要依赖路由参数或全局状态
+  @emits 视图级组件，主要进行事件监听和向下传递
+  @dependencies globalStore, authStore, vue-router 以及各类子组件
+-->
 <!--
   工作台主视图 (Workbench View)
   职责：系统核心业务交互中心，集成 Cesium 3D 地图引擎，负责土地利用数据渲染、时空演变分析及各类专题计算的逻辑调度。
@@ -153,6 +161,7 @@
  * @logic 集成 Cesium 3D 地图引擎，协调 CLCD 土地利用数据加载、空间单元切换（县级/格网）及多维分析面板联动。
  */
 <script setup>
+// --- 核心业务逻辑状态与依赖注入 ---
 import { onMounted, onUnmounted, ref, shallowRef, watch, computed } from 'vue';
 import { useRouter } from 'vue-router';
 import * as Cesium from 'cesium';

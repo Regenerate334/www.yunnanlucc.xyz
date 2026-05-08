@@ -1,3 +1,12 @@
+/**
+ * 智能体分析工具注册中心 (Agent Analytical Tools Registry)
+ * 职责：定义并声明一系列供大语言模型（如 DeepSeek）在执行 ReAct 流程时调用的空间分析工具集。
+ *
+ * 修改提示：
+ * 1. 每个工具必须提供明确的 `name`、`description` 和 `parameters` (JSON Schema) 声明。
+ * 2. 工具的说明信息直接决定了 AI 能否正确路由请求，请尽可能使用详尽、无歧义的提示词描述。
+ * 3. 新增工具时，必须在对应的 Tool Executor 中同步实现处理逻辑。
+ */
 import { FunctionTool } from "llamaindex";
 import { z } from "zod";
 import clcdTool from "./tools/clcdTool.js";
@@ -5,7 +14,6 @@ import dashboardTool from "./tools/dashboardTool.js";
 import spatialStatsTool from "./tools/spatialStatsTool.js";
 import transferTool from "./tools/transferTool.js";
 import weatherTool from "./tools/weatherTool.js";
-import mapControlTool from "./tools/mapControlTool.js";
 import knowledgeTool from "./tools/knowledgeTool.js";
 
 const clcdFunctionTool = FunctionTool.from(
@@ -57,9 +65,9 @@ const dashboardFunctionTool = FunctionTool.from(
 );
 
 const spatialStatsFunctionTool = FunctionTool.from(
-    async ({ yearStart, yearEnd, fromClassStr, toClassStr, region }) => {
+    async ({ yearStart, yearEnd, fromClassStr, toClassStr, region, top_n }) => {
         try {
-            const args = { yearStart, yearEnd, fromClassStr, toClassStr, region };
+            const args = { yearStart, yearEnd, fromClassStr, toClassStr, region, top_n };
             const result = await spatialStatsTool.query(args, {}, 2023);
             return spatialStatsTool.format(result, {});
         } catch (e) {
@@ -68,13 +76,14 @@ const spatialStatsFunctionTool = FunctionTool.from(
     },
     {
         name: "spatial_stats_analysis",
-        description: "获取土地利用流转的空间统计特征（重心迁移轨迹、标准差椭圆）。请务必传递 region 以获得精确的局部空间分析。",
+        description: "获取土地利用流转的空间统计特征（县域TopN与头部集中度、重心迁移轨迹、标准差椭圆）。当用户要求“前N个县域/头部集中度/偏移距离/方位角/椭圆面积/扁率/单极或多点扩张诊断”时，优先使用本工具。",
         parameters: z.object({
             yearStart: z.number().describe('起始年份，如 1985'),
             yearEnd: z.number().describe('结束年份，如 2023'),
             fromClassStr: z.string().describe('转出地类'),
             toClassStr: z.string().describe('转入地类'),
-            region: z.string().optional().describe('目标区域，如"瑞丽市"。如不传则统计全省。')
+            region: z.string().optional().describe('目标区域，如"瑞丽市"。如不传则统计全省。'),
+            top_n: z.number().optional().describe('核心高发区 TopN 数量（默认 5）')
         })
     }
 );
@@ -92,7 +101,7 @@ const transferFunctionTool = FunctionTool.from(
     },
     {
         name: "land_transfer_analysis",
-        description: "查询转移矩阵（地类相互转化）。请根据问题颗粒度传 level (prefecture 或 county)。",
+        description: "查询转移矩阵（区域汇总级别，不返回县域TopN名单）。用于净变化/交换变化/主导转化方向等。若用户要求“前N个县域/头部集中度/空间重心轨迹/标准差椭圆”，请改用 spatial_stats_analysis。",
         parameters: z.object({
             region: z.string().optional().describe('目标区域'),
             level: z.enum(['province', 'prefecture', 'county']).optional().describe('解析精度'),
@@ -134,31 +143,9 @@ const knowledgeFunctionTool = FunctionTool.from(
         name: "knowledge_base_lookup",
         description: "检索系统专家知识库（专业技能）。当遇到 LULC 指标、LUCC 评价算法或空间推理逻辑不确定时，请务必查询此库。",
         parameters: z.object({
-            skill_name: z.enum(['monitoring_indices', 'spatial_reasoning']).describe('知识模块名称')
+            skill_name: z.enum(['monitoring_indices', 'spatial_reasoning', 'policy_expert']).describe('知识模块名称')
         })
     }
 );
 
-const mapControlFunctionTool = FunctionTool.from(
-    async ({ action, region, lnglat, zoom }) => {
-        try {
-            const args = { action, region, lnglat, zoom };
-            const result = await mapControlTool.query(args);
-            return mapControlTool.format(result);
-        } catch (e) {
-            return `地图控制失败: ${e.message}`;
-        }
-    },
-    {
-        name: "map_control",
-        description: "控制 WebGIS 地图视角。可以切换行政区域（如‘切换到宣威市’）、定位或缩放图层。",
-        parameters: z.object({
-            action: z.enum(['set_region', 'fly_to', 'zoom_in', 'zoom_out']).describe('地图控制动作'),
-            region: z.string().optional().describe('目标区域名称'),
-            lnglat: z.array(z.number()).optional().describe('经纬度坐标 [lng, lat]'),
-            zoom: z.number().optional().describe('缩放层级')
-        })
-    }
-);
-
-export const agentTools = [clcdFunctionTool, dashboardFunctionTool, spatialStatsFunctionTool, transferFunctionTool, weatherFunctionTool, knowledgeFunctionTool, mapControlFunctionTool];
+export const agentTools = [clcdFunctionTool, dashboardFunctionTool, spatialStatsFunctionTool, transferFunctionTool, weatherFunctionTool, knowledgeFunctionTool];

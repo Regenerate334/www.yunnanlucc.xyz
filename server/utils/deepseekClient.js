@@ -1,3 +1,12 @@
+/**
+ * DeepSeek 大模型客户端 (DeepSeek LLM Client)
+ * 职责：封装与 DeepSeek API 的网络通信，处理流式请求 (SSE)、Token 计费及重试机制。
+ *
+ * 修改提示：
+ * 1. 连接失败或超时时需提供优雅降级（如退回基础模型或给出明确错误提示）。
+ * 2. 请确保 `apiKey` 仅在服务端环境变量中读取，严禁明文硬编码。
+ * 3. 流式解析 (chunk parsing) 逻辑对于断流和粘包较为敏感，修改时需严密测试。
+ */
 import { ToolCallLLM } from '@llamaindex/core/llms';
 import { extractText } from '@llamaindex/core/utils';
 

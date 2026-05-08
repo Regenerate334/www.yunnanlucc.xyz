@@ -1,3 +1,11 @@
+<!-- Login: 系统登录页面，负责用户身份验证与令牌下发 -->
+<!--
+  @component Login
+  @description 系统登录页面，负责用户身份验证与令牌下发
+  @props 无直接传入的 props，主要依赖路由参数或全局状态
+  @emits 视图级组件，主要进行事件监听和向下传递
+  @dependencies globalStore, authStore, vue-router 以及各类子组件
+-->
 <!--
   登录视图 (Login View)
   职责：处理用户身份验证，支持账号密码登录，并与后端 Auth 模块进行凭证交互。
@@ -53,6 +61,7 @@
 </template>
 
 <script setup>
+// --- 核心业务逻辑状态与依赖注入 ---
 import { ref } from 'vue';
 import { useRouter } from 'vue-router';
 import { useAuthStore } from '../stores/auth';

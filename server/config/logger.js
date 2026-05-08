@@ -1,3 +1,12 @@
+/**
+ * 全局日志管理配置 (Global Logger Configuration)
+ * 职责：基于 Winston 等日志库，提供分级、分渠道的系统日志记录功能。
+ *
+ * 修改提示：
+ * 1. 日志默认输出到控制台及本地文件，请定期配置日志轮转 (Log Rotation) 防止磁盘占满。
+ * 2. 在生产环境下，需将日志级别调至 `info` 或 `warn`，避免输出冗余的调试信息。
+ * 3. 打印报错信息时，务必捕获并打印完整的 `error.stack` 以便追踪排查。
+ */
 import winston from 'winston';
 import 'winston-daily-rotate-file';
 import path from 'path';
@@ -11,6 +20,7 @@ dotenv.config({ path: path.resolve(__dirname, '../../.env') });
 
 const logDir = path.join(__dirname, '../logs');
 const logLevel = process.env.LOG_LEVEL || 'info';
+const fileLogLevel = process.env.LOG_FILE_LEVEL || 'info';
 
 // Custom format for console logging with colors and alignment
 const consoleFormat = winston.format.combine(
@@ -59,7 +69,8 @@ const logger = winston.createLogger({
             maxFiles: '14d',
             format: fileFormat,
             auditFile: path.join(logDir, '.audit.json'), // Consolidate audit info
-            level: 'info', // Always log info + error to file regardless of console setting usually
+            // File logs default to info; can be raised/lowered via LOG_FILE_LEVEL.
+            level: fileLogLevel,
         }),
         // Separate error log
         new winston.transports.DailyRotateFile({
