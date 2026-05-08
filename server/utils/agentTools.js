@@ -76,12 +76,12 @@ const spatialStatsFunctionTool = FunctionTool.from(
     },
     {
         name: "spatial_stats_analysis",
-        description: "获取土地利用流转的空间统计特征（县域TopN与头部集中度、重心迁移轨迹、标准差椭圆）。当用户要求“前N个县域/头部集中度/偏移距离/方位角/椭圆面积/扁率/单极或多点扩张诊断”时，优先使用本工具。",
+        description: "获取土地利用流转的空间统计特征（县域TopN与头部集中度、重心迁移轨迹、标准差椭圆）。当用户要求“前N个县域/头部集中度/偏移距离/方位角/椭圆面积/扁率/单极或多点扩张诊断/净流入净流出”时，优先使用本工具。注意：支持净流入口径：fromClassStr=\"全部\" 表示 *→toClass；支持净流出口径：toClassStr=\"全部\" 表示 fromClass→*。",
         parameters: z.object({
             yearStart: z.number().describe('起始年份，如 1985'),
             yearEnd: z.number().describe('结束年份，如 2023'),
-            fromClassStr: z.string().describe('转出地类'),
-            toClassStr: z.string().describe('转入地类'),
+            fromClassStr: z.string().describe('转出地类（可填“全部”表示任意/汇总口径，用于净流入）'),
+            toClassStr: z.string().describe('转入地类（可填“全部”表示任意/汇总口径，用于净流出）'),
             region: z.string().optional().describe('目标区域，如"瑞丽市"。如不传则统计全省。'),
             top_n: z.number().optional().describe('核心高发区 TopN 数量（默认 5）')
         })
