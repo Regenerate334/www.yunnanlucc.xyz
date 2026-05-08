@@ -1,3 +1,12 @@
+/**
+ * 用户认证与安全路由 (Authentication & Security Routes)
+ * 职责：负责系统的无状态登录鉴权、公钥下发以及 JWT 令牌的生成与验证。
+ *
+ * 修改提示：
+ * 1. 登录接口 (/login) 接收前端 RSA 加密后的密码，需调用 cryptoHelper 解密。
+ * 2. 密码比对使用 bcrypt 算法，修改哈希轮数时必须对齐数据库中已有用户的格式。
+ * 3. 令牌生成默认 24 小时过期，需包含用户核心角色信息供鉴权中间件使用。
+ */
 import express from 'express';
 import bcrypt from 'bcryptjs';
 import jwt from 'jsonwebtoken';

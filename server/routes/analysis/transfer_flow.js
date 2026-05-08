@@ -1,3 +1,12 @@
+/**
+ * 土地流转流向分析路由 (Land Transfer Flow Routes)
+ * 职责：处理地类变化转移矩阵、桑基图数据流向及相关时空变化计算。
+ *
+ * 修改提示：
+ * 1. 转移矩阵计算时间复杂度较高，必须确保使用正确的 period_encoder 工具解析时间段。
+ * 2. 返回的数据结构需要严格适配前端 ECharts 桑基图及弦图所要求的数据格式。
+ * 3. 若涉及跨市州大范围查询，可能需要对数据进行聚合降采样以降低前端渲染压力。
+ */
 import express from 'express';
 import pool from '../../config/db.js';
 import { handleError } from '../../middleware/logger.js';

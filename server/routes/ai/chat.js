@@ -1,3 +1,12 @@
+/**
+ * AI 对话核心路由 (AI Agent Chat Routes)
+ * 职责：处理流式 (SSE) 或同步的自然语言对话请求，支持大语言模型交互。
+ *
+ * 修改提示：
+ * 1. 对话流接口使用了 Server-Sent Events (SSE) 协议，请勿设置常规响应头。
+ * 2. 会话上下文 (Context) 及历史消息需要通过中间件装载并在结束时持久化。
+ * 3. 若使用 Ollama 或 DeepSeek 客户端，需注意网络超时与降级容灾处理。
+ */
 import express from 'express';
 import { body, validationResult } from 'express-validator';
 import { agentTools } from '../../utils/agentTools.js';

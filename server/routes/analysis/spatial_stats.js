@@ -1,3 +1,12 @@
+/**
+ * 空间统计分析路由 (Spatial Statistics Analysis Routes)
+ * 职责：处理基于空间网格、行政边界或自定义多边形区域的空间指标计算与聚合请求。
+ *
+ * 修改提示：
+ * 1. 空间计算属于 CPU 密集型任务，请确保调用底层的 PostGIS 优化查询或缓存机制。
+ * 2. 传入的 GeoJSON 参数必须进行严格的坐标系和拓扑校验。
+ * 3. 结果返回可能较慢，建议配置并遵守超时规范。
+ */
 import express from 'express';
 import * as turf from '@turf/turf';
 import pool from '../../config/db.js';

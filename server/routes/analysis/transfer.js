@@ -1,4 +1,13 @@
 /**
+ * 土地转移矩阵路由 (Land Transfer Matrix Routes)
+ * 职责：专门处理指定行政区划在不同年份间的土地利用类型转换关系及流失面积统计。
+ *
+ * 修改提示：
+ * 1. 接口处理依赖于 PostgreSQL 中预计算的 `spatial_county_yunnan_transfer` 宽表。
+ * 2. 年份参数必须为有效的四位数，查询不到时默认返回空对象而非报错。
+ * 3. 若涉及跨度多年的区间查询，必须调用 getTransferMatrixByYearRange 进行累加处理。
+ */
+/**
  * 转移矩阵路由
  * 端点：/transfer-matrix/periods, /transfer-matrix/:period
  */
