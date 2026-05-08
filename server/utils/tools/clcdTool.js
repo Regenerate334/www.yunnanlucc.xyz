@@ -1,4 +1,13 @@
-/**\n * Agent 专用执行工具 (Agent Dedicated Tool Executor)\n * 职责：作为 Agent 动作节点，提供针对 clcdTool 维度的真实数据获取及格式化封装。\n *\n * 修改提示：\n * 1. 返回值需最大程度扁平化和自然语言化，便于大模型理解和吸收。\n * 2. 若涉及异步操作，请务必处理 Promise 的 catch 块防止未捕获异常。\n * 3. 遵循现有的 ESLint 和团队代码规范，保持极简及高可读性。\n */\nimport landUseService from '../../services/landUseService.js';
+/**
+ * Agent 专用执行工具 (Agent Dedicated Tool Executor)
+ * 职责：作为 Agent 动作节点，提供针对 clcdTool 维度的真实数据获取及格式化封装。
+ *
+ * 修改提示：
+ * 1. 返回值需最大程度扁平化和自然语言化，便于大模型理解和吸收。
+ * 2. 若涉及异步操作，请务必处理 Promise 的 catch 块防止未捕获异常。
+ * 3. 遵循现有的 ESLint 和团队代码规范，保持极简及高可读性。
+ */
+import landUseService from '../../services/landUseService.js';
 import registry from '../dataSourceRegistry.js';
 import logger from '../../config/logger.js';
 
