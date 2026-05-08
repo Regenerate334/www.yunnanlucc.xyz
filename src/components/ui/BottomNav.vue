@@ -1,9 +1,10 @@
+<!-- BottomNav: 工作台底部核心导航栏 -->
 <!--
   @component BottomNav
   @description 工作台底部核心导航栏，集成地图底图切换、时间轴播放及所有业务分析面板的触发入口
-  @props activeTheme (当前专题)
-  @emits theme-change (专题切换)
-  @dependencies 多个子组件（BaseMapSelector, TimeSelectionButton等）
+  @props selectedYear, playerYears, spatialUnit, selectedAttribute, attributes, cachedClcdData
+  @emits base-map-change, update:selectedYear, update:spatialUnit, update:selectedAttribute, transfer-query, rate-query, stats-query, update-visibility, reset-map, overview-click
+  @dependencies 多个子组件（BaseMapSelector, TimeSelectionButton等）, authStore, vue-router
 -->
 <template>
   <div class="home-bottom-nav">
@@ -94,7 +95,8 @@ import { ref } from 'vue';
 import { useRouter } from 'vue-router';
 import { useAuthStore } from '@/stores/auth';
 import overviewIcon from '@/assets/icons/common/overview.png';
-// 控制组件导入
+
+// 导入各类控制和面板子组件，这些组件在底部导航栏作为独立按钮或面板触发器存在
 import BaseMapSelector from '../cards/BaseMapSelector.vue';
 import ViewResetButton from '../buttons/ViewResetButton.vue';
 import DistanceMeasureButton from '../buttons/DistanceMeasureButton.vue';
@@ -110,6 +112,7 @@ import SpatialLayerSelector from '../cards/SpatialLayerSelector.vue';
 import TimeSelectionButton from '../cards/TimeSelectionButton.vue';
 import RegionSelector from './RegionSelector.vue';
 
+// 定义组件接收的属性配置
 const props = defineProps({
   selectedYear: Number,
   playerYears: Array,
@@ -119,6 +122,7 @@ const props = defineProps({
   cachedClcdData: Array
 });
 
+// 定义组件向外抛出的事件集合，主要用于将子组件的交互动作冒泡到主视图层进行统一处理
 const emit = defineEmits([
   'base-map-change',
   'update:selectedYear', 
@@ -131,6 +135,8 @@ const emit = defineEmits([
   'reset-map', 
   'overview-click'
 ]);
+
+// 引用外部核心面板组件实例，便于父组件调用子组件暴露的方法或状态
 const transferControl = ref(null);
 const rateControl = ref(null);
 const spatialStatsControl = ref(null);
@@ -138,6 +144,10 @@ const spatialStatsControl = ref(null);
 const router = useRouter();
 const authStore = useAuthStore();
 
+/**
+ * 处理用户注销登录逻辑
+ * 清除认证状态并重定向回登录页
+ */
 function handleLogout() {
   if (confirm('确认退出系统吗？')) {
     authStore.logout();
@@ -145,10 +155,14 @@ function handleLogout() {
   }
 }
 
+/**
+ * 跳转至后台管理系统控制中心（仅超级管理员可见）
+ */
 function goToAdmin() {
   router.push('/admin');
 }
 
+// 暴露内部核心面板组件实例给父级引用，实现组件间的复杂联动
 defineExpose({
   transferControl,
   rateControl,

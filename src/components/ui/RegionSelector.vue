@@ -1,3 +1,11 @@
+<!-- RegionSelector: 行政区划选择器 -->
+<!--
+  @component RegionSelector
+  @description 悬浮在地图上方的行政区划级联选择器，支持通过点击三级联动面板（省、市、县）和模糊搜索快速定位目标区域。
+  @props 无外部 props，完全依赖全局 store 状态驱动
+  @emits 内部直接调用 globalStore 方法修改作用域，无需 emit
+  @dependencies globalStore (全局状态获取及更新层级作用域), regionApi (请求行政区划层级结构数据)
+-->
 <template>
   <div class="region-selector-trigger" :class="{ 'is-active': isExpanded }">
     <!-- 按钮主体：使用官方 png 图标 -->
@@ -116,32 +124,40 @@ import regionIcon from '../../assets/icons/common/region_selector.png';
 
 const globalStore = useGlobalStore();
 const panelName = 'region_selection';
+
+// 计算当前选择面板是否处于展开激活状态
 const isExpanded = computed(() => globalStore.activePanel === panelName);
 const searchQuery = ref('');
 const hierarchy = ref([]);
 const searchInput = ref(null);
 
+// 状态：当前选中的市、县，以及鼠标悬停预览的市
 const selectedCity = ref('');
 const selectedCounty = ref('');
 const hoveredCity = ref('');
 
+// 根据当前选中的城市名称，获取对应的城市数据对象
 const currentCityObj = computed(() => {
   return hierarchy.value.find(c => c.name === selectedCity.value);
 });
 
+// 根据当前鼠标悬停的城市名称，获取对应的城市数据对象，用于展示子级区县
 const currentHoveredCityObj = computed(() => {
   return hierarchy.value.find(c => c.name === hoveredCity.value);
 });
 
+// 根据输入框查询词汇实时计算搜索结果（支持地级市和区县名匹配）
 const searchResults = computed(() => {
   if (!searchQuery.value) return [];
   const query = searchQuery.value.toLowerCase();
   const results = [];
 
   hierarchy.value.forEach(city => {
+    // 匹配地级市
     if (city.name.toLowerCase().includes(query)) {
       results.push({ name: city.name, code: city.code, level: 'prefecture', levelLabel: '地级', path: '云南省' });
     }
+    // 匹配县级区域
     if (city.children) {
       city.children.forEach(county => {
         const cName = county.name || county;
@@ -157,6 +173,9 @@ const searchResults = computed(() => {
   return results.slice(0, 20);
 });
 
+/**
+ * 获取行政区划层级数据树，并同步当前 store 中的状态
+ */
 async function fetchHierarchy() {
   try {
     const data = await regionApi.getRegionHierarchy();
@@ -165,6 +184,9 @@ async function fetchHierarchy() {
   } catch (e) { console.error(e); }
 }
 
+/**
+ * 根据 globalStore 中的全局作用域状态同步本地组件的高亮选中状态
+ */
 function syncFromStore() {
   const { level, name } = globalStore.scope;
   if (level === 'province') {
@@ -186,6 +208,9 @@ function syncFromStore() {
   }
 }
 
+/**
+ * 切换选择面板的展开与收起状态
+ */
 function toggleExpanded() {
   if (globalStore.activePanel === panelName) {
     globalStore.setActivePanel(null);
@@ -195,6 +220,9 @@ function toggleExpanded() {
   }
 }
 
+/**
+ * 选择省级（默认重置为云南省全域）
+ */
 function onProvinceSelect() {
   globalStore.setScope('province', '530000', '云南省');
   selectedCity.value = '';
@@ -202,12 +230,20 @@ function onProvinceSelect() {
   globalStore.setActivePanel(null);
 }
 
+/**
+ * 选择地市级
+ * @param {Object} city 城市数据对象
+ */
 function onCitySelect(city) {
   selectedCity.value = city.name;
   selectedCounty.value = '';
   globalStore.setScope('prefecture', city.code, city.name);
 }
 
+/**
+ * 选择区县级
+ * @param {Object|string} county 区县数据对象或区县名称
+ */
 function onCountySelect(county) {
   const cName = county.name || county;
   selectedCounty.value = cName;
@@ -215,6 +251,10 @@ function onCountySelect(county) {
   globalStore.setActivePanel(null);
 }
 
+/**
+ * 点击搜索结果列表项的处理逻辑
+ * @param {Object} res 搜索结果项
+ */
 function onResultClick(res) {
   if (res.level === 'prefecture') {
     onCitySelect(res);
@@ -224,12 +264,16 @@ function onResultClick(res) {
   }
 }
 
+/**
+ * 搜索框敲击回车时，默认选择第一个搜索结果
+ */
 function handleSearchEnter() {
   if (searchResults.value.length > 0) {
     onResultClick(searchResults.value[0]);
   }
 }
 
+// 组件挂载时请求数据并监听全局状态变化进行同步
 onMounted(fetchHierarchy);
 watch(() => globalStore.scope, syncFromStore, { deep: true });
 </script>
