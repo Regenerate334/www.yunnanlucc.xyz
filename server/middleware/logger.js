@@ -1,4 +1,4 @@
-import logger from '../config/logger.js';
+/**\n * 请求拦截中间件 (Request Intercepting Middleware)\n * 职责：拦截并加工 HTTP 请求，提供基于 logger 规则的过滤与包装。\n *\n * 修改提示：\n * 1. 本文件为系统底层运行机制的组成部分，修改前请仔细核对依赖关系。\n * 2. 必须在中间件最后调用 next() 或者结束响应，否则会造成请求挂起。\n * 3. 遵循现有的 ESLint 和团队代码规范，保持极简及高可读性。\n */\nimport logger from '../config/logger.js';
 
 export const requestLogger = (req, res, next) => {
     const start = process.hrtime();

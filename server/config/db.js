@@ -1,3 +1,12 @@
+/**
+ * PostgreSQL 数据库连接池配置 (Database Connection Pool)
+ * 职责：建立与空间数据库（含 PostGIS）的持久化连接，提供高效的连接池管理。
+ *
+ * 修改提示：
+ * 1. 连接池的 `max` 与 `idleTimeoutMillis` 参数应根据生产环境并发量动态调整。
+ * 2. 所有对数据库的查询必须通过参数化 (e.g. `$1`, `$2`) 传递，严防 SQL 注入风险。
+ * 3. 请确保 SSL 模式的配置与生产环境要求保持一致。
+ */
 import pg from 'pg';
 import logger from './logger.js';
 
