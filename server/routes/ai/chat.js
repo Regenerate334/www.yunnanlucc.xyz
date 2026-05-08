@@ -24,6 +24,12 @@ const getFallbackModelCandidates = (primaryModel) => {
     .split(',')
     .map((item) => item.trim())
     .filter(Boolean);
+
+  // If user didn't configure explicit fallbacks, use the default local Ollama model as a safe secondary.
+  // This keeps the app usable when cloud providers are throttled/timeout.
+  const defaultLocalModel = process.env.OLLAMA_MODEL;
+  if (defaultLocalModel) fallbacks.push(String(defaultLocalModel).trim());
+
   return [primaryModel, ...fallbacks].filter((item, index, arr) => arr.indexOf(item) === index);
 };
 const getRetryCount = () => {
@@ -34,7 +40,16 @@ const getRetryDelayMs = () => {
   const value = Number(process.env.AI_STREAM_RETRY_DELAY_MS ?? 800);
   return Number.isFinite(value) ? Math.max(100, Math.floor(value)) : 800;
 };
-const getEnableFallback = () => String(process.env.AI_STREAM_ENABLE_FALLBACK || 'false').toLowerCase() === 'true';
+const getEnableFallback = () => {
+  // Explicit opt-in/out via env always wins.
+  if (process.env.AI_STREAM_ENABLE_FALLBACK !== undefined) {
+    return String(process.env.AI_STREAM_ENABLE_FALLBACK || 'false').toLowerCase() === 'true';
+  }
+
+  // Sensible default: if a local Ollama model is configured, enable fallback automatically.
+  // If no local model exists, fallback list will collapse to the primary model anyway.
+  return Boolean(process.env.OLLAMA_MODEL);
+};
 const getHistoryMessageLimit = () => {
   const value = Number(process.env.AI_CHAT_HISTORY_MAX_MESSAGES ?? 24);
   return Number.isFinite(value) ? Math.max(4, Math.floor(value)) : 24;
@@ -83,13 +98,19 @@ const isRetryableError = (err) => {
     'timeout',
     'econnreset',
     'econnrefused',
+    '524',
     '503',
     '502',
     '504',
     'connection reset',
     'temporarily unavailable'
   ];
-  return err?.code === 'EMPTY_STREAM_RESPONSE' || keywords.some((k) => msg.includes(k));
+  return (
+    err?.code === 'EMPTY_STREAM_RESPONSE'
+    || err?.code === 'DEEPSEEK_REQUEST_TIMEOUT'
+    || err?.status === 524
+    || keywords.some((k) => msg.includes(k))
+  );
 };
 const normalizeRole = (role) => {
   if (!role) return null;
@@ -919,8 +940,10 @@ function formatAIError(err) {
   const msg = err?.message || String(err);
   if (err?.code === 'SESSION_CONTEXT_TOO_LARGE') return '当前会话上下文过长，请新建对话后继续。';
   if (err?.code === 'EMPTY_STREAM_RESPONSE') return '模型未返回有效内容，请稍后重试。';
+  if (err?.code === 'DEEPSEEK_REQUEST_TIMEOUT') return 'DeepSeek 官方接口请求超时（上游繁忙/排队），请稍后重试或切换到本地模型。';
   if (err?.code === 'DEEPSEEK_API_KEY_MISSING') return 'DeepSeek 官方接口未配置 API Key，请在环境变量 DEEPSEEK_API_KEY 中填写密钥。';
   if (err?.status === 401 || err?.status === 403) return 'DeepSeek 官方接口鉴权失败，请检查 DEEPSEEK_API_KEY。';
+  if (err?.status === 524 || msg.includes('524')) return 'DeepSeek 官方接口上游超时（524），通常是服务繁忙或排队导致。建议稍后重试，或启用本地 Ollama 备用模型。';
   if (msg.includes('503')) return '模型繁忙（加载中），请稍后重试。';
   if (msg.toLowerCase().includes('eof')) return '模型上游连接中断（EOF），请稍后重试。';
   if (msg.toLowerCase().includes('fetch failed')) return '模型上游网络波动（fetch failed），请稍后重试。';
@@ -1197,7 +1220,14 @@ async function handleAIStream(req, res) {
           const retryable = isRetryableError(err);
           const hasNextTry = retryable && attempt < retryMax;
           if (hasNextTry) {
-            await sleep(retryDelayMs * Math.pow(2, attempt));
+            // If upstream provides Retry-After (seconds or ms), respect it to reduce immediate 524 storms.
+            const retryAfterRaw = Number(err?.retryAfter);
+            const retryAfterMs = Number.isFinite(retryAfterRaw)
+              ? (retryAfterRaw > 1000 ? Math.floor(retryAfterRaw) : Math.floor(retryAfterRaw * 1000))
+              : 0;
+            const baseDelayMs = retryDelayMs * Math.pow(2, attempt);
+            const cappedRetryAfterMs = retryAfterMs > 0 ? Math.min(retryAfterMs, 300000) : 0;
+            await sleep(cappedRetryAfterMs ? Math.max(baseDelayMs, cappedRetryAfterMs) : baseDelayMs);
             continue;
           }
           break;
