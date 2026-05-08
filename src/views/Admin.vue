@@ -1,3 +1,11 @@
+<!-- Admin: 系统后台管理面板，提供资源监控、用户管理及数据维护功能 -->
+<!--
+  @component Admin
+  @description 系统后台管理面板，提供资源监控、用户管理及数据维护功能
+  @props 无直接传入的 props，主要依赖路由参数或全局状态
+  @emits 视图级组件，主要进行事件监听和向下传递
+  @dependencies globalStore, authStore, vue-router 以及各类子组件
+-->
 <!--
   超级管理员管理后台 (Super Admin Dashboard)
   职责：负责系统全局治理，包括用户权限管控、核心基础设施配置热更新、服务监控及审计日志查看。
@@ -611,6 +619,7 @@
 </template>
 
 <script setup>
+// --- 核心业务逻辑状态与依赖注入 ---
 import { ref, onMounted, computed, watch, nextTick, onBeforeUnmount } from 'vue';
 import { useRouter } from 'vue-router';
 import { useAuthStore } from '@/stores/auth';

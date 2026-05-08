@@ -1,3 +1,11 @@
+<!-- Portal: 系统门户页面，展示系统入口与导航 -->
+<!--
+  @component Portal
+  @description 系统门户页面，展示系统入口与导航
+  @props 无直接传入的 props，主要依赖路由参数或全局状态
+  @emits 视图级组件，主要进行事件监听和向下传递
+  @dependencies globalStore, authStore, vue-router 以及各类子组件
+-->
 <!--
   系统门户/大屏视图 (Portal View)
   职责：作为系统入口，展示 3D 地球视觉动效及系统核心功能矩阵，引导用户进入业务工作台。
@@ -117,6 +125,7 @@
 </template>
 
 <script setup>
+// --- 核心业务逻辑状态与依赖注入 ---
 import { ref, onMounted, onBeforeUnmount } from 'vue';
 import { useRouter } from 'vue-router';
 import * as echarts from 'echarts';
