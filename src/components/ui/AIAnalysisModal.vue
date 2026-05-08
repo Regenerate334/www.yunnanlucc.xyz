@@ -185,20 +185,40 @@
 
                   <!-- 工业级状态步进器 (Industrial Progress Stepper) -->
                   <div v-if="msg.role === 'assistant' && parseMessage(msg).statuses.length > 0" class="industrial-stepper">
-                    <div class="workflow-header">
+                    <div class="workflow-header" @click="toggleWorkflow(index)" role="button" tabindex="0"
+                      @keydown.enter.prevent="toggleWorkflow(index)" @keydown.space.prevent="toggleWorkflow(index)"
+                      :aria-expanded="expandedWorkflow[index] !== false"
+                      :title="expandedWorkflow[index] !== false ? '点击折叠工作流' : '点击展开工作流'">
                       <span class="workflow-title">数据工作流</span>
                       <span class="workflow-subtitle">工具调用与数据链路追踪</span>
+                      <span class="workflow-legend" aria-label="Trace 分色图例">
+                        <span class="legend-dot lane-tool">工具</span>
+                        <span class="legend-dot lane-skill">Skill</span>
+                        <span class="legend-dot lane-knowledge-graph">图谱</span>
+                      </span>
+
+                      <svg class="workflow-arrow" :class="{ open: expandedWorkflow[index] !== false }" width="14" height="14"
+                        viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"
+                        stroke-linejoin="round">
+                        <polyline points="6 9 12 15 18 9"></polyline>
+                      </svg>
                     </div>
-                    <div v-for="(status, sIdx) in parseMessage(msg).statuses" :key="sIdx"
-                      :class="['step-item', status.type, status.done ? 'done' : 'active']">
-                      <div class="step-line" v-if="sIdx < parseMessage(msg).statuses.length - 1"></div>
-                      <div class="step-indicator">
-                        <div class="step-icon" v-html="status.icon"></div>
-                        <div class="step-pulse" v-if="!status.done"></div>
+
+                    <div v-if="expandedWorkflow[index] !== false">
+                      <div v-for="(status, sIdx) in parseMessage(msg).statuses" :key="sIdx"
+                        :class="['step-item', status.type, status.done ? 'done' : 'active', status.lane ? `lane-${status.lane}` : '']">
+                        <div class="step-line" v-if="sIdx < parseMessage(msg).statuses.length - 1"></div>
+                        <div class="step-indicator">
+                          <div class="step-icon" v-html="status.icon"></div>
+                          <div class="step-pulse" v-if="!status.done"></div>
+                        </div>
+                        <div class="step-content">
+                          <div class="step-label">{{ status.label }}</div>
+                        </div>
                       </div>
-                      <div class="step-content">
-                        <div class="step-label">{{ status.label }}</div>
-                      </div>
+                    </div>
+                    <div v-else class="workflow-collapsed">
+                      已折叠（{{ parseMessage(msg).statuses.length }} 步）
                     </div>
                   </div>
 
@@ -211,7 +231,7 @@
 
                   <!-- 操作按钮 (仅 AI) -->
                   <div v-if="msg.role === 'assistant' && parseMessage(msg).content" class="message-actions">
-                    <button class="action-btn" @click="copyMessage(index)" title="复制内容（含问题/回答/工作流）">
+                    <button class="action-btn" @click="copyMessage(index)" title="复制当前轮次（含问题/回答/工作流）">
                       <svg class="copy-icon-svg" width="16" height="16" viewBox="0 0 24 24" fill="none"
                         stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                         <rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect>
@@ -367,7 +387,6 @@
 <script setup>
 import { ref, watch, nextTick, computed, onMounted, onUnmounted } from 'vue';
 import { analyzeDataStream, generateQuickQuestions } from '@/utils/aiService.js';
-import { useMapStore } from '@/stores/map.ts';
 import MarkdownIt from 'markdown-it';
 import DOMPurify from 'dompurify';
 import hljs from 'highlight.js';
@@ -540,13 +559,7 @@ const _parseMessage = (msg, skipCache = false) => {
       done: 'FunctionTool: knowledge_base_lookup → 专家知识返回成功',
       icon: icons.search
     },
-    map_control: {
-      name: 'WebGIS地图控制工具',
-      start: 'AgentTools → 调用 FunctionTool: map_control（WebGIS地图控制）',
-      params: 'ReAct Router → 组装 map_control 参数',
-      done: 'FunctionTool: map_control → 地图指令返回成功',
-      icon: icons.map
-    }
+    // map_control 已下线
   };
 
   const argLabelMap = {
@@ -588,7 +601,7 @@ const _parseMessage = (msg, skipCache = false) => {
 
   const inferToolName = (text = '') => {
     const normalized = normalizeWhitespace(text).toLowerCase();
-    const direct = normalized.match(/functiontool\s*:\s*(clcd_analysis|dashboard_analysis|spatial_stats_analysis|land_transfer_analysis|weather_query|knowledge_base_lookup|map_control)\b|\b(clcd_analysis|dashboard_analysis|spatial_stats_analysis|land_transfer_analysis|weather_query|knowledge_base_lookup|map_control)\b/i);
+    const direct = normalized.match(/functiontool\s*:\s*(clcd_analysis|dashboard_analysis|spatial_stats_analysis|land_transfer_analysis|weather_query|knowledge_base_lookup)\b|\b(clcd_analysis|dashboard_analysis|spatial_stats_analysis|land_transfer_analysis|weather_query|knowledge_base_lookup)\b/i);
     const directName = direct?.[1] || direct?.[2];
     if (directName) return directName;
     if (/clcd|遥感|土地利用状态|土地利用遥感/.test(normalized)) return 'clcd_analysis';
@@ -597,7 +610,6 @@ const _parseMessage = (msg, skipCache = false) => {
     if (/转移矩阵|流转|lucc|转化/.test(normalized)) return 'land_transfer_analysis';
     if (/气象|天气|风力|气温/.test(normalized)) return 'weather_query';
     if (/知识库|知识图谱|专家知识|技能|spatial_reasoning|monitoring_indices/.test(normalized)) return 'knowledge_base_lookup';
-    if (/地图|webgis|视角|定位|缩放|飞行/.test(normalized)) return 'map_control';
     return '';
   };
 
@@ -624,6 +636,7 @@ const _parseMessage = (msg, skipCache = false) => {
     return '综合空间智能分析';
   };
 
+  // map_control 已下线：保留变量占位避免大范围重排（但不会再推入任何地图指令节点）
   let pendingMapStatuses = [];
 
   const appendAnswerWorkflow = () => {
@@ -644,7 +657,8 @@ const _parseMessage = (msg, skipCache = false) => {
       /重心|椭圆|轨迹|空间/.test(normalized) ? '空间统计数据' : '',
       /政策|规划|建议|管控|治理|保护/.test(normalized) ? '政策知识库' : ''
     ].filter(Boolean);
-    const needsMapLane = pendingMapStatuses.length || /地图|定位|图层|视角|缩放|空间/.test(normalized);
+    // map_control 已下线：不再做地图联动/视角控制的 Trace 语义推断
+    const needsMapLane = false;
     const needsKnowledgeLane = /政策|规划|建议|治理|管控|保护|知识|算法|指标/.test(normalized);
     const needsRiskLane = /生态|风险|预警|保护|胁迫|压力/.test(normalized);
     const needsChangeLane = /对比|相比|呈现|明显|增加|减少|扩张|收缩|占比|变化|趋势|转化|流转|转移/.test(normalized);
@@ -712,12 +726,7 @@ const _parseMessage = (msg, skipCache = false) => {
     if (/核心发现|发现|建议|应当|需要|可以|因此|表明/.test(normalized) && !labelExists(/Result Aggregator|证据链/)) {
       pushSemantic('Result Aggregator → 汇总发现与证据链', summarizeDetail(content, 90), icons.check, 'analysis', 42);
     }
-    if (needsMapLane && !labelExists(/GeoServer\/Cesium|准备地图联动/)) {
-      pushSemantic('GeoServer/Cesium → 准备地图联动', '同步区域定位、图层状态或空间视角', icons.map, 'search', 42);
-    }
-    if (pendingMapStatuses.length && !labelExists(/下发地图联动指令/)) {
-      pendingMapStatuses.forEach((status) => pushStatus(status));
-    }
+    // map_control 已下线：不再追加地图联动/指令相关节点
     if (!labelExists(/Ollama|生成/)) {
       pushSemantic('Ollama LLM → 生成专业分析结论', topic, icons.analysis, 'analysis', 36);
     }
@@ -727,6 +736,34 @@ const _parseMessage = (msg, skipCache = false) => {
   };
 
   let activeToolName = '';
+
+  const classifyLane = (label = '') => {
+    const t = String(label || '');
+    if (!t) return '';
+
+    // 知识图谱：图谱/graph/ontology 等关键词（与 skill 区分开）
+    if (/知识图谱|ontology|graph/i.test(t)) return 'knowledge-graph';
+
+    // skill：写死规则（项目内就这么几个）
+    // - 只要出现 knowledge_base_lookup / knowledgeTool / 专家知识库，即视为 skill 资源加载
+    // - skill 名称（policy_expert / monitoring_indices / spatial_reasoning）也视为 skill
+    if (/knowledge_base_lookup/i.test(t) || /knowledgeTool/i.test(t) || /专家知识库/.test(t) || /policy_expert|monitoring_indices|spatial_reasoning/i.test(t)) {
+      return 'skill';
+    }
+
+    // 你要突出三类：工具调用 / skill 资源加载 / 知识图谱查询
+    // 注意：必须放在 skill/graph 之后，避免 knowledge_base_lookup 被误判成 tool。
+    if (
+      /AgentTools → 调用 FunctionTool:\s*(clcd_analysis|dashboard_analysis|spatial_stats_analysis|land_transfer_analysis|weather_query)\b/i.test(t) ||
+      /FunctionTool:\s*(clcd_analysis|dashboard_analysis|spatial_stats_analysis|land_transfer_analysis|weather_query)\b/i.test(t) ||
+      /\b(clcd_analysis|dashboard_analysis|spatial_stats_analysis|land_transfer_analysis|weather_query)\b/i.test(t)
+    ) {
+      return 'tool';
+    }
+
+    // 其余（SSE/接口/LLM/上下文等）统一走默认绿色，不额外上色
+    return '';
+  };
 
   const pushStatus = (statusObj) => {
     if (!statusObj?.label) return;
@@ -738,7 +775,8 @@ const _parseMessage = (msg, skipCache = false) => {
       done: statusObj.done !== false,
       label: withTitleDetail(statusObj.label, titleDetail, statusObj.titleMaxLen || 38),
       detail: safeDetail,
-      icon: statusObj.icon || icons.analysis
+      icon: statusObj.icon || icons.analysis,
+      lane: classifyLane(statusObj.label)
     };
     const prevKey = prev ? `${prev.type}|${prev.label}|${normalizeWhitespace(prev.detail || '')}` : '';
     const nextKey = `${next.type}|${next.label}|${normalizeWhitespace(next.detail || '')}`;
@@ -918,19 +956,7 @@ const _parseMessage = (msg, skipCache = false) => {
   // DeepSeek/某些推理模型可能会把工具协议标记泄露到正文（例如 DSML/tool_calls 块）。
   // 这些内容对用户无意义，还会造成“乱码/协议失败”的观感，直接清理。
   content = stripInternalProtocolNoise(content);
-  const mapCommandMatches = [...content.matchAll(/\[\[MAP_COMMAND:(.*?)\]\]/g)];
-  mapCommandMatches.forEach((match) => {
-    const command = parseJsonLoose(match[1]);
-    const params = command?.params ? formatArgs(command.params) : '';
-    pendingMapStatuses.push({
-      label: 'App用户端 → 执行地图联动指令',
-      type: 'search',
-      detail: [command?.action, params].filter(Boolean).join('，') || '地图指令已生成',
-      icon: icons.map,
-      maxLen: 180,
-      titleMaxLen: 46
-    });
-  });
+  // map_control 已下线：仅清理历史 MAP_COMMAND 标记，避免污染正文与复制内容
   content = content.replace(/\[\[MAP_COMMAND:.*?\]\]/g, '').trim();
 
   // 原生 <think> 标签保留原有拦截逻辑（针对如 DeepSeek 等有内置思考块的模型）
@@ -1003,11 +1029,31 @@ const abortController = ref(null);
 const messagesContainer = ref(null);
 const inputField = ref(null);
 const expandedThinking = ref({});
-const mapStore = useMapStore();
 
 // 会话管理状态
 const sessions = ref([]);
 const currentSessionId = ref(null);
+
+// 会话选择的“标签页级”记忆：
+// - 同一 tab 内关闭/打开弹窗：回到上次选中的 session
+// - 新开 tab：默认没有该值（天然隔离）
+// 说明：sessionStorage 按“tab + origin”隔离，且在 tab 生命周期内跨刷新保留。 (MDN)
+const SESSION_STORAGE_KEY = 'webgis_ai_active_session_id';
+const readStoredSessionId = () => {
+  try {
+    const raw = sessionStorage.getItem(SESSION_STORAGE_KEY);
+    const id = Number(raw);
+    return Number.isFinite(id) && id > 0 ? id : null;
+  } catch {
+    return null;
+  }
+};
+const writeStoredSessionId = (id) => {
+  try {
+    const v = Number(id);
+    if (Number.isFinite(v) && v > 0) sessionStorage.setItem(SESSION_STORAGE_KEY, String(v));
+  } catch { }
+};
 
 const loadSessions = async () => {
   // console.log('[Sessions] Loading sessions...');
@@ -1048,8 +1094,10 @@ const createNewSession = async () => {
     if (data.success) {
        // console.log('[Sessions] Created:', data.session.id);
       currentSessionId.value = data.session.id;
+      writeStoredSessionId(data.session.id);
       messages.value = [];
       expandedThinking.value = {}; // 重置折叠状态
+      expandedWorkflow.value = {};
       await loadSessions();
     }
   } catch (err) {
@@ -1058,11 +1106,14 @@ const createNewSession = async () => {
 };
 
 const selectSession = async (sessionId) => {
+  if (!sessionId) return;
   if (currentSessionId.value === sessionId) return;
    // console.log('[Sessions] Selecting session:', sessionId);
   currentSessionId.value = sessionId;
+  writeStoredSessionId(sessionId);
   messages.value = [];
   expandedThinking.value = {}; // 清空之前的展开状态，防止索引错乱
+  expandedWorkflow.value = {};
   loading.value = false;
   stopGeneration();
 
@@ -1076,6 +1127,11 @@ const selectSession = async (sessionId) => {
     if (data.success) {
       messages.value = data.messages;
        // console.log('[Sessions] Messages loaded:', messages.value.length);
+      // 默认展开所有工作流，避免历史会话里看不到 Trace
+      expandedWorkflow.value = {};
+      for (let i = 0; i < messages.value.length; i += 1) {
+        if (messages.value[i]?.role === 'assistant') expandedWorkflow.value[i] = true;
+      }
       nextTick(() => scrollToBottom(true));
     }
   } catch (err) {
@@ -1098,6 +1154,13 @@ const deleteSession = async (sessionId) => {
     if (data.success) {
        // console.log('[Sessions] Deleted successfully');
       await loadSessions();
+
+      // 若删除的是“当前会话”，也同步清理 tab 内记忆，避免下次打开指向不存在的会话
+      try {
+        const storedId = readStoredSessionId();
+        if (Number(storedId) === Number(sessionId)) sessionStorage.removeItem(SESSION_STORAGE_KEY);
+      } catch { }
+
       if (currentSessionId.value === sessionId) {
         if (sessions.value.length > 0) {
           await selectSession(sessions.value[0].id);
@@ -1127,12 +1190,16 @@ const saveMessage = async (role, content, thinking = '', thinkTime = 0, workflow
   }
 };
 
-// 深度思考配置（改为自动识别）
-const THINKING_MODELS = ['deepseek-r1', 'gpt-oss:120b', 'gpt-oss:20b', 'r1'];
+// 深度思考配置（自动识别）
+// 说明：后端已支持 DeepSeek 官方接口的 thinking/reasoning_content 流式透传。
+// 这里尽量覆盖“默认可用推理模式”的模型，避免用户选了云端模型却未开启思考。
+const THINKING_MODELS = ['deepseek-v4', 'deepseek-r1', 'gpt-oss:120b', 'gpt-oss:20b', 'r1'];
 const isReasoningModel = computed(() => {
   return THINKING_MODELS.some(m => selectedModel.value.toLowerCase().includes(m));
 });
 
+// 默认策略：只要是推理模型（含 deepseek-v4* / r1*），就开启 thinking；
+// 其他模型保持关闭，减少无意义的额外 token 与延迟。
 const deepThinking = computed(() => isReasoningModel.value);
 
 // 模型选择
@@ -1189,10 +1256,27 @@ const quickQuestions = computed(() => {
 watch(() => props.visible, async (visible) => {
   if (visible) {
     await loadSessions();
-    // 记忆隔离：在“新窗口/新实例”首次打开时（currentSessionId 为空），默认创建新会话，
-    // 避免自动选中历史会话导致跨窗口“带记忆”。同一窗口内关闭再打开，则保持当前会话不变。
+
+    // 打开弹窗时，不再“自动新建会话”。
+    // 期望行为：
+    // 1) 同一 tab：优先回到上次选中的会话（sessionStorage 记忆）
+    // 2) 新 tab / 首次打开：默认新建会话（实现“跨窗口记忆隔离”），避免自动选中历史会话
     if (!currentSessionId.value) {
-      await createNewSession();
+      const storedId = readStoredSessionId();
+      const hasStored = storedId && sessions.value.some(s => Number(s?.id) === Number(storedId));
+      if (hasStored) {
+        await selectSession(storedId);
+      } else {
+        await createNewSession();
+      }
+    }
+
+    // 兜底：打开弹窗时，确保现有 assistant 消息的工作流默认展开
+    if (messages.value.length) {
+      expandedWorkflow.value = {};
+      for (let i = 0; i < messages.value.length; i += 1) {
+        if (messages.value[i]?.role === 'assistant') expandedWorkflow.value[i] = true;
+      }
     }
 
     nextTick(() => {
@@ -1247,65 +1331,8 @@ const clearMessages = () => {
   createNewSession();
 };
 
-/**
- * 处理 AI 发出的地图控制指令
- * 识别 [[MAP_COMMAND:action,params]] 格式
- */
-const handleMapCommand = (content) => {
-  if (!content || !content.includes('[[MAP_COMMAND:')) return;
-
-  // 匹配所有指令标签
-  const matches = content.match(/\[\[MAP_COMMAND:(.*?)\]\]/g);
-  if (!matches) return;
-
-  matches.forEach(match => {
-    try {
-      const raw = match.replace('[[MAP_COMMAND:', '').replace(']]', '');
-      
-      // 尝试按 JSON 解析 (MCP 标准格式)
-      let command;
-      if (raw.trim().startsWith('{')) {
-        command = JSON.parse(raw);
-      } else {
-        // 兼容旧的逗号分隔格式 (Legacy)
-        const [action, ...params] = raw.split(',');
-        command = { action, params };
-      }
-      
-      const { action, params } = command;
-      console.log(`[AI Modal] 执行地图指令: ${action}`, params);
-
-      // 核心调度器 (Command Dispatcher)
-      if (action === 'set_region') {
-        const regionName = params.region || params[0];
-        const entity = mapStore.findEntityByName(regionName);
-        if (entity) {
-          mapStore.flyToRegion(entity);
-        } else {
-          console.warn(`[AI Modal] 未找到区域实体: ${regionName}`);
-        }
-      } else if (action === 'fly_to') {
-        const lnglat = params.lnglat || (params[0] ? params[0].split('/').map(Number) : null);
-        const zoom = params.zoom || 25000;
-        if (lnglat && !isNaN(lnglat[0]) && !isNaN(lnglat[1])) {
-          mapStore.viewer?.camera.flyTo({
-            destination: window.Cesium.Cartesian3.fromDegrees(lnglat[0], lnglat[1], zoom)
-          });
-        }
-      } else if (action === 'zoom_in') {
-        mapStore.viewer?.camera.zoomIn(2000);
-      } else if (action === 'zoom_out') {
-        mapStore.viewer?.camera.zoomOut(2000);
-      } else if (action === 'fly_to_yunnan') {
-        mapStore.flyToYunnan();
-      }
-    } catch (err) {
-      console.error('[AI Modal] 地图指令解析失败:', err, match);
-    }
-  });
-};
-
 const userInteractedThinking = ref(false); // 追踪用户是否手动调整过折叠状态
+const expandedWorkflow = ref({}); // 每条 assistant 消息的“数据工作流”折叠状态（true=展开）
 
 const sendMessage = async (text) => {
   if (!text || !text.trim() || loading.value) return;
@@ -1336,6 +1363,8 @@ const sendMessage = async (text) => {
 
   // 初始默认折叠（透明但不打扰阅读）
   expandedThinking.value[assistantMsgIndex] = false;
+  // 数据工作流默认展开：默认“看得见链路”，但可折叠减少挤压
+  expandedWorkflow.value[assistantMsgIndex] = true;
   userInteractedThinking.value = false; 
 
   try {
@@ -1360,7 +1389,7 @@ const sendMessage = async (text) => {
         landData: props.landData,
         componentContext: props.componentContext,
         region: props.region,
-        deepThinking: isReasoningModel.value,
+        deepThinking: deepThinking.value,
         model: selectedModel.value,
         sessionId: currentSessionId.value
       },
@@ -1431,8 +1460,7 @@ const sendMessage = async (text) => {
           lastMsg.content = "> 模型响应结束，但未产生有效内容。这可能是由于：\n1. 上下文窗口超限\n2. AI 模型运行异常\n3. 系统提示词过长导致小模型无法理解\n\n建议尝试切换更强的模型（如 DeepSeek-R1 8B）或刷新重试。";
         }
 
-        // 处理地图指令同步
-        handleMapCommand(lastMsg.content);
+        // map_control 已下线：不再解析/下发 MAP_COMMAND 地图指令
 
         // 完成后保存 AI 消息 (持久化所有逻辑字段)
         await saveMessage('assistant', lastMsg.content, lastMsg.thinking, lastMsg.thinkTime, lastMsg.workflow || []);
@@ -1485,6 +1513,13 @@ const toggleThinking = (index) => {
   }
 };
 
+const toggleWorkflow = (index) => {
+  if (expandedWorkflow.value[index] === undefined) {
+    expandedWorkflow.value[index] = true;
+  }
+  expandedWorkflow.value[index] = !expandedWorkflow.value[index];
+};
+
 // 智能包装：当消息正在流式生成时（当前回答的最后一条），自动跳过缓存
 const parseMessage = (msg) => {
   // 正在生成的 assistant 消息 = messages 数组最后一条 + loading 中
@@ -1500,45 +1535,83 @@ const copyMessage = (assistantIndex) => {
   const assistantMsg = messages.value[idx];
   if (!assistantMsg || assistantMsg.role !== 'assistant') return;
 
-  // 回溯最近一条用户问题（同一轮对话内 user -> assistant 的 pairing）
-  let userQuestion = '';
-  for (let i = idx - 1; i >= 0; i--) {
-    const m = messages.value[i];
-    if (m?.role === 'user' && String(m.content || '').trim()) {
-      userQuestion = String(m.content || '').trim();
-      break;
-    }
-  }
-
-  const parsed = parseMessage(assistantMsg);
-
-  // 绿色“数据工作流”来源：与 UI 渲染保持一致，直接取 parseMessage 的 statuses
-  const workflowLines = Array.isArray(parsed.statuses)
-    ? parsed.statuses
-        .map((s) => String(s?.label || '').trim())
-        .filter(Boolean)
-    : [];
-
   // 兜底清理：避免协议标记/内部 trace 进入剪贴板（UI 渲染会清理，但这里再防一层）
   const cleanForCopy = (text) => stripCopyArtifacts(text);
 
+  const getWorkflowLinesForCopy = (msg, parsed) => {
+    // 优先使用 workflow（结构化节点，通常比 parseMessage.statuses 更完整）
+    const nodes = Array.isArray(msg?.workflow) ? msg.workflow : [];
+    const linesFromWorkflow = nodes
+      .map((n) => String(n?.label || '').trim())
+      .filter(Boolean);
+    if (linesFromWorkflow.length) return linesFromWorkflow;
+
+    // 兜底：与 UI 渲染保持一致，取 parseMessage 的 statuses
+    return Array.isArray(parsed?.statuses)
+      ? parsed.statuses
+          .map((s) => String(s?.label || '').trim())
+          .filter(Boolean)
+      : [];
+  };
+
+  const writeClipboardWithFallback = async (text) => {
+    try {
+      if (navigator?.clipboard?.writeText) {
+        await navigator.clipboard.writeText(text);
+        return true;
+      }
+    } catch { }
+
+    // Fallback: execCommand('copy')（兼容部分浏览器/权限策略）
+    try {
+      const textarea = document.createElement('textarea');
+      textarea.value = text;
+      textarea.setAttribute('readonly', '');
+      textarea.style.position = 'fixed';
+      textarea.style.top = '-9999px';
+      textarea.style.left = '-9999px';
+      document.body.appendChild(textarea);
+      textarea.select();
+      const ok = document.execCommand('copy');
+      document.body.removeChild(textarea);
+      return !!ok;
+    } catch {
+      return false;
+    }
+  };
+
+  // 仅复制“当前对话轮次”：最近一条用户问题 + 当前AI回答 + 当前回答的绿色工作流
   const parts = [];
-  if (userQuestion) {
-    parts.push(`用户问题：\n${cleanForCopy(userQuestion)}`);
+
+  // 1) 最近一条用户问题（向上回溯）
+  let questionText = '';
+  for (let i = idx - 1; i >= 0; i -= 1) {
+    const m = messages.value[i];
+    if (m?.role === 'user') {
+      questionText = cleanForCopy(String(m.content || '').trim());
+      break;
+    }
   }
+  if (questionText) parts.push(`用户问题：\n${questionText}`);
+
+  // 2) 当前回答的工作流与答案
+  const parsed = parseMessage(assistantMsg);
+  const workflowLines = getWorkflowLinesForCopy(assistantMsg, parsed)
+    .map(cleanForCopy)
+    .filter(Boolean);
   if (workflowLines.length) {
-    parts.push(`数据工作流：\n- ${workflowLines.map(cleanForCopy).join('\n- ')}`);
+    parts.push(`数据工作流：\n- ${workflowLines.join('\n- ')}`);
   }
+
   const answerText = cleanForCopy(parsed.content || assistantMsg.content || '');
-  if (answerText) {
-    parts.push(`AI回答：\n${answerText}`);
-  }
+  if (answerText) parts.push(`AI回答：\n${answerText}`);
 
   const finalText = parts.join('\n\n').trim();
   if (!finalText) return;
 
-  navigator.clipboard.writeText(finalText).then(() => {
-    alert('内容已复制到剪贴板');
+  writeClipboardWithFallback(finalText).then((ok) => {
+    if (ok) alert('内容已复制到剪贴板');
+    else alert('复制失败：当前环境不允许写入剪贴板。');
   });
 };
 
@@ -2985,6 +3058,9 @@ const retryReport = () => {
   align-items: baseline;
   gap: 8px;
   margin: 0 0 9px 0;
+  flex-wrap: wrap;
+  cursor: pointer;
+  user-select: none;
 }
 
 .workflow-title {
@@ -2998,6 +3074,63 @@ const retryReport = () => {
   font-size: 11px;
   color: #7890a5;
 }
+
+.workflow-legend {
+  display: inline-flex;
+  gap: 6px;
+  margin-left: auto;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: flex-end;
+}
+
+.workflow-arrow {
+  margin-left: 6px;
+  color: rgba(148, 163, 184, 0.9);
+  transition: transform 0.18s ease;
+}
+
+.workflow-arrow.open {
+  transform: rotate(180deg);
+}
+
+.workflow-collapsed {
+  margin: 6px 0 2px 0;
+  padding: 8px 10px;
+  border-radius: 8px;
+  background: rgba(15, 23, 42, 0.28);
+  border: 1px dashed rgba(148, 163, 184, 0.22);
+  color: rgba(148, 163, 184, 0.92);
+  font-size: 11px;
+}
+
+.legend-dot {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 1px 6px;
+  border-radius: 999px;
+  font-size: 10px;
+  color: #cbd5e1;
+  background: rgba(15, 23, 42, 0.35);
+  border: 1px solid rgba(148, 163, 184, 0.18);
+  user-select: none;
+  white-space: nowrap;
+}
+
+.legend-dot::before {
+  content: "";
+  width: 7px;
+  height: 7px;
+  border-radius: 999px;
+  background: rgba(148, 163, 184, 0.6);
+  box-shadow: 0 0 0 2px rgba(148, 163, 184, 0.12);
+}
+
+/* 仅三类需要“明显区别于绿色”的高亮：tool/skill/knowledge-graph */
+.legend-dot.lane-tool::before { background: rgba(245, 158, 11, 0.95); box-shadow: 0 0 0 2px rgba(245, 158, 11, 0.16); }
+.legend-dot.lane-skill::before { background: rgba(56, 189, 248, 0.95); box-shadow: 0 0 0 2px rgba(56, 189, 248, 0.16); }
+.legend-dot.lane-knowledge-graph::before { background: rgba(167, 139, 250, 0.95); box-shadow: 0 0 0 2px rgba(167, 139, 250, 0.16); }
 
 .step-item {
   display: flex;
@@ -3018,6 +3151,63 @@ const retryReport = () => {
   padding-bottom: 0;
 }
 
+.step-item::before {
+  content: "";
+  position: absolute;
+  left: -10px;
+  top: 2px;
+  bottom: 10px;
+  width: 3px;
+  border-radius: 3px;
+  background: rgba(52, 211, 153, 0.22);
+}
+
+.step-item.lane-tool::before {
+  background: rgba(245, 158, 11, 0.62);
+}
+
+.step-item.lane-skill::before {
+  background: rgba(56, 189, 248, 0.62);
+}
+
+.step-item.lane-knowledge-graph::before {
+  background: rgba(167, 139, 250, 0.62);
+}
+
+
+
+/* lane label 颜色变量：同步改变“绿色文本”本体颜色，而不是只做标签/色条 */
+.step-item.lane-tool { --lane-label-color: #fbbf24; --lane-label-glow: rgba(245, 158, 11, 0.22); }
+.step-item.lane-skill { --lane-label-color: #7dd3fc; --lane-label-glow: rgba(56, 189, 248, 0.20); }
+.step-item.lane-knowledge-graph { --lane-label-color: #c4b5fd; --lane-label-glow: rgba(167, 139, 250, 0.20); }
+
+.step-item.lane-tool .step-icon {
+  background: rgba(180, 83, 9, 0.12);
+  border-color: rgba(245, 158, 11, 0.62);
+  color: #fbbf24;
+  box-shadow: 0 0 0 3px rgba(245, 158, 11, 0.08);
+}
+
+.step-item.lane-skill .step-icon {
+  background: rgba(3, 105, 161, 0.12);
+  border-color: rgba(56, 189, 248, 0.62);
+  color: #7dd3fc;
+  box-shadow: 0 0 0 3px rgba(56, 189, 248, 0.08);
+}
+
+.step-item.lane-knowledge-graph .step-icon {
+  background: rgba(109, 40, 217, 0.10);
+  border-color: rgba(167, 139, 250, 0.62);
+  color: #c4b5fd;
+  box-shadow: 0 0 0 3px rgba(167, 139, 250, 0.08);
+}
+
+
+
+/* lane 文本颜色走变量统一控制（避免重复覆盖） */
+
+
+
 .step-line {
   position: absolute;
   left: 8.5px;
@@ -3026,6 +3216,17 @@ const retryReport = () => {
   width: 1px;
   background: linear-gradient(to bottom, rgba(52, 211, 153, 0.42), rgba(52, 211, 153, 0.08));
   z-index: 1;
+}
+
+/* lane 连接线：仅三类突出，其余保持默认绿色 */
+.step-item.lane-tool .step-line {
+  background: linear-gradient(to bottom, rgba(245, 158, 11, 0.52), rgba(245, 158, 11, 0.10));
+}
+.step-item.lane-skill .step-line {
+  background: linear-gradient(to bottom, rgba(56, 189, 248, 0.52), rgba(56, 189, 248, 0.10));
+}
+.step-item.lane-knowledge-graph .step-line {
+  background: linear-gradient(to bottom, rgba(167, 139, 250, 0.52), rgba(167, 139, 250, 0.10));
 }
 
 .step-indicator {
@@ -3092,21 +3293,25 @@ const retryReport = () => {
   display: inline;
   font-size: 13px;
   font-weight: 700;
-  color: #34d399;
+  /* 默认颜色：由 lane 变量覆盖（避免所有步骤都“绿油油”） */
+  color: var(--lane-label-color, #34d399);
   margin-bottom: 0;
   line-height: 1.46;
   letter-spacing: 0.1px;
   font-family: "PingFang SC", "Microsoft YaHei", sans-serif;
-  text-shadow: 0 0 12px rgba(16, 185, 129, 0.18);
+  text-shadow: 0 0 12px var(--lane-label-glow, rgba(16, 185, 129, 0.18));
   overflow-wrap: anywhere;
 }
 
 .step-item.done .step-label {
-  color: #34d399;
+  /* done/active 不再强行覆盖颜色，改为轻微降低亮度以保留 lane 色彩 */
+  filter: brightness(0.98);
+  opacity: 0.92;
 }
 
 .step-item.active .step-label {
-  color: #6ee7b7;
+  filter: brightness(1.06);
+  opacity: 1;
 }
 
 .step-detail {
