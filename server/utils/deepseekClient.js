@@ -12,6 +12,9 @@ import { extractText } from '@llamaindex/core/utils';
 
 const DEFAULT_DEEPSEEK_BASE_URL = 'https://api.deepseek.com';
 const DEFAULT_DEEPSEEK_MODEL = 'deepseek-v4-flash';
+// DeepSeek 官方接口在高峰期可能出现排队/超时；给一个可配置的客户端超时，
+// 以便更快触发重试/降级，避免长时间挂起。
+const DEFAULT_DEEPSEEK_REQUEST_TIMEOUT_MS = 115000;
 const LEGACY_CLOUD_MODELS = new Set([
   'deepseek-v3.1:671b-cloud',
   'deepseek-v3.1-671b-cloud',
@@ -19,6 +22,12 @@ const LEGACY_CLOUD_MODELS = new Set([
 ]);
 
 const normalizeModelName = (model = '') => String(model).trim().toLowerCase();
+const getDeepSeekRequestTimeoutMs = () => {
+  const raw = process.env.DEEPSEEK_REQUEST_TIMEOUT_MS ?? process.env.DEEPSEEK_TIMEOUT_MS;
+  const value = Number(raw);
+  if (!Number.isFinite(value) || value <= 0) return DEFAULT_DEEPSEEK_REQUEST_TIMEOUT_MS;
+  return Math.floor(value);
+};
 
 export function isDeepSeekOfficialModel(model) {
   const normalized = normalizeModelName(model);
@@ -96,16 +105,32 @@ export function toDeepSeekTools(tools = []) {
 }
 
 async function parseDeepSeekError(response) {
+  const retryAfterHeader = response.headers?.get?.('retry-after');
+  const retryAfterFromHeader = retryAfterHeader ? Number(retryAfterHeader) : null;
   const text = await response.text();
   let detail = text;
   try {
     const json = JSON.parse(text);
-    detail = json?.error?.message || json?.message || text;
+    detail = json?.error?.message || json?.message || json?.detail || json?.title || text;
+    const err = new Error(`DeepSeek API ${response.status}: ${detail}`);
+    err.status = response.status;
+    if (json?.retry_after != null && Number.isFinite(Number(json.retry_after))) {
+      err.retryAfter = Number(json.retry_after);
+    } else if (retryAfterFromHeader != null && Number.isFinite(retryAfterFromHeader)) {
+      err.retryAfter = retryAfterFromHeader;
+    }
+    if (json?.retryable !== undefined) err.retryable = !!json.retryable;
+    if (json?.error_code != null) err.errorCode = json.error_code;
+    if (json?.error_name) err.errorName = json.error_name;
+    return err;
   } catch {
     // 保留原始响应文本
   }
   const err = new Error(`DeepSeek API ${response.status}: ${detail}`);
   err.status = response.status;
+  if (retryAfterFromHeader != null && Number.isFinite(retryAfterFromHeader)) {
+    err.retryAfter = retryAfterFromHeader;
+  }
   return err;
 }
 
@@ -251,14 +276,38 @@ export class DeepSeekOfficialLLM extends ToolCallLLM {
 
 export async function requestDeepSeekChat(payload, baseURL = process.env.DEEPSEEK_BASE_URL || DEFAULT_DEEPSEEK_BASE_URL) {
   const normalizedBaseURL = baseURL.replace(/\/$/, '');
-  const response = await fetch(`${normalizedBaseURL}/chat/completions`, {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      Authorization: `Bearer ${requireDeepSeekApiKey()}`
-    },
-    body: JSON.stringify(payload)
-  });
+  const timeoutMs = getDeepSeekRequestTimeoutMs();
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => controller.abort(), timeoutMs);
+
+  let response;
+  try {
+    const acceptHeader = payload?.stream ? 'text/event-stream' : 'application/json';
+    response = await fetch(`${normalizedBaseURL}/chat/completions`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        // When stream=true, the response is SSE; otherwise JSON.
+        Accept: acceptHeader,
+        Authorization: `Bearer ${requireDeepSeekApiKey()}`
+      },
+      body: JSON.stringify(payload),
+      signal: controller.signal
+    });
+  } catch (err) {
+    // fetch() 被 AbortController 中断时，会抛 AbortError；转换成统一错误码以便上层重试/降级。
+    const name = err?.name || '';
+    const code = err?.code || '';
+    if (name === 'AbortError' || code === 'ABORT_ERR') {
+      const e = new Error(`DeepSeek API timeout after ${timeoutMs}ms`);
+      e.code = 'DEEPSEEK_REQUEST_TIMEOUT';
+      e.timeoutMs = timeoutMs;
+      throw e;
+    }
+    throw err;
+  } finally {
+    clearTimeout(timeoutId);
+  }
 
   if (!response.ok) throw await parseDeepSeekError(response);
   return response;
