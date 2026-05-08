@@ -5,6 +5,7 @@ import { body, validationResult } from 'express-validator';
 import pool from '../config/db.js';
 import { getPublicKey, decrypt } from '../utils/cryptoHelper.js';
 import { JWT_SECRET } from '../config/jwt.js';
+import logger from '../config/logger.js';
 
 const router = express.Router();
 
@@ -69,7 +70,7 @@ router.post('/login', [
       }
     });
   } catch (err) {
-    console.error('[auth] 登录失败:', err);
+    logger.error('[auth] 登录失败', { message: err?.message || String(err), stack: err?.stack });
     res.status(500).json({ message: `服务器内部错误: ${err.message}` });
   }
 });
@@ -92,4 +93,3 @@ router.get('/verify', (req, res) => {
 });
 
 export default router;
-

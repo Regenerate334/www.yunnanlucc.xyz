@@ -3,6 +3,7 @@ import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js"
 import { z } from "zod";
 import fs from 'fs/promises';
 import path from 'path';
+import logger from '../config/logger.js';
 
 // 导入现有的业务能力
 import landUseService from '../services/landUseService.js';
@@ -190,10 +191,10 @@ server.tool(
 async function main() {
     const transport = new StdioServerTransport();
     await server.connect(transport);
-    console.error("WebGIS MCP Server 已启动 (STDIO 模式)");
+    logger.info('WebGIS MCP Server 已启动 (STDIO 模式)');
 }
 
 main().catch((err) => {
-    console.error("MCP Server 启动失败:", err);
+    logger.error('MCP Server 启动失败', { message: err?.message || String(err), stack: err?.stack });
     process.exit(1);
 });

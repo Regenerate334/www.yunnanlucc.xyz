@@ -3,6 +3,7 @@
  * 端点：/weather
  */
 import express from 'express';
+import logger from '../../config/logger.js';
 
 const router = express.Router();
 
@@ -44,7 +45,7 @@ router.get('/', async (req, res) => {
 
         res.json(data);
     } catch (err) {
-        console.error('[weather] 请求失败:', err.message);
+        logger.error('[weather] 请求失败', { message: err?.message || String(err), stack: err?.stack });
         res.status(500).json({ error: '请求天气数据失败', message: err.message });
     }
 });

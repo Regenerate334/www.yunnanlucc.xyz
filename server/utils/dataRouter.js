@@ -668,7 +668,7 @@ export class DataRouter {
             logger.info('[DataRouter] 无路由命中，返回空上下文');
             return '';
         } catch (err) {
-            console.error('[DataRouter] 数据路由过程发生异常:', err);
+            logger.error('[DataRouter] 数据路由过程发生异常', { message: err?.message || String(err), stack: err?.stack });
             return `> 数据查询异常：${err.message}，请基于内置知识或重新描述问题进行回答。`;
         }
     }

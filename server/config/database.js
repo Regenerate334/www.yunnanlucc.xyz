@@ -22,7 +22,7 @@ pool.on('connect', (client) => {
 });
 
 pool.on('error', (err, client) => {
-  console.error('[DB] 数据库连接池错误:', err);
+  logger.error('[DB] 数据库连接池错误', { message: err?.message || String(err), stack: err?.stack });
 });
 
 // ==================== 数据库连接测试 ====================
@@ -34,7 +34,7 @@ export const testConnection = async () => {
     client.release();
     return true;
   } catch (err) {
-    console.error('[DB] 数据库连接测试失败:', err);
+    logger.error('[DB] 数据库连接测试失败', { message: err?.message || String(err), stack: err?.stack });
     return false;
   }
 };
@@ -45,7 +45,7 @@ export const closePool = async () => {
     await pool.end();
     logger.info('[DB] 数据库连接池已关闭');
   } catch (err) {
-    console.error('[DB] 关闭数据库连接池时出错:', err);
+    logger.error('[DB] 关闭数据库连接池时出错', { message: err?.message || String(err), stack: err?.stack });
   }
 };
 

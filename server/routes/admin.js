@@ -42,7 +42,7 @@ const runtimeContext = {
 
 // [Security] 强制在生产环境下从环境变量读取
 if (!runtimeContext.geoserver.user || !runtimeContext.geoserver.pass) {
-    console.warn('[Security] GEOSERVER credentials missing in .env');
+    logger.warn('[Security] GEOSERVER credentials missing in .env');
 }
 
 const getGeoServerAuth = () => {
@@ -59,7 +59,7 @@ const logAction = async (user, action, target, details = '') => {
             [user.id, user.username, action, target, details]
         );
     } catch (err) {
-        console.error('[Admin Log] Failed to record audit log:', err);
+        logger.error('[Admin Log] Failed to record audit log', { message: err?.message || String(err), stack: err?.stack });
     }
 };
 
@@ -75,7 +75,7 @@ const decryptPayload = (encryptedData, key) => {
         decrypted = Buffer.concat([decrypted, decipher.final()]);
         return JSON.parse(decrypted.toString());
     } catch (error) {
-        console.error('Decryption failed:', error);
+        logger.error('Decryption failed', { message: error?.message || String(error), stack: error?.stack });
         return null;
     }
 };
@@ -93,7 +93,7 @@ router.get('/users', async (req, res) => {
             data: result.rows
         });
     } catch (err) {
-        console.error('[Admin] 获取用户列表失败:', err);
+        logger.error('[Admin] 获取用户列表失败', { message: err?.message || String(err), stack: err?.stack });
         res.status(500).json({ message: '获取用户列表失败' });
     }
 });
@@ -138,7 +138,7 @@ router.post('/users', async (req, res) => {
             data: result.rows[0]
         });
     } catch (err) {
-        console.error('[Admin] 添加用户失败:', err);
+        logger.error('[Admin] 添加用户失败', { message: err?.message || String(err), stack: err?.stack });
         res.status(500).json({ message: '添加用户失败: ' + err.message });
     }
 });
@@ -262,6 +262,7 @@ router.post('/config', async (req, res) => {
         const lines = content.split('\n');
 
         // [Security] 禁止通过 UI 修改核心安全密钥，防止提权或锁定
+        // 说明：日志等级属于可运维配置，不在保护列表中。
         const PROTECTED_KEYS = ['JWT_SECRET', 'PORT', 'NODE_ENV', 'DB_PASSWORD'];
 
         const updatedLines = lines.map(line => {
@@ -339,7 +340,7 @@ const executePowerShell = (cmd) => {
     try {
         // [Security] 严格限制指令非法字符，防止二级注入
         if (/[;&|]/.test(cmd)) {
-            console.error('[Security] Illegal characters in PowerShell command');
+            logger.error('[Security] Illegal characters in PowerShell command');
             return null;
         }
         return execSync(`powershell -NoProfile -ExecutionPolicy Bypass -Command "${cmd}"`, {
@@ -418,7 +419,7 @@ router.get('/system/status', async (req, res) => {
             }
         });
     } catch (err) {
-        console.error('[Admin Status] Critical failure:', err);
+        logger.error('[Admin Status] Critical failure', { message: err?.message || String(err), stack: err?.stack });
         res.status(500).json({ message: '获取系统状态失败', error: err.message });
     }
 });
@@ -564,7 +565,7 @@ router.get('/db/performance', async (req, res) => {
         lastDbStats = { ...stats, time: now };
         res.json({ success: true, data: perf });
     } catch (err) {
-        console.error('[DB Monitor] Failed:', err);
+        logger.error('[DB Monitor] Failed', { message: err?.message || String(err), stack: err?.stack });
         res.status(500).json({ success: false, message: '获取数据库性能失败' });
     }
 });
@@ -612,7 +613,7 @@ router.get('/security/db-roles', async (req, res) => {
                 }));
             }
         } catch (e) {
-            console.error('[Admin] Failed to fetch GeoServer users:', e.message);
+            logger.error('[Admin] Failed to fetch GeoServer users', { message: e?.message || String(e), stack: e?.stack });
         }
 
         // 安全风险分析

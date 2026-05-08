@@ -52,7 +52,7 @@ async function generateSessionTitle(sessionId, userMessage) {
         await pool.query('UPDATE chat_sessions SET title = $1 WHERE id = $2', [title, sessionId]);
         logger.info(`[Sessions] AI 生成标题: "${title}"`);
     } catch (err) {
-        console.error('[Sessions] AI 生成标题失败:', err.message);
+        logger.error('[Sessions] AI 生成标题失败:', { message: err?.message || String(err) });
         const fallbackTitle = userMessage.length > 20 ? userMessage.slice(0, 17) + '...' : userMessage;
         await pool.query('UPDATE chat_sessions SET title = $1 WHERE id = $2', [fallbackTitle, sessionId]).catch(() => { });
     }
@@ -67,7 +67,7 @@ router.get('/', authMiddleware, async (req, res) => {
         );
         res.json({ success: true, sessions: rows });
     } catch (err) {
-        console.error('[Sessions] 获取失败:', err);
+        logger.error('[Sessions] 获取失败:', { message: err?.message || String(err) });
         res.status(500).json({ error: '获取会话列表失败' });
     }
 });
@@ -82,7 +82,7 @@ router.post('/', authMiddleware, async (req, res) => {
         );
         res.json({ success: true, session: rows[0] });
     } catch (err) {
-        console.error('[Sessions] 创建失败:', err);
+        logger.error('[Sessions] 创建失败:', { message: err?.message || String(err) });
         res.status(500).json({ error: '创建会话失败' });
     }
 });
@@ -99,7 +99,7 @@ router.get('/:id/messages', authMiddleware, async (req, res) => {
         }
         res.json({ success: true, messages: rows[0].messages || [] });
     } catch (err) {
-        console.error('[Sessions] 获取消息失败:', err);
+        logger.error('[Sessions] 获取消息失败:', { message: err?.message || String(err) });
         res.status(500).json({ error: '获取消息失败' });
     }
 });
@@ -147,7 +147,7 @@ router.post('/:id/messages', authMiddleware, async (req, res) => {
 
         res.json({ success: true });
     } catch (err) {
-        console.error('[Sessions] 保存失败:', err);
+        logger.error('[Sessions] 保存失败:', { message: err?.message || String(err) });
         res.status(500).json({ error: '保存消息失败' });
     }
 });
@@ -164,7 +164,7 @@ router.delete('/:id', authMiddleware, async (req, res) => {
         }
         res.json({ success: true });
     } catch (err) {
-        console.error('[Sessions] 删除失败:', err);
+        logger.error('[Sessions] 删除失败:', { message: err?.message || String(err) });
         res.status(500).json({ error: '删除会话失败' });
     }
 });

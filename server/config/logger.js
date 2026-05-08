@@ -11,6 +11,7 @@ dotenv.config({ path: path.resolve(__dirname, '../../.env') });
 
 const logDir = path.join(__dirname, '../logs');
 const logLevel = process.env.LOG_LEVEL || 'info';
+const fileLogLevel = process.env.LOG_FILE_LEVEL || 'info';
 
 // Custom format for console logging with colors and alignment
 const consoleFormat = winston.format.combine(
@@ -59,7 +60,8 @@ const logger = winston.createLogger({
             maxFiles: '14d',
             format: fileFormat,
             auditFile: path.join(logDir, '.audit.json'), // Consolidate audit info
-            level: 'info', // Always log info + error to file regardless of console setting usually
+            // File logs default to info; can be raised/lowered via LOG_FILE_LEVEL.
+            level: fileLogLevel,
         }),
         // Separate error log
         new winston.transports.DailyRotateFile({

@@ -10,11 +10,21 @@
 
 import pool from '../../config/db.js';
 import registry from '../dataSourceRegistry.js';
+import logger from '../../config/logger.js';
 
 // 地类编码 → 中文名称（用于格式化输出）
 const LAND_CLASS_NAMES = {
-    1: '耕地', 2: '林地', 3: '草地', 4: '水体', 5: '建设用地',
-    6: '裸地', 7: '冰雪', 8: '湿地', 255: '其他'
+    // transfer 宽表 8 类编码（灌木并入林地）：
+    // 1耕地 2林地(含灌木) 3草地 4水体 5冰雪 6裸地 7建设用地 8湿地
+    1: '耕地',
+    2: '林地',
+    3: '草地',
+    4: '水体',
+    5: '冰雪',
+    6: '裸地',
+    7: '建设用地',
+    8: '湿地',
+    255: '其他'
 };
 
 registry.register({
@@ -45,7 +55,7 @@ registry.register({
             periodPrefix = 'y0203';
         }
 
-        console.log(`[transferSource] 尝试查询周期前缀: ${periodPrefix}`);
+        logger.info('[transferSource] 尝试查询周期前缀', { periodPrefix });
 
         try {
             // 2. 动态探测该周期存在哪些列（FC_TC 编码）
@@ -115,7 +125,7 @@ registry.register({
             };
 
         } catch (err) {
-            console.error('[transferSource] 数据库查询失败:', err);
+            logger.error('[transferSource] 数据库查询失败', { message: err?.message || String(err), stack: err?.stack });
             throw err;
         }
     },
@@ -179,4 +189,4 @@ registry.register({
     }
 });
 
-console.log('[DataSources] 土地流转插件已注册');
+logger.info('[DataSources] 土地流转插件已注册');
