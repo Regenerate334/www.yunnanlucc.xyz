@@ -50,6 +50,8 @@
 
 - 建设用地扩张（林地转建设）：`fromClassStr="林地"`, `toClassStr="建设用地"`
 - 林地转耕地：`fromClassStr="林地"`, `toClassStr="耕地"`
+- 建设用地净流入（全部转入建设用地）：`fromClassStr="全部"`, `toClassStr="建设用地"`
+- 耕地净流出（耕地转出到全部）：`fromClassStr="耕地"`, `toClassStr="全部"`
 
 > 注意：本项目的 transfer 宽表为 8 类口径（灌木并入林地），并采用重编码：  
 > `1耕地 2林地(含灌木) 3草地 4水体 5冰雪 6裸地 7建设用地 8湿地`。  

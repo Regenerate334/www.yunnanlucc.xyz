@@ -27,6 +27,26 @@ Object.entries(LAND_CLASS_NAMES).forEach(([k, v]) => NAME_TO_CLASS[v] = parseInt
 NAME_TO_CLASS['城镇'] = 7;
 NAME_TO_CLASS['城市'] = 7;
 
+function normalizeLandClassToken(value) {
+    return String(value ?? '').trim();
+}
+
+function isAllLandClassToken(value) {
+    const v = normalizeLandClassToken(value).replace(/\s+/g, '');
+    if (!v) return true;
+    if (v === '*' || v === 'ALL') return true;
+    // 兼容：全部/任意/所有/全体等表达
+    if (v.includes('全部') || v.includes('所有') || v.includes('任意') || v.includes('全体')) return true;
+    if (v === '总流转' || v === '总转移' || v === '全部地类' || v === '全部土地' || v === '全部类型') return true;
+    return false;
+}
+
+function parseLandClassToken(value) {
+    const v = normalizeLandClassToken(value);
+    if (isAllLandClassToken(v)) return null;
+    return NAME_TO_CLASS[v] ?? null;
+}
+
 const spatialStatsTool = {
     name: 'spatial_stats_analysis',
     description: '获取土地利用流转的空间统计特征，包括重心迁移轨迹和标准差椭圆变化（如某类土地转化为建设用地的重心变化轨迹）。',
@@ -63,9 +83,14 @@ const spatialStatsTool = {
             toClassStr = types[1] || '建设用地';
         }
 
-        const fromClass = NAME_TO_CLASS[fromClassStr] || 1;
-        const toClass = NAME_TO_CLASS[toClassStr] || 7;
-        if (fromClass === toClass) {
+        // 支持“净流入/净流出”的口径表达：
+        // - 净流入(*->X)：fromClassStr="全部"，toClassStr="建设用地"
+        // - 净流出(X->*)：fromClassStr="耕地"，toClassStr="全部"
+        const fromClass = parseLandClassToken(fromClassStr) ?? (isAllLandClassToken(fromClassStr) ? null : 1);
+        const toClass = parseLandClassToken(toClassStr) ?? (isAllLandClassToken(toClassStr) ? null : 7);
+
+        // from/to 同时为具体地类时，禁止同类自转
+        if (fromClass !== null && toClass !== null && fromClass === toClass) {
             throw new Error(`空间统计参数无效：fromClassStr 与 toClassStr 相同（${fromClassStr}）。请指定不同的转出/转入地类。`);
         }
 
