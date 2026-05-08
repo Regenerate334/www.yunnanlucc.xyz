@@ -14,7 +14,7 @@ const knowledgeTool = {
         properties: {
             skill_name: {
                 type: 'string',
-                enum: ['monitoring_indices', 'spatial_reasoning'],
+                enum: ['monitoring_indices', 'spatial_reasoning', 'policy_expert'],
                 description: '要查询的技能模块名称'
             }
         },
