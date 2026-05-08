@@ -99,6 +99,37 @@ function normalizeRegion(region) {
   return cleaned || trimmed;
 }
 
+async function listAvailableDirections(tableName, periods, fromClass = null, toClass = null) {
+  const cols = buildColumnNamesByDirection(periods, fromClass, toClass);
+  if (!cols.length) return { from: {}, to: {} };
+
+  const existingColsRes = await pool.query(`
+    SELECT column_name
+    FROM information_schema.columns
+    WHERE table_schema = 'public'
+      AND table_name = $1
+      AND column_name = ANY($2::text[]);
+  `, [tableName, cols]);
+  const existingCols = existingColsRes.rows.map((r) => r.column_name);
+
+  const byFrom = {};
+  const byTo = {};
+  for (const c of existingCols) {
+    const m = String(c).match(/_(\d)(\d)$/);
+    if (!m) continue;
+    const f = m[1];
+    const t = m[2];
+    if (!byFrom[f]) byFrom[f] = [];
+    if (!byTo[t]) byTo[t] = [];
+    if (!byFrom[f].includes(t)) byFrom[f].push(t);
+    if (!byTo[t].includes(f)) byTo[t].push(f);
+  }
+  Object.values(byFrom).forEach((arr) => arr.sort());
+  Object.values(byTo).forEach((arr) => arr.sort());
+
+  return { from: byFrom, to: byTo, columns: existingCols };
+}
+
 export async function queryTransferGeoJSON(tableName, yearStart, yearEnd, fromClass, toClass, unit, region = null, options = {}) {
   const safeName = ALLOWED_TABLES[unit];
   if (!safeName) {
@@ -136,10 +167,16 @@ export async function queryTransferGeoJSON(tableName, yearStart, yearEnd, fromCl
 
   const existingCols = existingColsRes.rows.map((r) => r.column_name);
   if (existingCols.length === 0) {
+    const available = await listAvailableDirections(safeName, activePeriods, fromClass, toClass);
     return {
       type: 'FeatureCollection',
       features: [],
-      meta: { message: '匹配字段在数据库中不存在' }
+      meta: {
+        message: '匹配字段在数据库中不存在',
+        periods: activePeriods,
+        available_directions: available,
+        hint: '该转移方向在当前 transfer 宽表中未建模或无字段。请更换方向，或改用“净流入(*->X)/净流出(X->*)/总流转(*->*)”口径。'
+      }
     };
   }
 

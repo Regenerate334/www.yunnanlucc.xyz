@@ -132,7 +132,9 @@ router.get('/transfer-series', async (req, res) => {
 
       if (points.length >= 3) {
         const sde = turf.standardDeviationalEllipse(pointCollection, { weight: 'weight', steps: 64 });
+        // Preserve turf's computed `standardDeviationalEllipse` properties; merge our metadata on top.
         sde.properties = {
+          ...(sde.properties || {}),
           type: 'sde',
           period,
           yearStart: pStart,

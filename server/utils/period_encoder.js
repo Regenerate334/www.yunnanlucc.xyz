@@ -42,7 +42,6 @@ export async function getAvailablePeriods(pool, tableName) {
         WHERE table_schema = 'public'
         AND table_name = $1
         AND column_name ~ '^y[0-9]'
-        LIMIT 1000;
     `, [tableName]);
 
     const periodsSet = new Set();
