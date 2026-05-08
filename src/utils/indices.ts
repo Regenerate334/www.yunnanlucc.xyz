@@ -1,3 +1,10 @@
+/**
+ * @module utils/indices
+ * @description 综合指标与统计公式计算库（如动态度、转移率等）。
+ * @author System
+ * @dependencies 无
+ */
+
 
 /**
  * 土地利用监测指标计算工具函数

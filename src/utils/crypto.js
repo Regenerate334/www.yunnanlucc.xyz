@@ -1,4 +1,11 @@
 /**
+ * @module utils/crypto
+ * @description 前端数据加密与解密工具，确保敏感数据安全。
+ * @author System
+ * @dependencies crypto-js
+ */
+
+/**
  * 前端非对称加密工具 (Frontend RSA Encryption Utility)
  * 职责：从后端获取 RSA 公钥，并使用 RSA-OAEP (SHA-256) 对敏感数据（如密码）进行加密，确保传输安全。
  */

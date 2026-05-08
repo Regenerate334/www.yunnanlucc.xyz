@@ -1,4 +1,11 @@
 /**
+ * @module api/index
+ * @description 全局 API 请求封装，基于 axios 拦截器统一处理接口请求、响应及鉴权。
+ * @author System
+ * @dependencies axios, vue-router, crypto.js
+ */
+
+/**
  * 统一接口管理模块
  * 封装所有后端请求，方便维护和复用
  */

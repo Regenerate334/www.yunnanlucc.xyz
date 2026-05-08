@@ -1,4 +1,11 @@
 /**
+ * @module stores/landuse
+ * @description Pinia 状态管理：土地利用分析模块，缓存 CLCD 时空数据及各类图表统计指标。
+ * @author System
+ * @dependencies pinia, api/index
+ */
+
+/**
  * 土地利用数据 Store
  * 管理核心数据状态和业务逻辑
  */

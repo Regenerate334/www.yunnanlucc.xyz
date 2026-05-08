@@ -1,4 +1,11 @@
 /**
+ * @module utils/clcdDataLoader
+ * @description 中国土地覆盖数据集 (CLCD) 预加载与缓存工具。
+ * @author System
+ * @dependencies api/index
+ */
+
+/**
  * CLCD数据加载工具
  * 用于从后端API加载土地利用统计数据
  * 

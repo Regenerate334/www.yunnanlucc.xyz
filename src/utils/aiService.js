@@ -1,4 +1,11 @@
 /**
+ * @module utils/aiService
+ * @description AI 大模型交互服务层，处理 SSE 流式通信、Markdown 解析及打字机效果。
+ * @author System
+ * @dependencies fetch API, MarkdownIt
+ */
+
+/**
  * AI 分析服务 - 提供可复用的 AI 分析功能
  */
 

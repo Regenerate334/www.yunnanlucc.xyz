@@ -1,3 +1,10 @@
+/**
+ * @module stores/auth
+ * @description Pinia 状态管理：用户鉴权模块，处理登录态、令牌存储与路由权限校验。
+ * @author System
+ * @dependencies pinia, crypto.js
+ */
+
 import { defineStore } from 'pinia';
 import { ref } from 'vue';
 import { authApi } from '../api/index.js';

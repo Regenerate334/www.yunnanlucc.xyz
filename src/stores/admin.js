@@ -1,3 +1,10 @@
+/**
+ * @module stores/admin
+ * @description Pinia 状态管理：后台管理模块，维护系统日志、用户及系统配置状态。
+ * @author System
+ * @dependencies pinia
+ */
+
 import { defineStore } from 'pinia';
 
 export const useAdminStore = defineStore('admin', {
