@@ -12,7 +12,7 @@ import path from 'path';
 import registry from '../../dataSourceRegistry.js';
 import logger from '../../../config/logger.js';
 
-const SKILLS_DIR = path.resolve('server/utils/ai/skills');
+const SKILLS_DIR = path.resolve('server/knowledge/skills');
 
 const knowledgeTool = {
     name: 'knowledge_base_lookup',

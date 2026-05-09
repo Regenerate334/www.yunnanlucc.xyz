@@ -13,7 +13,7 @@ import path from 'path';
 import registry from '../../dataSourceRegistry.js';
 import logger from '../../../config/logger.js';
 
-const KG_PATH = path.resolve('server/mcp/knowledge_graph.json');
+const KG_PATH = path.resolve('server/knowledge/graph/knowledge_graph.json');
 
 const MAX_MATCHES = 8;
 const MAX_CONNECTIONS = 20;

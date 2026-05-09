@@ -79,7 +79,7 @@
 
 ## 7. 内置政策库（已整理，可直接检索引用）
 
-系统当前已内置并维护了一份“政策/规划文献索引库”（`server/utils/ai/corpus/policy_corpus.json`）。当你需要引用权威出处时，必须通过工具检索而不是凭记忆描述：
+系统当前已内置并维护了一份“政策/规划文献索引库”（`server/knowledge/corpus/policy_corpus.json`）。当你需要引用权威出处时，必须通过工具检索而不是凭记忆描述：
 
 - 检索工具：`policy_reference_lookup(region?, year?, year_range?, keywords?, level?, top_n?)`
 - 输出要求：工具返回的每条命中必须包含 `来源:`（sources URL），正文引用时也必须把链接列出来。
