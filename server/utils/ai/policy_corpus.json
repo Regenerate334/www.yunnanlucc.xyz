@@ -1,0 +1,154 @@
+[
+  {
+    "id": "policy_2019_05_23_gtsk",
+    "title": "中共中央 国务院关于建立国土空间规划体系并监督实施的若干意见",
+    "issuer": "中共中央、国务院",
+    "doc_no": "",
+    "date": "2019-05-23",
+    "start_year": 2019,
+    "end_year": null,
+    "level": "national",
+    "region": "全国",
+    "keywords": [
+      "国土空间规划体系",
+      "空间治理",
+      "用途管制",
+      "规划监督"
+    ],
+    "summary": "确立国土空间规划体系的顶层制度框架，强调“多规合一”、用途管制与监督实施，为后续“三区三线”等管控体系提供制度基础。",
+    "sources": [
+      "https://www.gov.cn/xinwen/2019-05/23/content_5394187.htm"
+    ]
+  },
+  {
+    "id": "policy_2019_11_01_3lines",
+    "title": "关于在国土空间规划中统筹划定落实三条控制线的指导意见",
+    "issuer": "中共中央办公厅、国务院办公厅",
+    "doc_no": "",
+    "date": "2019-11-01",
+    "start_year": 2019,
+    "end_year": null,
+    "level": "national",
+    "region": "全国",
+    "keywords": [
+      "三条控制线",
+      "生态保护红线",
+      "永久基本农田",
+      "城镇开发边界",
+      "用途管制"
+    ],
+    "summary": "提出在国土空间规划中统筹划定并严格落实生态保护红线、永久基本农田、城镇开发边界，为建设用地扩张与耕地保护、生态安全之间的约束关系提供制度依据。",
+    "sources": [
+      "https://www.gov.cn/zhengce/2019-11/01/content_5447654.htm"
+    ]
+  },
+  {
+    "id": "policy_2019_87_natres",
+    "title": "自然资源部关于全面开展国土空间规划工作的通知",
+    "issuer": "自然资源部",
+    "doc_no": "自然资发〔2019〕87号",
+    "date": "2019-06-02",
+    "start_year": 2019,
+    "end_year": null,
+    "level": "national",
+    "region": "全国",
+    "keywords": [
+      "国土空间规划",
+      "编制工作",
+      "规划实施监督",
+      "用途管制"
+    ],
+    "summary": "部署全国范围内国土空间规划编制与实施监督工作，推动规划体系落地与用途管制执行，为各省市县规划编制提供工作路径。",
+    "sources": [
+      "https://www.gov.cn/xinwen/2019-06/02/content_5396857.htm"
+    ]
+  },
+  {
+    "id": "policy_2020_09_15_non_agri",
+    "title": "国务院办公厅关于坚决制止耕地“非农化”行为的通知",
+    "issuer": "国务院办公厅",
+    "doc_no": "国办发明电〔2020〕24号",
+    "date": "2020-09-15",
+    "start_year": 2020,
+    "end_year": null,
+    "level": "national",
+    "region": "全国",
+    "keywords": [
+      "耕地保护",
+      "非农化",
+      "用途管制",
+      "建设占用"
+    ],
+    "summary": "强调严控耕地转为建设用地等“非农化”行为，强化用途管制与占补平衡约束，是解释“耕地转建/建设扩张受限”类问题的关键政策背景。",
+    "sources": [
+      "https://www.gov.cn/zhengce/content/2020-09/15/content_5543645.htm"
+    ]
+  },
+  {
+    "id": "policy_2020_11_17_non_grain",
+    "title": "国务院办公厅关于防止耕地“非粮化”稳定粮食生产的意见",
+    "issuer": "国务院办公厅",
+    "doc_no": "国办发〔2020〕44号",
+    "date": "2020-11-17",
+    "start_year": 2020,
+    "end_year": null,
+    "level": "national",
+    "region": "全国",
+    "keywords": [
+      "耕地保护",
+      "非粮化",
+      "粮食安全",
+      "农业结构"
+    ],
+    "summary": "针对耕地“非粮化”进行约束，强调稳定粮食生产，对解释“耕地用途变化/农业结构调整”提供政策背景，但不直接替代遥感与统计证据。",
+    "sources": [
+      "https://www.gov.cn/zhengce/content/2020-11/17/content_5562053.htm"
+    ]
+  },
+  {
+    "id": "policy_2024_yn_2021_2035",
+    "title": "云南省国土空间规划（2021—2035年）相关发布信息",
+    "issuer": "云南省自然资源厅",
+    "doc_no": "",
+    "date": "2024-10-24",
+    "start_year": 2021,
+    "end_year": 2035,
+    "level": "province",
+    "region": "云南省",
+    "keywords": [
+      "云南省",
+      "国土空间总体规划",
+      "2021—2035",
+      "三条控制线",
+      "用途管制"
+    ],
+    "summary": "省级国土空间规划及其发布信息，为解释云南省尺度的空间管控框架、约束指标与发展导向提供权威引用入口。具体约束需以文件原文与批复为准。",
+    "sources": [
+      "https://dnr.yn.gov.cn/html/2024/qtwjnew_1024/4047892.html",
+      "https://dnr.yn.gov.cn/html/2024/xwdt_1030/4047935.html"
+    ]
+  },
+  {
+    "id": "policy_2024_12_20_km_2021_2035",
+    "title": "国务院关于《昆明市国土空间总体规划（2021—2035年）》的批复",
+    "issuer": "国务院",
+    "doc_no": "国函〔2024〕197号",
+    "date": "2024-12-20",
+    "start_year": 2021,
+    "end_year": 2035,
+    "level": "city",
+    "region": "昆明市",
+    "keywords": [
+      "昆明市",
+      "国土空间总体规划",
+      "2021—2035",
+      "批复",
+      "用途管制"
+    ],
+    "summary": "国务院批复文件入口，可用于引用昆明市国土空间总体规划（2021—2035年）的权威出处。涉及具体硬约束指标与管控要求时，应以批复/规划原文为准，并在回答中列出来源链接。",
+    "sources": [
+      "https://big5.www.gov.cn/gate/big5/www.gov.cn/zhengce/content/202412/content_6993803.htm",
+      "https://dnr.yn.gov.cn/html/2024/dangzhongyangguowuyuanxinxi_1220/4048331.html"
+    ]
+  }
+]

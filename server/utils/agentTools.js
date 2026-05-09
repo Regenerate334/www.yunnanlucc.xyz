@@ -15,6 +15,8 @@ import spatialStatsTool from "./tools/spatialStatsTool.js";
 import transferTool from "./tools/transferTool.js";
 import weatherTool from "./tools/weatherTool.js";
 import knowledgeTool from "./tools/knowledgeTool.js";
+import knowledgeGraphTool from "./tools/knowledgeGraphTool.js";
+import policyReferenceTool from "./tools/policyReferenceTool.js";
 
 const clcdFunctionTool = FunctionTool.from(
     async ({ query_type, region, level, year, year_range, land_type, top_n }) => {
@@ -148,4 +150,59 @@ const knowledgeFunctionTool = FunctionTool.from(
     }
 );
 
-export const agentTools = [clcdFunctionTool, dashboardFunctionTool, spatialStatsFunctionTool, transferFunctionTool, weatherFunctionTool, knowledgeFunctionTool];
+
+const knowledgeGraphFunctionTool = FunctionTool.from(
+    async ({ mode, term, node_id, target_id, relation }) => {
+        try {
+            const result = await knowledgeGraphTool.query({ mode, term, node_id, target_id, relation });
+            return knowledgeGraphTool.format(result);
+        } catch (e) {
+            return `知识图谱查询失败: ${e.message}`;
+        }
+    },
+    {
+        name: "knowledge_graph_query",
+        description: "查询系统内置知识图谱（语义层）。用于政策节点、概念关系、行政层级、算子指令等背景检索。支持 metadata/search/traverse/resolve/path。建议先 search 找到 node_id，再 traverse/path 深挖关系。",
+        parameters: z.object({
+            mode: z.enum(['search', 'traverse', 'resolve', 'path', 'metadata']).describe('查询模式：search(搜索), traverse(遍历), resolve(解析术语), path(2跳路径), metadata(元数据)'),
+            term: z.string().optional().describe('搜索关键词/术语（mode=search/resolve）'),
+            node_id: z.string().optional().describe('目标节点 ID（mode=traverse/path）'),
+            target_id: z.string().optional().describe('路径终点节点 ID（mode=path）'),
+            relation: z.string().optional().describe('可选：过滤特定关系类型')
+        })
+    }
+);
+
+const policyReferenceFunctionTool = FunctionTool.from(
+    async ({ region, year, year_range, keywords, level, top_n }) => {
+        try {
+            const result = await policyReferenceTool.query({ region, year, year_range, keywords, level, top_n });
+            return policyReferenceTool.format(result);
+        } catch (e) {
+            return `政策/规划检索失败: ${e.message}`;
+        }
+    },
+    {
+        name: "policy_reference_lookup",
+        description: "检索内置“政策/规划文献索引库”，返回可引用条目与来源链接（sources）。当用户问某年重大政策、规划要求、用途管制、红线、耕地保护等解释时优先使用。",
+        parameters: z.object({
+            region: z.string().optional().describe('区域名称，如“云南省”“昆明市”。不传则不过滤'),
+            year: z.number().optional().describe('目标年份，如 2019'),
+            year_range: z.array(z.number()).optional().describe('年份区间，如 [2019, 2020]'),
+            keywords: z.array(z.string()).optional().describe('关键词数组，如 ["三条控制线","用途管制"]'),
+            level: z.enum(['national', 'province', 'city', 'county']).optional().describe('层级：national/province/city/county'),
+            top_n: z.number().optional().describe('返回条目数量，默认 5，最大 20')
+        })
+    }
+);
+
+export const agentTools = [
+    clcdFunctionTool,
+    dashboardFunctionTool,
+    spatialStatsFunctionTool,
+    transferFunctionTool,
+    weatherFunctionTool,
+    knowledgeFunctionTool,
+    knowledgeGraphFunctionTool,
+    policyReferenceFunctionTool
+];
