@@ -8,8 +8,8 @@
  */
 
 import { generateText, extractJSON, getChatModel } from './aiClient.js';
-import registry from './dataSourceRegistry.js';
-import logger from '../config/logger.js';
+import registry from '../../dataSourceRegistry.js';
+import logger from '../../../config/logger.js';
 
 const ROUTER_SYSTEM_PROMPT = `你是一个地理信息系统 (GIS) 数据路由专家。
 你的任务是根据用户的提问，决定需要调用哪些后台数据工具来获取分析所需的原始数据。

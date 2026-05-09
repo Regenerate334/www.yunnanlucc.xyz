@@ -9,10 +9,10 @@
  */
 import express from 'express';
 import { body, validationResult } from 'express-validator';
-import { agentTools } from '../../utils/agentTools.js';
-import aiMiddleware from '../../utils/aiMiddleware.js';
+import { agentTools } from '../../utils/ai/core/agentTools.js';
+import aiMiddleware from '../../utils/ai/core/aiMiddleware.js';
 import pool from '../../config/db.js';
-import { createDeepSeekChatCompletion, isDeepSeekOfficialModel, resolveDeepSeekModel } from '../../utils/deepseekClient.js';
+import { createDeepSeekChatCompletion, isDeepSeekOfficialModel, resolveDeepSeekModel } from '../../utils/ai/core/deepseekClient.js';
 import logger from '../../config/logger.js';
 
 const router = express.Router();
@@ -1070,6 +1070,8 @@ async function handleAIStream(req, res) {
       'land_transfer_analysis': (args) => `正在分析 ${args.region || '目标区域'} 土地利用转移矩阵(LUCC)...`,
       'weather_query': (args) => `正在获取 ${args.city || '目标城市'} 实时气象观测数据...`,
       'knowledge_base_lookup': (args) => `正在检索专家知识库: ${args.skill_name || '专业技能'}...`,
+      'knowledge_graph_query': (args) => `正在查询知识图谱: ${args.mode || 'metadata'}...`,
+      'policy_reference_lookup': (args) => `正在检索政策/规划资料: ${args.region || '目标区域'}...`,
       // map_control 已下线
     };
 

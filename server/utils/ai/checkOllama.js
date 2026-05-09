@@ -27,11 +27,8 @@ export async function checkOllamaStatus() {
         });
 
         req.on('error', () => {
-            logger.warn('╔════════════════════════════════════════════════════╗');
-            logger.warn('║  警告: Ollama 服务未运行!                           ║');
-            logger.warn('║  请手动启动 Ollama (点击桌面图标) 以启用 AI 功能。  ║');
-            logger.warn('╚════════════════════════════════════════════════════╝');
-            logger.warn(`[AI] Ollama 服务连接至 ${OLLAMA_URL} 失败，AI 功能将不可用。`);
+            logger.warn('[AI] 警告: Ollama服务未运行! 请手动启动Ollama以启用AI功能。');
+            logger.warn(`[AI] Ollama服务连接至 ${OLLAMA_URL} 失败，AI 功能将不可用。`);
             resolve(false);
         });
 
