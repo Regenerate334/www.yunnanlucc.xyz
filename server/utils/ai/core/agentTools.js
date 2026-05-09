@@ -9,14 +9,14 @@
  */
 import { FunctionTool } from "llamaindex";
 import { z } from "zod";
-import clcdTool from "./tools/clcdTool.js";
-import dashboardTool from "./tools/dashboardTool.js";
-import spatialStatsTool from "./tools/spatialStatsTool.js";
-import transferTool from "./tools/transferTool.js";
-import weatherTool from "./tools/weatherTool.js";
-import knowledgeTool from "./tools/knowledgeTool.js";
-import knowledgeGraphTool from "./tools/knowledgeGraphTool.js";
-import policyReferenceTool from "./tools/policyReferenceTool.js";
+import clcdTool from "../../tools/analysis/clcdTool.js";
+import dashboardTool from "../../tools/analysis/dashboardTool.js";
+import spatialStatsTool from "../../tools/analysis/spatialStatsTool.js";
+import transferTool from "../../tools/analysis/transferTool.js";
+import weatherTool from "../../tools/analysis/weatherTool.js";
+import knowledgeTool from "../../tools/knowledge/knowledgeTool.js";
+import knowledgeGraphTool from "../../tools/knowledge/knowledgeGraphTool.js";
+import policyReferenceTool from "../../tools/knowledge/policyReferenceTool.js";
 
 const clcdFunctionTool = FunctionTool.from(
     async ({ query_type, region, level, year, year_range, land_type, top_n }) => {

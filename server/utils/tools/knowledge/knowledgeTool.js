@@ -9,8 +9,8 @@
  */
 import fs from 'fs/promises';
 import path from 'path';
-import registry from '../dataSourceRegistry.js';
-import logger from '../../config/logger.js';
+import registry from '../../dataSourceRegistry.js';
+import logger from '../../../config/logger.js';
 
 const SKILLS_DIR = path.resolve('server/utils/ai/skills');
 

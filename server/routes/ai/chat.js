@@ -9,10 +9,10 @@
  */
 import express from 'express';
 import { body, validationResult } from 'express-validator';
-import { agentTools } from '../../utils/agentTools.js';
-import aiMiddleware from '../../utils/aiMiddleware.js';
+import { agentTools } from '../../utils/ai/core/agentTools.js';
+import aiMiddleware from '../../utils/ai/core/aiMiddleware.js';
 import pool from '../../config/db.js';
-import { createDeepSeekChatCompletion, isDeepSeekOfficialModel, resolveDeepSeekModel } from '../../utils/deepseekClient.js';
+import { createDeepSeekChatCompletion, isDeepSeekOfficialModel, resolveDeepSeekModel } from '../../utils/ai/core/deepseekClient.js';
 import logger from '../../config/logger.js';
 
 const router = express.Router();

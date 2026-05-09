@@ -16,7 +16,7 @@ import pool from '../../config/db.js';
 import logger from '../../config/logger.js';
 import { authMiddleware } from '../../middleware/auth.js';
 import { Ollama } from 'ollama';
-import { generateDeepSeekText, isDeepSeekOfficialModel, resolveDeepSeekModel } from '../../utils/deepseekClient.js';
+import { generateDeepSeekText, isDeepSeekOfficialModel, resolveDeepSeekModel } from '../../utils/ai/core/deepseekClient.js';
 
 const router = express.Router();
 const ollama = new Ollama({ host: process.env.OLLAMA_URL || 'http://127.0.0.1:11434' });

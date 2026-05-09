@@ -9,10 +9,10 @@
 
 import fs from 'fs/promises';
 import path from 'path';
-import registry from '../dataSourceRegistry.js';
-import logger from '../../config/logger.js';
+import registry from '../../dataSourceRegistry.js';
+import logger from '../../../config/logger.js';
 
-const CORPUS_PATH = path.resolve('server/utils/ai/policy_corpus.json');
+const CORPUS_PATH = path.resolve('server/utils/ai/corpus/policy_corpus.json');
 
 const DEFAULT_TOP_N = 5;
 const MAX_TOP_N = 20;
@@ -236,4 +236,3 @@ const policyReferenceTool = {
 
 registry.register(policyReferenceTool);
 export default policyReferenceTool;
-

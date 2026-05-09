@@ -11,7 +11,7 @@
  *  3. 输入安全校验（注入检测 + 离题过滤）
  */
 
-import dataRouter from './dataRouter.js';
+import dataRouter from '../../dataRouter.js';
 
 // ── 领域约束 ──────────────────────────────────────────────────────────────────
 

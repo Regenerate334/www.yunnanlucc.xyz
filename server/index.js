@@ -37,13 +37,13 @@ import { authMiddleware } from './middleware/auth.js';
 import apiRoutes from './routes/index.js';
 
 // ==================== 智能数据工具注册 ====================
-import './utils/tools/clcdTool.js';       // 核心地类分析工具
-import './utils/tools/transferTool.js';   // 土地流转分析工具
-import './utils/tools/dashboardTool.js';  // 仪表盘综合指标工具
-import './utils/tools/spatialStatsTool.js'; // 空间特征统计工具
-import './utils/tools/knowledgeTool.js';  // 专家技能库工具（注册到 Registry）
-import './utils/tools/knowledgeGraphTool.js'; // 知识图谱查询工具（注册到 Registry）
-import './utils/tools/policyReferenceTool.js'; // 政策/规划文献索引工具（注册到 Registry）
+import './utils/tools/analysis/clcdTool.js';       // 核心地类分析工具
+import './utils/tools/analysis/transferTool.js';   // 土地流转分析工具
+import './utils/tools/analysis/dashboardTool.js';  // 仪表盘综合指标工具
+import './utils/tools/analysis/spatialStatsTool.js'; // 空间特征统计工具
+import './utils/tools/knowledge/knowledgeTool.js';  // 专家技能库工具（注册到 Registry）
+import './utils/tools/knowledge/knowledgeGraphTool.js'; // 知识图谱查询工具（注册到 Registry）
+import './utils/tools/knowledge/policyReferenceTool.js'; // 政策/规划文献索引工具（注册到 Registry）
 import { checkOllamaStatus } from './utils/ai/checkOllama.js';
 
 const app = express();

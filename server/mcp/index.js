@@ -16,8 +16,8 @@ import logger from '../config/logger.js';
 
 // 导入现有的业务能力
 import landUseService from '../services/landUseService.js';
-import clcdTool from '../utils/tools/clcdTool.js';
-import dashboardTool from '../utils/tools/dashboardTool.js';
+import clcdTool from '../utils/tools/analysis/clcdTool.js';
+import dashboardTool from '../utils/tools/analysis/dashboardTool.js';
 
 const KG_PATH = path.resolve('server/mcp/knowledge_graph.json');
 

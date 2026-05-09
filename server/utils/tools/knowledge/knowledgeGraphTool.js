@@ -10,8 +10,8 @@
 
 import fs from 'fs/promises';
 import path from 'path';
-import registry from '../dataSourceRegistry.js';
-import logger from '../../config/logger.js';
+import registry from '../../dataSourceRegistry.js';
+import logger from '../../../config/logger.js';
 
 const KG_PATH = path.resolve('server/mcp/knowledge_graph.json');
 
@@ -314,4 +314,3 @@ const knowledgeGraphTool = {
 
 registry.register(knowledgeGraphTool);
 export default knowledgeGraphTool;
-

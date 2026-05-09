@@ -7,9 +7,9 @@
  * 2. 若涉及异步操作，请务必处理 Promise 的 catch 块防止未捕获异常。
  * 3. 遵循现有的 ESLint 和团队代码规范，保持极简及高可读性。
  */
-import landUseService from '../../services/landUseService.js';
-import registry from '../dataSourceRegistry.js';
-import logger from '../../config/logger.js';
+import landUseService from '../../../services/landUseService.js';
+import registry from '../../dataSourceRegistry.js';
+import logger from '../../../config/logger.js';
 
 // 地类配置（中文名映射）
 const LAND_USE_CONFIG = {
