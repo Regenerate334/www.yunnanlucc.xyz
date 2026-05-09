@@ -238,24 +238,18 @@ async function loadLandUseData(region) {
   try {
     const cleanName = (n) => {
       if (!n) return '';
-      const res = n.replace(/(白|傣|景颇|傈僳|壮|苗|彝|哈尼|回|藏|拉祜|佤|纳西|普米|怒|德昂|独龙|基诺)?(族|自治州|自治县|自治区|市|州|县|区|旗|省)/g, '');
+      const res = n.replace(
+        /(白|傣|景颇|傈僳|壮|苗|彝|哈尼|回|藏|拉祜|佤|纳西|普米|怒|德昂|独龙|基诺)?(族|自治州|自治县|自治区|市|州|县|区|旗|省)/g,
+        ''
+      );
       return res || n;
     };
     const searchName = cleanName(region.name);
     let data = [];
-    
+
     if (region.level === 'province') {
-      const allPrefectureData = await clcdApi.getAllPrefectureData();
-      const yearsSet = [...new Set(allPrefectureData.map(d => d.year))];
-      data = yearsSet.map(year => {
-        const yearRecords = allPrefectureData.filter(d => d.year == year);
-        const types = ['cropland', 'forest', 'shrub', 'grassland', 'water', 'wetland', 'impervious', 'barren', 'snow_ice'];
-        const summary = { year };
-        types.forEach(type => {
-          summary[type] = yearRecords.reduce((acc, curr) => acc + (Number(curr[type]) || 0), 0);
-        });
-        return summary;
-      });
+      // 统一口径：省级结构分析直接使用 clcd_province（与“演化监测”看板保持一致）
+      data = await clcdApi.getProvinceTrend();
     } else if (region.level === 'prefecture') {
       // 增强鲁棒性：尝试全名匹配，不成功则尝试简称
       data = await clcdApi.getPrefectureDataByName(region.name);
@@ -268,9 +262,11 @@ async function loadLandUseData(region) {
         data = await clcdApi.getCountyDataByName(searchName);
       }
     }
-    
+
     landUseData = Array.isArray(data) ? data : [];
-    console.log(`[RegionalStructureControl] Loaded ${landUseData.length} records for ${region.name}`);
+    console.log(
+      `[RegionalStructureControl] Loaded ${landUseData.length} records for ${region.name}`
+    );
   } catch (e) {
     console.error('Error loading land use data:', e);
     landUseData = [];
