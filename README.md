@@ -103,45 +103,71 @@ graph TB
 ## 📁 项目结构详解
 
 ```
-├── database/                        # 核心 SQL、审计日志表与初始安装定义
-├── docs/                            # 项目文档与规范
-│   ├── algorithms/                  # 宏观生态评价与土地利用算法说明
-│   ├── api/                         # OpenAPI 3.0 接口规范
-│   ├── architecture/                # 系统架构图与逻辑拓扑
-│   └── assets/                      # 背景图、Banner 等文档静态资源
-├── geoserver_styles/                # GeoServer SLD 样式文件库
-├── ops/                             # 自动化运维、数据治理与 AI 知识库脚本
-│   ├── ai/                          # 知识图谱构建、工具定义、模型同步
-│   ├── data/                        # 数据清洗、入库、比对与同步脚本
-│   ├── geo/                         # GeoServer 样式同步、比例层预计算
-│   ├── sys/                         # Nginx、PM2、SSL 与初始环境部署
-│   └── archive/                     # 历史备份与废弃脚本存档
-├── public/                          # 静态资源 (图标、Cesium 图块、JSON 数据)
-├── server/                          # 后端 Express 核心服务
-│   ├── config/                      # 数据库连接池 (pg)、Winston 日志器配置
-│   ├── controllers/                 # 业务逻辑控制器 (可选，用于解耦路由)
-│   ├── logs/                        # 后端运行日志堆栈
-│   ├── mcp/                         # 模型上下文协议 (MCP) 核心适配器
-│   ├── middleware/                  # 认证 (JWT)、RBAC、响应处理中间件
-│   ├── routes/                      # 业务路由挂载 (Admin, AI, V1, Auth)
-│   ├── services/                    # 核心领域逻辑 (LandUse Service 等)
-│   └── utils/                       # 分析工具类 (算法、系统监控、密码混淆)
-├── src/                             # 前端 Vue 3 + Cesium 应用模块
-│   ├── admin/                       # 管理员独立治理组件与逻辑
-│   ├── api/                         # 基于 Axios 的前端接口封装
-│   ├── assets/                      # 前端样式 (SCSS)、图标与图片
-│   ├── components/                  # 通用 UI (charts, maps) 与业务组件
-│   ├── composables/                 # 组合式函数 (ECharts Resize, SSE 等)
-│   ├── config/                      # 前端全局配置 (Cesium Token, API Base)
-│   ├── constants/                   # 语义化常量与字典表定义
-│   ├── data/                        # 本地 Mock 数据或静态 JSON 引用
-│   ├── router/                      # 页面路由配置与导航守卫
-│   ├── stores/                      # Pinia 全局状态 (User, Map, AI)
-│   ├── types/                       # TypeScript 类型声明 (d.ts)
-│   ├── utils/                       # 前端工具类 (RSA 加密、几何运算)
-│   └── views/                       # 容器级页面组件
-├── package.json                     # 项目元数据、依赖与运维指令
-└── vite.config.js                   # 前端编译环境与插件链配置
+my_webgis_project/
+├── 📄 .env                    # [核心配置] 环境变量(API密钥、数据库URL、高德Key等)
+├── 📄 .env.example            # [配置模板] 环境变量样例
+├── 📄 ecosystem.config.cjs    # [运维] PM2进程管理配置，负责后端服务的守护与自启
+├── 📄 index.html              # [入口] SPA应用唯一的HTML页面
+├── 📄 package.json            # [依赖] 记录项目所有第三方库版本及运行脚本
+├── 📄 vite.config.js          # [构建] Vite配置文件(代理设置、插件配置、打包逻辑)
+├── 📄 tailwind.config.js      # [样式] Tailwind CSS 主题与样式范围定义
+├── 📄 tsconfig.json           # [标准] TypeScript 编译规范与路径映射定义
+│
+├── 📂 server/                 # ================== [后端核心逻辑] ==================
+│   ├── 📄 index.js            # [主入口] Express/Node.js 服务启动文件
+│   ├── 📂 config/             # [基础配置]
+│   │   ├── 📄 database.js     # 数据库连接池配置
+│   │   ├── 📄 jwt.js          # JWT 登录鉴权加密算法配置
+│   │   ├── 📄 logger.js       # Winston 日志分级与保存策略
+│   │   └── 📂 keys/           # RSA 公私钥存储(用于安全登录)
+│   ├── 📂 routes/             # [路由控制]
+│   │   ├── 📄 auth.js         # 登录、注册、修改密码接口
+│   │   ├── 📂 ai/             # 智能 Agent 聊天与会话接口
+│   │   ├── 📂 analysis/       # 土地利用、空间分析算法接口
+│   │   └── 📂 clcd/           # 中国土地利用数据查询接口
+│   ├── 📂 controllers/        # [业务控制器] 处理具体路由逻辑
+│   ├── 📂 services/           # [核心服务] 纯业务算法逻辑层
+│   ├── 📂 middleware/         # [中间件] 统一日志、报错拦截、登录验证
+│   ├── 📂 knowledge/          # [知识库] 
+│   │   ├── 📄 policy_corpus.json # 土地政策文本库
+│   │   └── 📄 knowledge_graph.json # 土地要素关联知识图谱
+│   ├── 📂 utils/              # [后端工具]
+│   │   ├── 📂 ai/             # Agent 核心逻辑：调度器、大模型客户端
+│   │   └── 📂 tools/          # [Agent 技能集] 定义了AI能调用的各种GIS分析工具
+│   └── 📂 logs/               # [运行日志] 存储系统报错和访问流水
+│
+├── 📂 src/                    # ================== [前端核心源码] ==================
+│   ├── 📄 main.js             # [入口] 初始化 Vue 应用、加载全局插件
+│   ├── 📄 App.vue             # [根组件] 页面顶层框架设计
+│   ├── 📂 api/                # [接口层] 使用 Axios 封装的所有后端请求函数
+│   ├── 📂 assets/             # [静态资源]
+│   │   ├── 📂 icons/          # 土地分类、功能工具的矢量/像素图标
+│   │   └── 📂 images/         # 背景图、3D纹理、登录页大图
+│   ├── 📂 components/         # [组件库]
+│   │   ├── 📂 buttons/        # 测量、重置、分析等功能性交互按钮
+│   │   ├── 📂 charts/         # 封装好的 ECharts 报表组件(K线图、玫瑰图等)
+│   │   ├── 📂 dashboards/     # 工作台左右侧浮动的数据面板
+│   │   └── 📂 ui/             # 弹窗、加载动画、通用选择器
+│   ├── 📂 stores/             # [状态管理] Pinia 存储，记录全局地图状态、用户信息
+│   ├── 📂 views/              # [页面级组件]
+│   │   ├── 📄 Workbench.vue   # 地图主工作台页面(最核心)
+│   │   ├── 📄 Login.vue       # 登录鉴权页面
+│   │   └── 📄 Portal.vue      # 系统入口门户页面
+│   ├── 📂 utils/              # [前端工具]
+│   │   ├── 📄 cesiumUtils.js  # Cesium 地图底层能力封装(飞行、图层控制)
+│   │   └── 📄 aiService.js    # 处理流式 AI 对话的数据解析
+│   └── 📂 types/              # [定义] TypeScript 的接口与类型声明
+│
+├── 📂 ops/                    # ================== [系统运维目录] ==================
+│   ├── 📄 deploy_assets_to_production.bat # [部署] 资源同步脚本
+│   └── 📂 data/               # 生产环境备份及同步数据
+│
+├── 📂 geoserver/              # ================== [地图服务配置] ==================
+│   └── 📂 geoserver_styles/   # 存储所有空间图层的 SLD 配图样式文件
+│
+├── 📂 database/               # [数据库] 存储初始化 SQL 和备份文件
+└── 📂 tmp/                    # [临时目录] 存储数据预处理、面积校验的草稿脚本
+
 ```
 
 ---
