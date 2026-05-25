@@ -527,8 +527,7 @@ npm run stop:all            # 停止全部进程
 
 ## 附录
 
-- [API 规范 (OpenAPI) - 交互式文档](./docs/api-docs.html)
-- [API 规范 (OpenAPI) - YAML 源文件](./docs/api/openapi.yaml)
+- [API 规范 (OpenAPI) - 交互式文档](https://regenerate334.github.io/www.yunnanlucc.xyz/)
 - [评价算法范式](./docs/algorithms/LUCC_Algorithms_2021_2026.md)
 - [预警方法论](./docs/algorithms/LUCC_warning_method_paper_ready_2026-04-21.md)
 - [系统架构拓扑](./docs/architecture/architecture_diagram.html)
