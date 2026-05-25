@@ -5,39 +5,39 @@
 ![Vue.js](https://img.shields.io/badge/Vue.js-Latest-4FC08D?style=flat-square&logo=vuedotjs)
 ![Vite](https://img.shields.io/badge/Vite-Latest-646CFF?style=flat-square&logo=vite)
 
-一个基于 Vue 3 + Cesium 的现代化 WebGIS 平台，专注于国土空间规划监测预警和空间分析功能，集成 AI 智能分析助手。
+论文《基于WebGIS和GeoAI Agent的土地利用变化智能监测评估系统》的配套实现代码。系统基于 Vue 3 + Cesium 构建，接入 CLCD 数据集（30m，1985–2023），实现省-市-县三级土地利用数据的查询、可视化、预警评估与 AI 辅助分析。
 
 ![Platform Screenshot](./docs/assets/readme_banner.png)
 
-## 📋 项目概述
+## 项目概述
 
 **项目类型**: 全栈 WebGIS 应用  
-**核心功能**: 基于土地覆盖数据集 (CLCD) 的国土空间格局监测、可视化与智能分析  
+**核心功能**: 基于中国年度土地覆盖数据集 (CLCD) 的国土空间格局监测、可视化与辅助分析  
 **数据范围**: 云南省 1985-2023 年土地利用历史数据  
-**AI 能力**: **全面升级至 AI 2.0 (ReAct Agent)**，集成本地知识图谱 (KG) 与多模型推理，支持自然语言数据查询与证据驱动的深度研判。
+**AI 能力**: 基于 ReAct Agent 架构，集成本地知识图谱与多模型推理，支持自然语言数据查询与分析报告生成。
 
 ---
 
-## 项目特色
+## 主要功能
 
-- **理论导向**：基于指标体系与方法论的国土空间规划监测
-- **数据驱动**：集成多源地理空间数据，支持实时监测预警
-- **AI 赋能**：内置智能分析助手，支持自然语言交互与数据解读
-- **专业级可视化**：引入金融级 K 线分析与 3D 渲染，深度揭示地类波动规律
-- **安全性与治理**：内置超级管理员后台，支持角色审计、实时风险发现及一键权限修复。
-- **知识增强**：引入专家知识图谱与证据链解析，告别 AI 幻觉，确保分析结果的权威性。
-- **交互体验**：现代化 UI 设计，流畅的用户交互
+- 基于指标体系的国土空间规划监测与预警评估
+- 多源地理空间数据集成，支持省-市-县三级行政单元逐级查询
+- 内置 AI 分析助手，支持自然语言交互的数据查询与趋势解读
+- K 线波动分析与桑基转移图，用于地类面积异常监测和流转分析
+- 用户角色管理与操作审计
+- 领域知识图谱辅助事实校验，约束 LLM 生成内容的准确性
+- 分析结论可导出为 PDF 报告
 
 ---
 
-## 🏗️ 技术架构
+## 技术架构
 
 ### 整体架构
 ```mermaid
 graph TB
     A[前端 Vue 3 + Vite] --> B[Express 后端 API]
     B --> C[PostgreSQL 数据库]
-    A --> D[Cesium 3D 地地球地图引擎]
+    A --> D[Cesium 3D 地球地图引擎]
     A --> E[ECharts 图表库]
     B --> F[GeoServer WMS 服务]
     B --> G[Ollama AI 推理引擎]
@@ -86,21 +86,21 @@ graph TB
 | **MCP SDK** | 1.29.0 | 模型上下文协议，增强 AI 环境感知 |
 | **CORS** | 2.8.5 | 跨域资源共享 |
 | **dotenv** | 16.4.5 | 环境变量管理 |
-| **PowerShell** | 集成 | 深度系统资源监控与运维 |
+| **PowerShell** | 集成 | 系统资源监控 |
 | **bcryptjs** | 3.0.3 | 用户凭证安全存储 |
-| **Puppeteer** | 24.38.0 | 高度自动化报告生成与 PDF 导出 |
+| **Puppeteer** | 24.38.0 | 报告生成与 PDF 导出 |
 
 #### AI 模型支持
 | 模型 | 参数量 | 特点 |
 |------|--------|------|
-| **deepseek-v4-flash** | - | DeepSeek 官方云端模型 (系统默认/推荐) |
-| **deepseek-r1:8b** | 8B | 本地标准模式，兼顾思考与速度 |
-| **gemma4:e4b** | - | 极速量化模式，即时响应 |
-| **gpt-oss:20b** | 20B | 旧版兼容模型，本地高性能分析 |
+| **deepseek-v4-flash** | - | DeepSeek 官方云端模型 (系统默认) |
+| **deepseek-r1:8b** | 8B | 本地部署，兼顾推理质量与速度 |
+| **gemma4:e4b** | - | 本地部署，低延迟响应 |
+| **gpt-oss:20b** | 20B | 旧版兼容模型 |
 
 ---
 
-## 📁 项目结构详解
+## 项目结构详解
 
 ```
 my_webgis_project/
@@ -172,38 +172,38 @@ my_webgis_project/
 
 ---
 
-## AI 智能分析功能
+## AI 分析功能
 
-### 功能亮点
+### 功能说明
 
-1. **AI 2.0 (ReAct Agent)**
-   - 基于 LlamaIndex 开发，自动编排工具流 (Tool Use)
-   - 支持对 WebGIS 地图的实时指令控制与数据透传
-   - 彻底告别幻觉：集成行业专家知识图谱进行事实校验
+1. **ReAct Agent 架构**
+   - 基于 LlamaIndex 实现，根据用户问题自动选择和调用工具函数（Tool Use）
+   - 支持向前端地图下发图层控制指令
+   - 通过知识图谱进行事实校验，减少模型幻觉
 
-2. **多模型支持**
-   - 可切换多种规模的语言模型 (1.5B ~ 20B)
-   - 根据任务复杂度自动/手动选择模型
-   - 支持本地 Ollama 推理与 MCP 环境感知
+2. **多模型切换**
+   - 支持 1.5B 至 20B 不同规模的语言模型
+   - 可根据任务需求手动或自动切换模型
+   - 支持本地 Ollama 推理与 MCP 协议环境感知
 
-3. **思考过程可视化 (SSE)**
-   - SSE 实时流式响应，展示包含 [SEARCH]、[ANALYSIS]、[REASONING] 标签的逻辑全图
-   - 支持中断生成，逻辑推理实时可查
+3. **推理过程可视化**
+   - 基于 SSE 流式响应，前端实时展示 [SEARCH]、[ANALYSIS]、[REASONING] 等推理阶段标签
+   - 支持中断生成
 
 4. **上下文感知**
-   - 自动识别当前看板行政级别与数据内容
-   - 支持 1985-2023 年时空趋势深度解析
-   - 数据单位自动对齐 (km²)，强制两位小数规范
+   - 自动获取当前看板所选行政区和时间范围
+   - 支持 1985-2023 年时空趋势分析
+   - 数据单位统一为 km²，保留两位小数
 
-5. **全生命周期会话管理**
+5. **会话管理**
    - 多会话历史持久化存储
-   - 自动摘要生成会话标题
-   - 完整的 RAG+ 引用来源标记
- 
-6. **零延迟报告预览与导出 (v2.0 新特性)**
-   - **纯前端直出**: 实现分析完即生成的“零等待”体验。
-   - **A4 工业级排版**: 内置 PDF 打印优化，支持自动分页、衬线体、渐变页眉。
-   - **智能命名**: 自动解析对话摘要为文件名。
+   - 自动生成会话摘要作为标题
+   - 支持引用来源标注
+
+6. **报告导出**
+   - 前端即时生成分析报告预览
+   - 内置 A4 排版和分页支持，可导出为 PDF
+   - 自动根据对话内容生成文件名
  
 ### AI 分析流程
 ```mermaid
@@ -262,24 +262,24 @@ sequenceDiagram
 
 ---
 
-## 🔌 后端 API 与管理治理
+## 后端 API 与管理功能
 
-### 治理后台 (`/api/admin`)
-- **用户治理**: 完整的用户 CRUD 与 RSA 协议身份验证。
-- **配置中心**: 热修改 `.env` 配置文件，管理员主密钥保护。
-- **安全审计**: 自动探测数据库角色风险，支持一键权限修复。
-- **监控看板**: 实时抓取 CPU/RAM/IO/TPS 指标。
+### 管理后台 (`/api/admin`)
+- **用户管理**: 用户 CRUD 与 RSA 协议身份验证。
+- **配置管理**: 热修改 `.env` 配置文件，需管理员主密钥授权。
+- **安全审计**: 数据库角色风险检测与权限修复。
+- **系统监控**: CPU/RAM/IO/TPS 指标实时采集。
 
-#### 系统管理与治理 API (`/api/admin`)
+#### 系统管理 API (`/api/admin`)
 - `GET  /config`: 获取系统 .env 环境变量 (敏感信息自动屏蔽)
 - `POST /config`: 热更新系统配置 (需 ADMINISTRATION_KEY 授权)
-- `GET  /system/status`: 实时系统看板 (CPU/Disk/PowerShell 原生负载)
-- `GET  /services/health`: 服务健康矩阵 (带内存占用统计)
-- `GET  /db/performance`: 数据库实时 TPS 与增量吞吐监控
+- `GET  /system/status`: 系统状态 (CPU/Disk/PowerShell 原生负载)
+- `GET  /services/health`: 服务健康检查 (含内存占用统计)
+- `GET  /db/performance`: 数据库 TPS 与吞吐监控
 - `GET  /db/tables`: 核心表行数与占用空间统计
-- `GET  /security/db-roles`: PostgreSQL 与 GeoServer 角色安全审计
+- `GET  /security/db-roles`: PostgreSQL 与 GeoServer 角色审计
 - `POST /security/remediate`: 权限修复 (加锁/解锁/回收特权)
-- `POST /security/switch-runtime-mode`: 开发/生产运行模式一键热切换
+- `POST /security/switch-runtime-mode`: 开发/生产运行模式切换
 
 #### AI 分析接口 (`/api/ai`)
 - `POST /chat/analyze-stream`: AI 流式分析 (ReAct Agent SSE)
@@ -292,7 +292,7 @@ sequenceDiagram
 
 ---
 
-## 💾 数据库结构
+## 数据库结构
 
 ### 核心数据表
 
@@ -315,36 +315,35 @@ sequenceDiagram
 
 ---
 
-## 🎨 前端架构与可视化
+## 前端可视化看板
 
-### 专业级分析看板
-| 看板名称 | 核心功能 |
+| 看板名称 | 功能 |
 |------|------|
-| **K 线分析看板** | 金融级地类面积波动、EMA 均线趋势监测 |
-| **盈亏分析 Dashboard** | 地类转入/转出零和博弈可视化 |
-| **土地转移桑基图** | 流量拓扑揭示地类动态转换流向 |
-| **预警指标大屏** | HQ、CMPI、ERes、PLEC 四大科学指标实时研判 |
+| **K 线分析看板** | 地类面积波动与 EMA 均线趋势 |
+| **盈亏分析 Dashboard** | 地类转入/转出对比 |
+| **土地转移桑基图** | 地类动态转换流向 |
+| **预警指标大屏** | HQ、CMPI、ERes、PLEC 四项指标计算与预警 |
 
 ---
 
-## 🚀 运行与部署
+## 运行与部署
 
-### 基础环境
+### 环境要求
 - Node.js >= 18.0.0
 - PostgreSQL >= 14.0 (支持空间扩展)
-- **Ollama**: 用于 AI 2.0 推理
+- **Ollama**: 用于 AI 推理（可选）
 
-### 日志等级（生产可控）
+### 日志配置
 - `LOG_LEVEL`：控制台日志等级（默认 `info`）
 - `LOG_FILE_LEVEL`：写入 `server/logs` 的文件日志等级（默认 `info`）
 
-### 核心指令
+### 启动命令
 ```bash
 # 1. 首次部署
 npm run init:db        # 初始化数据库架构与审计日志
 npm run sync:sld       # 同步 GeoServer 的 SLD 样式
 
-# 2. 空间比例层预计算 (重要)
+# 2. 空间比率图层预计算
 npm run sync:rate-layers # 计算年度垦殖率/转换率图层
 
 # 3. 运行
@@ -353,7 +352,13 @@ npm run dev            # 同时启动前后端
 
 ---
 
-## 📚 附录
+## 数据来源
+
+- **CLCD 数据集**: Yang, J., & Huang, X. (2021). The 30 m annual land cover dataset and its dynamics in China from 1990 to 2019. *Earth System Science Data*, 13(8), 3907–3925. https://doi.org/10.5194/essd-13-3907-2021
+- **行政区划**: 国家基础地理信息中心
+- **底图服务**: 天地图 / 高德地图
+
+## 附录
 
 - [API 规范 (Swagger)](file:///c:/projects/webgis/www.yunnanlucc.xyz/docs/api/openapi.yaml)
 - [宏观评价算法范式 (2021-2026)](file:///c:/projects/webgis/www.yunnanlucc.xyz/docs/algorithms/LUCC_Algorithms_2021_2026.md)
@@ -361,5 +366,4 @@ npm run dev            # 同时启动前后端
 
 ---
 
-**数据驱动决策，AI 守护未来**
-**项目状态**: 生产可用 v2.5
+项目状态: 生产可用 v2.5
