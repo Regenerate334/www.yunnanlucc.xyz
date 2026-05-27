@@ -115,6 +115,8 @@ function filterByRegion(entry, region) {
     if (!r) return true;
     const er = normalizeStr(entry.region);
     if (!er) return false;
+    // 国家级政策对所有区域查询均可见
+    if (er === '全国' || normalizeLevel(entry.level) === 'national') return true;
     return er === r || er.includes(r) || r.includes(er);
 }
 
