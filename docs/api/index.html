@@ -1,0 +1,68 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>云南省国土空间规划监测预警平台 API 文档</title>
+    <script src="https://cdn.jsdelivr.net/npm/swagger-ui-dist@4/swagger-ui-bundle.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/swagger-ui-dist@4/swagger-ui-standalone-preset.js"></script>
+    <link rel="stylesheet" type="text/css" href="https://cdn.jsdelivr.net/npm/swagger-ui-dist@4/swagger-ui.css">
+    <style>
+        body {
+            margin: 0;
+            padding: 0;
+        }
+        .topbar {
+            background-color: #fafafa;
+            padding: 10px 0;
+            border-bottom: 1px solid #e0e0e0;
+        }
+        .topbar-content {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 0 20px;
+        }
+        .topbar h1 {
+            margin: 5px 0;
+            font-size: 20px;
+            color: #333;
+        }
+        .topbar p {
+            margin: 5px 0;
+            color: #666;
+            font-size: 14px;
+        }
+        .swagger-ui .topbar {
+            display: none;
+        }
+    </style>
+</head>
+<body>
+    <div class="topbar">
+        <div class="topbar-content">
+            <h1>🌍 云南省国土空间规划监测预警平台 API</h1>
+            <p>RESTful API 接口规范 | 版本 1.0.0 | <a href="https://github.com/Regenerate334/www.yunnanlucc.xyz" target="_blank">GitHub 仓库</a></p>
+        </div>
+    </div>
+    <div id="swagger-ui"></div>
+
+    <script>
+        const ui = SwaggerUIBundle({
+            url: "openapi.yaml",
+            dom_id: '#swagger-ui',
+            presets: [
+                SwaggerUIBundle.presets.apis,
+                SwaggerUIStandalonePreset
+            ],
+            layout: "StandaloneLayout",
+            onComplete: function() {
+                console.log("Swagger UI 加载完成");
+            }
+        });
+
+        window.onload = function() {
+            // 确保 Swagger UI 正确初始化
+        };
+    </script>
+</body>
+</html>

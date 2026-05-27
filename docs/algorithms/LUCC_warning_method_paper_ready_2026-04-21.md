@@ -1,9 +1,8 @@
-# LUCC 预警指标体系（论文写作版，可追溯引用）
+# LUCC 预警指标体系
 
 - 版本：2026-04-22
 - 对应实现：`server/services/landUseService.js`
 - 适用接口：`/api/clcd/monitoring/:level/:name/:year?policy=...`
-- 编码：UTF-8
 
 ---
 
@@ -173,7 +172,7 @@ $$
 
 ---
 
-## 5. 符号表（论文可直接引用）
+## 5. 符号表
 
 | 符号 | 含义 | 单位 |
 | :--- | :--- | :--- |
@@ -208,7 +207,7 @@ flowchart TD
 
 ---
 
-## 7. 参考文献（含 DOI/官方链接）
+## 7. 参考文献
 
 [1] 生态环境部. 生态环境状况评价技术规范: HJ 192-2015.  
 官方页面: https://www.mee.gov.cn/ywgz/fgbz/bz/bzwb/stzl/201503/t20150324_298011.shtml  

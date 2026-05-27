@@ -5,7 +5,7 @@
 ![Vue.js](https://img.shields.io/badge/Vue.js-Latest-4FC08D?style=flat-square&logo=vuedotjs)
 ![Vite](https://img.shields.io/badge/Vite-Latest-646CFF?style=flat-square&logo=vite)
 
-论文《基于WebGIS和GeoAI Agent的土地利用变化智能监测评估系统》的配套实现代码。系统基于 Vue 3 + Cesium 构建，接入 CLCD 数据集（30m，1985–2023），实现省-市-县三级土地利用数据的查询、可视化、预警评估与 AI 辅助分析。
+论文《基于WebGIS和GeoAI Agent的土地利用变化智能监测评估系统》的配套实现代码。系统基于 Vue 3 + Cesium 构建，接入 CLCD 数据集（30m，1985–2023），实现[...]
 
 ![Platform Screenshot](./docs/assets/readme_banner.png)
 
@@ -15,7 +15,7 @@
 **线上地址**: [www.yunnanlucc.xyz](https://www.yunnanlucc.xyz)  
 **核心功能**: 基于中国年度土地覆盖数据集 (CLCD) 的国土空间格局监测、可视化与辅助分析  
 **数据范围**: 云南省 1985-2023 年土地利用历史数据  
-**AI 能力**: 基于 ReAct Agent 架构（LlamaIndex），集成领域知识图谱（含本体、语料、技能文档）与多模型推理，支持自然语言数据查询、趋势解读与政策关联分析。
+**AI 能力**: 基于 ReAct Agent 架构（LlamaIndex），集成领域知识图谱（含本体、语料、技能文档）与多模型推理，支持自然语言数据查询、趋势解读与政策[...]
 
 ---
 
@@ -87,7 +87,7 @@ graph TB
 | 技术 | 版本 | 用途 |
 |------|------|------|
 | **Node.js + Express** | 4.19.2 | RESTful API 服务器 |
-| **PostgreSQL (pg)** | 8.11.5 | 关系型数据库驱动 |
+| **PostgreSQL (pg)** | 8.11.5 | 关系型数据���驱动 |
 | **Ollama SDK** | 0.6.3 | 本地 AI 模型推理 |
 | **LlamaIndex** | 0.12.1 | ReAct Agent 框架与工具编排 |
 | **MCP SDK** | 1.29.0 | 模型上下文协议，知识图谱语义检索 |
@@ -520,14 +520,14 @@ npm run stop:all            # 停止全部进程
 
 ## 数据来源
 
-- **CLCD 数据集**: Yang, J., & Huang, X. (2021). The 30 m annual land cover dataset and its dynamics in China from 1990 to 2019. *Earth System Science Data*, 13(8), 3907–3925. https://doi.org/10.5194/essd-13-3907-2021
+- **CLCD 数据集**: Yang, J., & Huang, X. (2021). The 30 m annual land cover dataset and its dynamics in China from 1990 to 2019. *Earth System Science Data*, 13(8), 3907–3925. https://doi.or[...]
 - **行政区划**: 国家基础地理信息中心
 - **底图服务**: 天地图 / 高德地图
 - **气象数据**: 高德天气 API
 
 ## 附录
 
-- [API 规范 (OpenAPI)](./docs/api/openapi.yaml)
+- [API 规范 (OpenAPI) - 交互式文档](https://regenerate334.github.io/www.yunnanlucc.xyz/)
 - [评价算法范式](./docs/algorithms/LUCC_Algorithms_2021_2026.md)
 - [预警方法论](./docs/algorithms/LUCC_warning_method_paper_ready_2026-04-21.md)
 - [系统架构拓扑](./docs/architecture/architecture_diagram.html)
