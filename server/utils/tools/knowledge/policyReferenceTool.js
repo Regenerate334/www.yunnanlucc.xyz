@@ -115,6 +115,8 @@ function filterByRegion(entry, region) {
     if (!r) return true;
     const er = normalizeStr(entry.region);
     if (!er) return false;
+    // 国家级政策对所有区域查询均可见
+    if (er === '全国' || normalizeLevel(entry.level) === 'national') return true;
     return er === r || er.includes(r) || r.includes(er);
 }
 
@@ -174,8 +176,7 @@ const policyReferenceTool = {
 
             const filtered = entries
                 .filter(e => filterByRegion(e, region))
-                .filter(e => filterByLevel(e, level))
-                .filter(e => filterByYear(e, { year, yearRange: year_range }));
+                .filter(e => filterByLevel(e, level));
 
             const scored = filtered
                 .map(e => ({ e, s: scoreEntry(e, { region, level, keywords, year, yearRange: year_range }) }))

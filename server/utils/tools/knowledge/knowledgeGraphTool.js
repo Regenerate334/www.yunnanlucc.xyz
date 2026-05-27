@@ -64,17 +64,17 @@ function filterByRelation(link, relation) {
 }
 
 function searchNodes(nodes, term) {
-    const t = normalizeStr(term);
-    if (!t) return [];
+    const terms = normalizeStr(term).split(/[,/|]+/).map(t => t.trim()).filter(Boolean);
+    if (!terms.length) return [];
 
     const scored = nodes.map(n => {
         const label = normalizeStr(n.label);
         const aliases = Array.isArray(n.alias) ? n.alias : [];
-        const hits = [
-            includesLoose(label, t),
-            aliases.some(a => includesLoose(a, t))
-        ];
-        const score = (hits[0] ? 2 : 0) + (hits[1] ? 1 : 0);
+        let score = 0;
+        terms.forEach(t => {
+            if (includesLoose(label, t)) score += 2;
+            if (aliases.some(a => includesLoose(a, t))) score += 1;
+        });
         return { n, score };
     }).filter(x => x.score > 0);
 
@@ -123,16 +123,15 @@ function traverseNode({ node_id, relation }, { links, nodeIndex }) {
 }
 
 function resolveTerm({ term, relation }, { nodes, links, nodeIndex }) {
-    const t = normalizeStr(term);
-    if (!t) return { error: 'term 不能为空' };
+    const terms = normalizeStr(term).split(/[,/|]+/).map(t => t.trim()).filter(Boolean);
+    if (!terms.length) return { error: 'term 不能为空' };
 
     // 找到第一个较强匹配（label 或 alias）
     const targetNode = nodes.find(n =>
-        includesLoose(n.label, t) ||
-        (Array.isArray(n.alias) && n.alias.some(a => includesLoose(a, t)))
+        terms.some(t => includesLoose(n.label, t) || (Array.isArray(n.alias) && n.alias.some(a => includesLoose(a, t))))
     );
     if (!targetNode) {
-        return { found: false, term: t, hint: '可先用 mode=search 扩大匹配范围。' };
+        return { found: false, term: terms.join(' / '), hint: '可先用 mode=search 扩大匹配范围。' };
     }
 
     const out = links.filter(l =>

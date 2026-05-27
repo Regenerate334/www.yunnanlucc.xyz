@@ -18,7 +18,8 @@ const DEFAULT_DEEPSEEK_REQUEST_TIMEOUT_MS = 115000;
 const LEGACY_CLOUD_MODELS = new Set([
   'deepseek-v3.1:671b-cloud',
   'deepseek-v3.1-671b-cloud',
-  'deepseek-v3.1 671b'
+  'deepseek-v3.1 671b',
+  'deepseek-v4-flash'
 ]);
 
 const normalizeModelName = (model = '') => String(model).trim().toLowerCase();
