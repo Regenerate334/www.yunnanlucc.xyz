@@ -11,14 +11,15 @@ import { ToolCallLLM } from '@llamaindex/core/llms';
 import { extractText } from '@llamaindex/core/utils';
 
 const DEFAULT_DEEPSEEK_BASE_URL = 'https://api.deepseek.com';
-const DEFAULT_DEEPSEEK_MODEL = 'deepseek-chat';
+const DEFAULT_DEEPSEEK_MODEL = 'deepseek-v4-flash';
 // DeepSeek 官方接口在高峰期可能出现排队/超时；给一个可配置的客户端超时，
 // 以便更快触发重试/降级，避免长时间挂起。
 const DEFAULT_DEEPSEEK_REQUEST_TIMEOUT_MS = 115000;
 const LEGACY_CLOUD_MODELS = new Set([
   'deepseek-v3.1:671b-cloud',
   'deepseek-v3.1-671b-cloud',
-  'deepseek-v3.1 671b'
+  'deepseek-v3.1 671b',
+  'deepseek-v4-flash'
 ]);
 
 const normalizeModelName = (model = '') => String(model).trim().toLowerCase();

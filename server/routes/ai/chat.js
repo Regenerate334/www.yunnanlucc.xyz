@@ -17,8 +17,25 @@ import logger from '../../config/logger.js';
 
 const router = express.Router();
 
+const toolFileMap = {
+  'clcd_analysis': 'clcdTool.js',
+  'dashboard_analysis': 'dashboardTool.js',
+  'spatial_stats_analysis': 'spatialStatsTool.js',
+  'land_transfer_analysis': 'transferTool.js',
+  'weather_query': 'weatherTool.js',
+  'knowledge_base_lookup': 'knowledgeTool.js',
+  'knowledge_graph_query': 'knowledgeGraphTool.js',
+  'policy_reference_lookup': 'policyReferenceTool.js'
+};
+
 const getDefaultModel = () => process.env.CHAT_MODEL || process.env.OLLAMA_MODEL || 'deepseek-v4-flash';
 const getFallbackModelCandidates = (primaryModel) => {
+  // 如果用户选择的是 DeepSeek 官方 API 模型，不允许降级到本地 Ollama 模型。
+  // 只有当用户手动选择本地模型时，才在本地模型之间做降级。
+  if (isDeepSeekOfficialModel(primaryModel)) {
+    return [primaryModel];
+  }
+
   const raw = process.env.OLLAMA_FALLBACK_MODELS || process.env.OLLAMA_FALLBACK_MODEL || '';
   const fallbacks = String(raw)
     .split(',')
@@ -753,7 +770,7 @@ async function runDeepSeekOfficialToolLoop({
   const reasoning_effort = thinkingEnabled ? 'high' : undefined;
   // Allow longer answers by default (especially for province-wide or multi-year analysis).
   // Users explicitly asked to relax length limits so responses don't get truncated mid-way.
-  const stepMaxTokens = Number(process.env.DEEPSEEK_STEP_MAX_TOKENS ?? process.env.DEEPSEEK_PLANNING_MAX_TOKENS ?? 4096);
+  const stepMaxTokens = Number(process.env.DEEPSEEK_STEP_MAX_TOKENS ?? process.env.DEEPSEEK_PLANNING_MAX_TOKENS ?? 8192);
   const deepSeekUserId = (sessionId && userId) ? `u${userId}-s${sessionId}` : (sessionId ? `s${sessionId}` : undefined);
 
   for (let round = 0; round < maxToolRounds; round++) {
@@ -920,7 +937,7 @@ async function runDeepSeekOfficialToolLoop({
     done: false
   });
 
-  const finalMaxTokens = Number(process.env.DEEPSEEK_MAX_TOKENS ?? 8192);
+  const finalMaxTokens = Number(process.env.DEEPSEEK_MAX_TOKENS ?? 16384);
   const finalResponse = await createDeepSeekChatCompletion({
     model: apiModel,
     messages,
