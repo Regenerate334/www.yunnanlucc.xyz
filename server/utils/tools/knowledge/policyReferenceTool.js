@@ -176,8 +176,7 @@ const policyReferenceTool = {
 
             const filtered = entries
                 .filter(e => filterByRegion(e, region))
-                .filter(e => filterByLevel(e, level))
-                .filter(e => filterByYear(e, { year, yearRange: year_range }));
+                .filter(e => filterByLevel(e, level));
 
             const scored = filtered
                 .map(e => ({ e, s: scoreEntry(e, { region, level, keywords, year, yearRange: year_range }) }))

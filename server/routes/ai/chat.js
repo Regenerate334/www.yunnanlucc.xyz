@@ -505,6 +505,7 @@ async function runOllamaStructuredToolLoop({
   chatHistoryBase,
   lastUserMsg,
   toolTitleMap,
+  toolArchitectureEndMap,
   llmHost,
   thinkingEnabled = true
 }) {
@@ -606,7 +607,7 @@ async function runOllamaStructuredToolLoop({
     const statusText = toolTitleMap[toolName] ? toolTitleMap[toolName](args) : `正在运行业务组件: ${toolName}...`;
     writeWorkflow(res, {
       id: `tool_start_${round}_${toolName}`,
-      label: `AgentTools → 调用 FunctionTool: ${toolName} | ${statusText}`,
+      label: `agentTools → 调用 ${toolFileMap[toolName] || toolName + 'Tool.js'} | ${statusText}`,
       type: 'search',
       iconKey: 'tool',
       done: false
@@ -621,7 +622,7 @@ async function runOllamaStructuredToolLoop({
 
     writeWorkflow(res, {
       id: `tool_end_${round}_${toolName}`,
-      label: `FunctionTool: ${toolName} → ${toolName.includes('analysis') ? '分析链条处理完成' : '地理数据查询完成'}`,
+      label: `${toolFileMap[toolName] || toolName + 'Tool.js'} → ${toolArchitectureEndMap[toolName] || '调度执行完成'}`,
       type: 'analysis',
       iconKey: 'check'
     });
@@ -731,6 +732,7 @@ async function runDeepSeekOfficialToolLoop({
   chatHistoryBase,
   lastUserMsg,
   toolTitleMap,
+  toolArchitectureEndMap,
   thinkingEnabled = false,
   sessionId = null,
   userId = null
@@ -873,7 +875,7 @@ async function runDeepSeekOfficialToolLoop({
       const statusText = toolTitleMap[toolName] ? toolTitleMap[toolName](args) : `正在运行业务组件: ${toolName}...`;
       writeWorkflow(res, {
         id: `tool_start_${stableToolCallKey}`,
-        label: `AgentTools → 调用 FunctionTool: ${toolName} | ${statusText}`,
+        label: `agentTools → 调用 ${toolFileMap[toolName] || toolName + 'Tool.js'} | ${statusText}`,
         type: 'search',
         iconKey: 'tool',
         done: false
@@ -897,7 +899,7 @@ async function runDeepSeekOfficialToolLoop({
 
       writeWorkflow(res, {
         id: `tool_end_${stableToolCallKey}`,
-        label: `FunctionTool: ${toolName} → ${toolName.includes('analysis') ? '分析链条处理完成' : '地理数据查询完成'}`,
+        label: `${toolFileMap[toolName] || toolName + 'Tool.js'} → ${toolArchitectureEndMap[toolName] || '调度执行完成'}`,
         type: 'analysis',
         iconKey: 'check'
       });
@@ -1064,15 +1066,25 @@ async function handleAIStream(req, res) {
       : [selectedModel];
 
     const toolTitleMap = {
-      'clcd_analysis': (args) => `正在提取 ${args.region || '目标区域'} 土地利用遥感监测数据 (CLCD)...`,
-      'dashboard_analysis': (args) => `正在汇总 ${args.region || '目标区域'} 综合指标仪表盘数据...`,
-      'spatial_stats_analysis': (args) => `正在执行 ${args.region || '目标区域'} 空间重心转移与椭圆轨迹分析...`,
-      'land_transfer_analysis': (args) => `正在分析 ${args.region || '目标区域'} 土地利用转移矩阵(LUCC)...`,
-      'weather_query': (args) => `正在获取 ${args.city || '目标城市'} 实时气象观测数据...`,
-      'knowledge_base_lookup': (args) => `正在检索专家知识库: ${args.skill_name || '专业技能'}...`,
-      'knowledge_graph_query': (args) => `正在查询知识图谱: ${args.mode || 'metadata'}...`,
-      'policy_reference_lookup': (args) => `正在检索政策/规划资料: ${args.region || '目标区域'}...`,
-      // map_control 已下线
+      'clcd_analysis': (args) => `正在通过 PostgreSQL/PostGIS 提取 ${args.region || '目标区域'} 土地利用遥感数据(CLCD)...`,
+      'dashboard_analysis': (args) => `正在通过 PostgreSQL/PostGIS 查询 ${args.region || '目标区域'} 综合指标...`,
+      'spatial_stats_analysis': (args) => `正在通过 PostgreSQL/PostGIS 执行 ${args.region || '目标区域'} 空间重心转移与椭圆轨迹计算...`,
+      'land_transfer_analysis': (args) => `正在通过 PostgreSQL/PostGIS 分析 ${args.region || '目标区域'} 土地利用转移矩阵(LUCC)...`,
+      'weather_query': (args) => `正在通过 PostgreSQL/PostGIS 获取 ${args.city || '目标城市'} 实时气象观测...`,
+      'knowledge_base_lookup': (args) => `正在检索 skills知识库: ${args.skill_name || '专业技能文档'}...`,
+      'knowledge_graph_query': (args) => `通过 MCP (server/mcp/index.js) 检索 知识图谱 (knowledge_graph.json) | 模式: ${args.mode || 'metadata'}...`,
+      'policy_reference_lookup': (args) => `正在检索 skills知识库政策库: ${args.region || '目标区域'} 相关规划...`
+    };
+
+    const toolArchitectureEndMap = {
+      'clcd_analysis': 'PostgreSQL/PostGIS 业务数据查询完成',
+      'dashboard_analysis': 'PostgreSQL/PostGIS 统计指标准备完毕',
+      'spatial_stats_analysis': 'PostgreSQL/PostGIS 空间统计计算完成',
+      'land_transfer_analysis': 'PostgreSQL/PostGIS 转移矩阵分析完成',
+      'weather_query': 'PostgreSQL/PostGIS 实时气象数据查询完成',
+      'knowledge_graph_query': 'MCP 知识图谱节点关系解析完成',
+      'knowledge_base_lookup': 'skills知识库 专家语义检索完成',
+      'policy_reference_lookup': 'skills知识库 政策文献检索完成'
     };
 
     // Preserve DeepSeek thinking-mode context: carry over assistant reasoning_content when present.
@@ -1155,6 +1167,7 @@ async function handleAIStream(req, res) {
               chatHistoryBase,
               lastUserMsg,
               toolTitleMap,
+              toolArchitectureEndMap,
               thinkingEnabled: isThinkingEnabled,
               sessionId: sessionId || null,
               userId: req.user?.id || null
@@ -1195,6 +1208,7 @@ async function handleAIStream(req, res) {
             chatHistoryBase,
             lastUserMsg,
             toolTitleMap,
+            toolArchitectureEndMap,
             llmHost,
             thinkingEnabled: isThinkingEnabled
           });

@@ -11,7 +11,7 @@ import { ToolCallLLM } from '@llamaindex/core/llms';
 import { extractText } from '@llamaindex/core/utils';
 
 const DEFAULT_DEEPSEEK_BASE_URL = 'https://api.deepseek.com';
-const DEFAULT_DEEPSEEK_MODEL = 'deepseek-v4-flash';
+const DEFAULT_DEEPSEEK_MODEL = 'deepseek-chat';
 // DeepSeek 官方接口在高峰期可能出现排队/超时；给一个可配置的客户端超时，
 // 以便更快触发重试/降级，避免长时间挂起。
 const DEFAULT_DEEPSEEK_REQUEST_TIMEOUT_MS = 115000;

@@ -195,6 +195,7 @@
                         <span class="legend-dot lane-tool">工具</span>
                         <span class="legend-dot lane-skill">Skill</span>
                         <span class="legend-dot lane-knowledge-graph">图谱</span>
+                        <span class="legend-dot lane-policy">政策</span>
                       </span>
 
                       <svg class="workflow-arrow" :class="{ open: expandedWorkflow[index] !== false }" width="14" height="14"
@@ -528,47 +529,61 @@ const _parseMessage = (msg, skipCache = false) => {
 
   const toolMetaMap = {
     clcd_analysis: {
-      name: 'CLCD土地利用分析工具',
-      start: 'AgentTools → 调用 FunctionTool: clcd_analysis（CLCD土地利用分析）',
-      params: 'ReAct Router → 组装 clcd_analysis 参数',
-      done: 'FunctionTool: clcd_analysis → CLCD数据返回成功',
+      name: 'clcdTool.js',
+      start: 'clcdTool.js → 分析CLCD土地利用数据',
+      params: 'dataRouter.js → 组装 clcdTool.js 参数',
+      done: 'clcdTool.js → CLCD数据返回成功',
       icon: icons.database
     },
     dashboard_analysis: {
-      name: '综合指标仪表盘工具',
-      start: 'AgentTools → 调用 FunctionTool: dashboard_analysis（综合指标仪表盘）',
-      params: 'ReAct Router → 组装 dashboard_analysis 参数',
-      done: 'FunctionTool: dashboard_analysis → 综合指标返回成功',
+      name: 'dashboardTool.js',
+      start: 'dashboardTool.js → 汇总综合指标数据',
+      params: 'dataRouter.js → 组装 dashboardTool.js 参数',
+      done: 'dashboardTool.js → 综合指标返回成功',
       icon: icons.database
     },
     spatial_stats_analysis: {
-      name: '空间统计分析工具',
-      start: 'AgentTools → 调用 FunctionTool: spatial_stats_analysis（空间统计分析）',
-      params: 'ReAct Router → 组装 spatial_stats_analysis 参数',
-      done: 'FunctionTool: spatial_stats_analysis → 空间统计返回成功',
+      name: 'spatialStatsTool.js',
+      start: 'spatialStatsTool.js → 执行空间统计分析',
+      params: 'dataRouter.js → 组装 spatialStatsTool.js 参数',
+      done: 'spatialStatsTool.js → 空间统计返回成功',
       icon: icons.radar
     },
     land_transfer_analysis: {
-      name: '土地利用转移矩阵工具',
-      start: 'AgentTools → 调用 FunctionTool: land_transfer_analysis（土地转移矩阵）',
-      params: 'ReAct Router → 组装 land_transfer_analysis 参数',
-      done: 'FunctionTool: land_transfer_analysis → LUCC转移矩阵返回成功',
+      name: 'transferTool.js',
+      start: 'transferTool.js → 分析土地利用转移矩阵',
+      params: 'dataRouter.js → 组装 transferTool.js 参数',
+      done: 'transferTool.js → LUCC转移矩阵返回成功',
       icon: icons.database
     },
     weather_query: {
-      name: '气象观测查询工具',
-      start: 'AgentTools → 调用 FunctionTool: weather_query（气象观测查询）',
-      params: 'ReAct Router → 组装 weather_query 参数',
-      done: 'FunctionTool: weather_query → 气象观测返回成功',
+      name: 'weatherTool.js',
+      start: 'weatherTool.js → 查询气象观测数据',
+      params: 'dataRouter.js → 组装 weatherTool.js 参数',
+      done: 'weatherTool.js → 气象观测返回成功',
       icon: icons.search
     },
     knowledge_base_lookup: {
-      name: '专家知识库检索工具',
-      start: 'AgentTools → 调用 FunctionTool: knowledge_base_lookup（专家知识库）',
-      params: 'ReAct Router → 组装 knowledge_base_lookup 参数',
-      done: 'FunctionTool: knowledge_base_lookup → 专家知识返回成功',
+      name: 'knowledgeTool.js',
+      start: 'knowledgeTool.js → 检索专家知识库',
+      params: 'dataRouter.js → 组装 knowledgeTool.js 参数',
+      done: 'knowledgeTool.js → 专家知识返回成功',
       icon: icons.search
     },
+    knowledge_graph_query: {
+      name: 'knowledgeGraphTool.js',
+      start: 'knowledgeGraphTool.js → 遍历知识图谱网络',
+      params: 'dataRouter.js → 组装 knowledgeGraphTool.js 参数',
+      done: 'knowledgeGraphTool.js → 图谱实体与关系返回成功',
+      icon: icons.search
+    },
+    policy_reference_lookup: {
+      name: 'policyReferenceTool.js',
+      start: 'policyReferenceTool.js → 检索政策与规划库',
+      params: 'dataRouter.js → 组装 policyReferenceTool.js 参数',
+      done: 'policyReferenceTool.js → 政策条款数据返回成功',
+      icon: icons.search
+    }
     // map_control 已下线
   };
 
@@ -625,9 +640,9 @@ const _parseMessage = (msg, skipCache = false) => {
 
   const resolveThoughtLabel = (detail = '') => {
     const normalized = normalizeWhitespace(detail);
-    if (/sql|select|from|where|group by|order by|数据库|查询语句/i.test(normalized)) return 'ReAct Router → 规划SQL数据查询';
+    if (/sql|select|from|where|group by|order by|数据库|查询语句/i.test(normalized)) return 'dataRouter.js → 规划SQL数据查询';
     if (/意图|用户|问题|需求|asked|request|want|需要/.test(normalized)) return 'AI分析专家 → 解析业务意图';
-    if (/工具|调用|tool|function|参数|argument/i.test(normalized)) return 'ReAct Router → 选择Agent工具';
+    if (/工具|调用|tool|function|参数|argument/i.test(normalized)) return 'dataRouter.js → 选择Agent工具';
     if (/知识库|知识图谱|政策|算法|指标/.test(normalized)) return 'MCP知识服务 → 规划知识检索';
     if (/地图|图层|视角|空间|坐标|区域/.test(normalized)) return 'GeoServer/Cesium → 规划空间联动';
     if (/比较|趋势|变化|转移|占比|排名|分析/.test(normalized)) return 'AI分析专家 → 推导分析方法';
@@ -712,11 +727,11 @@ const _parseMessage = (msg, skipCache = false) => {
         years.length ? `年份: ${years.slice(0, 2).join('、')}` : ''
       ].filter(Boolean).join('，') || '加载当前地图、年份与历史会话', icons.map, 'analysis', 46);
     }
-    if (!labelExists(/ReAct Router|规划工具链/)) {
-      pushSemantic('ReAct Router → 规划工具链路', dataHints.length ? dataHints.slice(0, 3).join('、') : topic, icons.tool, 'analysis', 44);
+    if (!labelExists(/dataRouter.js|规划工具链/)) {
+      pushSemantic('dataRouter.js → 规划工具链路', dataHints.length ? dataHints.slice(0, 3).join('、') : topic, icons.tool, 'analysis', 44);
     }
-    if (dataHints.length && !labelExists(/AgentTools|匹配/)) {
-      pushSemantic('AgentTools → 匹配业务分析工具', dataHints.slice(0, 3).join('、'), icons.tool, 'search', 46);
+    if (dataHints.length && !labelExists(/dataRouter.js|匹配/)) {
+      pushSemantic('dataRouter.js → 匹配业务分析工具', dataHints.slice(0, 3).join('、'), icons.tool, 'search', 46);
     }
     if (dataHints.some((item) => /CLCD|综合指标|转移矩阵|空间统计/.test(item)) && !labelExists(/PostgreSQL\/PostGIS|读取/)) {
       pushSemantic('PostgreSQL/PostGIS → 读取时空业务数据', dataHints.slice(0, 3).join('、'), icons.database, 'search', 48);
@@ -751,23 +766,19 @@ const _parseMessage = (msg, skipCache = false) => {
     const t = String(label || '');
     if (!t) return '';
 
+    // 政策库
+    if (/policy_reference|policyReference|政策/i.test(t)) return 'policy';
+
     // 知识图谱：图谱/graph/ontology 等关键词（与 skill 区分开）
-    if (/知识图谱|ontology|graph/i.test(t)) return 'knowledge-graph';
+    if (/知识图谱|ontology|graph|knowledge_graph/i.test(t)) return 'knowledge-graph';
 
     // skill：写死规则（项目内就这么几个）
-    // - 只要出现 knowledge_base_lookup / knowledgeTool / 专家知识库，即视为 skill 资源加载
-    // - skill 名称（policy_expert / monitoring_indices / spatial_reasoning）也视为 skill
-    if (/knowledge_base_lookup/i.test(t) || /knowledgeTool/i.test(t) || /专家知识库/.test(t) || /policy_expert|monitoring_indices|spatial_reasoning/i.test(t)) {
+    if (/knowledge_base_lookup|knowledgeTool|专家知识库/i.test(t) || /policy_expert|monitoring_indices|spatial_reasoning/i.test(t)) {
       return 'skill';
     }
 
-    // 你要突出三类：工具调用 / skill 资源加载 / 知识图谱查询
-    // 注意：必须放在 skill/graph 之后，避免 knowledge_base_lookup 被误判成 tool。
-    if (
-      /AgentTools → 调用 FunctionTool:\s*(clcd_analysis|dashboard_analysis|spatial_stats_analysis|land_transfer_analysis|weather_query)\b/i.test(t) ||
-      /FunctionTool:\s*(clcd_analysis|dashboard_analysis|spatial_stats_analysis|land_transfer_analysis|weather_query)\b/i.test(t) ||
-      /\b(clcd_analysis|dashboard_analysis|spatial_stats_analysis|land_transfer_analysis|weather_query)\b/i.test(t)
-    ) {
+    // tool:
+    if (/clcdTool|dashboardTool|spatialStatsTool|transferTool|weatherTool|clcd_analysis|dashboard_analysis|spatial_stats_analysis|land_transfer_analysis|weather_query/i.test(t)) {
       return 'tool';
     }
 
@@ -828,8 +839,19 @@ const _parseMessage = (msg, skipCache = false) => {
     if (rawTag === 'ACTION') {
       activeToolName = inferredToolName || normalized.match(/^([a-z_][a-z0-9_]*)/i)?.[1] || activeToolName;
       const actionTool = toolMetaMap[activeToolName];
+      const toolFileMap = {
+        'clcd_analysis': 'clcdTool.js',
+        'dashboard_analysis': 'dashboardTool.js',
+        'spatial_stats_analysis': 'spatialStatsTool.js',
+        'land_transfer_analysis': 'transferTool.js',
+        'weather_query': 'weatherTool.js',
+        'knowledge_graph_query': 'knowledgeGraphTool.js',
+        'knowledge_base_lookup': 'knowledgeTool.js',
+        'policy_reference_lookup': 'policyReferenceTool.js'
+      };
+      const fallbackName = activeToolName ? (toolFileMap[activeToolName] || `${activeToolName}Tool.js`) : 'unknownTool.js';
       return {
-        label: actionTool ? actionTool.start : `AgentTools → 调用 FunctionTool: ${activeToolName || 'unknown'}`.trim(),
+        label: actionTool ? actionTool.start : `dataRouter.js → 调度 ${fallbackName}`.trim(),
         type: 'search',
         detail: normalized,
         icon: actionTool?.icon || icons.tool,
@@ -873,10 +895,10 @@ const _parseMessage = (msg, skipCache = false) => {
         return { label: toolMeta.start, type: 'search', detail: normalized, icon: toolMeta.icon, titleDetail: false };
       }
       if (/sql|查询语句|数据库/i.test(normalized)) {
-        return { label: 'ReAct Router → 编写并提交SQL查询', type: 'search', detail: normalized, icon: icons.code, titleMaxLen: 34 };
+        return { label: 'dataRouter.js → 编写并提交SQL查询', type: 'search', detail: normalized, icon: icons.code, titleMaxLen: 34 };
       }
       if (/检索|查询|提取|获取|汇总|执行|同步|分析/i.test(normalized)) {
-        return { label: 'AgentTools → 检索时空业务数据', type: 'search', detail: normalized, icon: icons.search, titleMaxLen: 34 };
+        return { label: 'dataSourceRegistry.js → 检索时空业务数据', type: 'search', detail: normalized, icon: icons.search, titleMaxLen: 34 };
       }
       return { label: 'POST接口 → 数据链路准备中', type: 'search', detail: normalized, icon: icons.search, titleMaxLen: 30 };
     }
@@ -3151,6 +3173,7 @@ const retryReport = () => {
 .legend-dot.lane-tool::before { background: rgba(245, 158, 11, 0.95); box-shadow: 0 0 0 2px rgba(245, 158, 11, 0.16); }
 .legend-dot.lane-skill::before { background: rgba(56, 189, 248, 0.95); box-shadow: 0 0 0 2px rgba(56, 189, 248, 0.16); }
 .legend-dot.lane-knowledge-graph::before { background: rgba(167, 139, 250, 0.95); box-shadow: 0 0 0 2px rgba(167, 139, 250, 0.16); }
+.legend-dot.lane-policy::before { background: rgba(20, 184, 166, 0.95); box-shadow: 0 0 0 2px rgba(20, 184, 166, 0.16); }
 
 .step-item {
   display: flex;
@@ -3194,32 +3217,44 @@ const retryReport = () => {
   background: rgba(167, 139, 250, 0.62);
 }
 
+.step-item.lane-policy::before {
+  background: rgba(20, 184, 166, 0.62);
+}
+
 
 
 /* lane label 颜色变量：同步改变“绿色文本”本体颜色，而不是只做标签/色条 */
 .step-item.lane-tool { --lane-label-color: #fbbf24; --lane-label-glow: rgba(245, 158, 11, 0.22); }
 .step-item.lane-skill { --lane-label-color: #7dd3fc; --lane-label-glow: rgba(56, 189, 248, 0.20); }
 .step-item.lane-knowledge-graph { --lane-label-color: #c4b5fd; --lane-label-glow: rgba(167, 139, 250, 0.20); }
+.step-item.lane-policy { --lane-label-color: #5eead4; --lane-label-glow: rgba(20, 184, 166, 0.20); }
 
-.step-item.lane-tool .step-icon {
+.step-item.lane-tool .step-icon, .step-item.lane-tool.done .step-icon, .step-item.lane-tool.active .step-icon {
   background: rgba(180, 83, 9, 0.12);
   border-color: rgba(245, 158, 11, 0.62);
   color: #fbbf24;
   box-shadow: 0 0 0 3px rgba(245, 158, 11, 0.08);
 }
 
-.step-item.lane-skill .step-icon {
+.step-item.lane-skill .step-icon, .step-item.lane-skill.done .step-icon, .step-item.lane-skill.active .step-icon {
   background: rgba(3, 105, 161, 0.12);
   border-color: rgba(56, 189, 248, 0.62);
   color: #7dd3fc;
   box-shadow: 0 0 0 3px rgba(56, 189, 248, 0.08);
 }
 
-.step-item.lane-knowledge-graph .step-icon {
+.step-item.lane-knowledge-graph .step-icon, .step-item.lane-knowledge-graph.done .step-icon, .step-item.lane-knowledge-graph.active .step-icon {
   background: rgba(109, 40, 217, 0.10);
   border-color: rgba(167, 139, 250, 0.62);
   color: #c4b5fd;
   box-shadow: 0 0 0 3px rgba(167, 139, 250, 0.08);
+}
+
+.step-item.lane-policy .step-icon, .step-item.lane-policy.done .step-icon, .step-item.lane-policy.active .step-icon {
+  background: rgba(15, 118, 110, 0.10);
+  border-color: rgba(20, 184, 166, 0.62);
+  color: #5eead4;
+  box-shadow: 0 0 0 3px rgba(20, 184, 166, 0.08);
 }
 
 
@@ -3247,6 +3282,9 @@ const retryReport = () => {
 }
 .step-item.lane-knowledge-graph .step-line {
   background: linear-gradient(to bottom, rgba(167, 139, 250, 0.52), rgba(167, 139, 250, 0.10));
+}
+.step-item.lane-policy .step-line {
+  background: linear-gradient(to bottom, rgba(20, 184, 166, 0.52), rgba(20, 184, 166, 0.10));
 }
 
 .step-indicator {
