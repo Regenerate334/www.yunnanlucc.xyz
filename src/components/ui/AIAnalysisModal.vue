@@ -394,7 +394,14 @@ import 'highlight.js/styles/atom-one-dark.css';
 import texmath from 'markdown-it-texmath';
 import katex from 'katex';
 import 'katex/dist/katex.min.css';
+import mermaid from 'mermaid';
 // ChatGptIcon 已在模版中内联，无需导入
+
+mermaid.initialize({
+  startOnLoad: false,
+  theme: 'dark',
+  securityLevel: 'loose',
+});
 
 const md = new MarkdownIt({
   html: true,
@@ -402,6 +409,9 @@ const md = new MarkdownIt({
   typographer: true,
   breaks: true,
   highlight: function (str, lang) {
+    if (lang && lang.toLowerCase() === 'mermaid') {
+      return '<div class="mermaid" style="background: rgba(15, 23, 42, 0.6); padding: 16px; border-radius: 8px; margin: 16px 0; overflow-x: auto;">' + md.utils.escapeHtml(str) + '</div>';
+    }
     if (lang && hljs.getLanguage(lang)) {
       try {
         return '<pre class="hljs"><code>' +
@@ -1623,6 +1633,16 @@ watch(messages, (newMsgs) => {
       expandedThinking.value[lastIndex] = true;
     }
   }
+  nextTick(() => {
+    try {
+      mermaid.run({
+        querySelector: '.mermaid',
+        suppressErrors: true
+      });
+    } catch (e) {
+      // 忽略部分代码流式加载时的解析错误
+    }
+  });
 }, { deep: true });
 
 // ── 报告生成逻辑（纯前端，无二次AI调用）─────────────────────────────────────
