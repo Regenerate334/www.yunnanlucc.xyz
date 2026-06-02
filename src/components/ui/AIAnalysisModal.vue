@@ -16,7 +16,7 @@
       <div v-if="visible" class="ai-modal-container" @click.stop>
         <div class="sidebar">
             <div class="sidebar-header">
-              <button class="new-chat-btn" @click="createNewSession">
+              <button class="new-chat-btn" @click="resetToNewChat">
                 <div class="plus-circle">
                   <span class="plus-icon">+</span>
                 </div>
@@ -1109,6 +1109,21 @@ const loadSessions = async () => {
   }
 };
 
+/**
+ * 重置为“临时新对话”状态：仅清空前端 UI，不创建数据库记录。
+ * 数据库记录延迟到用户真正发送第一条消息时才创建（惰性创建）。
+ */
+const resetToNewChat = () => {
+  currentSessionId.value = null;
+  messages.value = [];
+  expandedThinking.value = {};
+  expandedWorkflow.value = {};
+};
+
+/**
+ * 在数据库中创建一条新的 chat session 记录。
+ * 仅在用户真正产生交互（发送消息）时调用。
+ */
 const createNewSession = async () => {
   // console.log('[Sessions] Creating new session...');
   try {
@@ -1127,9 +1142,6 @@ const createNewSession = async () => {
        // console.log('[Sessions] Created:', data.session.id);
       currentSessionId.value = data.session.id;
       writeStoredSessionId(data.session.id);
-      messages.value = [];
-      expandedThinking.value = {}; // 重置折叠状态
-      expandedWorkflow.value = {};
       await loadSessions();
     }
   } catch (err) {
@@ -1197,7 +1209,7 @@ const deleteSession = async (sessionId) => {
         if (sessions.value.length > 0) {
           await selectSession(sessions.value[0].id);
         } else {
-          await createNewSession();
+          resetToNewChat();
         }
       }
     }
@@ -1289,17 +1301,18 @@ watch(() => props.visible, async (visible) => {
   if (visible) {
     await loadSessions();
 
-    // 打开弹窗时，不再“自动新建会话”。
-    // 期望行为：
+    // 打开弹窗时，不再自动创建数据库记录。
+    // 期望行为（与主流 AI 产品一致）：
     // 1) 同一 tab：优先回到上次选中的会话（sessionStorage 记忆）
-    // 2) 新 tab / 首次打开：默认新建会话（实现“跨窗口记忆隔离”），避免自动选中历史会话
+    // 2) 新 tab / 首次打开 / 无历史会话：停留在欢迎页（临时新对话状态），
+    //    只有用户发送第一条消息时才创建数据库记录（惰性创建）
     if (!currentSessionId.value) {
       const storedId = readStoredSessionId();
       const hasStored = storedId && sessions.value.some(s => Number(s?.id) === Number(storedId));
       if (hasStored) {
         await selectSession(storedId);
       } else {
-        await createNewSession();
+        resetToNewChat();
       }
     }
 
@@ -1360,7 +1373,7 @@ const stopGeneration = () => {
 };
 
 const clearMessages = () => {
-  createNewSession();
+  resetToNewChat();
 };
 
 const userInteractedThinking = ref(false); // 追踪用户是否手动调整过折叠状态
@@ -1400,6 +1413,10 @@ const sendMessage = async (text) => {
   userInteractedThinking.value = false; 
 
   try {
+    // 惰性创建：首条消息时才真正在数据库创建 session
+    if (!currentSessionId.value) {
+      await createNewSession();
+    }
     // 发送前保存用户消息
     await saveMessage('user', userMessage);
 
