@@ -60,4 +60,4 @@ async function check() {
 }
 
 check();
-setInterval(check, 600000); // 每 10 分钟检查一次
+setInterval(check, 1800000); // 每 30 分钟检查一次
