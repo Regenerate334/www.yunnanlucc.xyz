@@ -424,8 +424,8 @@ const md = new MarkdownIt({
   }
 }).use(texmath, {
   engine: katex,
-  // 'gitlab' 预设同时支持 $...$ / $... / \(...\) / \[...\] 四种分隔符
-  delimiters: 'gitlab',
+  // 同时支持 dollars ($/$$) 和 brackets (\(...\)/\[...\]) 分隔符，深度兼容各种大模型输出
+  delimiters: ['dollars', 'brackets'],
   katexOptions: { throwOnError: false }
 });
 
@@ -1033,7 +1033,7 @@ const getRenderedMarkdown = (text, isStreaming = false) => {
       'ul', 'ol', 'li', 'table', 'thead', 'tbody', 'tr', 'th', 'td', 'caption', 'colgroup', 'col',
       'div', 'span', 'code', 'pre', 'hr',
       // KaTeX 渲染输出标签
-      'math', 'semantics', 'annotation', 'mrow', 'mi', 'mo', 'mn', 'ms', 'mtext',
+      'eq', 'eqn', 'math', 'semantics', 'annotation', 'mrow', 'mi', 'mo', 'mn', 'ms', 'mtext',
       'mfrac', 'msub', 'msup', 'msubsup', 'munder', 'mover', 'munderover',
       'msqrt', 'mroot', 'mtable', 'mtr', 'mtd', 'mpadded', 'mspace', 'mstyle', 'menclose',
       // SVG（Mermaid 图表 + 内联图标）
