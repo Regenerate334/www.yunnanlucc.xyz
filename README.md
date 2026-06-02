@@ -87,7 +87,7 @@ graph TB
 | 技术 | 版本 | 用途 |
 |------|------|------|
 | **Node.js + Express** | 4.19.2 | RESTful API 服务器 |
-| **PostgreSQL (pg)** | 8.11.5 | 关系型数据���驱动 |
+| **PostgreSQL (pg)** | 8.11.5 | 关系型数据库驱动 |
 | **DeepSeek API** | V4 | 云端 AI 模型推理（默认） |
 | **LlamaIndex** | 0.12.1 | ReAct Agent 框架与工具编排 |
 | **MCP SDK** | 1.29.0 | 模型上下文协议，知识图谱语义检索 |
