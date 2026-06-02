@@ -5,7 +5,7 @@
 ![Vue.js](https://img.shields.io/badge/Vue.js-Latest-4FC08D?style=flat-square&logo=vuedotjs)
 ![Vite](https://img.shields.io/badge/Vite-Latest-646CFF?style=flat-square&logo=vite)
 
-论文《基于WebGIS和GeoAI Agent的土地利用变化智能监测评估系统》的配套实现代码。系统基于 Vue 3 + Cesium 构建，接入 CLCD 数据集（30m，1985–2023），实现[...]
+论文《基于WebGIS和GeoAI Agent的土地利用变化智能监测评估系统》的配套实现代码。系统基于 Vue 3 + Cesium 构建，接入 CLCD 数据集（30m，1985–2023），实现云南省多层级土地利用变化的智能监测、可视化分析与预警评估。
 
 ![Platform Screenshot](./docs/assets/readme_banner.png)
 
@@ -15,7 +15,7 @@
 **线上地址**: [www.yunnanlucc.xyz](https://www.yunnanlucc.xyz)  
 **核心功能**: 基于中国年度土地覆盖数据集 (CLCD) 的国土空间格局监测、可视化与辅助分析  
 **数据范围**: 云南省 1985-2023 年土地利用历史数据  
-**AI 能力**: 基于 ReAct Agent 架构（LlamaIndex），集成领域知识图谱（含本体、语料、技能文档）与多模型推理，支持自然语言数据查询、趋势解读与政策[...]
+**AI 能力**: 基于 ReAct Agent 架构（LlamaIndex），集成领域知识图谱（含本体、语料、技能文档）与多模型推理，支持自然语言数据查询、趋势解读与政策参考分析
 
 ---
 
@@ -42,7 +42,7 @@ graph TB
     A --> D[Cesium 3D 地球地图引擎]
     A --> E[ECharts 图表库]
     B --> F[GeoServer WMS 服务]
-    B --> G[Ollama AI 推理引擎]
+    B --> G[DeepSeek AI 推理引擎]
     G --> H[领域知识图谱 - JSON]
     B --> I[Puppeteer 报告生成]
     B --> J[MCP Server]
@@ -88,7 +88,7 @@ graph TB
 |------|------|------|
 | **Node.js + Express** | 4.19.2 | RESTful API 服务器 |
 | **PostgreSQL (pg)** | 8.11.5 | 关系型数据���驱动 |
-| **Ollama SDK** | 0.6.3 | 本地 AI 模型推理 |
+| **DeepSeek API** | V4 | 云端 AI 模型推理（默认） |
 | **LlamaIndex** | 0.12.1 | ReAct Agent 框架与工具编排 |
 | **MCP SDK** | 1.29.0 | 模型上下文协议，知识图谱语义检索 |
 | **Helmet** | 8.1.0 | HTTP 安全头 |
@@ -182,7 +182,7 @@ my_webgis_project/
 │   │   ├── ai/core/            # Agent 核心
 │   │   │   ├── agentTools.js   # 工具注册表
 │   │   │   ├── agenticRouter.js # Agent 路由调度
-│   │   │   ├── aiClient.js     # Ollama 客户端
+│   │   │   ├── aiClient.js     # AI 客户端统一入口
 │   │   │   ├── aiMiddleware.js # AI 中间件 (Prompt构建/输入校验)
 │   │   │   └── deepseekClient.js # DeepSeek 云端客户端
 │   │   ├── dataSources/        # 数据源适配
@@ -265,7 +265,7 @@ my_webgis_project/
 │   │   ├── sys_db_status_check.js    # 数据库状态检查
 │   │   ├── status-postgres.js        # PostgreSQL 探针
 │   │   ├── status-geoserver.js       # GeoServer 探针
-│   │   ├── status-ollama.js          # Ollama 探针
+│   │   ├── status-deepseek.js        # DeepSeek API 探针
 │   │   ├── verify_monitoring.js      # 监控验证
 │   │   └── nginx/                    # Nginx 生产配置
 │   ├── data/                   # 数据处理脚本
@@ -341,7 +341,7 @@ sequenceDiagram
     participant Tools as agentTools
     participant DB as PostgreSQL/PostGIS
     participant KB as skills/*.md
-    participant Ollama as Ollama LLM
+    participant LLM as DeepSeek / Ollama LLM
     participant MCP as server/mcp/index.js
     participant KG as knowledge_graph.json
 
@@ -356,8 +356,8 @@ sequenceDiagram
     Mid-->>Chat: systemPrompt
 
     Chat->>Agent: 创建 ReActAgent(tools, callbackManager)
-    Chat->>Ollama: 发起流式推理
-    Ollama-->>Agent: token/thinking 流
+    Chat->>LLM: 发起流式推理
+    LLM-->>Agent: token/thinking 流
 
     Agent->>Tools: 按需调用 clcd_analysis/dashboard_analysis/spatial_stats_analysis/land_transfer_analysis
     Tools->>DB: 查询业务数据
@@ -474,7 +474,7 @@ sequenceDiagram
 - Node.js >= 18.0.0
 - PostgreSQL >= 14.0（支持空间扩展）
 - GeoServer（发布 CLCD 栅格 WMS 服务）
-- Ollama（AI 推理，可选）
+- DeepSeek API Key（云端 AI 推理，必需）或 Ollama（本地推理，可选）
 
 ### 环境变量
 
@@ -486,7 +486,7 @@ sequenceDiagram
 | 后端 | `PORT`, `NODE_ENV`, `LOG_LEVEL`, `LOG_FILE_LEVEL` |
 | 数据库 | `DB_HOST`, `DB_PORT`, `DB_USER`, `DB_PASSWORD`, `DB_DATABASE` |
 | GeoServer | `GEOSERVER_USER`, `GEOSERVER_PASSWORD` |
-| AI | `OLLAMA_URL`, `CHAT_MODEL`, `DEEPSEEK_BASE_URL`, `DEEPSEEK_API_KEY` |
+| AI | `DEEPSEEK_API_KEY`, `DEEPSEEK_BASE_URL`, `CHAT_MODEL`, `OLLAMA_URL`（可选） |
 | 安全 | `JWT_SECRET`, `DEFAULT_ADMIN_PASSWORD`, `GLOBAL_HOTSWAP_SECRET` |
 
 ### 启动命令
@@ -520,7 +520,7 @@ npm run stop:all            # 停止全部进程
 
 ## 数据来源
 
-- **CLCD 数据集**: Yang, J., & Huang, X. (2021). The 30 m annual land cover dataset and its dynamics in China from 1990 to 2019. *Earth System Science Data*, 13(8), 3907–3925. https://doi.or[...]
+- **CLCD 数据集**: Yang, J., & Huang, X. (2021). The 30 m annual land cover dataset and its dynamics in China from 1990 to 2019. *Earth System Science Data*, 13(8), 3907–3925. https://doi.org/10.5194/essd-13-3907-2021
 - **行政区划**: 国家基础地理信息中心
 - **底图服务**: 天地图 / 高德地图
 - **气象数据**: 高德天气 API
