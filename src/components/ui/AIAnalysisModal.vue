@@ -424,16 +424,8 @@ const md = new MarkdownIt({
   }
 }).use(texmath, {
   engine: katex,
-  delimiters: [
-    // $...$ 行内公式
-    { left: '$', right: '$', display: false },
-    // $$...$$ 块级公式
-    { left: '$$', right: '$$', display: true },
-    // \(...\) 行内公式（DeepSeek 常用）
-    { left: '\\(', right: '\\)', display: false },
-    // \[...\] 块级公式（DeepSeek 常用）
-    { left: '\\[', right: '\\]', display: true }
-  ],
+  // 'gitlab' 预设同时支持 $...$ / $... / \(...\) / \[...\] 四种分隔符
+  delimiters: 'gitlab',
   katexOptions: { throwOnError: false }
 });
 
@@ -1710,21 +1702,25 @@ watch(messages, (newMsgs) => {
       expandedThinking.value[lastIndex] = true;
     }
   }
-  nextTick(() => {
-    try {
-      // 清除已处理标记，防止 Mermaid v10+ 跳过重渲染
-      const container = messagesContainer.value;
-      if (container) {
-        container.querySelectorAll('.mermaid[data-processed]').forEach(el => {
-          el.removeAttribute('data-processed');
-        });
+  nextTick(async () => {
+    // 逐个渲染 Mermaid 图表，失败时优雅降级为代码块
+    const container = messagesContainer.value;
+    if (!container) return;
+    const elements = container.querySelectorAll('.mermaid:not([data-mermaid-done])');
+    for (const el of elements) {
+      const source = el.textContent.trim();
+      if (!source) continue;
+      const id = `mermaid-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
+      try {
+        const { svg } = await mermaid.render(id, source);
+        el.innerHTML = svg;
+        el.setAttribute('data-mermaid-done', 'true');
+      } catch (e) {
+        // 渲染失败：降级为代码块展示原始 Mermaid 语法
+        const escaped = source.replace(/</g, '&lt;').replace(/>/g, '&gt;');
+        el.innerHTML = `<pre class="hljs" style="margin:0;border-radius:6px;"><code style="color:#94a3b8;font-size:13px;">/* Mermaid 语法暂不支持此图表类型 */\n${escaped}</code></pre>`;
+        el.setAttribute('data-mermaid-done', 'true');
       }
-      mermaid.run({
-        querySelector: '.mermaid',
-        suppressErrors: true
-      });
-    } catch (e) {
-      // 忽略部分代码流式加载时的解析错误
     }
   });
 }, { deep: true });
