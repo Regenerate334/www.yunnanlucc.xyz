@@ -78,14 +78,15 @@ module.exports = {
         },
         {
             name: "ai-service",
-            script: "./ops/sys/status-ollama.js",
+            script: "./ops/sys/status-deepseek.js",
             cwd: "./",
             instances: 1,
             exec_mode: "fork",
             autorestart: true,
             restart_delay: 10000,
             env: {
-                OLLAMA_URL: process.env.OLLAMA_URL || "http://localhost:11434"
+                DEEPSEEK_API_KEY: process.env.DEEPSEEK_API_KEY,
+                DEEPSEEK_BASE_URL: process.env.DEEPSEEK_BASE_URL || "https://api.deepseek.com"
             }
         }
     ]
