@@ -424,8 +424,17 @@ const md = new MarkdownIt({
   }
 }).use(texmath, {
   engine: katex,
-  delimiters: 'dollars',
-  katexOptions: { throwOnError: false, displayMode: false }
+  delimiters: [
+    // $...$ 行内公式
+    { left: '$', right: '$', display: false },
+    // $$...$$ 块级公式
+    { left: '$$', right: '$$', display: true },
+    // \(...\) 行内公式（DeepSeek 常用）
+    { left: '\\(', right: '\\)', display: false },
+    // \[...\] 块级公式（DeepSeek 常用）
+    { left: '\\[', right: '\\]', display: true }
+  ],
+  katexOptions: { throwOnError: false }
 });
 
 const parseCache = new Map();
@@ -1026,11 +1035,40 @@ const getRenderedMarkdown = (text, isStreaming = false) => {
   // 3. 安全清洗 (Security Pro Max)
   result = DOMPurify.sanitize(result, {
     ALLOWED_TAGS: [
-      'p', 'br', 'strong', 'em', 'h1', 'h2', 'h3', 'h4', 'h5', 'h6', 
-      'ul', 'ol', 'li', 'table', 'thead', 'tbody', 'tr', 'th', 'td', 
-      'div', 'span', 'code', 'pre', 'svg', 'path', 'line', 'circle', 'polyline'
+      // 基础 HTML
+      'p', 'br', 'strong', 'em', 'b', 'i', 'u', 'del', 'sup', 'sub', 'blockquote', 'a', 'img',
+      'h1', 'h2', 'h3', 'h4', 'h5', 'h6',
+      'ul', 'ol', 'li', 'table', 'thead', 'tbody', 'tr', 'th', 'td', 'caption', 'colgroup', 'col',
+      'div', 'span', 'code', 'pre', 'hr',
+      // KaTeX 渲染输出标签
+      'math', 'semantics', 'annotation', 'mrow', 'mi', 'mo', 'mn', 'ms', 'mtext',
+      'mfrac', 'msub', 'msup', 'msubsup', 'munder', 'mover', 'munderover',
+      'msqrt', 'mroot', 'mtable', 'mtr', 'mtd', 'mpadded', 'mspace', 'mstyle', 'menclose',
+      // SVG（Mermaid 图表 + 内联图标）
+      'svg', 'g', 'path', 'line', 'circle', 'ellipse', 'rect', 'polyline', 'polygon',
+      'text', 'tspan', 'defs', 'marker', 'clipPath', 'use', 'foreignObject', 'image',
+      'title', 'desc'
     ],
-    ALLOWED_ATTR: ['class', 'style', 'width', 'height', 'viewBox', 'fill', 'stroke', 'stroke-width', 'stroke-linecap', 'stroke-linejoin', 'points', 'cx', 'cy', 'r', 'x1', 'y1', 'x2', 'y2', 'd']
+    ALLOWED_ATTR: [
+      // 通用
+      'class', 'style', 'id', 'title', 'role', 'tabindex',
+      // 链接 / 图片
+      'href', 'target', 'rel', 'src', 'alt',
+      // KaTeX / MathML
+      'xmlns', 'encoding', 'aria-hidden', 'data-*', 'mathvariant', 'stretchy', 'fence',
+      'separator', 'lspace', 'rspace', 'accent', 'accentunder', 'displaystyle',
+      'scriptlevel', 'columnalign', 'rowalign', 'columnspacing', 'rowspacing',
+      'columnlines', 'rowlines', 'frame', 'framespacing', 'minsize', 'maxsize', 'movablelimits',
+      // SVG 属性
+      'width', 'height', 'viewBox', 'fill', 'stroke', 'stroke-width', 'stroke-linecap',
+      'stroke-linejoin', 'stroke-dasharray', 'stroke-opacity', 'fill-opacity', 'opacity',
+      'points', 'cx', 'cy', 'r', 'rx', 'ry', 'x', 'y', 'x1', 'y1', 'x2', 'y2', 'd',
+      'transform', 'text-anchor', 'dominant-baseline', 'font-size', 'font-family', 'font-weight',
+      'dx', 'dy', 'markerWidth', 'markerHeight', 'refX', 'refY', 'orient', 'markerUnits',
+      'marker-end', 'marker-start', 'clip-path', 'xlink:href', 'preserveAspectRatio'
+    ],
+    // 允许 data-* 属性（KaTeX 需要）
+    ALLOW_DATA_ATTR: true
   });
 
   // 给 table 增加包装层
@@ -1674,6 +1712,13 @@ watch(messages, (newMsgs) => {
   }
   nextTick(() => {
     try {
+      // 清除已处理标记，防止 Mermaid v10+ 跳过重渲染
+      const container = messagesContainer.value;
+      if (container) {
+        container.querySelectorAll('.mermaid[data-processed]').forEach(el => {
+          el.removeAttribute('data-processed');
+        });
+      }
       mermaid.run({
         querySelector: '.mermaid',
         suppressErrors: true
