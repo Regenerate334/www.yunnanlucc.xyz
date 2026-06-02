@@ -16,7 +16,7 @@
       <div v-if="visible" class="ai-modal-container" @click.stop>
         <div class="sidebar">
             <div class="sidebar-header">
-              <button class="new-chat-btn" @click="createNewSession">
+              <button class="new-chat-btn" @click="resetToNewChat">
                 <div class="plus-circle">
                   <span class="plus-icon">+</span>
                 </div>
