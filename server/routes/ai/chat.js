@@ -9,7 +9,7 @@
  */
 import express from 'express';
 import { body, validationResult } from 'express-validator';
-import { agentTools } from '../../utils/ai/core/agentTools.js';
+import { getAgentTools } from '../../utils/ai/core/mcpClientTools.js';
 import aiMiddleware from '../../utils/ai/core/aiMiddleware.js';
 import pool from '../../config/db.js';
 import { createDeepSeekChatCompletion, isDeepSeekOfficialModel, resolveDeepSeekModel } from '../../utils/ai/core/deepseekClient.js';
@@ -23,6 +23,7 @@ const toolFileMap = {
   'spatial_stats_analysis': 'spatialStatsTool.js',
   'land_transfer_analysis': 'transferTool.js',
   'weather_query': 'weatherTool.js',
+  'knowledge_query': 'knowledgeQueryTool.js',
   'knowledge_base_lookup': 'knowledgeTool.js',
   'knowledge_graph_query': 'knowledgeGraphTool.js',
   'policy_reference_lookup': 'policyReferenceTool.js'
@@ -526,6 +527,7 @@ async function runOllamaStructuredToolLoop({
   llmHost,
   thinkingEnabled = true
 }) {
+  const agentTools = await getAgentTools();
   const baseMessages = [
     { role: 'system', content: systemPrompt },
     ...chatHistoryBase,
@@ -622,9 +624,10 @@ async function runOllamaStructuredToolLoop({
     }
 
     const statusText = toolTitleMap[toolName] ? toolTitleMap[toolName](args) : `正在运行业务组件: ${toolName}...`;
+    const toolSourceLabel = tool.metadata?.source === 'mcp' ? 'MCP Client → tools/call' : 'agentTools fallback';
     writeWorkflow(res, {
       id: `tool_start_${round}_${toolName}`,
-      label: `agentTools → 调用 ${toolFileMap[toolName] || toolName + 'Tool.js'} | ${statusText}`,
+      label: `${toolSourceLabel} → 调用 ${toolFileMap[toolName] || toolName + 'Tool.js'} | ${statusText}`,
       type: 'search',
       iconKey: 'tool',
       done: false
@@ -754,6 +757,7 @@ async function runDeepSeekOfficialToolLoop({
   sessionId = null,
   userId = null
 }) {
+  const agentTools = await getAgentTools();
   const messages = [
     { role: 'system', content: systemPrompt },
     ...chatHistoryBase,
@@ -890,9 +894,10 @@ async function runDeepSeekOfficialToolLoop({
       }
 
       const statusText = toolTitleMap[toolName] ? toolTitleMap[toolName](args) : `正在运行业务组件: ${toolName}...`;
+      const toolSourceLabel = tool.metadata?.source === 'mcp' ? 'MCP Client → tools/call' : 'agentTools fallback';
       writeWorkflow(res, {
         id: `tool_start_${stableToolCallKey}`,
-        label: `agentTools → 调用 ${toolFileMap[toolName] || toolName + 'Tool.js'} | ${statusText}`,
+        label: `${toolSourceLabel} → 调用 ${toolFileMap[toolName] || toolName + 'Tool.js'} | ${statusText}`,
         type: 'search',
         iconKey: 'tool',
         done: false
@@ -1088,6 +1093,7 @@ async function handleAIStream(req, res) {
       'spatial_stats_analysis': (args) => `正在通过 PostgreSQL/PostGIS 执行 ${args.region || '目标区域'} 空间重心转移与椭圆轨迹计算...`,
       'land_transfer_analysis': (args) => `正在通过 PostgreSQL/PostGIS 分析 ${args.region || '目标区域'} 土地利用转移矩阵(LUCC)...`,
       'weather_query': (args) => `正在通过 PostgreSQL/PostGIS 获取 ${args.city || '目标城市'} 实时气象观测...`,
+      'knowledge_query': (args) => `通过 MCP (server/mcp/index.js) 检索 知识图谱 (knowledge_graph.json) | 模式: ${args.mode || 'metadata'}...`,
       'knowledge_base_lookup': (args) => `正在检索 skills知识库: ${args.skill_name || '专业技能文档'}...`,
       'knowledge_graph_query': (args) => `通过 MCP (server/mcp/index.js) 检索 知识图谱 (knowledge_graph.json) | 模式: ${args.mode || 'metadata'}...`,
       'policy_reference_lookup': (args) => `正在检索 skills知识库政策库: ${args.region || '目标区域'} 相关规划...`
@@ -1099,6 +1105,7 @@ async function handleAIStream(req, res) {
       'spatial_stats_analysis': 'PostgreSQL/PostGIS 空间统计计算完成',
       'land_transfer_analysis': 'PostgreSQL/PostGIS 转移矩阵分析完成',
       'weather_query': 'PostgreSQL/PostGIS 实时气象数据查询完成',
+      'knowledge_query': 'MCP 知识图谱节点关系解析完成',
       'knowledge_graph_query': 'MCP 知识图谱节点关系解析完成',
       'knowledge_base_lookup': 'skills知识库 专家语义检索完成',
       'policy_reference_lookup': 'skills知识库 政策文献检索完成'

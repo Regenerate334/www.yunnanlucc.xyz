@@ -17,6 +17,12 @@ import { registerSkillsResource } from './resources/skillsResource.js';
 import { registerClcdAnalysisTool } from './tools/clcdAnalysisTool.js';
 import { registerDashboardAnalysisTool } from './tools/dashboardAnalysisTool.js';
 import { registerKnowledgeQueryTool } from './tools/knowledgeQueryTool.js';
+import { registerLandTransferAnalysisTool } from './tools/landTransferAnalysisTool.js';
+import { registerSpatialStatsAnalysisTool } from './tools/spatialStatsAnalysisTool.js';
+import { registerKnowledgeBaseLookupTool } from './tools/knowledgeBaseLookupTool.js';
+import { registerKnowledgeGraphQueryTool } from './tools/knowledgeGraphQueryTool.js';
+import { registerPolicyReferenceLookupTool } from './tools/policyReferenceLookupTool.js';
+import { registerWeatherQueryTool } from './tools/weatherQueryTool.js';
 
 const server = new McpServer({
   name: 'WebGIS-Professional-Server',
@@ -30,6 +36,12 @@ registerSkillsResource(server);
 registerClcdAnalysisTool(server);
 registerDashboardAnalysisTool(server);
 registerKnowledgeQueryTool(server);
+registerLandTransferAnalysisTool(server);
+registerSpatialStatsAnalysisTool(server);
+registerKnowledgeBaseLookupTool(server);
+registerKnowledgeGraphQueryTool(server);
+registerPolicyReferenceLookupTool(server);
+registerWeatherQueryTool(server);
 
 async function main() {
   const transport = new StdioServerTransport();
@@ -41,4 +53,3 @@ main().catch((err) => {
   logger.error('MCP Server 启动失败', { message: err?.message || String(err), stack: err?.stack });
   process.exit(1);
 });
-
