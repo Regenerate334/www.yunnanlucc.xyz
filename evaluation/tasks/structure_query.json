@@ -1,0 +1,410 @@
+[
+  {
+    "id": "structure-simple-001",
+    "category": "structure_query",
+    "difficulty": "simple",
+    "question": "2020年昆明市建设用地面积是多少？",
+    "expected_tools": [
+      "clcd_analysis"
+    ],
+    "expected_args": {
+      "clcd_analysis": {
+        "query_type": "structure",
+        "region": "昆明市",
+        "level": "prefecture",
+        "year": 2020
+      }
+    },
+    "baseline": {
+      "tool": "clcd_analysis",
+      "args": {
+        "query_type": "structure",
+        "region": "昆明市",
+        "level": "prefecture",
+        "year": 2020
+      },
+      "extract": {
+        "type": "numeric",
+        "path": "result.rows.0.impervious",
+        "unit": "m2"
+      }
+    }
+  },
+  {
+    "id": "structure-simple-002",
+    "category": "structure_query",
+    "difficulty": "simple",
+    "question": "2020年曲靖市耕地面积是多少？",
+    "expected_tools": [
+      "clcd_analysis"
+    ],
+    "expected_args": {
+      "clcd_analysis": {
+        "query_type": "structure",
+        "region": "曲靖市",
+        "level": "prefecture",
+        "year": 2020
+      }
+    },
+    "baseline": {
+      "tool": "clcd_analysis",
+      "args": {
+        "query_type": "structure",
+        "region": "曲靖市",
+        "level": "prefecture",
+        "year": 2020
+      },
+      "extract": {
+        "type": "numeric",
+        "path": "result.rows.0.cropland",
+        "unit": "m2"
+      }
+    }
+  },
+  {
+    "id": "structure-simple-003",
+    "category": "structure_query",
+    "difficulty": "simple",
+    "question": "2015年云南省林地面积是多少？",
+    "expected_tools": [
+      "clcd_analysis"
+    ],
+    "expected_args": {
+      "clcd_analysis": {
+        "query_type": "structure",
+        "region": "云南省",
+        "level": "province",
+        "year": 2015
+      }
+    },
+    "baseline": {
+      "tool": "clcd_analysis",
+      "args": {
+        "query_type": "structure",
+        "region": "云南省",
+        "level": "province",
+        "year": 2015
+      },
+      "extract": {
+        "type": "numeric",
+        "path": "result.rows.0.forest",
+        "unit": "m2"
+      }
+    }
+  },
+  {
+    "id": "structure-simple-004",
+    "category": "structure_query",
+    "difficulty": "simple",
+    "question": "2023年玉溪市水体面积是多少？",
+    "expected_tools": [
+      "clcd_analysis"
+    ],
+    "expected_args": {
+      "clcd_analysis": {
+        "query_type": "structure",
+        "region": "玉溪市",
+        "level": "prefecture",
+        "year": 2023
+      }
+    },
+    "baseline": {
+      "tool": "clcd_analysis",
+      "args": {
+        "query_type": "structure",
+        "region": "玉溪市",
+        "level": "prefecture",
+        "year": 2023
+      },
+      "extract": {
+        "type": "numeric",
+        "path": "result.rows.0.water",
+        "unit": "m2"
+      }
+    }
+  },
+  {
+    "id": "structure-composite-001",
+    "category": "structure_query",
+    "difficulty": "composite",
+    "question": "2020年昆明市、曲靖市和玉溪市建设用地面积由高到低如何排序？",
+    "expected_tools": [
+      "clcd_analysis"
+    ],
+    "expected_args": {
+      "clcd_analysis": {
+        "query_type": "comparison",
+        "region": "昆明市,曲靖市,玉溪市",
+        "level": "prefecture",
+        "year": 2020
+      }
+    },
+    "baseline": {
+      "tool": "clcd_analysis",
+      "args": {
+        "query_type": "comparison",
+        "region": "昆明市,曲靖市,玉溪市",
+        "level": "prefecture",
+        "year": 2020
+      },
+      "extract": {
+        "type": "top_regions_by_field",
+        "path": "result.rows",
+        "field": "impervious",
+        "key": "region_name",
+        "k": 3,
+        "unit": "m2"
+      }
+    }
+  },
+  {
+    "id": "structure-composite-002",
+    "category": "structure_query",
+    "difficulty": "composite",
+    "question": "2020年大理白族自治州、红河哈尼族彝族自治州和西双版纳傣族自治州林地面积由高到低如何排序？",
+    "expected_tools": [
+      "clcd_analysis"
+    ],
+    "expected_args": {
+      "clcd_analysis": {
+        "query_type": "comparison",
+        "region": "大理白族自治州,红河哈尼族彝族自治州,西双版纳傣族自治州",
+        "level": "prefecture",
+        "year": 2020
+      }
+    },
+    "baseline": {
+      "tool": "clcd_analysis",
+      "args": {
+        "query_type": "comparison",
+        "region": "大理白族自治州,红河哈尼族彝族自治州,西双版纳傣族自治州",
+        "level": "prefecture",
+        "year": 2020
+      },
+      "extract": {
+        "type": "top_regions_by_field",
+        "path": "result.rows",
+        "field": "forest",
+        "key": "region_name",
+        "k": 3,
+        "unit": "m2"
+      }
+    }
+  },
+  {
+    "id": "structure-composite-003",
+    "category": "structure_query",
+    "difficulty": "composite",
+    "question": "2010年昭通市、曲靖市和文山壮族苗族自治州耕地面积由高到低如何排序？",
+    "expected_tools": [
+      "clcd_analysis"
+    ],
+    "expected_args": {
+      "clcd_analysis": {
+        "query_type": "comparison",
+        "region": "昭通市,曲靖市,文山壮族苗族自治州",
+        "level": "prefecture",
+        "year": 2010
+      }
+    },
+    "baseline": {
+      "tool": "clcd_analysis",
+      "args": {
+        "query_type": "comparison",
+        "region": "昭通市,曲靖市,文山壮族苗族自治州",
+        "level": "prefecture",
+        "year": 2010
+      },
+      "extract": {
+        "type": "top_regions_by_field",
+        "path": "result.rows",
+        "field": "cropland",
+        "key": "region_name",
+        "k": 3,
+        "unit": "m2"
+      }
+    }
+  },
+  {
+    "id": "structure-composite-004",
+    "category": "structure_query",
+    "difficulty": "composite",
+    "question": "2023年昆明市、丽江市和普洱市水体面积由高到低如何排序？",
+    "expected_tools": [
+      "clcd_analysis"
+    ],
+    "expected_args": {
+      "clcd_analysis": {
+        "query_type": "comparison",
+        "region": "昆明市,丽江市,普洱市",
+        "level": "prefecture",
+        "year": 2023
+      }
+    },
+    "baseline": {
+      "tool": "clcd_analysis",
+      "args": {
+        "query_type": "comparison",
+        "region": "昆明市,丽江市,普洱市",
+        "level": "prefecture",
+        "year": 2023
+      },
+      "extract": {
+        "type": "top_regions_by_field",
+        "path": "result.rows",
+        "field": "water",
+        "key": "region_name",
+        "k": 3,
+        "unit": "m2"
+      }
+    }
+  },
+  {
+    "id": "structure-interpretive-001",
+    "category": "structure_query",
+    "difficulty": "interpretive",
+    "question": "2020年昆明市土地利用结构中面积最大的地类是什么？请结合面积结果解释其空间含义。",
+    "expected_tools": [
+      "clcd_analysis"
+    ],
+    "expected_args": {
+      "clcd_analysis": {
+        "query_type": "structure",
+        "region": "昆明市",
+        "level": "prefecture",
+        "year": 2020
+      }
+    },
+    "baseline": {
+      "tool": "clcd_analysis",
+      "args": {
+        "query_type": "structure",
+        "region": "昆明市",
+        "level": "prefecture",
+        "year": 2020
+      },
+      "extract": {
+        "type": "dominant_land_types",
+        "path": "result.rows.0",
+        "k": 1,
+        "unit": "m2"
+      }
+    },
+    "manual_fact_units": [
+      "回答应引用结构查询返回的面积或占比结果",
+      "回答应指出优势地类或主要地类组合",
+      "回答应避免脱离数据作驱动机制断言"
+    ]
+  },
+  {
+    "id": "structure-interpretive-002",
+    "category": "structure_query",
+    "difficulty": "interpretive",
+    "question": "2023年云南省土地利用结构中前三位地类是什么？请概括全省土地利用结构特征。",
+    "expected_tools": [
+      "clcd_analysis"
+    ],
+    "expected_args": {
+      "clcd_analysis": {
+        "query_type": "structure",
+        "region": "云南省",
+        "level": "province",
+        "year": 2023
+      }
+    },
+    "baseline": {
+      "tool": "clcd_analysis",
+      "args": {
+        "query_type": "structure",
+        "region": "云南省",
+        "level": "province",
+        "year": 2023
+      },
+      "extract": {
+        "type": "dominant_land_types",
+        "path": "result.rows.0",
+        "k": 3,
+        "unit": "m2"
+      }
+    },
+    "manual_fact_units": [
+      "回答应引用结构查询返回的面积或占比结果",
+      "回答应指出优势地类或主要地类组合",
+      "回答应避免脱离数据作驱动机制断言"
+    ]
+  },
+  {
+    "id": "structure-interpretive-003",
+    "category": "structure_query",
+    "difficulty": "interpretive",
+    "question": "2015年曲靖市土地利用结构以哪些地类为主？请给出前三类并简要解释。",
+    "expected_tools": [
+      "clcd_analysis"
+    ],
+    "expected_args": {
+      "clcd_analysis": {
+        "query_type": "structure",
+        "region": "曲靖市",
+        "level": "prefecture",
+        "year": 2015
+      }
+    },
+    "baseline": {
+      "tool": "clcd_analysis",
+      "args": {
+        "query_type": "structure",
+        "region": "曲靖市",
+        "level": "prefecture",
+        "year": 2015
+      },
+      "extract": {
+        "type": "dominant_land_types",
+        "path": "result.rows.0",
+        "k": 3,
+        "unit": "m2"
+      }
+    },
+    "manual_fact_units": [
+      "回答应引用结构查询返回的面积或占比结果",
+      "回答应指出优势地类或主要地类组合",
+      "回答应避免脱离数据作驱动机制断言"
+    ]
+  },
+  {
+    "id": "structure-interpretive-004",
+    "category": "structure_query",
+    "difficulty": "interpretive",
+    "question": "2020年大理白族自治州土地利用结构中生态空间相关地类是否占主导？请依据主要地类面积回答。",
+    "expected_tools": [
+      "clcd_analysis"
+    ],
+    "expected_args": {
+      "clcd_analysis": {
+        "query_type": "structure",
+        "region": "大理白族自治州",
+        "level": "prefecture",
+        "year": 2020
+      }
+    },
+    "baseline": {
+      "tool": "clcd_analysis",
+      "args": {
+        "query_type": "structure",
+        "region": "大理白族自治州",
+        "level": "prefecture",
+        "year": 2020
+      },
+      "extract": {
+        "type": "dominant_land_types",
+        "path": "result.rows.0",
+        "k": 3,
+        "unit": "m2"
+      }
+    },
+    "manual_fact_units": [
+      "回答应引用结构查询返回的面积或占比结果",
+      "回答应指出优势地类或主要地类组合",
+      "回答应避免脱离数据作驱动机制断言"
+    ]
+  }
+]

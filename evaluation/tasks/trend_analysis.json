@@ -1,0 +1,522 @@
+[
+  {
+    "id": "trend-simple-001",
+    "category": "trend_analysis",
+    "difficulty": "simple",
+    "question": "1990—2020年云南省建设用地变化趋势如何？",
+    "expected_tools": [
+      "clcd_analysis"
+    ],
+    "expected_args": {
+      "clcd_analysis": {
+        "query_type": "trend",
+        "region": "云南省",
+        "level": "province",
+        "year_range": [
+          1990,
+          2020
+        ],
+        "land_type": "建设用地"
+      }
+    },
+    "baseline": {
+      "tool": "clcd_analysis",
+      "args": {
+        "query_type": "trend",
+        "region": "云南省",
+        "level": "province",
+        "year_range": [
+          1990,
+          2020
+        ],
+        "land_type": "建设用地"
+      },
+      "extract": {
+        "type": "trend",
+        "path": "result.rows",
+        "field": "impervious",
+        "unit": "m2"
+      }
+    }
+  },
+  {
+    "id": "trend-simple-002",
+    "category": "trend_analysis",
+    "difficulty": "simple",
+    "question": "2000—2023年昆明市建设用地面积是增加还是减少？",
+    "expected_tools": [
+      "clcd_analysis"
+    ],
+    "expected_args": {
+      "clcd_analysis": {
+        "query_type": "trend",
+        "region": "昆明市",
+        "level": "prefecture",
+        "year_range": [
+          2000,
+          2023
+        ],
+        "land_type": "建设用地"
+      }
+    },
+    "baseline": {
+      "tool": "clcd_analysis",
+      "args": {
+        "query_type": "trend",
+        "region": "昆明市",
+        "level": "prefecture",
+        "year_range": [
+          2000,
+          2023
+        ],
+        "land_type": "建设用地"
+      },
+      "extract": {
+        "type": "trend",
+        "path": "result.rows",
+        "field": "impervious",
+        "unit": "m2"
+      }
+    }
+  },
+  {
+    "id": "trend-simple-003",
+    "category": "trend_analysis",
+    "difficulty": "simple",
+    "question": "1990—2020年云南省耕地面积变化方向是什么？",
+    "expected_tools": [
+      "clcd_analysis"
+    ],
+    "expected_args": {
+      "clcd_analysis": {
+        "query_type": "trend",
+        "region": "云南省",
+        "level": "province",
+        "year_range": [
+          1990,
+          2020
+        ],
+        "land_type": "耕地"
+      }
+    },
+    "baseline": {
+      "tool": "clcd_analysis",
+      "args": {
+        "query_type": "trend",
+        "region": "云南省",
+        "level": "province",
+        "year_range": [
+          1990,
+          2020
+        ],
+        "land_type": "耕地"
+      },
+      "extract": {
+        "type": "trend",
+        "path": "result.rows",
+        "field": "cropland",
+        "unit": "m2"
+      }
+    }
+  },
+  {
+    "id": "trend-simple-004",
+    "category": "trend_analysis",
+    "difficulty": "simple",
+    "question": "2000—2020年曲靖市耕地面积变化趋势如何？",
+    "expected_tools": [
+      "clcd_analysis"
+    ],
+    "expected_args": {
+      "clcd_analysis": {
+        "query_type": "trend",
+        "region": "曲靖市",
+        "level": "prefecture",
+        "year_range": [
+          2000,
+          2020
+        ],
+        "land_type": "耕地"
+      }
+    },
+    "baseline": {
+      "tool": "clcd_analysis",
+      "args": {
+        "query_type": "trend",
+        "region": "曲靖市",
+        "level": "prefecture",
+        "year_range": [
+          2000,
+          2020
+        ],
+        "land_type": "耕地"
+      },
+      "extract": {
+        "type": "trend",
+        "path": "result.rows",
+        "field": "cropland",
+        "unit": "m2"
+      }
+    }
+  },
+  {
+    "id": "trend-composite-001",
+    "category": "trend_analysis",
+    "difficulty": "composite",
+    "question": "1985—2023年云南省林地长期变化趋势和净变化幅度如何？",
+    "expected_tools": [
+      "clcd_analysis"
+    ],
+    "expected_args": {
+      "clcd_analysis": {
+        "query_type": "trend",
+        "region": "云南省",
+        "level": "province",
+        "year_range": [
+          1985,
+          2023
+        ],
+        "land_type": "林地"
+      }
+    },
+    "baseline": {
+      "tool": "clcd_analysis",
+      "args": {
+        "query_type": "trend",
+        "region": "云南省",
+        "level": "province",
+        "year_range": [
+          1985,
+          2023
+        ],
+        "land_type": "林地"
+      },
+      "extract": {
+        "type": "trend",
+        "path": "result.rows",
+        "field": "forest",
+        "unit": "m2"
+      }
+    }
+  },
+  {
+    "id": "trend-composite-002",
+    "category": "trend_analysis",
+    "difficulty": "composite",
+    "question": "2000—2023年云南省建设用地变化幅度如何？请说明总体扩张方向。",
+    "expected_tools": [
+      "clcd_analysis"
+    ],
+    "expected_args": {
+      "clcd_analysis": {
+        "query_type": "trend",
+        "region": "云南省",
+        "level": "province",
+        "year_range": [
+          2000,
+          2023
+        ],
+        "land_type": "建设用地"
+      }
+    },
+    "baseline": {
+      "tool": "clcd_analysis",
+      "args": {
+        "query_type": "trend",
+        "region": "云南省",
+        "level": "province",
+        "year_range": [
+          2000,
+          2023
+        ],
+        "land_type": "建设用地"
+      },
+      "extract": {
+        "type": "trend",
+        "path": "result.rows",
+        "field": "impervious",
+        "unit": "m2"
+      }
+    }
+  },
+  {
+    "id": "trend-composite-003",
+    "category": "trend_analysis",
+    "difficulty": "composite",
+    "question": "2010—2020年云南省草地面积变化方向和变化幅度如何？",
+    "expected_tools": [
+      "clcd_analysis"
+    ],
+    "expected_args": {
+      "clcd_analysis": {
+        "query_type": "trend",
+        "region": "云南省",
+        "level": "province",
+        "year_range": [
+          2010,
+          2020
+        ],
+        "land_type": "草地"
+      }
+    },
+    "baseline": {
+      "tool": "clcd_analysis",
+      "args": {
+        "query_type": "trend",
+        "region": "云南省",
+        "level": "province",
+        "year_range": [
+          2010,
+          2020
+        ],
+        "land_type": "草地"
+      },
+      "extract": {
+        "type": "trend",
+        "path": "result.rows",
+        "field": "grassland",
+        "unit": "m2"
+      }
+    }
+  },
+  {
+    "id": "trend-composite-004",
+    "category": "trend_analysis",
+    "difficulty": "composite",
+    "question": "2000—2020年红河哈尼族彝族自治州建设用地变化趋势如何？",
+    "expected_tools": [
+      "clcd_analysis"
+    ],
+    "expected_args": {
+      "clcd_analysis": {
+        "query_type": "trend",
+        "region": "红河哈尼族彝族自治州",
+        "level": "prefecture",
+        "year_range": [
+          2000,
+          2020
+        ],
+        "land_type": "建设用地"
+      }
+    },
+    "baseline": {
+      "tool": "clcd_analysis",
+      "args": {
+        "query_type": "trend",
+        "region": "红河哈尼族彝族自治州",
+        "level": "prefecture",
+        "year_range": [
+          2000,
+          2020
+        ],
+        "land_type": "建设用地"
+      },
+      "extract": {
+        "type": "trend",
+        "path": "result.rows",
+        "field": "impervious",
+        "unit": "m2"
+      }
+    }
+  },
+  {
+    "id": "trend-interpretive-001",
+    "category": "trend_analysis",
+    "difficulty": "interpretive",
+    "question": "1990—2020年云南省建设用地扩张如何与城镇化进程联系起来？请先给出趋势证据再解释。",
+    "expected_tools": [
+      "clcd_analysis",
+      "knowledge_base_lookup"
+    ],
+    "expected_args": {
+      "clcd_analysis": {
+        "query_type": "trend",
+        "region": "云南省",
+        "level": "province",
+        "year_range": [
+          1990,
+          2020
+        ],
+        "land_type": "建设用地"
+      },
+      "knowledge_base_lookup": {
+        "skill_name": "policy_expert"
+      }
+    },
+    "baseline": {
+      "tool": "clcd_analysis",
+      "args": {
+        "query_type": "trend",
+        "region": "云南省",
+        "level": "province",
+        "year_range": [
+          1990,
+          2020
+        ],
+        "land_type": "建设用地"
+      },
+      "extract": {
+        "type": "trend",
+        "path": "result.rows",
+        "field": "impervious",
+        "unit": "m2"
+      }
+    },
+    "manual_fact_units": [
+      "回答应给出起止年份面积或变化方向",
+      "回答应说明增减趋势与变化幅度",
+      "解释性结论应回指时序数据证据"
+    ]
+  },
+  {
+    "id": "trend-interpretive-002",
+    "category": "trend_analysis",
+    "difficulty": "interpretive",
+    "question": "2000—2023年昆明市建设用地变化可能反映哪些空间治理压力？请依据趋势结果回答。",
+    "expected_tools": [
+      "clcd_analysis",
+      "knowledge_base_lookup"
+    ],
+    "expected_args": {
+      "clcd_analysis": {
+        "query_type": "trend",
+        "region": "昆明市",
+        "level": "prefecture",
+        "year_range": [
+          2000,
+          2023
+        ],
+        "land_type": "建设用地"
+      },
+      "knowledge_base_lookup": {
+        "skill_name": "policy_expert"
+      }
+    },
+    "baseline": {
+      "tool": "clcd_analysis",
+      "args": {
+        "query_type": "trend",
+        "region": "昆明市",
+        "level": "prefecture",
+        "year_range": [
+          2000,
+          2023
+        ],
+        "land_type": "建设用地"
+      },
+      "extract": {
+        "type": "trend",
+        "path": "result.rows",
+        "field": "impervious",
+        "unit": "m2"
+      }
+    },
+    "manual_fact_units": [
+      "回答应给出起止年份面积或变化方向",
+      "回答应说明增减趋势与变化幅度",
+      "解释性结论应回指时序数据证据"
+    ]
+  },
+  {
+    "id": "trend-interpretive-003",
+    "category": "trend_analysis",
+    "difficulty": "interpretive",
+    "question": "1990—2020年云南省耕地变化与耕地保护要求有什么关系？请结合趋势证据和政策语境说明。",
+    "expected_tools": [
+      "clcd_analysis",
+      "policy_reference_lookup"
+    ],
+    "expected_args": {
+      "clcd_analysis": {
+        "query_type": "trend",
+        "region": "云南省",
+        "level": "province",
+        "year_range": [
+          1990,
+          2020
+        ],
+        "land_type": "耕地"
+      },
+      "policy_reference_lookup": {
+        "region": "云南省",
+        "level": "province",
+        "top_n": 5
+      }
+    },
+    "baseline": {
+      "tool": "clcd_analysis",
+      "args": {
+        "query_type": "trend",
+        "region": "云南省",
+        "level": "province",
+        "year_range": [
+          1990,
+          2020
+        ],
+        "land_type": "耕地"
+      },
+      "extract": {
+        "type": "trend",
+        "path": "result.rows",
+        "field": "cropland",
+        "unit": "m2"
+      }
+    },
+    "manual_fact_units": [
+      "回答应给出起止年份面积或变化方向",
+      "回答应说明增减趋势与变化幅度",
+      "解释性结论应回指时序数据证据"
+    ]
+  },
+  {
+    "id": "trend-interpretive-004",
+    "category": "trend_analysis",
+    "difficulty": "interpretive",
+    "question": "2010—2023年云南省林地变化如何理解生态保护成效？请以趋势数据为依据作谨慎解释。",
+    "expected_tools": [
+      "clcd_analysis",
+      "policy_reference_lookup"
+    ],
+    "expected_args": {
+      "clcd_analysis": {
+        "query_type": "trend",
+        "region": "云南省",
+        "level": "province",
+        "year_range": [
+          2010,
+          2023
+        ],
+        "land_type": "林地"
+      },
+      "policy_reference_lookup": {
+        "region": "云南省",
+        "level": "province",
+        "top_n": 5
+      }
+    },
+    "baseline": {
+      "tool": "clcd_analysis",
+      "args": {
+        "query_type": "trend",
+        "region": "云南省",
+        "level": "province",
+        "year_range": [
+          2010,
+          2023
+        ],
+        "land_type": "林地"
+      },
+      "extract": {
+        "type": "trend",
+        "path": "result.rows",
+        "field": "forest",
+        "unit": "m2"
+      }
+    },
+    "manual_fact_units": [
+      "回答应给出起止年份面积或变化方向",
+      "回答应说明增减趋势与变化幅度",
+      "解释性结论应回指时序数据证据"
+    ]
+  }
+]

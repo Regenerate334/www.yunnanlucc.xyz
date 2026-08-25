@@ -1,0 +1,430 @@
+{
+  "generated_at": "2026-06-16T05:02:34.821Z",
+  "source": {
+    "corpus_file": "server/knowledge/corpus/policy_corpus.json",
+    "task_dir": "evaluation/tasks",
+    "note": "本事实库由项目内政策/规划文献索引库整理生成，不使用实时网络检索。source_url/source_urls 来自本地 policy_corpus.json 中已维护的官方来源链接。"
+  },
+  "facts": [
+    {
+      "fact_id": "policy_2000_07_00_gf2000_24::summary",
+      "source_id": "policy_2000_07_00_gf2000_24",
+      "source_title": "国务院关于进一步做好退耕还林还草试点工作的若干意见",
+      "source_url": "https://www.gov.cn/gongbao/content/2000/content_60486.htm",
+      "source_urls": [
+        "https://www.gov.cn/gongbao/content/2000/content_60486.htm"
+      ],
+      "issuer": "国务院",
+      "date": "2000-09-10",
+      "level": "national",
+      "region": "全国",
+      "topic": [
+        "退耕还林",
+        "退耕还林还草",
+        "生态恢复",
+        "水土保持"
+      ],
+      "fact_text": "对退耕还林还草试点工作提出制度化安排与责任机制，是解释“耕地向林草转化、生态恢复工程驱动”类演变的典型政策背景之一。具体影响需结合空间统计工具核验（如林地/灌木/草地增长的时段与空间核心）。",
+      "applicable_tasks": [
+        "policy-simple-003"
+      ]
+    },
+    {
+      "fact_id": "policy_2002_04_00_gf2002_10::summary",
+      "source_id": "policy_2002_04_00_gf2002_10",
+      "source_title": "国务院关于进一步完善退耕还林政策措施的若干意见",
+      "source_url": "https://www.gov.cn/gongbao/content/2002/content_61463.htm",
+      "source_urls": [
+        "https://www.gov.cn/gongbao/content/2002/content_61463.htm"
+      ],
+      "issuer": "国务院",
+      "date": "2002-04-11",
+      "level": "national",
+      "region": "全国",
+      "topic": [
+        "退耕还林",
+        "政策完善",
+        "生态效益优先",
+        "农民增收"
+      ],
+      "fact_text": "对退耕还林政策措施进一步完善，强调生态效益优先与因地制宜，为解释 2000s 初期部分地区“耕地减少、林草增加”的工程性背景提供引用入口。",
+      "applicable_tasks": []
+    },
+    {
+      "fact_id": "policy_2004_10_21_gf2004_28::summary",
+      "source_id": "policy_2004_10_21_gf2004_28",
+      "source_title": "国务院关于深化改革严格土地管理的决定",
+      "source_url": "https://www.gov.cn/gongbao/content/2004/content_63043.htm",
+      "source_urls": [
+        "https://www.gov.cn/gongbao/content/2004/content_63043.htm",
+        "https://www.gov.cn/zhengce/content/2008-03/28/content_2457.htm"
+      ],
+      "issuer": "国务院",
+      "date": "2004-10-21",
+      "level": "national",
+      "region": "全国",
+      "topic": [
+        "最严格土地管理制度",
+        "建设用地",
+        "土地节约集约利用",
+        "用途管制"
+      ],
+      "fact_text": "强调严格控制建设用地增量、盘活存量、强化节约集约用地与依法用地监管，是解释“建设用地扩张约束与土地管理制度”类问题的重要制度背景之一。",
+      "applicable_tasks": [
+        "policy-simple-002",
+        "policy-interpretive-002"
+      ]
+    },
+    {
+      "fact_id": "policy_2014_03_16_new_urbanization::summary",
+      "source_id": "policy_2014_03_16_new_urbanization",
+      "source_title": "国家新型城镇化规划（2014－2020年）",
+      "source_url": "https://www.gov.cn/zhengce/202203/content_3635155.htm",
+      "source_urls": [
+        "https://www.gov.cn/zhengce/202203/content_3635155.htm"
+      ],
+      "issuer": "中共中央、国务院",
+      "date": "2014-03-16",
+      "level": "national",
+      "region": "全国",
+      "topic": [
+        "新型城镇化",
+        "城市群",
+        "人口城镇化",
+        "城镇建设",
+        "空间布局"
+      ],
+      "fact_text": "作为城镇化阶段性宏观规划，为解释“建设用地扩张、城镇空间结构演变”的中长期背景提供引用入口。具体扩张强度与空间形态仍需以平台工具输出为准。",
+      "applicable_tasks": [
+        "policy-simple-002",
+        "policy-interpretive-002"
+      ]
+    },
+    {
+      "fact_id": "policy_2015_09_22_ecociv_reform::summary",
+      "source_id": "policy_2015_09_22_ecociv_reform",
+      "source_title": "中共中央 国务院印发《生态文明体制改革总体方案》",
+      "source_url": "https://www.gov.cn/gongbao/content/2015/content_2941157.htm",
+      "source_urls": [
+        "https://www.gov.cn/gongbao/content/2015/content_2941157.htm"
+      ],
+      "issuer": "中共中央、国务院",
+      "date": "2015-09-22",
+      "level": "national",
+      "region": "全国",
+      "topic": [
+        "生态文明体制改革",
+        "国土空间开发保护制度",
+        "空间规划体系",
+        "用途管制",
+        "山水林田湖"
+      ],
+      "fact_text": "提出生态文明制度体系框架，涉及国土空间开发保护制度、用途管制与空间规划体系等，是解释“生态保护与开发约束制度化”的关键顶层背景之一。",
+      "applicable_tasks": [
+        "policy-simple-003"
+      ]
+    },
+    {
+      "fact_id": "policy_2017_01_09_farmland_balance::summary",
+      "source_id": "policy_2017_01_09_farmland_balance",
+      "source_title": "中共中央 国务院关于加强耕地保护和改进占补平衡的意见",
+      "source_url": "https://app.www.gov.cn/govdata/gov/201701/23/397863/article.html",
+      "source_urls": [
+        "https://app.www.gov.cn/govdata/gov/201701/23/397863/article.html"
+      ],
+      "issuer": "中共中央、国务院",
+      "date": "2017-01-09",
+      "level": "national",
+      "region": "全国",
+      "topic": [
+        "耕地保护",
+        "占补平衡",
+        "用途管制",
+        "耕地红线"
+      ],
+      "fact_text": "强化耕地数量、质量、生态“三位一体”保护与占补平衡要求，可用于解释“耕地转建约束、占补平衡口径”类问题的政策背景。",
+      "applicable_tasks": [
+        "policy-simple-004",
+        "policy-interpretive-002"
+      ]
+    },
+    {
+      "fact_id": "policy_2017_02_07_ecoredline::summary",
+      "source_id": "policy_2017_02_07_ecoredline",
+      "source_title": "中共中央办公厅 国务院办公厅印发《关于划定并严守生态保护红线的若干意见》",
+      "source_url": "https://www.gov.cn/gongbao/content/2017/content_5174504.htm",
+      "source_urls": [
+        "https://www.gov.cn/gongbao/content/2017/content_5174504.htm",
+        "https://www.gov.cn/xinwen/2017-02/07/content_5166325.htm"
+      ],
+      "issuer": "中共中央办公厅、国务院办公厅",
+      "date": "2017-02-07",
+      "level": "national",
+      "region": "全国",
+      "topic": [
+        "生态保护红线",
+        "用途管制",
+        "生态空间",
+        "底线约束"
+      ],
+      "fact_text": "系统阐述生态保护红线的内涵、划定与严守要求，是解释“生态空间刚性约束、生态红线对开发活动限制”类问题的重要政策依据。",
+      "applicable_tasks": [
+        "policy-simple-003"
+      ]
+    },
+    {
+      "fact_id": "policy_2018_02_26_pbf::summary",
+      "source_id": "policy_2018_02_26_pbf",
+      "source_title": "国土资源部印发《关于全面实行永久基本农田特殊保护的通知》相关发布信息",
+      "source_url": "https://www.gov.cn/zhengce/2018-02/27/content_5269128.htm",
+      "source_urls": [
+        "https://www.gov.cn/zhengce/2018-02/27/content_5269128.htm"
+      ],
+      "issuer": "国土资源部",
+      "date": "2018-02-27",
+      "level": "national",
+      "region": "全国",
+      "topic": [
+        "永久基本农田",
+        "特殊保护",
+        "用途管制",
+        "三条控制线"
+      ],
+      "fact_text": "强调守住永久基本农田控制线，完善“划、建、管、补、护”长效机制，并提及与生态保护红线、城镇开发边界等衔接，是解释“基本农田刚性约束”类问题的权威引用入口之一。",
+      "applicable_tasks": [
+        "policy-simple-002",
+        "policy-simple-003"
+      ]
+    },
+    {
+      "fact_id": "policy_2019_07_23_natural_forest::summary",
+      "source_id": "policy_2019_07_23_natural_forest",
+      "source_title": "中共中央办公厅 国务院办公厅印发《天然林保护修复制度方案》",
+      "source_url": "https://www.gov.cn/gongbao/content/2019/content_5419204.htm",
+      "source_urls": [
+        "https://www.gov.cn/gongbao/content/2019/content_5419204.htm",
+        "https://www.gov.cn/zhengce/2019-07/24/content_5413945.htm"
+      ],
+      "issuer": "中共中央办公厅、国务院办公厅",
+      "date": "2019-07-23",
+      "level": "national",
+      "region": "全国",
+      "topic": [
+        "天然林保护",
+        "天然林修复",
+        "用途管控",
+        "生态修复"
+      ],
+      "fact_text": "提出天然林保护修复制度安排，强调用途管控与最严格制度保护修复天然林，为解释“林地保护、生态修复导向”提供权威引用入口。",
+      "applicable_tasks": [
+        "policy-composite-003"
+      ]
+    },
+    {
+      "fact_id": "policy_2024_02_05_farmland_quality_balance::summary",
+      "source_id": "policy_2024_02_05_farmland_quality_balance",
+      "source_title": "中共中央办公厅 国务院办公厅关于加强耕地保护提升耕地质量完善占补平衡的意见",
+      "source_url": "https://www.gov.cn/zhengce/202409/content_6976197.htm",
+      "source_urls": [
+        "https://www.gov.cn/zhengce/202409/content_6976197.htm"
+      ],
+      "issuer": "中共中央办公厅、国务院办公厅",
+      "date": "2024-02-05",
+      "level": "national",
+      "region": "全国",
+      "topic": [
+        "耕地保护",
+        "耕地质量",
+        "占补平衡",
+        "非农化",
+        "非粮化"
+      ],
+      "fact_text": "强调耕地数量、质量、生态“三位一体”保护并完善占补平衡制度，适用于解释 2020s 阶段“耕地转建约束更强、占补平衡要求升级”的政策背景。",
+      "applicable_tasks": [
+        "policy-simple-004",
+        "policy-composite-004"
+      ]
+    },
+    {
+      "fact_id": "policy_2019_05_23_gtsk::summary",
+      "source_id": "policy_2019_05_23_gtsk",
+      "source_title": "中共中央 国务院关于建立国土空间规划体系并监督实施的若干意见",
+      "source_url": "https://www.gov.cn/xinwen/2019-05/23/content_5394187.htm",
+      "source_urls": [
+        "https://www.gov.cn/xinwen/2019-05/23/content_5394187.htm"
+      ],
+      "issuer": "中共中央、国务院",
+      "date": "2019-05-23",
+      "level": "national",
+      "region": "全国",
+      "topic": [
+        "国土空间规划体系",
+        "空间治理",
+        "用途管制",
+        "规划监督"
+      ],
+      "fact_text": "确立国土空间规划体系的顶层制度框架，强调“多规合一”、用途管制与监督实施，为后续“三区三线”等管控体系提供制度基础。",
+      "applicable_tasks": [
+        "policy-composite-003"
+      ]
+    },
+    {
+      "fact_id": "policy_2019_11_01_3lines::summary",
+      "source_id": "policy_2019_11_01_3lines",
+      "source_title": "关于在国土空间规划中统筹划定落实三条控制线的指导意见",
+      "source_url": "https://www.gov.cn/zhengce/2019-11/01/content_5447654.htm",
+      "source_urls": [
+        "https://www.gov.cn/zhengce/2019-11/01/content_5447654.htm"
+      ],
+      "issuer": "中共中央办公厅、国务院办公厅",
+      "date": "2019-11-01",
+      "level": "national",
+      "region": "全国",
+      "topic": [
+        "三条控制线",
+        "生态保护红线",
+        "永久基本农田",
+        "城镇开发边界",
+        "用途管制"
+      ],
+      "fact_text": "提出在国土空间规划中统筹划定并严格落实生态保护红线、永久基本农田、城镇开发边界，为建设用地扩张与耕地保护、生态安全之间的约束关系提供制度依据。",
+      "applicable_tasks": [
+        "policy-simple-002",
+        "policy-simple-003",
+        "policy-simple-004",
+        "policy-composite-003",
+        "policy-interpretive-002"
+      ]
+    },
+    {
+      "fact_id": "policy_2019_87_natres::summary",
+      "source_id": "policy_2019_87_natres",
+      "source_title": "自然资源部关于全面开展国土空间规划工作的通知",
+      "source_url": "https://www.gov.cn/xinwen/2019-06/02/content_5396857.htm",
+      "source_urls": [
+        "https://www.gov.cn/xinwen/2019-06/02/content_5396857.htm"
+      ],
+      "issuer": "自然资源部",
+      "date": "2019-06-02",
+      "level": "national",
+      "region": "全国",
+      "topic": [
+        "国土空间规划",
+        "编制工作",
+        "规划实施监督",
+        "用途管制"
+      ],
+      "fact_text": "部署全国范围内国土空间规划编制与实施监督工作，推动规划体系落地与用途管制执行，为各省市县规划编制提供工作路径。",
+      "applicable_tasks": [
+        "policy-composite-003"
+      ]
+    },
+    {
+      "fact_id": "policy_2020_09_15_non_agri::summary",
+      "source_id": "policy_2020_09_15_non_agri",
+      "source_title": "国务院办公厅关于坚决制止耕地“非农化”行为的通知",
+      "source_url": "https://www.gov.cn/zhengce/content/2020-09/15/content_5543645.htm",
+      "source_urls": [
+        "https://www.gov.cn/zhengce/content/2020-09/15/content_5543645.htm"
+      ],
+      "issuer": "国务院办公厅",
+      "date": "2020-09-15",
+      "level": "national",
+      "region": "全国",
+      "topic": [
+        "耕地保护",
+        "非农化",
+        "用途管制",
+        "建设占用"
+      ],
+      "fact_text": "强调严控耕地转为建设用地等“非农化”行为，强化用途管制与占补平衡约束，是解释“耕地转建/建设扩张受限”类问题的关键政策背景。",
+      "applicable_tasks": [
+        "policy-simple-002",
+        "policy-simple-004",
+        "policy-composite-003",
+        "policy-composite-004",
+        "policy-interpretive-002"
+      ]
+    },
+    {
+      "fact_id": "policy_2020_11_17_non_grain::summary",
+      "source_id": "policy_2020_11_17_non_grain",
+      "source_title": "国务院办公厅关于防止耕地“非粮化”稳定粮食生产的意见",
+      "source_url": "https://www.gov.cn/zhengce/content/2020-11/17/content_5562053.htm",
+      "source_urls": [
+        "https://www.gov.cn/zhengce/content/2020-11/17/content_5562053.htm"
+      ],
+      "issuer": "国务院办公厅",
+      "date": "2020-11-17",
+      "level": "national",
+      "region": "全国",
+      "topic": [
+        "耕地保护",
+        "非粮化",
+        "粮食安全",
+        "农业结构"
+      ],
+      "fact_text": "针对耕地“非粮化”进行约束，强调稳定粮食生产，对解释“耕地用途变化/农业结构调整”提供政策背景，但不直接替代遥感与统计证据。",
+      "applicable_tasks": [
+        "policy-simple-004",
+        "policy-composite-004"
+      ]
+    },
+    {
+      "fact_id": "policy_2024_yn_2021_2035::summary",
+      "source_id": "policy_2024_yn_2021_2035",
+      "source_title": "云南省国土空间规划（2021—2035年）相关发布信息",
+      "source_url": "https://dnr.yn.gov.cn/html/2024/qtwjnew_1024/4047892.html",
+      "source_urls": [
+        "https://dnr.yn.gov.cn/html/2024/qtwjnew_1024/4047892.html",
+        "https://dnr.yn.gov.cn/html/2024/xwdt_1030/4047935.html"
+      ],
+      "issuer": "云南省自然资源厅",
+      "date": "2024-10-24",
+      "level": "province",
+      "region": "云南省",
+      "topic": [
+        "云南省",
+        "国土空间总体规划",
+        "2021—2035",
+        "三条控制线",
+        "用途管制"
+      ],
+      "fact_text": "省级国土空间规划及其发布信息，为解释云南省尺度的空间管控框架、约束指标与发展导向提供权威引用入口。具体约束需以文件原文与批复为准。",
+      "applicable_tasks": [
+        "policy-simple-001",
+        "policy-composite-001",
+        "policy-interpretive-001",
+        "policy-interpretive-003",
+        "policy-interpretive-004",
+        "trend-interpretive-003",
+        "trend-interpretive-004"
+      ]
+    },
+    {
+      "fact_id": "policy_2024_12_20_km_2021_2035::summary",
+      "source_id": "policy_2024_12_20_km_2021_2035",
+      "source_title": "国务院关于《昆明市国土空间总体规划（2021—2035年）》的批复",
+      "source_url": "https://big5.www.gov.cn/gate/big5/www.gov.cn/zhengce/content/202412/content_6993803.htm",
+      "source_urls": [
+        "https://big5.www.gov.cn/gate/big5/www.gov.cn/zhengce/content/202412/content_6993803.htm",
+        "https://dnr.yn.gov.cn/html/2024/dangzhongyangguowuyuanxinxi_1220/4048331.html"
+      ],
+      "issuer": "国务院",
+      "date": "2024-12-20",
+      "level": "city",
+      "region": "昆明市",
+      "topic": [
+        "昆明市",
+        "国土空间总体规划",
+        "2021—2035",
+        "批复",
+        "用途管制"
+      ],
+      "fact_text": "国务院批复文件入口，可用于引用昆明市国土空间总体规划（2021—2035年）的权威出处。涉及具体硬约束指标与管控要求时，应以批复/规划原文为准，并在回答中列出来源链接。",
+      "applicable_tasks": [
+        "policy-composite-002"
+      ]
+    }
+  ]
+}

@@ -1,0 +1,570 @@
+[
+  {
+    "id": "policy-simple-001",
+    "category": "policy_explanation",
+    "difficulty": "simple",
+    "question": "云南省国土空间规划中与耕地保护有关的政策依据有哪些？",
+    "expected_tools": [
+      "policy_reference_lookup"
+    ],
+    "expected_args": {
+      "policy_reference_lookup": {
+        "region": "云南省",
+        "level": "province",
+        "keywords": [
+          "国土空间规划",
+          "耕地保护"
+        ],
+        "top_n": 5
+      }
+    },
+    "baseline": {
+      "tool": "policy_reference_lookup",
+      "args": {
+        "region": "云南省",
+        "level": "province",
+        "keywords": [
+          "国土空间规划",
+          "耕地保护"
+        ],
+        "top_n": 5
+      },
+      "extract": {
+        "type": "fact_units",
+        "path": "result.hits",
+        "key": "summary"
+      }
+    },
+    "manual_fact_units": [
+      "回答应引用政策或规划索引来源",
+      "回答应说明政策约束与土地利用变化之间的关系",
+      "回答应避免无来源背诵政策标题"
+    ]
+  },
+  {
+    "id": "policy-simple-002",
+    "category": "policy_explanation",
+    "difficulty": "simple",
+    "question": "三条控制线对建设用地扩张约束的政策依据是什么？",
+    "expected_tools": [
+      "policy_reference_lookup"
+    ],
+    "expected_args": {
+      "policy_reference_lookup": {
+        "region": "全国",
+        "level": "national",
+        "keywords": [
+          "三条控制线",
+          "建设用地",
+          "用途管制"
+        ],
+        "top_n": 5
+      }
+    },
+    "baseline": {
+      "tool": "policy_reference_lookup",
+      "args": {
+        "region": "全国",
+        "level": "national",
+        "keywords": [
+          "三条控制线",
+          "建设用地",
+          "用途管制"
+        ],
+        "top_n": 5
+      },
+      "extract": {
+        "type": "fact_units",
+        "path": "result.hits",
+        "key": "summary"
+      }
+    },
+    "manual_fact_units": [
+      "回答应引用政策或规划索引来源",
+      "回答应说明政策约束与土地利用变化之间的关系",
+      "回答应避免无来源背诵政策标题"
+    ]
+  },
+  {
+    "id": "policy-simple-003",
+    "category": "policy_explanation",
+    "difficulty": "simple",
+    "question": "生态保护红线相关政策依据有哪些？",
+    "expected_tools": [
+      "policy_reference_lookup"
+    ],
+    "expected_args": {
+      "policy_reference_lookup": {
+        "region": "全国",
+        "level": "national",
+        "keywords": [
+          "生态保护红线",
+          "生态保护"
+        ],
+        "top_n": 5
+      }
+    },
+    "baseline": {
+      "tool": "policy_reference_lookup",
+      "args": {
+        "region": "全国",
+        "level": "national",
+        "keywords": [
+          "生态保护红线",
+          "生态保护"
+        ],
+        "top_n": 5
+      },
+      "extract": {
+        "type": "fact_units",
+        "path": "result.hits",
+        "key": "summary"
+      }
+    },
+    "manual_fact_units": [
+      "回答应引用政策或规划索引来源",
+      "回答应说明政策约束与土地利用变化之间的关系",
+      "回答应避免无来源背诵政策标题"
+    ]
+  },
+  {
+    "id": "policy-simple-004",
+    "category": "policy_explanation",
+    "difficulty": "simple",
+    "question": "耕地非农化和占补平衡相关政策依据有哪些？",
+    "expected_tools": [
+      "policy_reference_lookup"
+    ],
+    "expected_args": {
+      "policy_reference_lookup": {
+        "region": "全国",
+        "level": "national",
+        "keywords": [
+          "耕地保护",
+          "非农化",
+          "占补平衡"
+        ],
+        "top_n": 5
+      }
+    },
+    "baseline": {
+      "tool": "policy_reference_lookup",
+      "args": {
+        "region": "全国",
+        "level": "national",
+        "keywords": [
+          "耕地保护",
+          "非农化",
+          "占补平衡"
+        ],
+        "top_n": 5
+      },
+      "extract": {
+        "type": "fact_units",
+        "path": "result.hits",
+        "key": "summary"
+      }
+    },
+    "manual_fact_units": [
+      "回答应引用政策或规划索引来源",
+      "回答应说明政策约束与土地利用变化之间的关系",
+      "回答应避免无来源背诵政策标题"
+    ]
+  },
+  {
+    "id": "policy-composite-001",
+    "category": "policy_explanation",
+    "difficulty": "composite",
+    "question": "云南省建设用地扩张与耕地保护、生态保护要求有什么关系？请给出政策依据。",
+    "expected_tools": [
+      "policy_reference_lookup"
+    ],
+    "expected_args": {
+      "policy_reference_lookup": {
+        "region": "云南省",
+        "level": "province",
+        "keywords": [
+          "国土空间规划",
+          "耕地保护",
+          "生态保护"
+        ],
+        "top_n": 5
+      }
+    },
+    "baseline": {
+      "tool": "policy_reference_lookup",
+      "args": {
+        "region": "云南省",
+        "level": "province",
+        "keywords": [
+          "国土空间规划",
+          "耕地保护",
+          "生态保护"
+        ],
+        "top_n": 5
+      },
+      "extract": {
+        "type": "fact_units",
+        "path": "result.hits",
+        "key": "summary"
+      }
+    },
+    "manual_fact_units": [
+      "回答应引用政策或规划索引来源",
+      "回答应说明政策约束与土地利用变化之间的关系",
+      "回答应避免无来源背诵政策标题"
+    ]
+  },
+  {
+    "id": "policy-composite-002",
+    "category": "policy_explanation",
+    "difficulty": "composite",
+    "question": "昆明市城镇开发与国土空间规划管控之间有什么关系？请检索政策依据。",
+    "expected_tools": [
+      "policy_reference_lookup"
+    ],
+    "expected_args": {
+      "policy_reference_lookup": {
+        "region": "昆明市",
+        "level": "city",
+        "keywords": [
+          "城镇开发边界",
+          "国土空间规划",
+          "用途管制"
+        ],
+        "top_n": 5
+      }
+    },
+    "baseline": {
+      "tool": "policy_reference_lookup",
+      "args": {
+        "region": "昆明市",
+        "level": "city",
+        "keywords": [
+          "城镇开发边界",
+          "国土空间规划",
+          "用途管制"
+        ],
+        "top_n": 5
+      },
+      "extract": {
+        "type": "fact_units",
+        "path": "result.hits",
+        "key": "summary"
+      }
+    },
+    "manual_fact_units": [
+      "回答应引用政策或规划索引来源",
+      "回答应说明政策约束与土地利用变化之间的关系",
+      "回答应避免无来源背诵政策标题"
+    ]
+  },
+  {
+    "id": "policy-composite-003",
+    "category": "policy_explanation",
+    "difficulty": "composite",
+    "question": "2019年以来三条控制线和用途管制如何约束土地利用变化？请给出政策依据。",
+    "expected_tools": [
+      "policy_reference_lookup"
+    ],
+    "expected_args": {
+      "policy_reference_lookup": {
+        "region": "全国",
+        "level": "national",
+        "year_range": [
+          2019,
+          2024
+        ],
+        "keywords": [
+          "三条控制线",
+          "用途管制",
+          "国土空间规划"
+        ],
+        "top_n": 5
+      }
+    },
+    "baseline": {
+      "tool": "policy_reference_lookup",
+      "args": {
+        "region": "全国",
+        "level": "national",
+        "year_range": [
+          2019,
+          2024
+        ],
+        "keywords": [
+          "三条控制线",
+          "用途管制",
+          "国土空间规划"
+        ],
+        "top_n": 5
+      },
+      "extract": {
+        "type": "fact_units",
+        "path": "result.hits",
+        "key": "summary"
+      }
+    },
+    "manual_fact_units": [
+      "回答应引用政策或规划索引来源",
+      "回答应说明政策约束与土地利用变化之间的关系",
+      "回答应避免无来源背诵政策标题"
+    ]
+  },
+  {
+    "id": "policy-composite-004",
+    "category": "policy_explanation",
+    "difficulty": "composite",
+    "question": "2020年以来耕地保护政策对建设用地扩张提出了哪些约束？请检索依据。",
+    "expected_tools": [
+      "policy_reference_lookup"
+    ],
+    "expected_args": {
+      "policy_reference_lookup": {
+        "region": "全国",
+        "level": "national",
+        "year_range": [
+          2020,
+          2024
+        ],
+        "keywords": [
+          "耕地保护",
+          "建设用地",
+          "非农化"
+        ],
+        "top_n": 5
+      }
+    },
+    "baseline": {
+      "tool": "policy_reference_lookup",
+      "args": {
+        "region": "全国",
+        "level": "national",
+        "year_range": [
+          2020,
+          2024
+        ],
+        "keywords": [
+          "耕地保护",
+          "建设用地",
+          "非农化"
+        ],
+        "top_n": 5
+      },
+      "extract": {
+        "type": "fact_units",
+        "path": "result.hits",
+        "key": "summary"
+      }
+    },
+    "manual_fact_units": [
+      "回答应引用政策或规划索引来源",
+      "回答应说明政策约束与土地利用变化之间的关系",
+      "回答应避免无来源背诵政策标题"
+    ]
+  },
+  {
+    "id": "policy-interpretive-001",
+    "category": "policy_explanation",
+    "difficulty": "interpretive",
+    "question": "请将云南省建设用地扩张热点与国土空间规划管控联系起来，给出政策依据和解释。",
+    "expected_tools": [
+      "policy_reference_lookup",
+      "spatial_stats_analysis"
+    ],
+    "expected_args": {
+      "policy_reference_lookup": {
+        "region": "云南省",
+        "level": "province",
+        "keywords": [
+          "国土空间规划",
+          "建设用地",
+          "三条控制线"
+        ],
+        "top_n": 5
+      },
+      "spatial_stats_analysis": {
+        "yearStart": 2000,
+        "yearEnd": 2020,
+        "fromClassStr": "全部",
+        "toClassStr": "建设用地",
+        "region": "云南省"
+      }
+    },
+    "baseline": {
+      "tool": "policy_reference_lookup",
+      "args": {
+        "region": "云南省",
+        "level": "province",
+        "keywords": [
+          "国土空间规划",
+          "建设用地",
+          "三条控制线"
+        ],
+        "top_n": 5
+      },
+      "extract": {
+        "type": "fact_units",
+        "path": "result.hits",
+        "key": "summary"
+      }
+    },
+    "manual_fact_units": [
+      "回答应引用政策或规划索引来源",
+      "回答应说明政策约束与土地利用变化之间的关系",
+      "回答应避免无来源背诵政策标题"
+    ]
+  },
+  {
+    "id": "policy-interpretive-002",
+    "category": "policy_explanation",
+    "difficulty": "interpretive",
+    "question": "请解释耕地转为建设用地与永久基本农田保护之间的关系，并给出政策依据。",
+    "expected_tools": [
+      "policy_reference_lookup",
+      "spatial_stats_analysis"
+    ],
+    "expected_args": {
+      "policy_reference_lookup": {
+        "region": "全国",
+        "level": "national",
+        "keywords": [
+          "永久基本农田",
+          "耕地保护",
+          "建设用地"
+        ],
+        "top_n": 5
+      },
+      "spatial_stats_analysis": {
+        "yearStart": 2010,
+        "yearEnd": 2020,
+        "fromClassStr": "耕地",
+        "toClassStr": "建设用地",
+        "region": "云南省"
+      }
+    },
+    "baseline": {
+      "tool": "policy_reference_lookup",
+      "args": {
+        "region": "全国",
+        "level": "national",
+        "keywords": [
+          "永久基本农田",
+          "耕地保护",
+          "建设用地"
+        ],
+        "top_n": 5
+      },
+      "extract": {
+        "type": "fact_units",
+        "path": "result.hits",
+        "key": "summary"
+      }
+    },
+    "manual_fact_units": [
+      "回答应引用政策或规划索引来源",
+      "回答应说明政策约束与土地利用变化之间的关系",
+      "回答应避免无来源背诵政策标题"
+    ]
+  },
+  {
+    "id": "policy-interpretive-003",
+    "category": "policy_explanation",
+    "difficulty": "interpretive",
+    "question": "生态风险预警结果如何服务国土空间用途管制？请给出政策依据并说明系统应用价值。",
+    "expected_tools": [
+      "policy_reference_lookup",
+      "clcd_analysis"
+    ],
+    "expected_args": {
+      "policy_reference_lookup": {
+        "region": "云南省",
+        "level": "province",
+        "keywords": [
+          "生态保护",
+          "用途管制",
+          "国土空间规划"
+        ],
+        "top_n": 5
+      },
+      "clcd_analysis": {
+        "query_type": "monitoring",
+        "region": "云南省",
+        "level": "province",
+        "year": 2023,
+        "policy": "ecological_protection"
+      }
+    },
+    "baseline": {
+      "tool": "policy_reference_lookup",
+      "args": {
+        "region": "云南省",
+        "level": "province",
+        "keywords": [
+          "生态保护",
+          "用途管制",
+          "国土空间规划"
+        ],
+        "top_n": 5
+      },
+      "extract": {
+        "type": "fact_units",
+        "path": "result.hits",
+        "key": "summary"
+      }
+    },
+    "manual_fact_units": [
+      "回答应引用政策或规划索引来源",
+      "回答应说明政策约束与土地利用变化之间的关系",
+      "回答应避免无来源背诵政策标题"
+    ]
+  },
+  {
+    "id": "policy-interpretive-004",
+    "category": "policy_explanation",
+    "difficulty": "interpretive",
+    "question": "结合云南省国土空间规划，说明WebGIS-GeoAI Agent系统结果如何支持监测预警和辅助决策。",
+    "expected_tools": [
+      "policy_reference_lookup",
+      "knowledge_base_lookup"
+    ],
+    "expected_args": {
+      "policy_reference_lookup": {
+        "region": "云南省",
+        "level": "province",
+        "keywords": [
+          "国土空间规划",
+          "监测预警",
+          "辅助决策"
+        ],
+        "top_n": 5
+      },
+      "knowledge_base_lookup": {
+        "skill_name": "policy_expert"
+      }
+    },
+    "baseline": {
+      "tool": "policy_reference_lookup",
+      "args": {
+        "region": "云南省",
+        "level": "province",
+        "keywords": [
+          "国土空间规划",
+          "监测预警",
+          "辅助决策"
+        ],
+        "top_n": 5
+      },
+      "extract": {
+        "type": "fact_units",
+        "path": "result.hits",
+        "key": "summary"
+      }
+    },
+    "manual_fact_units": [
+      "回答应引用政策或规划索引来源",
+      "回答应说明政策约束与土地利用变化之间的关系",
+      "回答应避免无来源背诵政策标题"
+    ]
+  }
+]

@@ -1,0 +1,6065 @@
+{
+  "input_file": "evaluation/output/runs/spatial_tools_72.jsonl",
+  "generated_at": "2026-06-16T05:02:58.449Z",
+  "summary": {
+    "overall": {
+      "n": 72,
+      "tool_accuracy": 0.7083333333333334,
+      "tool_recall": 0.7083333333333334,
+      "tool_precision": 0.6252314814814818,
+      "tool_f1": 0.5717592592592591,
+      "param_accuracy": 0.5138888888888888,
+      "param_accuracy_relaxed": 0.5138888888888888,
+      "param_accuracy_strict": 0.5138888888888888,
+      "success_rate": 0.8888888888888888,
+      "strict_success": 0.8888888888888888,
+      "valid_success_rate": 0.8888888888888888,
+      "answer_available_rate": 1,
+      "tool_error_count": 15,
+      "mre": 0,
+      "mre_n": 21,
+      "hit_k": 0.9135802469135802,
+      "hit_k_n": 27,
+      "trend_consistency": 1,
+      "trend_consistency_n": 12,
+      "fact_coverage": null,
+      "fact_coverage_n": 0,
+      "contradiction_rate": null,
+      "contradiction_rate_n": 0,
+      "response_ms": 31614.930555555555,
+      "tool_count": 2.263888888888889
+    },
+    "by_category": {
+      "policy_explanation": {
+        "n": 12,
+        "tool_accuracy": 0.25,
+        "tool_recall": 0.25,
+        "tool_precision": 0.06527777777777778,
+        "tool_f1": 0,
+        "param_accuracy": 0,
+        "param_accuracy_relaxed": 0,
+        "param_accuracy_strict": 0,
+        "success_rate": 0.6666666666666666,
+        "strict_success": 0.6666666666666666,
+        "valid_success_rate": 0.6666666666666666,
+        "answer_available_rate": 1,
+        "tool_error_count": 9,
+        "mre": null,
+        "mre_n": 0,
+        "hit_k": null,
+        "hit_k_n": 0,
+        "trend_consistency": null,
+        "trend_consistency_n": 0,
+        "fact_coverage": null,
+        "fact_coverage_n": 0,
+        "contradiction_rate": null,
+        "contradiction_rate_n": 0,
+        "response_ms": 38965.333333333336,
+        "tool_count": 4.083333333333333
+      },
+      "risk_scoring": {
+        "n": 12,
+        "tool_accuracy": 0.9166666666666666,
+        "tool_recall": 0.9166666666666666,
+        "tool_precision": 0.9333333333333332,
+        "tool_f1": 0.8611111111111112,
+        "param_accuracy": 0.7083333333333334,
+        "param_accuracy_relaxed": 0.7083333333333334,
+        "param_accuracy_strict": 0.7083333333333334,
+        "success_rate": 0.75,
+        "strict_success": 0.75,
+        "valid_success_rate": 0.75,
+        "answer_available_rate": 1,
+        "tool_error_count": 3,
+        "mre": 0,
+        "mre_n": 12,
+        "hit_k": null,
+        "hit_k_n": 0,
+        "trend_consistency": null,
+        "trend_consistency_n": 0,
+        "fact_coverage": null,
+        "fact_coverage_n": 0,
+        "contradiction_rate": null,
+        "contradiction_rate_n": 0,
+        "response_ms": 22903,
+        "tool_count": 1.5833333333333333
+      },
+      "spatial_hotspot": {
+        "n": 12,
+        "tool_accuracy": 0.6666666666666666,
+        "tool_recall": 0.6666666666666666,
+        "tool_precision": 0.8611111111111112,
+        "tool_f1": 0.6666666666666666,
+        "param_accuracy": 0.20833333333333334,
+        "param_accuracy_relaxed": 0.20833333333333334,
+        "param_accuracy_strict": 0.20833333333333334,
+        "success_rate": 1,
+        "strict_success": 1,
+        "valid_success_rate": 1,
+        "answer_available_rate": 1,
+        "tool_error_count": 0,
+        "mre": 0,
+        "mre_n": 5,
+        "hit_k": 1,
+        "hit_k_n": 7,
+        "trend_consistency": null,
+        "trend_consistency_n": 0,
+        "fact_coverage": null,
+        "fact_coverage_n": 0,
+        "contradiction_rate": null,
+        "contradiction_rate_n": 0,
+        "response_ms": 31875.333333333332,
+        "tool_count": 1.3333333333333333
+      },
+      "structure_query": {
+        "n": 12,
+        "tool_accuracy": 1,
+        "tool_recall": 1,
+        "tool_precision": 0.7916666666666666,
+        "tool_f1": 0.8472222222222222,
+        "param_accuracy": 0.5833333333333334,
+        "param_accuracy_relaxed": 0.5833333333333334,
+        "param_accuracy_strict": 0.5833333333333334,
+        "success_rate": 1,
+        "strict_success": 1,
+        "valid_success_rate": 1,
+        "answer_available_rate": 1,
+        "tool_error_count": 0,
+        "mre": 0,
+        "mre_n": 4,
+        "hit_k": 0.7083333333333333,
+        "hit_k_n": 8,
+        "trend_consistency": null,
+        "trend_consistency_n": 0,
+        "fact_coverage": null,
+        "fact_coverage_n": 0,
+        "contradiction_rate": null,
+        "contradiction_rate_n": 0,
+        "response_ms": 12864.5,
+        "tool_count": 1.5833333333333333
+      },
+      "transfer_analysis": {
+        "n": 12,
+        "tool_accuracy": 0.6666666666666666,
+        "tool_recall": 0.6666666666666666,
+        "tool_precision": 0.7319444444444444,
+        "tool_f1": 0.638888888888889,
+        "param_accuracy": 0.8333333333333334,
+        "param_accuracy_relaxed": 0.8333333333333334,
+        "param_accuracy_strict": 0.8333333333333334,
+        "success_rate": 1,
+        "strict_success": 1,
+        "valid_success_rate": 1,
+        "answer_available_rate": 1,
+        "tool_error_count": 0,
+        "mre": null,
+        "mre_n": 0,
+        "hit_k": 1,
+        "hit_k_n": 12,
+        "trend_consistency": null,
+        "trend_consistency_n": 0,
+        "fact_coverage": null,
+        "fact_coverage_n": 0,
+        "contradiction_rate": null,
+        "contradiction_rate_n": 0,
+        "response_ms": 36033.583333333336,
+        "tool_count": 1.9166666666666667
+      },
+      "trend_analysis": {
+        "n": 12,
+        "tool_accuracy": 0.75,
+        "tool_recall": 0.75,
+        "tool_precision": 0.3680555555555556,
+        "tool_f1": 0.4166666666666667,
+        "param_accuracy": 0.75,
+        "param_accuracy_relaxed": 0.75,
+        "param_accuracy_strict": 0.75,
+        "success_rate": 0.9166666666666666,
+        "strict_success": 0.9166666666666666,
+        "valid_success_rate": 0.9166666666666666,
+        "answer_available_rate": 1,
+        "tool_error_count": 3,
+        "mre": null,
+        "mre_n": 0,
+        "hit_k": null,
+        "hit_k_n": 0,
+        "trend_consistency": 1,
+        "trend_consistency_n": 12,
+        "fact_coverage": null,
+        "fact_coverage_n": 0,
+        "contradiction_rate": null,
+        "contradiction_rate_n": 0,
+        "response_ms": 47047.833333333336,
+        "tool_count": 3.0833333333333335
+      }
+    },
+    "by_difficulty": {
+      "simple": {
+        "n": 24,
+        "tool_accuracy": 0.875,
+        "tool_recall": 0.875,
+        "tool_precision": 0.7291666666666665,
+        "tool_f1": 0.7569444444444445,
+        "param_accuracy": 0.625,
+        "param_accuracy_relaxed": 0.625,
+        "param_accuracy_strict": 0.625,
+        "success_rate": 0.9583333333333334,
+        "strict_success": 0.9583333333333334,
+        "valid_success_rate": 0.9583333333333334,
+        "answer_available_rate": 1,
+        "tool_error_count": 3,
+        "mre": 0,
+        "mre_n": 8,
+        "hit_k": 1,
+        "hit_k_n": 8,
+        "trend_consistency": 1,
+        "trend_consistency_n": 4,
+        "fact_coverage": null,
+        "fact_coverage_n": 0,
+        "contradiction_rate": null,
+        "contradiction_rate_n": 0,
+        "response_ms": 24774.416666666668,
+        "tool_count": 1.375
+      },
+      "composite": {
+        "n": 24,
+        "tool_accuracy": 0.9166666666666666,
+        "tool_recall": 0.9166666666666666,
+        "tool_precision": 0.6250000000000001,
+        "tool_f1": 0.6805555555555555,
+        "param_accuracy": 0.5,
+        "param_accuracy_relaxed": 0.5,
+        "param_accuracy_strict": 0.5,
+        "success_rate": 0.9166666666666666,
+        "strict_success": 0.9166666666666666,
+        "valid_success_rate": 0.9166666666666666,
+        "answer_available_rate": 1,
+        "tool_error_count": 5,
+        "mre": 0,
+        "mre_n": 8,
+        "hit_k": 0.7083333333333333,
+        "hit_k_n": 8,
+        "trend_consistency": 1,
+        "trend_consistency_n": 4,
+        "fact_coverage": null,
+        "fact_coverage_n": 0,
+        "contradiction_rate": null,
+        "contradiction_rate_n": 0,
+        "response_ms": 29207.166666666668,
+        "tool_count": 2.4166666666666665
+      },
+      "interpretive": {
+        "n": 24,
+        "tool_accuracy": 0.3333333333333333,
+        "tool_recall": 0.3333333333333333,
+        "tool_precision": 0.5215277777777778,
+        "tool_f1": 0.2777777777777778,
+        "param_accuracy": 0.4166666666666667,
+        "param_accuracy_relaxed": 0.4166666666666667,
+        "param_accuracy_strict": 0.4166666666666667,
+        "success_rate": 0.7916666666666666,
+        "strict_success": 0.7916666666666666,
+        "valid_success_rate": 0.7916666666666666,
+        "answer_available_rate": 1,
+        "tool_error_count": 7,
+        "mre": 0,
+        "mre_n": 5,
+        "hit_k": 1,
+        "hit_k_n": 11,
+        "trend_consistency": 1,
+        "trend_consistency_n": 4,
+        "fact_coverage": null,
+        "fact_coverage_n": 0,
+        "contradiction_rate": null,
+        "contradiction_rate_n": 0,
+        "response_ms": 40863.208333333336,
+        "tool_count": 3
+      }
+    },
+    "by_category_difficulty": {
+      "policy_explanation::simple": {
+        "category": "policy_explanation",
+        "difficulty": "simple",
+        "n": 4,
+        "tool_accuracy": 0.25,
+        "tool_recall": 0.25,
+        "tool_precision": 0,
+        "tool_f1": 0,
+        "param_accuracy": 0,
+        "param_accuracy_relaxed": 0,
+        "param_accuracy_strict": 0,
+        "success_rate": 0.75,
+        "strict_success": 0.75,
+        "valid_success_rate": 0.75,
+        "answer_available_rate": 1,
+        "tool_error_count": 3,
+        "mre": null,
+        "mre_n": 0,
+        "hit_k": null,
+        "hit_k_n": 0,
+        "trend_consistency": null,
+        "trend_consistency_n": 0,
+        "fact_coverage": null,
+        "fact_coverage_n": 0,
+        "contradiction_rate": null,
+        "contradiction_rate_n": 0,
+        "response_ms": 25153.5,
+        "tool_count": 1.5
+      },
+      "policy_explanation::composite": {
+        "category": "policy_explanation",
+        "difficulty": "composite",
+        "n": 4,
+        "tool_accuracy": 0.5,
+        "tool_recall": 0.5,
+        "tool_precision": 0,
+        "tool_f1": 0,
+        "param_accuracy": 0,
+        "param_accuracy_relaxed": 0,
+        "param_accuracy_strict": 0,
+        "success_rate": 0.5,
+        "strict_success": 0.5,
+        "valid_success_rate": 0.5,
+        "answer_available_rate": 1,
+        "tool_error_count": 5,
+        "mre": null,
+        "mre_n": 0,
+        "hit_k": null,
+        "hit_k_n": 0,
+        "trend_consistency": null,
+        "trend_consistency_n": 0,
+        "fact_coverage": null,
+        "fact_coverage_n": 0,
+        "contradiction_rate": null,
+        "contradiction_rate_n": 0,
+        "response_ms": 46439.25,
+        "tool_count": 6
+      },
+      "policy_explanation::interpretive": {
+        "category": "policy_explanation",
+        "difficulty": "interpretive",
+        "n": 4,
+        "tool_accuracy": 0,
+        "tool_recall": 0,
+        "tool_precision": 0.19583333333333333,
+        "tool_f1": 0,
+        "param_accuracy": 0,
+        "param_accuracy_relaxed": 0,
+        "param_accuracy_strict": 0,
+        "success_rate": 0.75,
+        "strict_success": 0.75,
+        "valid_success_rate": 0.75,
+        "answer_available_rate": 1,
+        "tool_error_count": 1,
+        "mre": null,
+        "mre_n": 0,
+        "hit_k": null,
+        "hit_k_n": 0,
+        "trend_consistency": null,
+        "trend_consistency_n": 0,
+        "fact_coverage": null,
+        "fact_coverage_n": 0,
+        "contradiction_rate": null,
+        "contradiction_rate_n": 0,
+        "response_ms": 45303.25,
+        "tool_count": 4.75
+      },
+      "risk_scoring::simple": {
+        "category": "risk_scoring",
+        "difficulty": "simple",
+        "n": 4,
+        "tool_accuracy": 1,
+        "tool_recall": 1,
+        "tool_precision": 1,
+        "tool_f1": 1,
+        "param_accuracy": 0.75,
+        "param_accuracy_relaxed": 0.75,
+        "param_accuracy_strict": 0.75,
+        "success_rate": 1,
+        "strict_success": 1,
+        "valid_success_rate": 1,
+        "answer_available_rate": 1,
+        "tool_error_count": 0,
+        "mre": 0,
+        "mre_n": 4,
+        "hit_k": null,
+        "hit_k_n": 0,
+        "trend_consistency": null,
+        "trend_consistency_n": 0,
+        "fact_coverage": null,
+        "fact_coverage_n": 0,
+        "contradiction_rate": null,
+        "contradiction_rate_n": 0,
+        "response_ms": 13898.5,
+        "tool_count": 1
+      },
+      "risk_scoring::composite": {
+        "category": "risk_scoring",
+        "difficulty": "composite",
+        "n": 4,
+        "tool_accuracy": 1,
+        "tool_recall": 1,
+        "tool_precision": 1,
+        "tool_f1": 1,
+        "param_accuracy": 1,
+        "param_accuracy_relaxed": 1,
+        "param_accuracy_strict": 1,
+        "success_rate": 1,
+        "strict_success": 1,
+        "valid_success_rate": 1,
+        "answer_available_rate": 1,
+        "tool_error_count": 0,
+        "mre": 0,
+        "mre_n": 4,
+        "hit_k": null,
+        "hit_k_n": 0,
+        "trend_consistency": null,
+        "trend_consistency_n": 0,
+        "fact_coverage": null,
+        "fact_coverage_n": 0,
+        "contradiction_rate": null,
+        "contradiction_rate_n": 0,
+        "response_ms": 18957.75,
+        "tool_count": 1
+      },
+      "risk_scoring::interpretive": {
+        "category": "risk_scoring",
+        "difficulty": "interpretive",
+        "n": 4,
+        "tool_accuracy": 0.75,
+        "tool_recall": 0.75,
+        "tool_precision": 0.8,
+        "tool_f1": 0.5833333333333334,
+        "param_accuracy": 0.375,
+        "param_accuracy_relaxed": 0.375,
+        "param_accuracy_strict": 0.375,
+        "success_rate": 0.25,
+        "strict_success": 0.25,
+        "valid_success_rate": 0.25,
+        "answer_available_rate": 1,
+        "tool_error_count": 3,
+        "mre": 0,
+        "mre_n": 4,
+        "hit_k": null,
+        "hit_k_n": 0,
+        "trend_consistency": null,
+        "trend_consistency_n": 0,
+        "fact_coverage": null,
+        "fact_coverage_n": 0,
+        "contradiction_rate": null,
+        "contradiction_rate_n": 0,
+        "response_ms": 35852.75,
+        "tool_count": 2.75
+      },
+      "spatial_hotspot::simple": {
+        "category": "spatial_hotspot",
+        "difficulty": "simple",
+        "n": 4,
+        "tool_accuracy": 1,
+        "tool_recall": 1,
+        "tool_precision": 1,
+        "tool_f1": 1,
+        "param_accuracy": 0.5,
+        "param_accuracy_relaxed": 0.5,
+        "param_accuracy_strict": 0.5,
+        "success_rate": 1,
+        "strict_success": 1,
+        "valid_success_rate": 1,
+        "answer_available_rate": 1,
+        "tool_error_count": 0,
+        "mre": null,
+        "mre_n": 0,
+        "hit_k": 1,
+        "hit_k_n": 4,
+        "trend_consistency": null,
+        "trend_consistency_n": 0,
+        "fact_coverage": null,
+        "fact_coverage_n": 0,
+        "contradiction_rate": null,
+        "contradiction_rate_n": 0,
+        "response_ms": 30803,
+        "tool_count": 1
+      },
+      "spatial_hotspot::composite": {
+        "category": "spatial_hotspot",
+        "difficulty": "composite",
+        "n": 4,
+        "tool_accuracy": 1,
+        "tool_recall": 1,
+        "tool_precision": 1,
+        "tool_f1": 1,
+        "param_accuracy": 0,
+        "param_accuracy_relaxed": 0,
+        "param_accuracy_strict": 0,
+        "success_rate": 1,
+        "strict_success": 1,
+        "valid_success_rate": 1,
+        "answer_available_rate": 1,
+        "tool_error_count": 0,
+        "mre": 0,
+        "mre_n": 4,
+        "hit_k": null,
+        "hit_k_n": 0,
+        "trend_consistency": null,
+        "trend_consistency_n": 0,
+        "fact_coverage": null,
+        "fact_coverage_n": 0,
+        "contradiction_rate": null,
+        "contradiction_rate_n": 0,
+        "response_ms": 23944.25,
+        "tool_count": 1
+      },
+      "spatial_hotspot::interpretive": {
+        "category": "spatial_hotspot",
+        "difficulty": "interpretive",
+        "n": 4,
+        "tool_accuracy": 0,
+        "tool_recall": 0,
+        "tool_precision": 0.5833333333333333,
+        "tool_f1": 0,
+        "param_accuracy": 0.125,
+        "param_accuracy_relaxed": 0.125,
+        "param_accuracy_strict": 0.125,
+        "success_rate": 1,
+        "strict_success": 1,
+        "valid_success_rate": 1,
+        "answer_available_rate": 1,
+        "tool_error_count": 0,
+        "mre": 0,
+        "mre_n": 1,
+        "hit_k": 1,
+        "hit_k_n": 3,
+        "trend_consistency": null,
+        "trend_consistency_n": 0,
+        "fact_coverage": null,
+        "fact_coverage_n": 0,
+        "contradiction_rate": null,
+        "contradiction_rate_n": 0,
+        "response_ms": 40878.75,
+        "tool_count": 2
+      },
+      "structure_query::simple": {
+        "category": "structure_query",
+        "difficulty": "simple",
+        "n": 4,
+        "tool_accuracy": 1,
+        "tool_recall": 1,
+        "tool_precision": 1,
+        "tool_f1": 1,
+        "param_accuracy": 0.75,
+        "param_accuracy_relaxed": 0.75,
+        "param_accuracy_strict": 0.75,
+        "success_rate": 1,
+        "strict_success": 1,
+        "valid_success_rate": 1,
+        "answer_available_rate": 1,
+        "tool_error_count": 0,
+        "mre": 0,
+        "mre_n": 4,
+        "hit_k": null,
+        "hit_k_n": 0,
+        "trend_consistency": null,
+        "trend_consistency_n": 0,
+        "fact_coverage": null,
+        "fact_coverage_n": 0,
+        "contradiction_rate": null,
+        "contradiction_rate_n": 0,
+        "response_ms": 6587.25,
+        "tool_count": 1
+      },
+      "structure_query::composite": {
+        "category": "structure_query",
+        "difficulty": "composite",
+        "n": 4,
+        "tool_accuracy": 1,
+        "tool_recall": 1,
+        "tool_precision": 0.49999999999999994,
+        "tool_f1": 0.625,
+        "param_accuracy": 0,
+        "param_accuracy_relaxed": 0,
+        "param_accuracy_strict": 0,
+        "success_rate": 1,
+        "strict_success": 1,
+        "valid_success_rate": 1,
+        "answer_available_rate": 1,
+        "tool_error_count": 0,
+        "mre": null,
+        "mre_n": 0,
+        "hit_k": 0.41666666666666663,
+        "hit_k_n": 4,
+        "trend_consistency": null,
+        "trend_consistency_n": 0,
+        "fact_coverage": null,
+        "fact_coverage_n": 0,
+        "contradiction_rate": null,
+        "contradiction_rate_n": 0,
+        "response_ms": 12698.5,
+        "tool_count": 2.5
+      },
+      "structure_query::interpretive": {
+        "category": "structure_query",
+        "difficulty": "interpretive",
+        "n": 4,
+        "tool_accuracy": 1,
+        "tool_recall": 1,
+        "tool_precision": 0.875,
+        "tool_f1": 0.9166666666666666,
+        "param_accuracy": 1,
+        "param_accuracy_relaxed": 1,
+        "param_accuracy_strict": 1,
+        "success_rate": 1,
+        "strict_success": 1,
+        "valid_success_rate": 1,
+        "answer_available_rate": 1,
+        "tool_error_count": 0,
+        "mre": null,
+        "mre_n": 0,
+        "hit_k": 1,
+        "hit_k_n": 4,
+        "trend_consistency": null,
+        "trend_consistency_n": 0,
+        "fact_coverage": null,
+        "fact_coverage_n": 0,
+        "contradiction_rate": null,
+        "contradiction_rate_n": 0,
+        "response_ms": 19307.75,
+        "tool_count": 1.25
+      },
+      "transfer_analysis::simple": {
+        "category": "transfer_analysis",
+        "difficulty": "simple",
+        "n": 4,
+        "tool_accuracy": 1,
+        "tool_recall": 1,
+        "tool_precision": 1,
+        "tool_f1": 1,
+        "param_accuracy": 1,
+        "param_accuracy_relaxed": 1,
+        "param_accuracy_strict": 1,
+        "success_rate": 1,
+        "strict_success": 1,
+        "valid_success_rate": 1,
+        "answer_available_rate": 1,
+        "tool_error_count": 0,
+        "mre": null,
+        "mre_n": 0,
+        "hit_k": 1,
+        "hit_k_n": 4,
+        "trend_consistency": null,
+        "trend_consistency_n": 0,
+        "fact_coverage": null,
+        "fact_coverage_n": 0,
+        "contradiction_rate": null,
+        "contradiction_rate_n": 0,
+        "response_ms": 23904.75,
+        "tool_count": 1
+      },
+      "transfer_analysis::composite": {
+        "category": "transfer_analysis",
+        "difficulty": "composite",
+        "n": 4,
+        "tool_accuracy": 1,
+        "tool_recall": 1,
+        "tool_precision": 0.875,
+        "tool_f1": 0.9166666666666666,
+        "param_accuracy": 1,
+        "param_accuracy_relaxed": 1,
+        "param_accuracy_strict": 1,
+        "success_rate": 1,
+        "strict_success": 1,
+        "valid_success_rate": 1,
+        "answer_available_rate": 1,
+        "tool_error_count": 0,
+        "mre": null,
+        "mre_n": 0,
+        "hit_k": 1,
+        "hit_k_n": 4,
+        "trend_consistency": null,
+        "trend_consistency_n": 0,
+        "fact_coverage": null,
+        "fact_coverage_n": 0,
+        "contradiction_rate": null,
+        "contradiction_rate_n": 0,
+        "response_ms": 29731.75,
+        "tool_count": 1.25
+      },
+      "transfer_analysis::interpretive": {
+        "category": "transfer_analysis",
+        "difficulty": "interpretive",
+        "n": 4,
+        "tool_accuracy": 0,
+        "tool_recall": 0,
+        "tool_precision": 0.3208333333333333,
+        "tool_f1": 0,
+        "param_accuracy": 0.5,
+        "param_accuracy_relaxed": 0.5,
+        "param_accuracy_strict": 0.5,
+        "success_rate": 1,
+        "strict_success": 1,
+        "valid_success_rate": 1,
+        "answer_available_rate": 1,
+        "tool_error_count": 0,
+        "mre": null,
+        "mre_n": 0,
+        "hit_k": 1,
+        "hit_k_n": 4,
+        "trend_consistency": null,
+        "trend_consistency_n": 0,
+        "fact_coverage": null,
+        "fact_coverage_n": 0,
+        "contradiction_rate": null,
+        "contradiction_rate_n": 0,
+        "response_ms": 54464.25,
+        "tool_count": 3.5
+      },
+      "trend_analysis::simple": {
+        "category": "trend_analysis",
+        "difficulty": "simple",
+        "n": 4,
+        "tool_accuracy": 1,
+        "tool_recall": 1,
+        "tool_precision": 0.37499999999999994,
+        "tool_f1": 0.5416666666666666,
+        "param_accuracy": 0.75,
+        "param_accuracy_relaxed": 0.75,
+        "param_accuracy_strict": 0.75,
+        "success_rate": 1,
+        "strict_success": 1,
+        "valid_success_rate": 1,
+        "answer_available_rate": 1,
+        "tool_error_count": 0,
+        "mre": null,
+        "mre_n": 0,
+        "hit_k": null,
+        "hit_k_n": 0,
+        "trend_consistency": 1,
+        "trend_consistency_n": 4,
+        "fact_coverage": null,
+        "fact_coverage_n": 0,
+        "contradiction_rate": null,
+        "contradiction_rate_n": 0,
+        "response_ms": 48299.5,
+        "tool_count": 2.75
+      },
+      "trend_analysis::composite": {
+        "category": "trend_analysis",
+        "difficulty": "composite",
+        "n": 4,
+        "tool_accuracy": 1,
+        "tool_recall": 1,
+        "tool_precision": 0.37499999999999994,
+        "tool_f1": 0.5416666666666666,
+        "param_accuracy": 1,
+        "param_accuracy_relaxed": 1,
+        "param_accuracy_strict": 1,
+        "success_rate": 1,
+        "strict_success": 1,
+        "valid_success_rate": 1,
+        "answer_available_rate": 1,
+        "tool_error_count": 0,
+        "mre": null,
+        "mre_n": 0,
+        "hit_k": null,
+        "hit_k_n": 0,
+        "trend_consistency": 1,
+        "trend_consistency_n": 4,
+        "fact_coverage": null,
+        "fact_coverage_n": 0,
+        "contradiction_rate": null,
+        "contradiction_rate_n": 0,
+        "response_ms": 43471.5,
+        "tool_count": 2.75
+      },
+      "trend_analysis::interpretive": {
+        "category": "trend_analysis",
+        "difficulty": "interpretive",
+        "n": 4,
+        "tool_accuracy": 0.25,
+        "tool_recall": 0.25,
+        "tool_precision": 0.35416666666666663,
+        "tool_f1": 0.16666666666666666,
+        "param_accuracy": 0.5,
+        "param_accuracy_relaxed": 0.5,
+        "param_accuracy_strict": 0.5,
+        "success_rate": 0.75,
+        "strict_success": 0.75,
+        "valid_success_rate": 0.75,
+        "answer_available_rate": 1,
+        "tool_error_count": 3,
+        "mre": null,
+        "mre_n": 0,
+        "hit_k": null,
+        "hit_k_n": 0,
+        "trend_consistency": 1,
+        "trend_consistency_n": 4,
+        "fact_coverage": null,
+        "fact_coverage_n": 0,
+        "contradiction_rate": null,
+        "contradiction_rate_n": 0,
+        "response_ms": 49372.5,
+        "tool_count": 3.75
+      }
+    }
+  },
+  "scores": [
+    {
+      "task_id": "policy-simple-001",
+      "category": "policy_explanation",
+      "difficulty": "simple",
+      "tool_accuracy": 0,
+      "tool_recall": 0,
+      "tool_precision": 0,
+      "tool_f1": 0,
+      "param_accuracy": 0,
+      "param_accuracy_relaxed": 0,
+      "param_accuracy_strict": 0,
+      "success_rate": 1,
+      "strict_success": 1,
+      "valid_success_rate": 1,
+      "answer_available_rate": 1,
+      "tool_error_count": 0,
+      "mre": null,
+      "hit_k": null,
+      "trend_consistency": null,
+      "fact_coverage": null,
+      "contradiction_rate": null,
+      "response_ms": 19834,
+      "tool_count": 0,
+      "expected_tools": [
+        "policy_reference_lookup"
+      ],
+      "actual_tools": [],
+      "expected_args": {
+        "policy_reference_lookup": {
+          "region": "云南省",
+          "level": "province",
+          "keywords": [
+            "国土空间规划",
+            "耕地保护"
+          ],
+          "top_n": 5
+        }
+      },
+      "actual_trace": [],
+      "baseline_error": false,
+      "agent_error": null
+    },
+    {
+      "task_id": "policy-simple-002",
+      "category": "policy_explanation",
+      "difficulty": "simple",
+      "tool_accuracy": 0,
+      "tool_recall": 0,
+      "tool_precision": 0,
+      "tool_f1": 0,
+      "param_accuracy": 0,
+      "param_accuracy_relaxed": 0,
+      "param_accuracy_strict": 0,
+      "success_rate": 1,
+      "strict_success": 1,
+      "valid_success_rate": 1,
+      "answer_available_rate": 1,
+      "tool_error_count": 0,
+      "mre": null,
+      "hit_k": null,
+      "trend_consistency": null,
+      "fact_coverage": null,
+      "contradiction_rate": null,
+      "response_ms": 24576,
+      "tool_count": 1,
+      "expected_tools": [
+        "policy_reference_lookup"
+      ],
+      "actual_tools": [
+        "clcd_analysis"
+      ],
+      "expected_args": {
+        "policy_reference_lookup": {
+          "region": "全国",
+          "level": "national",
+          "keywords": [
+            "三条控制线",
+            "建设用地",
+            "用途管制"
+          ],
+          "top_n": 5
+        }
+      },
+      "actual_trace": [
+        {
+          "tool_name": "clcd_analysis",
+          "args": {
+            "query_type": "structure",
+            "region": "云南省",
+            "level": "province",
+            "year": 2023
+          },
+          "is_error": false,
+          "elapsed_ms": 4
+        }
+      ],
+      "baseline_error": false,
+      "agent_error": null
+    },
+    {
+      "task_id": "policy-simple-003",
+      "category": "policy_explanation",
+      "difficulty": "simple",
+      "tool_accuracy": 1,
+      "tool_recall": 1,
+      "tool_precision": 0,
+      "tool_f1": 0,
+      "param_accuracy": 0,
+      "param_accuracy_relaxed": 0,
+      "param_accuracy_strict": 0,
+      "success_rate": 0,
+      "strict_success": 0,
+      "valid_success_rate": 0,
+      "answer_available_rate": 1,
+      "tool_error_count": 3,
+      "mre": null,
+      "hit_k": null,
+      "trend_consistency": null,
+      "fact_coverage": null,
+      "contradiction_rate": null,
+      "response_ms": 18720,
+      "tool_count": 3,
+      "expected_tools": [
+        "policy_reference_lookup"
+      ],
+      "actual_tools": [
+        "knowledge_base_lookup",
+        "knowledge_graph_query",
+        "policy_reference_lookup"
+      ],
+      "expected_args": {
+        "policy_reference_lookup": {
+          "region": "全国",
+          "level": "national",
+          "keywords": [
+            "生态保护红线",
+            "生态保护"
+          ],
+          "top_n": 5
+        }
+      },
+      "actual_trace": [
+        {
+          "tool_name": "knowledge_base_lookup",
+          "args": {
+            "skill": "policy_expert"
+          },
+          "is_error": true,
+          "elapsed_ms": 0
+        },
+        {
+          "tool_name": "knowledge_graph_query",
+          "args": {
+            "query": "生态保护红线"
+          },
+          "is_error": true,
+          "elapsed_ms": 0
+        },
+        {
+          "tool_name": "policy_reference_lookup",
+          "args": {
+            "query": "生态保护红线"
+          },
+          "is_error": true,
+          "elapsed_ms": 0
+        }
+      ],
+      "baseline_error": false,
+      "agent_error": null
+    },
+    {
+      "task_id": "policy-simple-004",
+      "category": "policy_explanation",
+      "difficulty": "simple",
+      "tool_accuracy": 0,
+      "tool_recall": 0,
+      "tool_precision": 0,
+      "tool_f1": 0,
+      "param_accuracy": 0,
+      "param_accuracy_relaxed": 0,
+      "param_accuracy_strict": 0,
+      "success_rate": 1,
+      "strict_success": 1,
+      "valid_success_rate": 1,
+      "answer_available_rate": 1,
+      "tool_error_count": 0,
+      "mre": null,
+      "hit_k": null,
+      "trend_consistency": null,
+      "fact_coverage": null,
+      "contradiction_rate": null,
+      "response_ms": 37484,
+      "tool_count": 2,
+      "expected_tools": [
+        "policy_reference_lookup"
+      ],
+      "actual_tools": [
+        "clcd_analysis",
+        "land_transfer_analysis"
+      ],
+      "expected_args": {
+        "policy_reference_lookup": {
+          "region": "全国",
+          "level": "national",
+          "keywords": [
+            "耕地保护",
+            "非农化",
+            "占补平衡"
+          ],
+          "top_n": 5
+        }
+      },
+      "actual_trace": [
+        {
+          "tool_name": "clcd_analysis",
+          "args": {
+            "query_type": "trend",
+            "region": "云南省",
+            "level": "province",
+            "year_range": [
+              1985,
+              2023
+            ],
+            "land_type": "耕地"
+          },
+          "is_error": false,
+          "elapsed_ms": 22
+        },
+        {
+          "tool_name": "land_transfer_analysis",
+          "args": {
+            "region": "云南省",
+            "level": "province",
+            "start_year": 2000,
+            "end_year": 2023
+          },
+          "is_error": false,
+          "elapsed_ms": 73
+        }
+      ],
+      "baseline_error": false,
+      "agent_error": null
+    },
+    {
+      "task_id": "policy-composite-001",
+      "category": "policy_explanation",
+      "difficulty": "composite",
+      "tool_accuracy": 1,
+      "tool_recall": 1,
+      "tool_precision": 0,
+      "tool_f1": 0,
+      "param_accuracy": 0,
+      "param_accuracy_relaxed": 0,
+      "param_accuracy_strict": 0,
+      "success_rate": 0,
+      "strict_success": 0,
+      "valid_success_rate": 0,
+      "answer_available_rate": 1,
+      "tool_error_count": 3,
+      "mre": null,
+      "hit_k": null,
+      "trend_consistency": null,
+      "fact_coverage": null,
+      "contradiction_rate": null,
+      "response_ms": 70043,
+      "tool_count": 11,
+      "expected_tools": [
+        "policy_reference_lookup"
+      ],
+      "actual_tools": [
+        "clcd_analysis",
+        "clcd_analysis",
+        "clcd_analysis",
+        "clcd_analysis",
+        "land_transfer_analysis",
+        "spatial_stats_analysis",
+        "spatial_stats_analysis",
+        "spatial_stats_analysis",
+        "policy_reference_lookup",
+        "knowledge_base_lookup",
+        "knowledge_graph_query"
+      ],
+      "expected_args": {
+        "policy_reference_lookup": {
+          "region": "云南省",
+          "level": "province",
+          "keywords": [
+            "国土空间规划",
+            "耕地保护",
+            "生态保护"
+          ],
+          "top_n": 5
+        }
+      },
+      "actual_trace": [
+        {
+          "tool_name": "clcd_analysis",
+          "args": {
+            "query_type": "trend",
+            "region": "云南省",
+            "level": "province",
+            "year_range": [
+              1985,
+              2023
+            ],
+            "land_type": "建设用地"
+          },
+          "is_error": false,
+          "elapsed_ms": 129
+        },
+        {
+          "tool_name": "clcd_analysis",
+          "args": {
+            "query_type": "trend",
+            "region": "云南省",
+            "level": "province",
+            "year_range": [
+              1985,
+              2023
+            ],
+            "land_type": "耕地"
+          },
+          "is_error": false,
+          "elapsed_ms": 2
+        },
+        {
+          "tool_name": "clcd_analysis",
+          "args": {
+            "query_type": "trend",
+            "region": "云南省",
+            "level": "province",
+            "year_range": [
+              1985,
+              2023
+            ],
+            "land_type": "林地"
+          },
+          "is_error": false,
+          "elapsed_ms": 2
+        },
+        {
+          "tool_name": "clcd_analysis",
+          "args": {
+            "query_type": "trend",
+            "region": "云南省",
+            "level": "province",
+            "year_range": [
+              1985,
+              2023
+            ],
+            "land_type": "草地"
+          },
+          "is_error": false,
+          "elapsed_ms": 2
+        },
+        {
+          "tool_name": "land_transfer_analysis",
+          "args": {
+            "region": "云南省",
+            "level": "province",
+            "start_year": 1985,
+            "end_year": 2023
+          },
+          "is_error": false,
+          "elapsed_ms": 234
+        },
+        {
+          "tool_name": "spatial_stats_analysis",
+          "args": {
+            "yearStart": 1985,
+            "yearEnd": 2023,
+            "fromClassStr": "耕地",
+            "toClassStr": "建设用地",
+            "region": "云南省",
+            "top_n": 10
+          },
+          "is_error": false,
+          "elapsed_ms": 7819
+        },
+        {
+          "tool_name": "spatial_stats_analysis",
+          "args": {
+            "yearStart": 1985,
+            "yearEnd": 2023,
+            "fromClassStr": "林地",
+            "toClassStr": "建设用地",
+            "region": "云南省",
+            "top_n": 10
+          },
+          "is_error": false,
+          "elapsed_ms": 3108
+        },
+        {
+          "tool_name": "spatial_stats_analysis",
+          "args": {
+            "yearStart": 1985,
+            "yearEnd": 2023,
+            "fromClassStr": "草地",
+            "toClassStr": "建设用地",
+            "region": "云南省",
+            "top_n": 10
+          },
+          "is_error": false,
+          "elapsed_ms": 7509
+        },
+        {
+          "tool_name": "policy_reference_lookup",
+          "args": {},
+          "is_error": true,
+          "elapsed_ms": 0
+        },
+        {
+          "tool_name": "knowledge_base_lookup",
+          "args": {
+            "query": "云南省建设用地扩张耕地保护生态保护政策三条控制线用途管制"
+          },
+          "is_error": true,
+          "elapsed_ms": 0
+        },
+        {
+          "tool_name": "knowledge_graph_query",
+          "args": {
+            "query": "云南省土地利用 耕地保护 生态保护 建设用地管控 政策"
+          },
+          "is_error": true,
+          "elapsed_ms": 0
+        }
+      ],
+      "baseline_error": false,
+      "agent_error": null
+    },
+    {
+      "task_id": "policy-composite-002",
+      "category": "policy_explanation",
+      "difficulty": "composite",
+      "tool_accuracy": 0,
+      "tool_recall": 0,
+      "tool_precision": 0,
+      "tool_f1": 0,
+      "param_accuracy": 0,
+      "param_accuracy_relaxed": 0,
+      "param_accuracy_strict": 0,
+      "success_rate": 1,
+      "strict_success": 1,
+      "valid_success_rate": 1,
+      "answer_available_rate": 1,
+      "tool_error_count": 0,
+      "mre": null,
+      "hit_k": null,
+      "trend_consistency": null,
+      "fact_coverage": null,
+      "contradiction_rate": null,
+      "response_ms": 47379,
+      "tool_count": 5,
+      "expected_tools": [
+        "policy_reference_lookup"
+      ],
+      "actual_tools": [
+        "clcd_analysis",
+        "clcd_analysis",
+        "land_transfer_analysis",
+        "spatial_stats_analysis",
+        "dashboard_analysis"
+      ],
+      "expected_args": {
+        "policy_reference_lookup": {
+          "region": "昆明市",
+          "level": "city",
+          "keywords": [
+            "城镇开发边界",
+            "国土空间规划",
+            "用途管制"
+          ],
+          "top_n": 5
+        }
+      },
+      "actual_trace": [
+        {
+          "tool_name": "clcd_analysis",
+          "args": {
+            "query_type": "trend",
+            "region": "昆明市",
+            "level": "prefecture",
+            "year_range": [
+              1985,
+              2023
+            ],
+            "land_type": "建设用地"
+          },
+          "is_error": false,
+          "elapsed_ms": 129
+        },
+        {
+          "tool_name": "clcd_analysis",
+          "args": {
+            "query_type": "structure",
+            "region": "昆明市",
+            "level": "prefecture",
+            "year": 2023
+          },
+          "is_error": false,
+          "elapsed_ms": 1
+        },
+        {
+          "tool_name": "land_transfer_analysis",
+          "args": {
+            "region": "昆明市",
+            "level": "prefecture",
+            "start_year": 2000,
+            "end_year": 2023
+          },
+          "is_error": false,
+          "elapsed_ms": 67
+        },
+        {
+          "tool_name": "spatial_stats_analysis",
+          "args": {
+            "yearStart": 2000,
+            "yearEnd": 2023,
+            "fromClassStr": "全部",
+            "toClassStr": "建设用地",
+            "region": "昆明市",
+            "top_n": 5
+          },
+          "is_error": false,
+          "elapsed_ms": 582
+        },
+        {
+          "tool_name": "dashboard_analysis",
+          "args": {
+            "year": 2023,
+            "region": "昆明市",
+            "level": "prefecture"
+          },
+          "is_error": false,
+          "elapsed_ms": 2
+        }
+      ],
+      "baseline_error": false,
+      "agent_error": null
+    },
+    {
+      "task_id": "policy-composite-003",
+      "category": "policy_explanation",
+      "difficulty": "composite",
+      "tool_accuracy": 1,
+      "tool_recall": 1,
+      "tool_precision": 0,
+      "tool_f1": 0,
+      "param_accuracy": 0,
+      "param_accuracy_relaxed": 0,
+      "param_accuracy_strict": 0,
+      "success_rate": 0,
+      "strict_success": 0,
+      "valid_success_rate": 0,
+      "answer_available_rate": 1,
+      "tool_error_count": 2,
+      "mre": null,
+      "hit_k": null,
+      "trend_consistency": null,
+      "fact_coverage": null,
+      "contradiction_rate": null,
+      "response_ms": 28680,
+      "tool_count": 3,
+      "expected_tools": [
+        "policy_reference_lookup"
+      ],
+      "actual_tools": [
+        "clcd_analysis",
+        "policy_reference_lookup",
+        "knowledge_graph_query"
+      ],
+      "expected_args": {
+        "policy_reference_lookup": {
+          "region": "全国",
+          "level": "national",
+          "year_range": [
+            2019,
+            2024
+          ],
+          "keywords": [
+            "三条控制线",
+            "用途管制",
+            "国土空间规划"
+          ],
+          "top_n": 5
+        }
+      },
+      "actual_trace": [
+        {
+          "tool_name": "clcd_analysis",
+          "args": {
+            "query_type": "monitoring",
+            "region": "云南省",
+            "year": 2023,
+            "policy": "balanced"
+          },
+          "is_error": false,
+          "elapsed_ms": 22
+        },
+        {
+          "tool_name": "policy_reference_lookup",
+          "args": {
+            "query": "三条控制线 用途管制 2019 政策 土地利用"
+          },
+          "is_error": true,
+          "elapsed_ms": 0
+        },
+        {
+          "tool_name": "knowledge_graph_query",
+          "args": {
+            "query": "三条控制线 用途管制 土地利用 2019 政策"
+          },
+          "is_error": true,
+          "elapsed_ms": 0
+        }
+      ],
+      "baseline_error": false,
+      "agent_error": null
+    },
+    {
+      "task_id": "policy-composite-004",
+      "category": "policy_explanation",
+      "difficulty": "composite",
+      "tool_accuracy": 0,
+      "tool_recall": 0,
+      "tool_precision": 0,
+      "tool_f1": 0,
+      "param_accuracy": 0,
+      "param_accuracy_relaxed": 0,
+      "param_accuracy_strict": 0,
+      "success_rate": 1,
+      "strict_success": 1,
+      "valid_success_rate": 1,
+      "answer_available_rate": 1,
+      "tool_error_count": 0,
+      "mre": null,
+      "hit_k": null,
+      "trend_consistency": null,
+      "fact_coverage": null,
+      "contradiction_rate": null,
+      "response_ms": 39655,
+      "tool_count": 5,
+      "expected_tools": [
+        "policy_reference_lookup"
+      ],
+      "actual_tools": [
+        "clcd_analysis",
+        "clcd_analysis",
+        "clcd_analysis",
+        "land_transfer_analysis",
+        "spatial_stats_analysis"
+      ],
+      "expected_args": {
+        "policy_reference_lookup": {
+          "region": "全国",
+          "level": "national",
+          "year_range": [
+            2020,
+            2024
+          ],
+          "keywords": [
+            "耕地保护",
+            "建设用地",
+            "非农化"
+          ],
+          "top_n": 5
+        }
+      },
+      "actual_trace": [
+        {
+          "tool_name": "clcd_analysis",
+          "args": {
+            "query_type": "structure",
+            "region": "云南省",
+            "year": 2023,
+            "level": "province"
+          },
+          "is_error": false,
+          "elapsed_ms": 2
+        },
+        {
+          "tool_name": "clcd_analysis",
+          "args": {
+            "query_type": "monitoring",
+            "region": "云南省",
+            "year": 2023,
+            "level": "province",
+            "policy": "farmland_protection"
+          },
+          "is_error": false,
+          "elapsed_ms": 2
+        },
+        {
+          "tool_name": "clcd_analysis",
+          "args": {
+            "query_type": "trend",
+            "region": "云南省",
+            "level": "province",
+            "year_range": [
+              2020,
+              2023
+            ],
+            "land_type": "建设用地"
+          },
+          "is_error": false,
+          "elapsed_ms": 1
+        },
+        {
+          "tool_name": "land_transfer_analysis",
+          "args": {
+            "region": "云南省",
+            "level": "province",
+            "start_year": 2020,
+            "end_year": 2023
+          },
+          "is_error": false,
+          "elapsed_ms": 20
+        },
+        {
+          "tool_name": "spatial_stats_analysis",
+          "args": {
+            "yearStart": 2020,
+            "yearEnd": 2023,
+            "fromClassStr": "耕地",
+            "toClassStr": "建设用地",
+            "region": "云南省"
+          },
+          "is_error": false,
+          "elapsed_ms": 1063
+        }
+      ],
+      "baseline_error": false,
+      "agent_error": null
+    },
+    {
+      "task_id": "policy-interpretive-001",
+      "category": "policy_explanation",
+      "difficulty": "interpretive",
+      "tool_accuracy": 0,
+      "tool_recall": 0,
+      "tool_precision": 0.2,
+      "tool_f1": 0,
+      "param_accuracy": 0,
+      "param_accuracy_relaxed": 0,
+      "param_accuracy_strict": 0,
+      "success_rate": 1,
+      "strict_success": 1,
+      "valid_success_rate": 1,
+      "answer_available_rate": 1,
+      "tool_error_count": 0,
+      "mre": null,
+      "hit_k": null,
+      "trend_consistency": null,
+      "fact_coverage": null,
+      "contradiction_rate": null,
+      "response_ms": 52998,
+      "tool_count": 5,
+      "expected_tools": [
+        "policy_reference_lookup",
+        "spatial_stats_analysis"
+      ],
+      "actual_tools": [
+        "clcd_analysis",
+        "spatial_stats_analysis",
+        "land_transfer_analysis",
+        "clcd_analysis",
+        "clcd_analysis"
+      ],
+      "expected_args": {
+        "policy_reference_lookup": {
+          "region": "云南省",
+          "level": "province",
+          "keywords": [
+            "国土空间规划",
+            "建设用地",
+            "三条控制线"
+          ],
+          "top_n": 5
+        },
+        "spatial_stats_analysis": {
+          "yearStart": 2000,
+          "yearEnd": 2020,
+          "fromClassStr": "全部",
+          "toClassStr": "建设用地",
+          "region": "云南省"
+        }
+      },
+      "actual_trace": [
+        {
+          "tool_name": "clcd_analysis",
+          "args": {
+            "query_type": "trend",
+            "region": "云南省",
+            "level": "province",
+            "year_range": [
+              1985,
+              2023
+            ],
+            "land_type": "建设用地"
+          },
+          "is_error": false,
+          "elapsed_ms": 2
+        },
+        {
+          "tool_name": "spatial_stats_analysis",
+          "args": {
+            "yearStart": 1985,
+            "yearEnd": 2023,
+            "fromClassStr": "全部",
+            "toClassStr": "建设用地",
+            "region": "云南省",
+            "top_n": 10
+          },
+          "is_error": false,
+          "elapsed_ms": 7929
+        },
+        {
+          "tool_name": "land_transfer_analysis",
+          "args": {
+            "region": "云南省",
+            "level": "province",
+            "start_year": 2000,
+            "end_year": 2023
+          },
+          "is_error": false,
+          "elapsed_ms": 62
+        },
+        {
+          "tool_name": "clcd_analysis",
+          "args": {
+            "query_type": "ranking",
+            "region": "云南省",
+            "level": "prefecture",
+            "year": 2023,
+            "land_type": "建设用地"
+          },
+          "is_error": false,
+          "elapsed_ms": 1
+        },
+        {
+          "tool_name": "clcd_analysis",
+          "args": {
+            "query_type": "monitoring",
+            "region": "云南省",
+            "level": "province",
+            "year": 2023,
+            "policy": "ecological_protection"
+          },
+          "is_error": false,
+          "elapsed_ms": 2
+        }
+      ],
+      "baseline_error": false,
+      "agent_error": null
+    },
+    {
+      "task_id": "policy-interpretive-002",
+      "category": "policy_explanation",
+      "difficulty": "interpretive",
+      "tool_accuracy": 0,
+      "tool_recall": 0,
+      "tool_precision": 0.25,
+      "tool_f1": 0,
+      "param_accuracy": 0,
+      "param_accuracy_relaxed": 0,
+      "param_accuracy_strict": 0,
+      "success_rate": 1,
+      "strict_success": 1,
+      "valid_success_rate": 1,
+      "answer_available_rate": 1,
+      "tool_error_count": 0,
+      "mre": null,
+      "hit_k": null,
+      "trend_consistency": null,
+      "fact_coverage": null,
+      "contradiction_rate": null,
+      "response_ms": 46118,
+      "tool_count": 4,
+      "expected_tools": [
+        "policy_reference_lookup",
+        "spatial_stats_analysis"
+      ],
+      "actual_tools": [
+        "land_transfer_analysis",
+        "clcd_analysis",
+        "clcd_analysis",
+        "spatial_stats_analysis"
+      ],
+      "expected_args": {
+        "policy_reference_lookup": {
+          "region": "全国",
+          "level": "national",
+          "keywords": [
+            "永久基本农田",
+            "耕地保护",
+            "建设用地"
+          ],
+          "top_n": 5
+        },
+        "spatial_stats_analysis": {
+          "yearStart": 2010,
+          "yearEnd": 2020,
+          "fromClassStr": "耕地",
+          "toClassStr": "建设用地",
+          "region": "云南省"
+        }
+      },
+      "actual_trace": [
+        {
+          "tool_name": "land_transfer_analysis",
+          "args": {
+            "region": "云南省",
+            "level": "province",
+            "start_year": 2015,
+            "end_year": 2023
+          },
+          "is_error": false,
+          "elapsed_ms": 49
+        },
+        {
+          "tool_name": "clcd_analysis",
+          "args": {
+            "query_type": "trend",
+            "region": "云南省",
+            "year_range": [
+              2015,
+              2023
+            ],
+            "land_type": "耕地",
+            "level": "province"
+          },
+          "is_error": false,
+          "elapsed_ms": 2
+        },
+        {
+          "tool_name": "clcd_analysis",
+          "args": {
+            "query_type": "trend",
+            "region": "云南省",
+            "year_range": [
+              2015,
+              2023
+            ],
+            "land_type": "建设用地",
+            "level": "province"
+          },
+          "is_error": false,
+          "elapsed_ms": 1
+        },
+        {
+          "tool_name": "spatial_stats_analysis",
+          "args": {
+            "yearStart": 2015,
+            "yearEnd": 2023,
+            "fromClassStr": "耕地",
+            "toClassStr": "建设用地",
+            "top_n": 5
+          },
+          "is_error": false,
+          "elapsed_ms": 2226
+        }
+      ],
+      "baseline_error": false,
+      "agent_error": null
+    },
+    {
+      "task_id": "policy-interpretive-003",
+      "category": "policy_explanation",
+      "difficulty": "interpretive",
+      "tool_accuracy": 0,
+      "tool_recall": 0,
+      "tool_precision": 0.3333333333333333,
+      "tool_f1": 0,
+      "param_accuracy": 0,
+      "param_accuracy_relaxed": 0,
+      "param_accuracy_strict": 0,
+      "success_rate": 0,
+      "strict_success": 0,
+      "valid_success_rate": 0,
+      "answer_available_rate": 1,
+      "tool_error_count": 1,
+      "mre": null,
+      "hit_k": null,
+      "trend_consistency": null,
+      "fact_coverage": null,
+      "contradiction_rate": null,
+      "response_ms": 39703,
+      "tool_count": 4,
+      "expected_tools": [
+        "policy_reference_lookup",
+        "clcd_analysis"
+      ],
+      "actual_tools": [
+        "clcd_analysis",
+        "clcd_analysis",
+        "knowledge_base_lookup",
+        "clcd_analysis"
+      ],
+      "expected_args": {
+        "policy_reference_lookup": {
+          "region": "云南省",
+          "level": "province",
+          "keywords": [
+            "生态保护",
+            "用途管制",
+            "国土空间规划"
+          ],
+          "top_n": 5
+        },
+        "clcd_analysis": {
+          "query_type": "monitoring",
+          "region": "云南省",
+          "level": "province",
+          "year": 2023,
+          "policy": "ecological_protection"
+        }
+      },
+      "actual_trace": [
+        {
+          "tool_name": "clcd_analysis",
+          "args": {
+            "query_type": "monitoring",
+            "region": "云南省",
+            "year": 2023
+          },
+          "is_error": false,
+          "elapsed_ms": 2
+        },
+        {
+          "tool_name": "clcd_analysis",
+          "args": {
+            "query_type": "monitoring",
+            "region": "云南省",
+            "year": 2023,
+            "policy": "balanced"
+          },
+          "is_error": false,
+          "elapsed_ms": 2
+        },
+        {
+          "tool_name": "knowledge_base_lookup",
+          "args": {},
+          "is_error": true,
+          "elapsed_ms": 0
+        },
+        {
+          "tool_name": "clcd_analysis",
+          "args": {
+            "query_type": "monitoring",
+            "region": "云南省",
+            "policy": "ecological_protection",
+            "year": 2023
+          },
+          "is_error": false,
+          "elapsed_ms": 2
+        }
+      ],
+      "baseline_error": false,
+      "agent_error": null
+    },
+    {
+      "task_id": "policy-interpretive-004",
+      "category": "policy_explanation",
+      "difficulty": "interpretive",
+      "tool_accuracy": 0,
+      "tool_recall": 0,
+      "tool_precision": 0,
+      "tool_f1": 0,
+      "param_accuracy": 0,
+      "param_accuracy_relaxed": 0,
+      "param_accuracy_strict": 0,
+      "success_rate": 1,
+      "strict_success": 1,
+      "valid_success_rate": 1,
+      "answer_available_rate": 1,
+      "tool_error_count": 0,
+      "mre": null,
+      "hit_k": null,
+      "trend_consistency": null,
+      "fact_coverage": null,
+      "contradiction_rate": null,
+      "response_ms": 42394,
+      "tool_count": 6,
+      "expected_tools": [
+        "policy_reference_lookup",
+        "knowledge_base_lookup"
+      ],
+      "actual_tools": [
+        "clcd_analysis",
+        "clcd_analysis",
+        "clcd_analysis",
+        "land_transfer_analysis",
+        "spatial_stats_analysis",
+        "spatial_stats_analysis"
+      ],
+      "expected_args": {
+        "policy_reference_lookup": {
+          "region": "云南省",
+          "level": "province",
+          "keywords": [
+            "国土空间规划",
+            "监测预警",
+            "辅助决策"
+          ],
+          "top_n": 5
+        },
+        "knowledge_base_lookup": {
+          "skill_name": "policy_expert"
+        }
+      },
+      "actual_trace": [
+        {
+          "tool_name": "clcd_analysis",
+          "args": {
+            "query_type": "monitoring",
+            "region": "云南省",
+            "year": 2023
+          },
+          "is_error": false,
+          "elapsed_ms": 21
+        },
+        {
+          "tool_name": "clcd_analysis",
+          "args": {
+            "query_type": "structure",
+            "region": "云南省",
+            "year": 2023
+          },
+          "is_error": false,
+          "elapsed_ms": 1
+        },
+        {
+          "tool_name": "clcd_analysis",
+          "args": {
+            "query_type": "trend",
+            "region": "云南省",
+            "year_range": [
+              1985,
+              2023
+            ]
+          },
+          "is_error": false,
+          "elapsed_ms": 3
+        },
+        {
+          "tool_name": "land_transfer_analysis",
+          "args": {
+            "region": "云南省",
+            "level": "province",
+            "start_year": 2015,
+            "end_year": 2023
+          },
+          "is_error": false,
+          "elapsed_ms": 30
+        },
+        {
+          "tool_name": "spatial_stats_analysis",
+          "args": {
+            "yearStart": 2015,
+            "yearEnd": 2023,
+            "fromClassStr": "耕地",
+            "toClassStr": "建设用地",
+            "top_n": 5
+          },
+          "is_error": false,
+          "elapsed_ms": 2237
+        },
+        {
+          "tool_name": "spatial_stats_analysis",
+          "args": {
+            "yearStart": 2015,
+            "yearEnd": 2023,
+            "fromClassStr": "草地",
+            "toClassStr": "林地",
+            "top_n": 5
+          },
+          "is_error": false,
+          "elapsed_ms": 2166
+        }
+      ],
+      "baseline_error": false,
+      "agent_error": null
+    },
+    {
+      "task_id": "risk-simple-001",
+      "category": "risk_scoring",
+      "difficulty": "simple",
+      "tool_accuracy": 1,
+      "tool_recall": 1,
+      "tool_precision": 1,
+      "tool_f1": 1,
+      "param_accuracy": 1,
+      "param_accuracy_relaxed": 1,
+      "param_accuracy_strict": 1,
+      "success_rate": 1,
+      "strict_success": 1,
+      "valid_success_rate": 1,
+      "answer_available_rate": 1,
+      "tool_error_count": 0,
+      "mre": 0,
+      "hit_k": null,
+      "trend_consistency": null,
+      "fact_coverage": null,
+      "contradiction_rate": null,
+      "response_ms": 11376,
+      "tool_count": 1,
+      "expected_tools": [
+        "clcd_analysis"
+      ],
+      "actual_tools": [
+        "clcd_analysis"
+      ],
+      "expected_args": {
+        "clcd_analysis": {
+          "query_type": "monitoring",
+          "region": "昆明市",
+          "level": "prefecture",
+          "year": 2020,
+          "policy": "balanced"
+        }
+      },
+      "actual_trace": [
+        {
+          "tool_name": "clcd_analysis",
+          "args": {
+            "query_type": "monitoring",
+            "region": "昆明市",
+            "level": "prefecture",
+            "year": 2020,
+            "policy": "balanced"
+          },
+          "is_error": false,
+          "elapsed_ms": 2
+        }
+      ],
+      "baseline_error": false,
+      "agent_error": null
+    },
+    {
+      "task_id": "risk-simple-002",
+      "category": "risk_scoring",
+      "difficulty": "simple",
+      "tool_accuracy": 1,
+      "tool_recall": 1,
+      "tool_precision": 1,
+      "tool_f1": 1,
+      "param_accuracy": 0,
+      "param_accuracy_relaxed": 0,
+      "param_accuracy_strict": 0,
+      "success_rate": 1,
+      "strict_success": 1,
+      "valid_success_rate": 1,
+      "answer_available_rate": 1,
+      "tool_error_count": 0,
+      "mre": 0,
+      "hit_k": null,
+      "trend_consistency": null,
+      "fact_coverage": null,
+      "contradiction_rate": null,
+      "response_ms": 13600,
+      "tool_count": 1,
+      "expected_tools": [
+        "clcd_analysis"
+      ],
+      "actual_tools": [
+        "clcd_analysis"
+      ],
+      "expected_args": {
+        "clcd_analysis": {
+          "query_type": "monitoring",
+          "region": "云南省",
+          "level": "province",
+          "year": 2023,
+          "policy": "balanced"
+        }
+      },
+      "actual_trace": [
+        {
+          "tool_name": "clcd_analysis",
+          "args": {
+            "query_type": "monitoring",
+            "region": "云南省",
+            "year": 2023,
+            "policy": "balanced"
+          },
+          "is_error": false,
+          "elapsed_ms": 2
+        }
+      ],
+      "baseline_error": false,
+      "agent_error": null
+    },
+    {
+      "task_id": "risk-simple-003",
+      "category": "risk_scoring",
+      "difficulty": "simple",
+      "tool_accuracy": 1,
+      "tool_recall": 1,
+      "tool_precision": 1,
+      "tool_f1": 1,
+      "param_accuracy": 1,
+      "param_accuracy_relaxed": 1,
+      "param_accuracy_strict": 1,
+      "success_rate": 1,
+      "strict_success": 1,
+      "valid_success_rate": 1,
+      "answer_available_rate": 1,
+      "tool_error_count": 0,
+      "mre": 0,
+      "hit_k": null,
+      "trend_consistency": null,
+      "fact_coverage": null,
+      "contradiction_rate": null,
+      "response_ms": 14107,
+      "tool_count": 1,
+      "expected_tools": [
+        "clcd_analysis"
+      ],
+      "actual_tools": [
+        "clcd_analysis"
+      ],
+      "expected_args": {
+        "clcd_analysis": {
+          "query_type": "monitoring",
+          "region": "曲靖市",
+          "level": "prefecture",
+          "year": 2020,
+          "policy": "ecological_protection"
+        }
+      },
+      "actual_trace": [
+        {
+          "tool_name": "clcd_analysis",
+          "args": {
+            "query_type": "monitoring",
+            "region": "曲靖市",
+            "level": "prefecture",
+            "year": 2020,
+            "policy": "ecological_protection"
+          },
+          "is_error": false,
+          "elapsed_ms": 3
+        }
+      ],
+      "baseline_error": false,
+      "agent_error": null
+    },
+    {
+      "task_id": "risk-simple-004",
+      "category": "risk_scoring",
+      "difficulty": "simple",
+      "tool_accuracy": 1,
+      "tool_recall": 1,
+      "tool_precision": 1,
+      "tool_f1": 1,
+      "param_accuracy": 1,
+      "param_accuracy_relaxed": 1,
+      "param_accuracy_strict": 1,
+      "success_rate": 1,
+      "strict_success": 1,
+      "valid_success_rate": 1,
+      "answer_available_rate": 1,
+      "tool_error_count": 0,
+      "mre": 0,
+      "hit_k": null,
+      "trend_consistency": null,
+      "fact_coverage": null,
+      "contradiction_rate": null,
+      "response_ms": 16511,
+      "tool_count": 1,
+      "expected_tools": [
+        "clcd_analysis"
+      ],
+      "actual_tools": [
+        "clcd_analysis"
+      ],
+      "expected_args": {
+        "clcd_analysis": {
+          "query_type": "monitoring",
+          "region": "玉溪市",
+          "level": "prefecture",
+          "year": 2015,
+          "policy": "farmland_protection"
+        }
+      },
+      "actual_trace": [
+        {
+          "tool_name": "clcd_analysis",
+          "args": {
+            "query_type": "monitoring",
+            "region": "玉溪市",
+            "level": "prefecture",
+            "year": 2015,
+            "policy": "farmland_protection"
+          },
+          "is_error": false,
+          "elapsed_ms": 1
+        }
+      ],
+      "baseline_error": false,
+      "agent_error": null
+    },
+    {
+      "task_id": "risk-composite-001",
+      "category": "risk_scoring",
+      "difficulty": "composite",
+      "tool_accuracy": 1,
+      "tool_recall": 1,
+      "tool_precision": 1,
+      "tool_f1": 1,
+      "param_accuracy": 1,
+      "param_accuracy_relaxed": 1,
+      "param_accuracy_strict": 1,
+      "success_rate": 1,
+      "strict_success": 1,
+      "valid_success_rate": 1,
+      "answer_available_rate": 1,
+      "tool_error_count": 0,
+      "mre": 0,
+      "hit_k": null,
+      "trend_consistency": null,
+      "fact_coverage": null,
+      "contradiction_rate": null,
+      "response_ms": 15649,
+      "tool_count": 1,
+      "expected_tools": [
+        "clcd_analysis"
+      ],
+      "actual_tools": [
+        "clcd_analysis"
+      ],
+      "expected_args": {
+        "clcd_analysis": {
+          "query_type": "monitoring",
+          "region": "昆明市",
+          "level": "prefecture",
+          "year": 2020,
+          "policy": "farmland_protection"
+        }
+      },
+      "actual_trace": [
+        {
+          "tool_name": "clcd_analysis",
+          "args": {
+            "query_type": "monitoring",
+            "region": "昆明市",
+            "level": "prefecture",
+            "year": 2020,
+            "policy": "farmland_protection"
+          },
+          "is_error": false,
+          "elapsed_ms": 3
+        }
+      ],
+      "baseline_error": false,
+      "agent_error": null
+    },
+    {
+      "task_id": "risk-composite-002",
+      "category": "risk_scoring",
+      "difficulty": "composite",
+      "tool_accuracy": 1,
+      "tool_recall": 1,
+      "tool_precision": 1,
+      "tool_f1": 1,
+      "param_accuracy": 1,
+      "param_accuracy_relaxed": 1,
+      "param_accuracy_strict": 1,
+      "success_rate": 1,
+      "strict_success": 1,
+      "valid_success_rate": 1,
+      "answer_available_rate": 1,
+      "tool_error_count": 0,
+      "mre": 0,
+      "hit_k": null,
+      "trend_consistency": null,
+      "fact_coverage": null,
+      "contradiction_rate": null,
+      "response_ms": 18643,
+      "tool_count": 1,
+      "expected_tools": [
+        "clcd_analysis"
+      ],
+      "actual_tools": [
+        "clcd_analysis"
+      ],
+      "expected_args": {
+        "clcd_analysis": {
+          "query_type": "monitoring",
+          "region": "昆明市",
+          "level": "prefecture",
+          "year": 2020,
+          "policy": "urban_development"
+        }
+      },
+      "actual_trace": [
+        {
+          "tool_name": "clcd_analysis",
+          "args": {
+            "query_type": "monitoring",
+            "region": "昆明市",
+            "level": "prefecture",
+            "year": 2020,
+            "policy": "urban_development"
+          },
+          "is_error": false,
+          "elapsed_ms": 2
+        }
+      ],
+      "baseline_error": false,
+      "agent_error": null
+    },
+    {
+      "task_id": "risk-composite-003",
+      "category": "risk_scoring",
+      "difficulty": "composite",
+      "tool_accuracy": 1,
+      "tool_recall": 1,
+      "tool_precision": 1,
+      "tool_f1": 1,
+      "param_accuracy": 1,
+      "param_accuracy_relaxed": 1,
+      "param_accuracy_strict": 1,
+      "success_rate": 1,
+      "strict_success": 1,
+      "valid_success_rate": 1,
+      "answer_available_rate": 1,
+      "tool_error_count": 0,
+      "mre": 0,
+      "hit_k": null,
+      "trend_consistency": null,
+      "fact_coverage": null,
+      "contradiction_rate": null,
+      "response_ms": 23051,
+      "tool_count": 1,
+      "expected_tools": [
+        "clcd_analysis"
+      ],
+      "actual_tools": [
+        "clcd_analysis"
+      ],
+      "expected_args": {
+        "clcd_analysis": {
+          "query_type": "monitoring",
+          "region": "云南省",
+          "level": "province",
+          "year": 2023,
+          "policy": "ecological_protection"
+        }
+      },
+      "actual_trace": [
+        {
+          "tool_name": "clcd_analysis",
+          "args": {
+            "query_type": "monitoring",
+            "region": "云南省",
+            "level": "province",
+            "year": 2023,
+            "policy": "ecological_protection"
+          },
+          "is_error": false,
+          "elapsed_ms": 1
+        }
+      ],
+      "baseline_error": false,
+      "agent_error": null
+    },
+    {
+      "task_id": "risk-composite-004",
+      "category": "risk_scoring",
+      "difficulty": "composite",
+      "tool_accuracy": 1,
+      "tool_recall": 1,
+      "tool_precision": 1,
+      "tool_f1": 1,
+      "param_accuracy": 1,
+      "param_accuracy_relaxed": 1,
+      "param_accuracy_strict": 1,
+      "success_rate": 1,
+      "strict_success": 1,
+      "valid_success_rate": 1,
+      "answer_available_rate": 1,
+      "tool_error_count": 0,
+      "mre": 0,
+      "hit_k": null,
+      "trend_consistency": null,
+      "fact_coverage": null,
+      "contradiction_rate": null,
+      "response_ms": 18488,
+      "tool_count": 1,
+      "expected_tools": [
+        "clcd_analysis"
+      ],
+      "actual_tools": [
+        "clcd_analysis"
+      ],
+      "expected_args": {
+        "clcd_analysis": {
+          "query_type": "monitoring",
+          "region": "大理白族自治州",
+          "level": "prefecture",
+          "year": 2020,
+          "policy": "reforestation"
+        }
+      },
+      "actual_trace": [
+        {
+          "tool_name": "clcd_analysis",
+          "args": {
+            "query_type": "monitoring",
+            "region": "大理白族自治州",
+            "level": "prefecture",
+            "year": 2020,
+            "policy": "reforestation"
+          },
+          "is_error": false,
+          "elapsed_ms": 2
+        }
+      ],
+      "baseline_error": false,
+      "agent_error": null
+    },
+    {
+      "task_id": "risk-interpretive-001",
+      "category": "risk_scoring",
+      "difficulty": "interpretive",
+      "tool_accuracy": 1,
+      "tool_recall": 1,
+      "tool_precision": 1,
+      "tool_f1": 1,
+      "param_accuracy": 0.5,
+      "param_accuracy_relaxed": 0.5,
+      "param_accuracy_strict": 0.5,
+      "success_rate": 0,
+      "strict_success": 0,
+      "valid_success_rate": 0,
+      "answer_available_rate": 1,
+      "tool_error_count": 1,
+      "mre": 0,
+      "hit_k": null,
+      "trend_consistency": null,
+      "fact_coverage": null,
+      "contradiction_rate": null,
+      "response_ms": 27245,
+      "tool_count": 2,
+      "expected_tools": [
+        "clcd_analysis",
+        "knowledge_base_lookup"
+      ],
+      "actual_tools": [
+        "clcd_analysis",
+        "knowledge_base_lookup"
+      ],
+      "expected_args": {
+        "clcd_analysis": {
+          "query_type": "monitoring",
+          "region": "昆明市",
+          "level": "prefecture",
+          "year": 2020,
+          "policy": "balanced"
+        },
+        "knowledge_base_lookup": {
+          "skill_name": "monitoring_indices"
+        }
+      },
+      "actual_trace": [
+        {
+          "tool_name": "clcd_analysis",
+          "args": {
+            "query_type": "monitoring",
+            "region": "昆明市",
+            "level": "prefecture",
+            "year": 2020,
+            "policy": "balanced"
+          },
+          "is_error": false,
+          "elapsed_ms": 1
+        },
+        {
+          "tool_name": "knowledge_base_lookup",
+          "args": {
+            "skill": "monitoring_indices"
+          },
+          "is_error": true,
+          "elapsed_ms": 0
+        }
+      ],
+      "baseline_error": false,
+      "agent_error": null
+    },
+    {
+      "task_id": "risk-interpretive-002",
+      "category": "risk_scoring",
+      "difficulty": "interpretive",
+      "tool_accuracy": 1,
+      "tool_recall": 1,
+      "tool_precision": 1,
+      "tool_f1": 1,
+      "param_accuracy": 0,
+      "param_accuracy_relaxed": 0,
+      "param_accuracy_strict": 0,
+      "success_rate": 0,
+      "strict_success": 0,
+      "valid_success_rate": 0,
+      "answer_available_rate": 1,
+      "tool_error_count": 1,
+      "mre": 0,
+      "hit_k": null,
+      "trend_consistency": null,
+      "fact_coverage": null,
+      "contradiction_rate": null,
+      "response_ms": 38458,
+      "tool_count": 2,
+      "expected_tools": [
+        "clcd_analysis",
+        "knowledge_base_lookup"
+      ],
+      "actual_tools": [
+        "clcd_analysis",
+        "knowledge_base_lookup"
+      ],
+      "expected_args": {
+        "clcd_analysis": {
+          "query_type": "monitoring",
+          "region": "云南省",
+          "level": "province",
+          "year": 2023,
+          "policy": "ecological_protection"
+        },
+        "knowledge_base_lookup": {
+          "skill_name": "monitoring_indices"
+        }
+      },
+      "actual_trace": [
+        {
+          "tool_name": "clcd_analysis",
+          "args": {
+            "query_type": "monitoring",
+            "region": "云南省",
+            "year": 2023,
+            "policy": "ecological_protection"
+          },
+          "is_error": false,
+          "elapsed_ms": 2
+        },
+        {
+          "tool_name": "knowledge_base_lookup",
+          "args": {
+            "skill": "monitoring_indices"
+          },
+          "is_error": true,
+          "elapsed_ms": 0
+        }
+      ],
+      "baseline_error": false,
+      "agent_error": null
+    },
+    {
+      "task_id": "risk-interpretive-003",
+      "category": "risk_scoring",
+      "difficulty": "interpretive",
+      "tool_accuracy": 1,
+      "tool_recall": 1,
+      "tool_precision": 0.2,
+      "tool_f1": 0.33333333333333337,
+      "param_accuracy": 0.5,
+      "param_accuracy_relaxed": 0.5,
+      "param_accuracy_strict": 0.5,
+      "success_rate": 0,
+      "strict_success": 0,
+      "valid_success_rate": 0,
+      "answer_available_rate": 1,
+      "tool_error_count": 1,
+      "mre": 0,
+      "hit_k": null,
+      "trend_consistency": null,
+      "fact_coverage": null,
+      "contradiction_rate": null,
+      "response_ms": 43178,
+      "tool_count": 6,
+      "expected_tools": [
+        "clcd_analysis",
+        "knowledge_base_lookup"
+      ],
+      "actual_tools": [
+        "clcd_analysis",
+        "clcd_analysis",
+        "dashboard_analysis",
+        "land_transfer_analysis",
+        "spatial_stats_analysis",
+        "knowledge_base_lookup"
+      ],
+      "expected_args": {
+        "clcd_analysis": {
+          "query_type": "monitoring",
+          "region": "曲靖市",
+          "level": "prefecture",
+          "year": 2020,
+          "policy": "farmland_protection"
+        },
+        "knowledge_base_lookup": {
+          "skill_name": "policy_expert"
+        }
+      },
+      "actual_trace": [
+        {
+          "tool_name": "clcd_analysis",
+          "args": {
+            "query_type": "monitoring",
+            "region": "曲靖市",
+            "level": "prefecture",
+            "year": 2020,
+            "policy": "farmland_protection"
+          },
+          "is_error": false,
+          "elapsed_ms": 2
+        },
+        {
+          "tool_name": "clcd_analysis",
+          "args": {
+            "query_type": "structure",
+            "region": "曲靖市",
+            "level": "prefecture",
+            "year": 2020
+          },
+          "is_error": false,
+          "elapsed_ms": 0
+        },
+        {
+          "tool_name": "dashboard_analysis",
+          "args": {
+            "year": 2020,
+            "region": "曲靖市",
+            "level": "prefecture"
+          },
+          "is_error": false,
+          "elapsed_ms": 1
+        },
+        {
+          "tool_name": "land_transfer_analysis",
+          "args": {
+            "region": "曲靖市",
+            "level": "prefecture",
+            "start_year": 2015,
+            "end_year": 2020
+          },
+          "is_error": false,
+          "elapsed_ms": 26
+        },
+        {
+          "tool_name": "spatial_stats_analysis",
+          "args": {
+            "yearStart": 2015,
+            "yearEnd": 2020,
+            "fromClassStr": "耕地",
+            "toClassStr": "建设用地",
+            "region": "曲靖市",
+            "top_n": 10
+          },
+          "is_error": false,
+          "elapsed_ms": 244
+        },
+        {
+          "tool_name": "knowledge_base_lookup",
+          "args": {
+            "query": "耕地保护优先 scenario 生态风险 预警 政策建议 三区三线"
+          },
+          "is_error": true,
+          "elapsed_ms": 0
+        }
+      ],
+      "baseline_error": false,
+      "agent_error": null
+    },
+    {
+      "task_id": "risk-interpretive-004",
+      "category": "risk_scoring",
+      "difficulty": "interpretive",
+      "tool_accuracy": 0,
+      "tool_recall": 0,
+      "tool_precision": 1,
+      "tool_f1": 0,
+      "param_accuracy": 0.5,
+      "param_accuracy_relaxed": 0.5,
+      "param_accuracy_strict": 0.5,
+      "success_rate": 1,
+      "strict_success": 1,
+      "valid_success_rate": 1,
+      "answer_available_rate": 1,
+      "tool_error_count": 0,
+      "mre": 0,
+      "hit_k": null,
+      "trend_consistency": null,
+      "fact_coverage": null,
+      "contradiction_rate": null,
+      "response_ms": 34530,
+      "tool_count": 1,
+      "expected_tools": [
+        "clcd_analysis",
+        "knowledge_base_lookup"
+      ],
+      "actual_tools": [
+        "clcd_analysis"
+      ],
+      "expected_args": {
+        "clcd_analysis": {
+          "query_type": "monitoring",
+          "region": "红河哈尼族彝族自治州",
+          "level": "prefecture",
+          "year": 2020,
+          "policy": "urban_development"
+        },
+        "knowledge_base_lookup": {
+          "skill_name": "monitoring_indices"
+        }
+      },
+      "actual_trace": [
+        {
+          "tool_name": "clcd_analysis",
+          "args": {
+            "query_type": "monitoring",
+            "region": "红河哈尼族彝族自治州",
+            "level": "prefecture",
+            "year": 2020,
+            "policy": "urban_development"
+          },
+          "is_error": false,
+          "elapsed_ms": 1
+        }
+      ],
+      "baseline_error": false,
+      "agent_error": null
+    },
+    {
+      "task_id": "spatial-simple-001",
+      "category": "spatial_hotspot",
+      "difficulty": "simple",
+      "tool_accuracy": 1,
+      "tool_recall": 1,
+      "tool_precision": 1,
+      "tool_f1": 1,
+      "param_accuracy": 0,
+      "param_accuracy_relaxed": 0,
+      "param_accuracy_strict": 0,
+      "success_rate": 1,
+      "strict_success": 1,
+      "valid_success_rate": 1,
+      "answer_available_rate": 1,
+      "tool_error_count": 0,
+      "mre": null,
+      "hit_k": 1,
+      "trend_consistency": null,
+      "fact_coverage": null,
+      "contradiction_rate": null,
+      "response_ms": 27852,
+      "tool_count": 1,
+      "expected_tools": [
+        "spatial_stats_analysis"
+      ],
+      "actual_tools": [
+        "spatial_stats_analysis"
+      ],
+      "expected_args": {
+        "spatial_stats_analysis": {
+          "yearStart": 2000,
+          "yearEnd": 2020,
+          "fromClassStr": "全部",
+          "toClassStr": "建设用地",
+          "region": "云南省",
+          "top_n": 5
+        }
+      },
+      "actual_trace": [
+        {
+          "tool_name": "spatial_stats_analysis",
+          "args": {
+            "yearStart": 2000,
+            "yearEnd": 2020,
+            "fromClassStr": "全部",
+            "toClassStr": "建设用地",
+            "top_n": 5
+          },
+          "is_error": false,
+          "elapsed_ms": 4822
+        }
+      ],
+      "baseline_error": false,
+      "agent_error": null
+    },
+    {
+      "task_id": "spatial-simple-002",
+      "category": "spatial_hotspot",
+      "difficulty": "simple",
+      "tool_accuracy": 1,
+      "tool_recall": 1,
+      "tool_precision": 1,
+      "tool_f1": 1,
+      "param_accuracy": 0,
+      "param_accuracy_relaxed": 0,
+      "param_accuracy_strict": 0,
+      "success_rate": 1,
+      "strict_success": 1,
+      "valid_success_rate": 1,
+      "answer_available_rate": 1,
+      "tool_error_count": 0,
+      "mre": null,
+      "hit_k": 1,
+      "trend_consistency": null,
+      "fact_coverage": null,
+      "contradiction_rate": null,
+      "response_ms": 28361,
+      "tool_count": 1,
+      "expected_tools": [
+        "spatial_stats_analysis"
+      ],
+      "actual_tools": [
+        "spatial_stats_analysis"
+      ],
+      "expected_args": {
+        "spatial_stats_analysis": {
+          "yearStart": 2010,
+          "yearEnd": 2020,
+          "fromClassStr": "耕地",
+          "toClassStr": "建设用地",
+          "region": "云南省",
+          "top_n": 5
+        }
+      },
+      "actual_trace": [
+        {
+          "tool_name": "spatial_stats_analysis",
+          "args": {
+            "yearStart": 2010,
+            "yearEnd": 2020,
+            "fromClassStr": "耕地",
+            "toClassStr": "建设用地",
+            "top_n": 5
+          },
+          "is_error": false,
+          "elapsed_ms": 2453
+        }
+      ],
+      "baseline_error": false,
+      "agent_error": null
+    },
+    {
+      "task_id": "spatial-simple-003",
+      "category": "spatial_hotspot",
+      "difficulty": "simple",
+      "tool_accuracy": 1,
+      "tool_recall": 1,
+      "tool_precision": 1,
+      "tool_f1": 1,
+      "param_accuracy": 1,
+      "param_accuracy_relaxed": 1,
+      "param_accuracy_strict": 1,
+      "success_rate": 1,
+      "strict_success": 1,
+      "valid_success_rate": 1,
+      "answer_available_rate": 1,
+      "tool_error_count": 0,
+      "mre": null,
+      "hit_k": 1,
+      "trend_consistency": null,
+      "fact_coverage": null,
+      "contradiction_rate": null,
+      "response_ms": 30496,
+      "tool_count": 1,
+      "expected_tools": [
+        "spatial_stats_analysis"
+      ],
+      "actual_tools": [
+        "spatial_stats_analysis"
+      ],
+      "expected_args": {
+        "spatial_stats_analysis": {
+          "yearStart": 2000,
+          "yearEnd": 2023,
+          "fromClassStr": "草地",
+          "toClassStr": "建设用地",
+          "region": "云南省",
+          "top_n": 5
+        }
+      },
+      "actual_trace": [
+        {
+          "tool_name": "spatial_stats_analysis",
+          "args": {
+            "yearStart": 2000,
+            "yearEnd": 2023,
+            "fromClassStr": "草地",
+            "toClassStr": "建设用地",
+            "region": "云南省",
+            "top_n": 5
+          },
+          "is_error": false,
+          "elapsed_ms": 5414
+        }
+      ],
+      "baseline_error": false,
+      "agent_error": null
+    },
+    {
+      "task_id": "spatial-simple-004",
+      "category": "spatial_hotspot",
+      "difficulty": "simple",
+      "tool_accuracy": 1,
+      "tool_recall": 1,
+      "tool_precision": 1,
+      "tool_f1": 1,
+      "param_accuracy": 1,
+      "param_accuracy_relaxed": 1,
+      "param_accuracy_strict": 1,
+      "success_rate": 1,
+      "strict_success": 1,
+      "valid_success_rate": 1,
+      "answer_available_rate": 1,
+      "tool_error_count": 0,
+      "mre": null,
+      "hit_k": 1,
+      "trend_consistency": null,
+      "fact_coverage": null,
+      "contradiction_rate": null,
+      "response_ms": 36503,
+      "tool_count": 1,
+      "expected_tools": [
+        "spatial_stats_analysis"
+      ],
+      "actual_tools": [
+        "spatial_stats_analysis"
+      ],
+      "expected_args": {
+        "spatial_stats_analysis": {
+          "yearStart": 1990,
+          "yearEnd": 2020,
+          "fromClassStr": "全部",
+          "toClassStr": "耕地",
+          "region": "云南省",
+          "top_n": 5
+        }
+      },
+      "actual_trace": [
+        {
+          "tool_name": "spatial_stats_analysis",
+          "args": {
+            "yearStart": 1990,
+            "yearEnd": 2020,
+            "fromClassStr": "全部",
+            "toClassStr": "耕地",
+            "region": "云南省",
+            "top_n": 5
+          },
+          "is_error": false,
+          "elapsed_ms": 7424
+        }
+      ],
+      "baseline_error": false,
+      "agent_error": null
+    },
+    {
+      "task_id": "spatial-composite-001",
+      "category": "spatial_hotspot",
+      "difficulty": "composite",
+      "tool_accuracy": 1,
+      "tool_recall": 1,
+      "tool_precision": 1,
+      "tool_f1": 1,
+      "param_accuracy": 0,
+      "param_accuracy_relaxed": 0,
+      "param_accuracy_strict": 0,
+      "success_rate": 1,
+      "strict_success": 1,
+      "valid_success_rate": 1,
+      "answer_available_rate": 1,
+      "tool_error_count": 0,
+      "mre": 0,
+      "hit_k": null,
+      "trend_consistency": null,
+      "fact_coverage": null,
+      "contradiction_rate": null,
+      "response_ms": 27573,
+      "tool_count": 1,
+      "expected_tools": [
+        "spatial_stats_analysis"
+      ],
+      "actual_tools": [
+        "spatial_stats_analysis"
+      ],
+      "expected_args": {
+        "spatial_stats_analysis": {
+          "yearStart": 2000,
+          "yearEnd": 2020,
+          "fromClassStr": "全部",
+          "toClassStr": "建设用地",
+          "region": "云南省",
+          "top_n": 5
+        }
+      },
+      "actual_trace": [
+        {
+          "tool_name": "spatial_stats_analysis",
+          "args": {
+            "yearStart": 2000,
+            "yearEnd": 2020,
+            "fromClassStr": "全部",
+            "toClassStr": "建设用地"
+          },
+          "is_error": false,
+          "elapsed_ms": 4782
+        }
+      ],
+      "baseline_error": false,
+      "agent_error": null
+    },
+    {
+      "task_id": "spatial-composite-002",
+      "category": "spatial_hotspot",
+      "difficulty": "composite",
+      "tool_accuracy": 1,
+      "tool_recall": 1,
+      "tool_precision": 1,
+      "tool_f1": 1,
+      "param_accuracy": 0,
+      "param_accuracy_relaxed": 0,
+      "param_accuracy_strict": 0,
+      "success_rate": 1,
+      "strict_success": 1,
+      "valid_success_rate": 1,
+      "answer_available_rate": 1,
+      "tool_error_count": 0,
+      "mre": 0,
+      "hit_k": null,
+      "trend_consistency": null,
+      "fact_coverage": null,
+      "contradiction_rate": null,
+      "response_ms": 28078,
+      "tool_count": 1,
+      "expected_tools": [
+        "spatial_stats_analysis"
+      ],
+      "actual_tools": [
+        "spatial_stats_analysis"
+      ],
+      "expected_args": {
+        "spatial_stats_analysis": {
+          "yearStart": 2010,
+          "yearEnd": 2023,
+          "fromClassStr": "耕地",
+          "toClassStr": "建设用地",
+          "region": "云南省",
+          "top_n": 5
+        }
+      },
+      "actual_trace": [
+        {
+          "tool_name": "spatial_stats_analysis",
+          "args": {
+            "yearStart": 2010,
+            "yearEnd": 2023,
+            "fromClassStr": "耕地",
+            "toClassStr": "建设用地",
+            "region": "云南省"
+          },
+          "is_error": false,
+          "elapsed_ms": 3132
+        }
+      ],
+      "baseline_error": false,
+      "agent_error": null
+    },
+    {
+      "task_id": "spatial-composite-003",
+      "category": "spatial_hotspot",
+      "difficulty": "composite",
+      "tool_accuracy": 1,
+      "tool_recall": 1,
+      "tool_precision": 1,
+      "tool_f1": 1,
+      "param_accuracy": 0,
+      "param_accuracy_relaxed": 0,
+      "param_accuracy_strict": 0,
+      "success_rate": 1,
+      "strict_success": 1,
+      "valid_success_rate": 1,
+      "answer_available_rate": 1,
+      "tool_error_count": 0,
+      "mre": 0,
+      "hit_k": null,
+      "trend_consistency": null,
+      "fact_coverage": null,
+      "contradiction_rate": null,
+      "response_ms": 21835,
+      "tool_count": 1,
+      "expected_tools": [
+        "spatial_stats_analysis"
+      ],
+      "actual_tools": [
+        "spatial_stats_analysis"
+      ],
+      "expected_args": {
+        "spatial_stats_analysis": {
+          "yearStart": 2000,
+          "yearEnd": 2020,
+          "fromClassStr": "全部",
+          "toClassStr": "建设用地",
+          "region": "云南省",
+          "top_n": 5
+        }
+      },
+      "actual_trace": [
+        {
+          "tool_name": "spatial_stats_analysis",
+          "args": {
+            "yearStart": 2000,
+            "yearEnd": 2020,
+            "fromClassStr": "全部",
+            "toClassStr": "建设用地",
+            "region": "云南省"
+          },
+          "is_error": false,
+          "elapsed_ms": 4819
+        }
+      ],
+      "baseline_error": false,
+      "agent_error": null
+    },
+    {
+      "task_id": "spatial-composite-004",
+      "category": "spatial_hotspot",
+      "difficulty": "composite",
+      "tool_accuracy": 1,
+      "tool_recall": 1,
+      "tool_precision": 1,
+      "tool_f1": 1,
+      "param_accuracy": 0,
+      "param_accuracy_relaxed": 0,
+      "param_accuracy_strict": 0,
+      "success_rate": 1,
+      "strict_success": 1,
+      "valid_success_rate": 1,
+      "answer_available_rate": 1,
+      "tool_error_count": 0,
+      "mre": 0,
+      "hit_k": null,
+      "trend_consistency": null,
+      "fact_coverage": null,
+      "contradiction_rate": null,
+      "response_ms": 18291,
+      "tool_count": 1,
+      "expected_tools": [
+        "spatial_stats_analysis"
+      ],
+      "actual_tools": [
+        "spatial_stats_analysis"
+      ],
+      "expected_args": {
+        "spatial_stats_analysis": {
+          "yearStart": 2000,
+          "yearEnd": 2023,
+          "fromClassStr": "草地",
+          "toClassStr": "建设用地",
+          "region": "云南省",
+          "top_n": 5
+        }
+      },
+      "actual_trace": [
+        {
+          "tool_name": "spatial_stats_analysis",
+          "args": {
+            "yearStart": 2000,
+            "yearEnd": 2023,
+            "fromClassStr": "草地",
+            "toClassStr": "建设用地"
+          },
+          "is_error": false,
+          "elapsed_ms": 5345
+        }
+      ],
+      "baseline_error": false,
+      "agent_error": null
+    },
+    {
+      "task_id": "spatial-interpretive-001",
+      "category": "spatial_hotspot",
+      "difficulty": "interpretive",
+      "tool_accuracy": 0,
+      "tool_recall": 0,
+      "tool_precision": 1,
+      "tool_f1": 0,
+      "param_accuracy": 0.5,
+      "param_accuracy_relaxed": 0.5,
+      "param_accuracy_strict": 0.5,
+      "success_rate": 1,
+      "strict_success": 1,
+      "valid_success_rate": 1,
+      "answer_available_rate": 1,
+      "tool_error_count": 0,
+      "mre": null,
+      "hit_k": 1,
+      "trend_consistency": null,
+      "fact_coverage": null,
+      "contradiction_rate": null,
+      "response_ms": 36030,
+      "tool_count": 1,
+      "expected_tools": [
+        "spatial_stats_analysis",
+        "knowledge_base_lookup"
+      ],
+      "actual_tools": [
+        "spatial_stats_analysis"
+      ],
+      "expected_args": {
+        "spatial_stats_analysis": {
+          "yearStart": 2000,
+          "yearEnd": 2020,
+          "fromClassStr": "全部",
+          "toClassStr": "建设用地",
+          "region": "云南省",
+          "top_n": 5
+        },
+        "knowledge_base_lookup": {
+          "skill_name": "spatial_reasoning"
+        }
+      },
+      "actual_trace": [
+        {
+          "tool_name": "spatial_stats_analysis",
+          "args": {
+            "yearStart": 2000,
+            "yearEnd": 2020,
+            "fromClassStr": "全部",
+            "toClassStr": "建设用地",
+            "region": "云南省",
+            "top_n": 5
+          },
+          "is_error": false,
+          "elapsed_ms": 4839
+        }
+      ],
+      "baseline_error": false,
+      "agent_error": null
+    },
+    {
+      "task_id": "spatial-interpretive-002",
+      "category": "spatial_hotspot",
+      "difficulty": "interpretive",
+      "tool_accuracy": 0,
+      "tool_recall": 0,
+      "tool_precision": 0.5,
+      "tool_f1": 0,
+      "param_accuracy": 0,
+      "param_accuracy_relaxed": 0,
+      "param_accuracy_strict": 0,
+      "success_rate": 1,
+      "strict_success": 1,
+      "valid_success_rate": 1,
+      "answer_available_rate": 1,
+      "tool_error_count": 0,
+      "mre": 0,
+      "hit_k": null,
+      "trend_consistency": null,
+      "fact_coverage": null,
+      "contradiction_rate": null,
+      "response_ms": 31072,
+      "tool_count": 2,
+      "expected_tools": [
+        "spatial_stats_analysis",
+        "knowledge_base_lookup"
+      ],
+      "actual_tools": [
+        "spatial_stats_analysis",
+        "land_transfer_analysis"
+      ],
+      "expected_args": {
+        "spatial_stats_analysis": {
+          "yearStart": 2010,
+          "yearEnd": 2023,
+          "fromClassStr": "耕地",
+          "toClassStr": "建设用地",
+          "region": "云南省",
+          "top_n": 5
+        },
+        "knowledge_base_lookup": {
+          "skill_name": "spatial_reasoning"
+        }
+      },
+      "actual_trace": [
+        {
+          "tool_name": "spatial_stats_analysis",
+          "args": {
+            "yearStart": 2010,
+            "yearEnd": 2023,
+            "fromClassStr": "耕地",
+            "toClassStr": "建设用地",
+            "region": "云南省"
+          },
+          "is_error": false,
+          "elapsed_ms": 3107
+        },
+        {
+          "tool_name": "land_transfer_analysis",
+          "args": {
+            "region": "云南省",
+            "level": "province",
+            "start_year": 2010,
+            "end_year": 2023
+          },
+          "is_error": false,
+          "elapsed_ms": 38
+        }
+      ],
+      "baseline_error": false,
+      "agent_error": null
+    },
+    {
+      "task_id": "spatial-interpretive-003",
+      "category": "spatial_hotspot",
+      "difficulty": "interpretive",
+      "tool_accuracy": 0,
+      "tool_recall": 0,
+      "tool_precision": 0.3333333333333333,
+      "tool_f1": 0,
+      "param_accuracy": 0,
+      "param_accuracy_relaxed": 0,
+      "param_accuracy_strict": 0,
+      "success_rate": 1,
+      "strict_success": 1,
+      "valid_success_rate": 1,
+      "answer_available_rate": 1,
+      "tool_error_count": 0,
+      "mre": null,
+      "hit_k": 1,
+      "trend_consistency": null,
+      "fact_coverage": null,
+      "contradiction_rate": null,
+      "response_ms": 47172,
+      "tool_count": 3,
+      "expected_tools": [
+        "spatial_stats_analysis",
+        "knowledge_base_lookup"
+      ],
+      "actual_tools": [
+        "spatial_stats_analysis",
+        "land_transfer_analysis",
+        "clcd_analysis"
+      ],
+      "expected_args": {
+        "spatial_stats_analysis": {
+          "yearStart": 2000,
+          "yearEnd": 2023,
+          "fromClassStr": "草地",
+          "toClassStr": "建设用地",
+          "region": "云南省",
+          "top_n": 5
+        },
+        "knowledge_base_lookup": {
+          "skill_name": "policy_expert"
+        }
+      },
+      "actual_trace": [
+        {
+          "tool_name": "spatial_stats_analysis",
+          "args": {
+            "yearStart": 2000,
+            "yearEnd": 2023,
+            "fromClassStr": "草地",
+            "toClassStr": "建设用地",
+            "top_n": 10,
+            "region": "云南省"
+          },
+          "is_error": false,
+          "elapsed_ms": 5305
+        },
+        {
+          "tool_name": "land_transfer_analysis",
+          "args": {
+            "region": "云南省",
+            "level": "province",
+            "start_year": 2000,
+            "end_year": 2023
+          },
+          "is_error": false,
+          "elapsed_ms": 61
+        },
+        {
+          "tool_name": "clcd_analysis",
+          "args": {
+            "query_type": "monitoring",
+            "region": "云南省",
+            "year": 2023
+          },
+          "is_error": false,
+          "elapsed_ms": 3
+        }
+      ],
+      "baseline_error": false,
+      "agent_error": null
+    },
+    {
+      "task_id": "spatial-interpretive-004",
+      "category": "spatial_hotspot",
+      "difficulty": "interpretive",
+      "tool_accuracy": 0,
+      "tool_recall": 0,
+      "tool_precision": 0.5,
+      "tool_f1": 0,
+      "param_accuracy": 0,
+      "param_accuracy_relaxed": 0,
+      "param_accuracy_strict": 0,
+      "success_rate": 1,
+      "strict_success": 1,
+      "valid_success_rate": 1,
+      "answer_available_rate": 1,
+      "tool_error_count": 0,
+      "mre": null,
+      "hit_k": 1,
+      "trend_consistency": null,
+      "fact_coverage": null,
+      "contradiction_rate": null,
+      "response_ms": 49241,
+      "tool_count": 2,
+      "expected_tools": [
+        "spatial_stats_analysis",
+        "knowledge_base_lookup"
+      ],
+      "actual_tools": [
+        "spatial_stats_analysis",
+        "land_transfer_analysis"
+      ],
+      "expected_args": {
+        "spatial_stats_analysis": {
+          "yearStart": 1990,
+          "yearEnd": 2020,
+          "fromClassStr": "全部",
+          "toClassStr": "建设用地",
+          "region": "云南省",
+          "top_n": 5
+        },
+        "knowledge_base_lookup": {
+          "skill_name": "spatial_reasoning"
+        }
+      },
+      "actual_trace": [
+        {
+          "tool_name": "spatial_stats_analysis",
+          "args": {
+            "yearStart": 1990,
+            "yearEnd": 2020,
+            "fromClassStr": "全部",
+            "toClassStr": "建设用地",
+            "top_n": 10
+          },
+          "is_error": false,
+          "elapsed_ms": 7288
+        },
+        {
+          "tool_name": "land_transfer_analysis",
+          "args": {
+            "region": "云南省",
+            "level": "province",
+            "start_year": 1990,
+            "end_year": 2020
+          },
+          "is_error": false,
+          "elapsed_ms": 81
+        }
+      ],
+      "baseline_error": false,
+      "agent_error": null
+    },
+    {
+      "task_id": "structure-simple-001",
+      "category": "structure_query",
+      "difficulty": "simple",
+      "tool_accuracy": 1,
+      "tool_recall": 1,
+      "tool_precision": 1,
+      "tool_f1": 1,
+      "param_accuracy": 1,
+      "param_accuracy_relaxed": 1,
+      "param_accuracy_strict": 1,
+      "success_rate": 1,
+      "strict_success": 1,
+      "valid_success_rate": 1,
+      "answer_available_rate": 1,
+      "tool_error_count": 0,
+      "mre": 0,
+      "hit_k": null,
+      "trend_consistency": null,
+      "fact_coverage": null,
+      "contradiction_rate": null,
+      "response_ms": 4712,
+      "tool_count": 1,
+      "expected_tools": [
+        "clcd_analysis"
+      ],
+      "actual_tools": [
+        "clcd_analysis"
+      ],
+      "expected_args": {
+        "clcd_analysis": {
+          "query_type": "structure",
+          "region": "昆明市",
+          "level": "prefecture",
+          "year": 2020
+        }
+      },
+      "actual_trace": [
+        {
+          "tool_name": "clcd_analysis",
+          "args": {
+            "query_type": "structure",
+            "region": "昆明市",
+            "level": "prefecture",
+            "year": 2020
+          },
+          "is_error": false,
+          "elapsed_ms": 1
+        }
+      ],
+      "baseline_error": false,
+      "agent_error": null
+    },
+    {
+      "task_id": "structure-simple-002",
+      "category": "structure_query",
+      "difficulty": "simple",
+      "tool_accuracy": 1,
+      "tool_recall": 1,
+      "tool_precision": 1,
+      "tool_f1": 1,
+      "param_accuracy": 1,
+      "param_accuracy_relaxed": 1,
+      "param_accuracy_strict": 1,
+      "success_rate": 1,
+      "strict_success": 1,
+      "valid_success_rate": 1,
+      "answer_available_rate": 1,
+      "tool_error_count": 0,
+      "mre": 0,
+      "hit_k": null,
+      "trend_consistency": null,
+      "fact_coverage": null,
+      "contradiction_rate": null,
+      "response_ms": 7878,
+      "tool_count": 1,
+      "expected_tools": [
+        "clcd_analysis"
+      ],
+      "actual_tools": [
+        "clcd_analysis"
+      ],
+      "expected_args": {
+        "clcd_analysis": {
+          "query_type": "structure",
+          "region": "曲靖市",
+          "level": "prefecture",
+          "year": 2020
+        }
+      },
+      "actual_trace": [
+        {
+          "tool_name": "clcd_analysis",
+          "args": {
+            "query_type": "structure",
+            "region": "曲靖市",
+            "level": "prefecture",
+            "year": 2020
+          },
+          "is_error": false,
+          "elapsed_ms": 1
+        }
+      ],
+      "baseline_error": false,
+      "agent_error": null
+    },
+    {
+      "task_id": "structure-simple-003",
+      "category": "structure_query",
+      "difficulty": "simple",
+      "tool_accuracy": 1,
+      "tool_recall": 1,
+      "tool_precision": 1,
+      "tool_f1": 1,
+      "param_accuracy": 0,
+      "param_accuracy_relaxed": 0,
+      "param_accuracy_strict": 0,
+      "success_rate": 1,
+      "strict_success": 1,
+      "valid_success_rate": 1,
+      "answer_available_rate": 1,
+      "tool_error_count": 0,
+      "mre": 0,
+      "hit_k": null,
+      "trend_consistency": null,
+      "fact_coverage": null,
+      "contradiction_rate": null,
+      "response_ms": 7537,
+      "tool_count": 1,
+      "expected_tools": [
+        "clcd_analysis"
+      ],
+      "actual_tools": [
+        "clcd_analysis"
+      ],
+      "expected_args": {
+        "clcd_analysis": {
+          "query_type": "structure",
+          "region": "云南省",
+          "level": "province",
+          "year": 2015
+        }
+      },
+      "actual_trace": [
+        {
+          "tool_name": "clcd_analysis",
+          "args": {
+            "query_type": "trend",
+            "region": "云南省",
+            "level": "province",
+            "year_range": [
+              2015,
+              2015
+            ]
+          },
+          "is_error": false,
+          "elapsed_ms": 1
+        }
+      ],
+      "baseline_error": false,
+      "agent_error": null
+    },
+    {
+      "task_id": "structure-simple-004",
+      "category": "structure_query",
+      "difficulty": "simple",
+      "tool_accuracy": 1,
+      "tool_recall": 1,
+      "tool_precision": 1,
+      "tool_f1": 1,
+      "param_accuracy": 1,
+      "param_accuracy_relaxed": 1,
+      "param_accuracy_strict": 1,
+      "success_rate": 1,
+      "strict_success": 1,
+      "valid_success_rate": 1,
+      "answer_available_rate": 1,
+      "tool_error_count": 0,
+      "mre": 0,
+      "hit_k": null,
+      "trend_consistency": null,
+      "fact_coverage": null,
+      "contradiction_rate": null,
+      "response_ms": 6222,
+      "tool_count": 1,
+      "expected_tools": [
+        "clcd_analysis"
+      ],
+      "actual_tools": [
+        "clcd_analysis"
+      ],
+      "expected_args": {
+        "clcd_analysis": {
+          "query_type": "structure",
+          "region": "玉溪市",
+          "level": "prefecture",
+          "year": 2023
+        }
+      },
+      "actual_trace": [
+        {
+          "tool_name": "clcd_analysis",
+          "args": {
+            "query_type": "structure",
+            "region": "玉溪市",
+            "level": "prefecture",
+            "year": 2023
+          },
+          "is_error": false,
+          "elapsed_ms": 1
+        }
+      ],
+      "baseline_error": false,
+      "agent_error": null
+    },
+    {
+      "task_id": "structure-composite-001",
+      "category": "structure_query",
+      "difficulty": "composite",
+      "tool_accuracy": 1,
+      "tool_recall": 1,
+      "tool_precision": 0.3333333333333333,
+      "tool_f1": 0.5,
+      "param_accuracy": 0,
+      "param_accuracy_relaxed": 0,
+      "param_accuracy_strict": 0,
+      "success_rate": 1,
+      "strict_success": 1,
+      "valid_success_rate": 1,
+      "answer_available_rate": 1,
+      "tool_error_count": 0,
+      "mre": null,
+      "hit_k": 0.3333333333333333,
+      "trend_consistency": null,
+      "fact_coverage": null,
+      "contradiction_rate": null,
+      "response_ms": 12005,
+      "tool_count": 3,
+      "expected_tools": [
+        "clcd_analysis"
+      ],
+      "actual_tools": [
+        "clcd_analysis",
+        "clcd_analysis",
+        "clcd_analysis"
+      ],
+      "expected_args": {
+        "clcd_analysis": {
+          "query_type": "comparison",
+          "region": "昆明市,曲靖市,玉溪市",
+          "level": "prefecture",
+          "year": 2020
+        }
+      },
+      "actual_trace": [
+        {
+          "tool_name": "clcd_analysis",
+          "args": {
+            "query_type": "structure",
+            "region": "昆明市",
+            "level": "prefecture",
+            "year": 2020
+          },
+          "is_error": false,
+          "elapsed_ms": 1
+        },
+        {
+          "tool_name": "clcd_analysis",
+          "args": {
+            "query_type": "structure",
+            "region": "曲靖市",
+            "level": "prefecture",
+            "year": 2020
+          },
+          "is_error": false,
+          "elapsed_ms": 1
+        },
+        {
+          "tool_name": "clcd_analysis",
+          "args": {
+            "query_type": "structure",
+            "region": "玉溪市",
+            "level": "prefecture",
+            "year": 2020
+          },
+          "is_error": false,
+          "elapsed_ms": 1
+        }
+      ],
+      "baseline_error": false,
+      "agent_error": null
+    },
+    {
+      "task_id": "structure-composite-002",
+      "category": "structure_query",
+      "difficulty": "composite",
+      "tool_accuracy": 1,
+      "tool_recall": 1,
+      "tool_precision": 0.3333333333333333,
+      "tool_f1": 0.5,
+      "param_accuracy": 0,
+      "param_accuracy_relaxed": 0,
+      "param_accuracy_strict": 0,
+      "success_rate": 1,
+      "strict_success": 1,
+      "valid_success_rate": 1,
+      "answer_available_rate": 1,
+      "tool_error_count": 0,
+      "mre": null,
+      "hit_k": 0.3333333333333333,
+      "trend_consistency": null,
+      "fact_coverage": null,
+      "contradiction_rate": null,
+      "response_ms": 11912,
+      "tool_count": 3,
+      "expected_tools": [
+        "clcd_analysis"
+      ],
+      "actual_tools": [
+        "clcd_analysis",
+        "clcd_analysis",
+        "clcd_analysis"
+      ],
+      "expected_args": {
+        "clcd_analysis": {
+          "query_type": "comparison",
+          "region": "大理白族自治州,红河哈尼族彝族自治州,西双版纳傣族自治州",
+          "level": "prefecture",
+          "year": 2020
+        }
+      },
+      "actual_trace": [
+        {
+          "tool_name": "clcd_analysis",
+          "args": {
+            "query_type": "structure",
+            "region": "大理白族自治州",
+            "level": "prefecture",
+            "year": 2020
+          },
+          "is_error": false,
+          "elapsed_ms": 1
+        },
+        {
+          "tool_name": "clcd_analysis",
+          "args": {
+            "query_type": "structure",
+            "region": "红河哈尼族彝族自治州",
+            "level": "prefecture",
+            "year": 2020
+          },
+          "is_error": false,
+          "elapsed_ms": 1
+        },
+        {
+          "tool_name": "clcd_analysis",
+          "args": {
+            "query_type": "structure",
+            "region": "西双版纳傣族自治州",
+            "level": "prefecture",
+            "year": 2020
+          },
+          "is_error": false,
+          "elapsed_ms": 0
+        }
+      ],
+      "baseline_error": false,
+      "agent_error": null
+    },
+    {
+      "task_id": "structure-composite-003",
+      "category": "structure_query",
+      "difficulty": "composite",
+      "tool_accuracy": 1,
+      "tool_recall": 1,
+      "tool_precision": 1,
+      "tool_f1": 1,
+      "param_accuracy": 0,
+      "param_accuracy_relaxed": 0,
+      "param_accuracy_strict": 0,
+      "success_rate": 1,
+      "strict_success": 1,
+      "valid_success_rate": 1,
+      "answer_available_rate": 1,
+      "tool_error_count": 0,
+      "mre": null,
+      "hit_k": 0.6666666666666666,
+      "trend_consistency": null,
+      "fact_coverage": null,
+      "contradiction_rate": null,
+      "response_ms": 10578,
+      "tool_count": 1,
+      "expected_tools": [
+        "clcd_analysis"
+      ],
+      "actual_tools": [
+        "clcd_analysis"
+      ],
+      "expected_args": {
+        "clcd_analysis": {
+          "query_type": "comparison",
+          "region": "昭通市,曲靖市,文山壮族苗族自治州",
+          "level": "prefecture",
+          "year": 2010
+        }
+      },
+      "actual_trace": [
+        {
+          "tool_name": "clcd_analysis",
+          "args": {
+            "query_type": "comparison",
+            "region": "云南省",
+            "level": "prefecture",
+            "year": 2010,
+            "land_type": "耕地"
+          },
+          "is_error": false,
+          "elapsed_ms": 1
+        }
+      ],
+      "baseline_error": false,
+      "agent_error": null
+    },
+    {
+      "task_id": "structure-composite-004",
+      "category": "structure_query",
+      "difficulty": "composite",
+      "tool_accuracy": 1,
+      "tool_recall": 1,
+      "tool_precision": 0.3333333333333333,
+      "tool_f1": 0.5,
+      "param_accuracy": 0,
+      "param_accuracy_relaxed": 0,
+      "param_accuracy_strict": 0,
+      "success_rate": 1,
+      "strict_success": 1,
+      "valid_success_rate": 1,
+      "answer_available_rate": 1,
+      "tool_error_count": 0,
+      "mre": null,
+      "hit_k": 0.3333333333333333,
+      "trend_consistency": null,
+      "fact_coverage": null,
+      "contradiction_rate": null,
+      "response_ms": 16299,
+      "tool_count": 3,
+      "expected_tools": [
+        "clcd_analysis"
+      ],
+      "actual_tools": [
+        "clcd_analysis",
+        "clcd_analysis",
+        "clcd_analysis"
+      ],
+      "expected_args": {
+        "clcd_analysis": {
+          "query_type": "comparison",
+          "region": "昆明市,丽江市,普洱市",
+          "level": "prefecture",
+          "year": 2023
+        }
+      },
+      "actual_trace": [
+        {
+          "tool_name": "clcd_analysis",
+          "args": {
+            "query_type": "structure",
+            "region": "昆明市",
+            "level": "prefecture",
+            "year": 2023
+          },
+          "is_error": false,
+          "elapsed_ms": 1
+        },
+        {
+          "tool_name": "clcd_analysis",
+          "args": {
+            "query_type": "structure",
+            "region": "丽江市",
+            "level": "prefecture",
+            "year": 2023
+          },
+          "is_error": false,
+          "elapsed_ms": 1
+        },
+        {
+          "tool_name": "clcd_analysis",
+          "args": {
+            "query_type": "structure",
+            "region": "普洱市",
+            "level": "prefecture",
+            "year": 2023
+          },
+          "is_error": false,
+          "elapsed_ms": 0
+        }
+      ],
+      "baseline_error": false,
+      "agent_error": null
+    },
+    {
+      "task_id": "structure-interpretive-001",
+      "category": "structure_query",
+      "difficulty": "interpretive",
+      "tool_accuracy": 1,
+      "tool_recall": 1,
+      "tool_precision": 1,
+      "tool_f1": 1,
+      "param_accuracy": 1,
+      "param_accuracy_relaxed": 1,
+      "param_accuracy_strict": 1,
+      "success_rate": 1,
+      "strict_success": 1,
+      "valid_success_rate": 1,
+      "answer_available_rate": 1,
+      "tool_error_count": 0,
+      "mre": null,
+      "hit_k": 1,
+      "trend_consistency": null,
+      "fact_coverage": null,
+      "contradiction_rate": null,
+      "response_ms": 19653,
+      "tool_count": 1,
+      "expected_tools": [
+        "clcd_analysis"
+      ],
+      "actual_tools": [
+        "clcd_analysis"
+      ],
+      "expected_args": {
+        "clcd_analysis": {
+          "query_type": "structure",
+          "region": "昆明市",
+          "level": "prefecture",
+          "year": 2020
+        }
+      },
+      "actual_trace": [
+        {
+          "tool_name": "clcd_analysis",
+          "args": {
+            "query_type": "structure",
+            "region": "昆明市",
+            "level": "prefecture",
+            "year": 2020
+          },
+          "is_error": false,
+          "elapsed_ms": 1
+        }
+      ],
+      "baseline_error": false,
+      "agent_error": null
+    },
+    {
+      "task_id": "structure-interpretive-002",
+      "category": "structure_query",
+      "difficulty": "interpretive",
+      "tool_accuracy": 1,
+      "tool_recall": 1,
+      "tool_precision": 0.5,
+      "tool_f1": 0.6666666666666666,
+      "param_accuracy": 1,
+      "param_accuracy_relaxed": 1,
+      "param_accuracy_strict": 1,
+      "success_rate": 1,
+      "strict_success": 1,
+      "valid_success_rate": 1,
+      "answer_available_rate": 1,
+      "tool_error_count": 0,
+      "mre": null,
+      "hit_k": 1,
+      "trend_consistency": null,
+      "fact_coverage": null,
+      "contradiction_rate": null,
+      "response_ms": 31385,
+      "tool_count": 2,
+      "expected_tools": [
+        "clcd_analysis"
+      ],
+      "actual_tools": [
+        "clcd_analysis",
+        "dashboard_analysis"
+      ],
+      "expected_args": {
+        "clcd_analysis": {
+          "query_type": "structure",
+          "region": "云南省",
+          "level": "province",
+          "year": 2023
+        }
+      },
+      "actual_trace": [
+        {
+          "tool_name": "clcd_analysis",
+          "args": {
+            "query_type": "structure",
+            "region": "云南省",
+            "level": "province",
+            "year": 2023
+          },
+          "is_error": false,
+          "elapsed_ms": 1
+        },
+        {
+          "tool_name": "dashboard_analysis",
+          "args": {
+            "year": 2023,
+            "region": "云南省",
+            "level": "province"
+          },
+          "is_error": false,
+          "elapsed_ms": 2
+        }
+      ],
+      "baseline_error": false,
+      "agent_error": null
+    },
+    {
+      "task_id": "structure-interpretive-003",
+      "category": "structure_query",
+      "difficulty": "interpretive",
+      "tool_accuracy": 1,
+      "tool_recall": 1,
+      "tool_precision": 1,
+      "tool_f1": 1,
+      "param_accuracy": 1,
+      "param_accuracy_relaxed": 1,
+      "param_accuracy_strict": 1,
+      "success_rate": 1,
+      "strict_success": 1,
+      "valid_success_rate": 1,
+      "answer_available_rate": 1,
+      "tool_error_count": 0,
+      "mre": null,
+      "hit_k": 1,
+      "trend_consistency": null,
+      "fact_coverage": null,
+      "contradiction_rate": null,
+      "response_ms": 9774,
+      "tool_count": 1,
+      "expected_tools": [
+        "clcd_analysis"
+      ],
+      "actual_tools": [
+        "clcd_analysis"
+      ],
+      "expected_args": {
+        "clcd_analysis": {
+          "query_type": "structure",
+          "region": "曲靖市",
+          "level": "prefecture",
+          "year": 2015
+        }
+      },
+      "actual_trace": [
+        {
+          "tool_name": "clcd_analysis",
+          "args": {
+            "query_type": "structure",
+            "region": "曲靖市",
+            "level": "prefecture",
+            "year": 2015
+          },
+          "is_error": false,
+          "elapsed_ms": 1
+        }
+      ],
+      "baseline_error": false,
+      "agent_error": null
+    },
+    {
+      "task_id": "structure-interpretive-004",
+      "category": "structure_query",
+      "difficulty": "interpretive",
+      "tool_accuracy": 1,
+      "tool_recall": 1,
+      "tool_precision": 1,
+      "tool_f1": 1,
+      "param_accuracy": 1,
+      "param_accuracy_relaxed": 1,
+      "param_accuracy_strict": 1,
+      "success_rate": 1,
+      "strict_success": 1,
+      "valid_success_rate": 1,
+      "answer_available_rate": 1,
+      "tool_error_count": 0,
+      "mre": null,
+      "hit_k": 1,
+      "trend_consistency": null,
+      "fact_coverage": null,
+      "contradiction_rate": null,
+      "response_ms": 16419,
+      "tool_count": 1,
+      "expected_tools": [
+        "clcd_analysis"
+      ],
+      "actual_tools": [
+        "clcd_analysis"
+      ],
+      "expected_args": {
+        "clcd_analysis": {
+          "query_type": "structure",
+          "region": "大理白族自治州",
+          "level": "prefecture",
+          "year": 2020
+        }
+      },
+      "actual_trace": [
+        {
+          "tool_name": "clcd_analysis",
+          "args": {
+            "query_type": "structure",
+            "region": "大理白族自治州",
+            "level": "prefecture",
+            "year": 2020
+          },
+          "is_error": false,
+          "elapsed_ms": 1
+        }
+      ],
+      "baseline_error": false,
+      "agent_error": null
+    },
+    {
+      "task_id": "transfer-simple-001",
+      "category": "transfer_analysis",
+      "difficulty": "simple",
+      "tool_accuracy": 1,
+      "tool_recall": 1,
+      "tool_precision": 1,
+      "tool_f1": 1,
+      "param_accuracy": 1,
+      "param_accuracy_relaxed": 1,
+      "param_accuracy_strict": 1,
+      "success_rate": 1,
+      "strict_success": 1,
+      "valid_success_rate": 1,
+      "answer_available_rate": 1,
+      "tool_error_count": 0,
+      "mre": null,
+      "hit_k": 1,
+      "trend_consistency": null,
+      "fact_coverage": null,
+      "contradiction_rate": null,
+      "response_ms": 18215,
+      "tool_count": 1,
+      "expected_tools": [
+        "land_transfer_analysis"
+      ],
+      "actual_tools": [
+        "land_transfer_analysis"
+      ],
+      "expected_args": {
+        "land_transfer_analysis": {
+          "region": "云南省",
+          "level": "province",
+          "start_year": 2010,
+          "end_year": 2020
+        }
+      },
+      "actual_trace": [
+        {
+          "tool_name": "land_transfer_analysis",
+          "args": {
+            "region": "云南省",
+            "level": "province",
+            "start_year": 2010,
+            "end_year": 2020
+          },
+          "is_error": false,
+          "elapsed_ms": 30
+        }
+      ],
+      "baseline_error": false,
+      "agent_error": null
+    },
+    {
+      "task_id": "transfer-simple-002",
+      "category": "transfer_analysis",
+      "difficulty": "simple",
+      "tool_accuracy": 1,
+      "tool_recall": 1,
+      "tool_precision": 1,
+      "tool_f1": 1,
+      "param_accuracy": 1,
+      "param_accuracy_relaxed": 1,
+      "param_accuracy_strict": 1,
+      "success_rate": 1,
+      "strict_success": 1,
+      "valid_success_rate": 1,
+      "answer_available_rate": 1,
+      "tool_error_count": 0,
+      "mre": null,
+      "hit_k": 1,
+      "trend_consistency": null,
+      "fact_coverage": null,
+      "contradiction_rate": null,
+      "response_ms": 25552,
+      "tool_count": 1,
+      "expected_tools": [
+        "land_transfer_analysis"
+      ],
+      "actual_tools": [
+        "land_transfer_analysis"
+      ],
+      "expected_args": {
+        "land_transfer_analysis": {
+          "region": "云南省",
+          "level": "province",
+          "start_year": 2000,
+          "end_year": 2020
+        }
+      },
+      "actual_trace": [
+        {
+          "tool_name": "land_transfer_analysis",
+          "args": {
+            "region": "云南省",
+            "level": "province",
+            "start_year": 2000,
+            "end_year": 2020
+          },
+          "is_error": false,
+          "elapsed_ms": 50
+        }
+      ],
+      "baseline_error": false,
+      "agent_error": null
+    },
+    {
+      "task_id": "transfer-simple-003",
+      "category": "transfer_analysis",
+      "difficulty": "simple",
+      "tool_accuracy": 1,
+      "tool_recall": 1,
+      "tool_precision": 1,
+      "tool_f1": 1,
+      "param_accuracy": 1,
+      "param_accuracy_relaxed": 1,
+      "param_accuracy_strict": 1,
+      "success_rate": 1,
+      "strict_success": 1,
+      "valid_success_rate": 1,
+      "answer_available_rate": 1,
+      "tool_error_count": 0,
+      "mre": null,
+      "hit_k": 1,
+      "trend_consistency": null,
+      "fact_coverage": null,
+      "contradiction_rate": null,
+      "response_ms": 34260,
+      "tool_count": 1,
+      "expected_tools": [
+        "land_transfer_analysis"
+      ],
+      "actual_tools": [
+        "land_transfer_analysis"
+      ],
+      "expected_args": {
+        "land_transfer_analysis": {
+          "region": "昆明市",
+          "level": "prefecture",
+          "start_year": 2010,
+          "end_year": 2020
+        }
+      },
+      "actual_trace": [
+        {
+          "tool_name": "land_transfer_analysis",
+          "args": {
+            "region": "昆明市",
+            "level": "prefecture",
+            "start_year": 2010,
+            "end_year": 2020
+          },
+          "is_error": false,
+          "elapsed_ms": 28
+        }
+      ],
+      "baseline_error": false,
+      "agent_error": null
+    },
+    {
+      "task_id": "transfer-simple-004",
+      "category": "transfer_analysis",
+      "difficulty": "simple",
+      "tool_accuracy": 1,
+      "tool_recall": 1,
+      "tool_precision": 1,
+      "tool_f1": 1,
+      "param_accuracy": 1,
+      "param_accuracy_relaxed": 1,
+      "param_accuracy_strict": 1,
+      "success_rate": 1,
+      "strict_success": 1,
+      "valid_success_rate": 1,
+      "answer_available_rate": 1,
+      "tool_error_count": 0,
+      "mre": null,
+      "hit_k": 1,
+      "trend_consistency": null,
+      "fact_coverage": null,
+      "contradiction_rate": null,
+      "response_ms": 17592,
+      "tool_count": 1,
+      "expected_tools": [
+        "land_transfer_analysis"
+      ],
+      "actual_tools": [
+        "land_transfer_analysis"
+      ],
+      "expected_args": {
+        "land_transfer_analysis": {
+          "region": "云南省",
+          "level": "province",
+          "start_year": 2000,
+          "end_year": 2023
+        }
+      },
+      "actual_trace": [
+        {
+          "tool_name": "land_transfer_analysis",
+          "args": {
+            "region": "云南省",
+            "level": "province",
+            "start_year": 2000,
+            "end_year": 2023
+          },
+          "is_error": false,
+          "elapsed_ms": 58
+        }
+      ],
+      "baseline_error": false,
+      "agent_error": null
+    },
+    {
+      "task_id": "transfer-composite-001",
+      "category": "transfer_analysis",
+      "difficulty": "composite",
+      "tool_accuracy": 1,
+      "tool_recall": 1,
+      "tool_precision": 1,
+      "tool_f1": 1,
+      "param_accuracy": 1,
+      "param_accuracy_relaxed": 1,
+      "param_accuracy_strict": 1,
+      "success_rate": 1,
+      "strict_success": 1,
+      "valid_success_rate": 1,
+      "answer_available_rate": 1,
+      "tool_error_count": 0,
+      "mre": null,
+      "hit_k": 1,
+      "trend_consistency": null,
+      "fact_coverage": null,
+      "contradiction_rate": null,
+      "response_ms": 27011,
+      "tool_count": 1,
+      "expected_tools": [
+        "land_transfer_analysis"
+      ],
+      "actual_tools": [
+        "land_transfer_analysis"
+      ],
+      "expected_args": {
+        "land_transfer_analysis": {
+          "region": "云南省",
+          "level": "province",
+          "start_year": 1990,
+          "end_year": 2020
+        }
+      },
+      "actual_trace": [
+        {
+          "tool_name": "land_transfer_analysis",
+          "args": {
+            "region": "云南省",
+            "level": "province",
+            "start_year": 1990,
+            "end_year": 2020
+          },
+          "is_error": false,
+          "elapsed_ms": 73
+        }
+      ],
+      "baseline_error": false,
+      "agent_error": null
+    },
+    {
+      "task_id": "transfer-composite-002",
+      "category": "transfer_analysis",
+      "difficulty": "composite",
+      "tool_accuracy": 1,
+      "tool_recall": 1,
+      "tool_precision": 1,
+      "tool_f1": 1,
+      "param_accuracy": 1,
+      "param_accuracy_relaxed": 1,
+      "param_accuracy_strict": 1,
+      "success_rate": 1,
+      "strict_success": 1,
+      "valid_success_rate": 1,
+      "answer_available_rate": 1,
+      "tool_error_count": 0,
+      "mre": null,
+      "hit_k": 1,
+      "trend_consistency": null,
+      "fact_coverage": null,
+      "contradiction_rate": null,
+      "response_ms": 24031,
+      "tool_count": 1,
+      "expected_tools": [
+        "land_transfer_analysis"
+      ],
+      "actual_tools": [
+        "land_transfer_analysis"
+      ],
+      "expected_args": {
+        "land_transfer_analysis": {
+          "region": "曲靖市",
+          "level": "prefecture",
+          "start_year": 2000,
+          "end_year": 2020
+        }
+      },
+      "actual_trace": [
+        {
+          "tool_name": "land_transfer_analysis",
+          "args": {
+            "region": "曲靖市",
+            "level": "prefecture",
+            "start_year": 2000,
+            "end_year": 2020
+          },
+          "is_error": false,
+          "elapsed_ms": 49
+        }
+      ],
+      "baseline_error": false,
+      "agent_error": null
+    },
+    {
+      "task_id": "transfer-composite-003",
+      "category": "transfer_analysis",
+      "difficulty": "composite",
+      "tool_accuracy": 1,
+      "tool_recall": 1,
+      "tool_precision": 1,
+      "tool_f1": 1,
+      "param_accuracy": 1,
+      "param_accuracy_relaxed": 1,
+      "param_accuracy_strict": 1,
+      "success_rate": 1,
+      "strict_success": 1,
+      "valid_success_rate": 1,
+      "answer_available_rate": 1,
+      "tool_error_count": 0,
+      "mre": null,
+      "hit_k": 1,
+      "trend_consistency": null,
+      "fact_coverage": null,
+      "contradiction_rate": null,
+      "response_ms": 34268,
+      "tool_count": 1,
+      "expected_tools": [
+        "land_transfer_analysis"
+      ],
+      "actual_tools": [
+        "land_transfer_analysis"
+      ],
+      "expected_args": {
+        "land_transfer_analysis": {
+          "region": "红河哈尼族彝族自治州",
+          "level": "prefecture",
+          "start_year": 2010,
+          "end_year": 2023
+        }
+      },
+      "actual_trace": [
+        {
+          "tool_name": "land_transfer_analysis",
+          "args": {
+            "region": "红河哈尼族彝族自治州",
+            "level": "prefecture",
+            "start_year": 2010,
+            "end_year": 2023
+          },
+          "is_error": false,
+          "elapsed_ms": 34
+        }
+      ],
+      "baseline_error": false,
+      "agent_error": null
+    },
+    {
+      "task_id": "transfer-composite-004",
+      "category": "transfer_analysis",
+      "difficulty": "composite",
+      "tool_accuracy": 1,
+      "tool_recall": 1,
+      "tool_precision": 0.5,
+      "tool_f1": 0.6666666666666666,
+      "param_accuracy": 1,
+      "param_accuracy_relaxed": 1,
+      "param_accuracy_strict": 1,
+      "success_rate": 1,
+      "strict_success": 1,
+      "valid_success_rate": 1,
+      "answer_available_rate": 1,
+      "tool_error_count": 0,
+      "mre": null,
+      "hit_k": 1,
+      "trend_consistency": null,
+      "fact_coverage": null,
+      "contradiction_rate": null,
+      "response_ms": 33617,
+      "tool_count": 2,
+      "expected_tools": [
+        "land_transfer_analysis"
+      ],
+      "actual_tools": [
+        "land_transfer_analysis",
+        "spatial_stats_analysis"
+      ],
+      "expected_args": {
+        "land_transfer_analysis": {
+          "region": "大理白族自治州",
+          "level": "prefecture",
+          "start_year": 2000,
+          "end_year": 2023
+        }
+      },
+      "actual_trace": [
+        {
+          "tool_name": "land_transfer_analysis",
+          "args": {
+            "region": "大理白族自治州",
+            "level": "prefecture",
+            "start_year": 2000,
+            "end_year": 2023
+          },
+          "is_error": false,
+          "elapsed_ms": 56
+        },
+        {
+          "tool_name": "spatial_stats_analysis",
+          "args": {
+            "yearStart": 2000,
+            "yearEnd": 2023,
+            "fromClassStr": "全部",
+            "toClassStr": "全部",
+            "region": "大理白族自治州"
+          },
+          "is_error": false,
+          "elapsed_ms": 877
+        }
+      ],
+      "baseline_error": false,
+      "agent_error": null
+    },
+    {
+      "task_id": "transfer-interpretive-001",
+      "category": "transfer_analysis",
+      "difficulty": "interpretive",
+      "tool_accuracy": 0,
+      "tool_recall": 0,
+      "tool_precision": 0.2,
+      "tool_f1": 0,
+      "param_accuracy": 0.5,
+      "param_accuracy_relaxed": 0.5,
+      "param_accuracy_strict": 0.5,
+      "success_rate": 1,
+      "strict_success": 1,
+      "valid_success_rate": 1,
+      "answer_available_rate": 1,
+      "tool_error_count": 0,
+      "mre": null,
+      "hit_k": 1,
+      "trend_consistency": null,
+      "fact_coverage": null,
+      "contradiction_rate": null,
+      "response_ms": 57171,
+      "tool_count": 5,
+      "expected_tools": [
+        "land_transfer_analysis",
+        "knowledge_base_lookup"
+      ],
+      "actual_tools": [
+        "land_transfer_analysis",
+        "spatial_stats_analysis",
+        "spatial_stats_analysis",
+        "clcd_analysis",
+        "clcd_analysis"
+      ],
+      "expected_args": {
+        "land_transfer_analysis": {
+          "region": "云南省",
+          "level": "province",
+          "start_year": 2000,
+          "end_year": 2023
+        },
+        "knowledge_base_lookup": {
+          "skill_name": "policy_expert"
+        }
+      },
+      "actual_trace": [
+        {
+          "tool_name": "land_transfer_analysis",
+          "args": {
+            "region": "云南省",
+            "level": "province",
+            "start_year": 2000,
+            "end_year": 2023
+          },
+          "is_error": false,
+          "elapsed_ms": 56
+        },
+        {
+          "tool_name": "spatial_stats_analysis",
+          "args": {
+            "yearStart": 2000,
+            "yearEnd": 2023,
+            "fromClassStr": "耕地",
+            "toClassStr": "建设用地",
+            "region": "云南省",
+            "top_n": 10
+          },
+          "is_error": false,
+          "elapsed_ms": 5283
+        },
+        {
+          "tool_name": "spatial_stats_analysis",
+          "args": {
+            "yearStart": 2000,
+            "yearEnd": 2023,
+            "fromClassStr": "建设用地",
+            "toClassStr": "耕地",
+            "region": "云南省",
+            "top_n": 10
+          },
+          "is_error": false,
+          "elapsed_ms": 14
+        },
+        {
+          "tool_name": "clcd_analysis",
+          "args": {
+            "query_type": "trend",
+            "region": "云南省",
+            "year_range": [
+              2000,
+              2023
+            ],
+            "land_type": "耕地"
+          },
+          "is_error": false,
+          "elapsed_ms": 3
+        },
+        {
+          "tool_name": "clcd_analysis",
+          "args": {
+            "query_type": "trend",
+            "region": "云南省",
+            "year_range": [
+              2000,
+              2023
+            ],
+            "land_type": "建设用地"
+          },
+          "is_error": false,
+          "elapsed_ms": 2
+        }
+      ],
+      "baseline_error": false,
+      "agent_error": null
+    },
+    {
+      "task_id": "transfer-interpretive-002",
+      "category": "transfer_analysis",
+      "difficulty": "interpretive",
+      "tool_accuracy": 0,
+      "tool_recall": 0,
+      "tool_precision": 0.3333333333333333,
+      "tool_f1": 0,
+      "param_accuracy": 0.5,
+      "param_accuracy_relaxed": 0.5,
+      "param_accuracy_strict": 0.5,
+      "success_rate": 1,
+      "strict_success": 1,
+      "valid_success_rate": 1,
+      "answer_available_rate": 1,
+      "tool_error_count": 0,
+      "mre": null,
+      "hit_k": 1,
+      "trend_consistency": null,
+      "fact_coverage": null,
+      "contradiction_rate": null,
+      "response_ms": 44763,
+      "tool_count": 3,
+      "expected_tools": [
+        "land_transfer_analysis",
+        "knowledge_base_lookup"
+      ],
+      "actual_tools": [
+        "land_transfer_analysis",
+        "spatial_stats_analysis",
+        "spatial_stats_analysis"
+      ],
+      "expected_args": {
+        "land_transfer_analysis": {
+          "region": "昆明市",
+          "level": "prefecture",
+          "start_year": 2010,
+          "end_year": 2020
+        },
+        "knowledge_base_lookup": {
+          "skill_name": "spatial_reasoning"
+        }
+      },
+      "actual_trace": [
+        {
+          "tool_name": "land_transfer_analysis",
+          "args": {
+            "region": "昆明市",
+            "level": "prefecture",
+            "start_year": 2010,
+            "end_year": 2020
+          },
+          "is_error": false,
+          "elapsed_ms": 27
+        },
+        {
+          "tool_name": "spatial_stats_analysis",
+          "args": {
+            "yearStart": 2010,
+            "yearEnd": 2020,
+            "fromClassStr": "耕地",
+            "toClassStr": "建设用地",
+            "region": "昆明市",
+            "top_n": 10
+          },
+          "is_error": false,
+          "elapsed_ms": 319
+        },
+        {
+          "tool_name": "spatial_stats_analysis",
+          "args": {
+            "yearStart": 2010,
+            "yearEnd": 2020,
+            "fromClassStr": "全部",
+            "toClassStr": "建设用地",
+            "region": "昆明市",
+            "top_n": 10
+          },
+          "is_error": false,
+          "elapsed_ms": 215
+        }
+      ],
+      "baseline_error": false,
+      "agent_error": null
+    },
+    {
+      "task_id": "transfer-interpretive-003",
+      "category": "transfer_analysis",
+      "difficulty": "interpretive",
+      "tool_accuracy": 0,
+      "tool_recall": 0,
+      "tool_precision": 0.5,
+      "tool_f1": 0,
+      "param_accuracy": 0.5,
+      "param_accuracy_relaxed": 0.5,
+      "param_accuracy_strict": 0.5,
+      "success_rate": 1,
+      "strict_success": 1,
+      "valid_success_rate": 1,
+      "answer_available_rate": 1,
+      "tool_error_count": 0,
+      "mre": null,
+      "hit_k": 1,
+      "trend_consistency": null,
+      "fact_coverage": null,
+      "contradiction_rate": null,
+      "response_ms": 58902,
+      "tool_count": 2,
+      "expected_tools": [
+        "land_transfer_analysis",
+        "knowledge_base_lookup"
+      ],
+      "actual_tools": [
+        "land_transfer_analysis",
+        "spatial_stats_analysis"
+      ],
+      "expected_args": {
+        "land_transfer_analysis": {
+          "region": "云南省",
+          "level": "province",
+          "start_year": 1990,
+          "end_year": 2020
+        },
+        "knowledge_base_lookup": {
+          "skill_name": "spatial_reasoning"
+        }
+      },
+      "actual_trace": [
+        {
+          "tool_name": "land_transfer_analysis",
+          "args": {
+            "region": "云南省",
+            "level": "province",
+            "start_year": 1990,
+            "end_year": 2020
+          },
+          "is_error": false,
+          "elapsed_ms": 72
+        },
+        {
+          "tool_name": "spatial_stats_analysis",
+          "args": {
+            "yearStart": 1990,
+            "yearEnd": 2020,
+            "region": "云南省",
+            "fromClassStr": "全部",
+            "toClassStr": "全部"
+          },
+          "is_error": false,
+          "elapsed_ms": 7540
+        }
+      ],
+      "baseline_error": false,
+      "agent_error": null
+    },
+    {
+      "task_id": "transfer-interpretive-004",
+      "category": "transfer_analysis",
+      "difficulty": "interpretive",
+      "tool_accuracy": 0,
+      "tool_recall": 0,
+      "tool_precision": 0.25,
+      "tool_f1": 0,
+      "param_accuracy": 0.5,
+      "param_accuracy_relaxed": 0.5,
+      "param_accuracy_strict": 0.5,
+      "success_rate": 1,
+      "strict_success": 1,
+      "valid_success_rate": 1,
+      "answer_available_rate": 1,
+      "tool_error_count": 0,
+      "mre": null,
+      "hit_k": 1,
+      "trend_consistency": null,
+      "fact_coverage": null,
+      "contradiction_rate": null,
+      "response_ms": 57021,
+      "tool_count": 4,
+      "expected_tools": [
+        "land_transfer_analysis",
+        "knowledge_base_lookup"
+      ],
+      "actual_tools": [
+        "land_transfer_analysis",
+        "spatial_stats_analysis",
+        "spatial_stats_analysis",
+        "spatial_stats_analysis"
+      ],
+      "expected_args": {
+        "land_transfer_analysis": {
+          "region": "曲靖市",
+          "level": "prefecture",
+          "start_year": 2000,
+          "end_year": 2020
+        },
+        "knowledge_base_lookup": {
+          "skill_name": "policy_expert"
+        }
+      },
+      "actual_trace": [
+        {
+          "tool_name": "land_transfer_analysis",
+          "args": {
+            "region": "曲靖市",
+            "level": "prefecture",
+            "start_year": 2000,
+            "end_year": 2020
+          },
+          "is_error": false,
+          "elapsed_ms": 48
+        },
+        {
+          "tool_name": "spatial_stats_analysis",
+          "args": {
+            "yearStart": 2000,
+            "yearEnd": 2020,
+            "fromClassStr": "林地",
+            "toClassStr": "耕地",
+            "region": "曲靖市",
+            "top_n": 5
+          },
+          "is_error": false,
+          "elapsed_ms": 522
+        },
+        {
+          "tool_name": "spatial_stats_analysis",
+          "args": {
+            "yearStart": 2000,
+            "yearEnd": 2020,
+            "fromClassStr": "草地",
+            "toClassStr": "耕地",
+            "region": "曲靖市",
+            "top_n": 5
+          },
+          "is_error": false,
+          "elapsed_ms": 422
+        },
+        {
+          "tool_name": "spatial_stats_analysis",
+          "args": {
+            "yearStart": 2000,
+            "yearEnd": 2020,
+            "fromClassStr": "耕地",
+            "toClassStr": "建设用地",
+            "region": "曲靖市",
+            "top_n": 5
+          },
+          "is_error": false,
+          "elapsed_ms": 418
+        }
+      ],
+      "baseline_error": false,
+      "agent_error": null
+    },
+    {
+      "task_id": "trend-simple-001",
+      "category": "trend_analysis",
+      "difficulty": "simple",
+      "tool_accuracy": 1,
+      "tool_recall": 1,
+      "tool_precision": 0.5,
+      "tool_f1": 0.6666666666666666,
+      "param_accuracy": 0,
+      "param_accuracy_relaxed": 0,
+      "param_accuracy_strict": 0,
+      "success_rate": 1,
+      "strict_success": 1,
+      "valid_success_rate": 1,
+      "answer_available_rate": 1,
+      "tool_error_count": 0,
+      "mre": null,
+      "hit_k": null,
+      "trend_consistency": 1,
+      "fact_coverage": null,
+      "contradiction_rate": null,
+      "response_ms": 44765,
+      "tool_count": 2,
+      "expected_tools": [
+        "clcd_analysis"
+      ],
+      "actual_tools": [
+        "clcd_analysis",
+        "land_transfer_analysis"
+      ],
+      "expected_args": {
+        "clcd_analysis": {
+          "query_type": "trend",
+          "region": "云南省",
+          "level": "province",
+          "year_range": [
+            1990,
+            2020
+          ],
+          "land_type": "建设用地"
+        }
+      },
+      "actual_trace": [
+        {
+          "tool_name": "clcd_analysis",
+          "args": {
+            "query_type": "trend",
+            "region": "云南省",
+            "level": "province",
+            "land_type": "建设用地",
+            "year_range": [
+              1985,
+              2023
+            ]
+          },
+          "is_error": false,
+          "elapsed_ms": 2
+        },
+        {
+          "tool_name": "land_transfer_analysis",
+          "args": {
+            "region": "云南省",
+            "level": "province",
+            "start_year": 1990,
+            "end_year": 2020
+          },
+          "is_error": false,
+          "elapsed_ms": 81
+        }
+      ],
+      "baseline_error": false,
+      "agent_error": null
+    },
+    {
+      "task_id": "trend-simple-002",
+      "category": "trend_analysis",
+      "difficulty": "simple",
+      "tool_accuracy": 1,
+      "tool_recall": 1,
+      "tool_precision": 0.3333333333333333,
+      "tool_f1": 0.5,
+      "param_accuracy": 1,
+      "param_accuracy_relaxed": 1,
+      "param_accuracy_strict": 1,
+      "success_rate": 1,
+      "strict_success": 1,
+      "valid_success_rate": 1,
+      "answer_available_rate": 1,
+      "tool_error_count": 0,
+      "mre": null,
+      "hit_k": null,
+      "trend_consistency": 1,
+      "fact_coverage": null,
+      "contradiction_rate": null,
+      "response_ms": 42860,
+      "tool_count": 3,
+      "expected_tools": [
+        "clcd_analysis"
+      ],
+      "actual_tools": [
+        "clcd_analysis",
+        "land_transfer_analysis",
+        "spatial_stats_analysis"
+      ],
+      "expected_args": {
+        "clcd_analysis": {
+          "query_type": "trend",
+          "region": "昆明市",
+          "level": "prefecture",
+          "year_range": [
+            2000,
+            2023
+          ],
+          "land_type": "建设用地"
+        }
+      },
+      "actual_trace": [
+        {
+          "tool_name": "clcd_analysis",
+          "args": {
+            "query_type": "trend",
+            "region": "昆明市",
+            "level": "prefecture",
+            "year_range": [
+              2000,
+              2023
+            ],
+            "land_type": "建设用地"
+          },
+          "is_error": false,
+          "elapsed_ms": 1
+        },
+        {
+          "tool_name": "land_transfer_analysis",
+          "args": {
+            "region": "昆明市",
+            "level": "prefecture",
+            "start_year": 2000,
+            "end_year": 2023
+          },
+          "is_error": false,
+          "elapsed_ms": 62
+        },
+        {
+          "tool_name": "spatial_stats_analysis",
+          "args": {
+            "yearStart": 2000,
+            "yearEnd": 2023,
+            "fromClassStr": "全部",
+            "toClassStr": "建设用地",
+            "region": "昆明市",
+            "top_n": 5
+          },
+          "is_error": false,
+          "elapsed_ms": 571
+        }
+      ],
+      "baseline_error": false,
+      "agent_error": null
+    },
+    {
+      "task_id": "trend-simple-003",
+      "category": "trend_analysis",
+      "difficulty": "simple",
+      "tool_accuracy": 1,
+      "tool_recall": 1,
+      "tool_precision": 0.3333333333333333,
+      "tool_f1": 0.5,
+      "param_accuracy": 1,
+      "param_accuracy_relaxed": 1,
+      "param_accuracy_strict": 1,
+      "success_rate": 1,
+      "strict_success": 1,
+      "valid_success_rate": 1,
+      "answer_available_rate": 1,
+      "tool_error_count": 0,
+      "mre": null,
+      "hit_k": null,
+      "trend_consistency": 1,
+      "fact_coverage": null,
+      "contradiction_rate": null,
+      "response_ms": 59657,
+      "tool_count": 3,
+      "expected_tools": [
+        "clcd_analysis"
+      ],
+      "actual_tools": [
+        "clcd_analysis",
+        "land_transfer_analysis",
+        "spatial_stats_analysis"
+      ],
+      "expected_args": {
+        "clcd_analysis": {
+          "query_type": "trend",
+          "region": "云南省",
+          "level": "province",
+          "year_range": [
+            1990,
+            2020
+          ],
+          "land_type": "耕地"
+        }
+      },
+      "actual_trace": [
+        {
+          "tool_name": "clcd_analysis",
+          "args": {
+            "query_type": "trend",
+            "region": "云南省",
+            "level": "province",
+            "land_type": "耕地",
+            "year_range": [
+              1990,
+              2020
+            ]
+          },
+          "is_error": false,
+          "elapsed_ms": 2
+        },
+        {
+          "tool_name": "land_transfer_analysis",
+          "args": {
+            "region": "云南省",
+            "level": "province",
+            "start_year": 1990,
+            "end_year": 2020
+          },
+          "is_error": false,
+          "elapsed_ms": 72
+        },
+        {
+          "tool_name": "spatial_stats_analysis",
+          "args": {
+            "yearStart": 1990,
+            "yearEnd": 2020,
+            "fromClassStr": "耕地",
+            "toClassStr": "全部",
+            "region": "云南省"
+          },
+          "is_error": false,
+          "elapsed_ms": 7368
+        }
+      ],
+      "baseline_error": false,
+      "agent_error": null
+    },
+    {
+      "task_id": "trend-simple-004",
+      "category": "trend_analysis",
+      "difficulty": "simple",
+      "tool_accuracy": 1,
+      "tool_recall": 1,
+      "tool_precision": 0.3333333333333333,
+      "tool_f1": 0.5,
+      "param_accuracy": 1,
+      "param_accuracy_relaxed": 1,
+      "param_accuracy_strict": 1,
+      "success_rate": 1,
+      "strict_success": 1,
+      "valid_success_rate": 1,
+      "answer_available_rate": 1,
+      "tool_error_count": 0,
+      "mre": null,
+      "hit_k": null,
+      "trend_consistency": 1,
+      "fact_coverage": null,
+      "contradiction_rate": null,
+      "response_ms": 45916,
+      "tool_count": 3,
+      "expected_tools": [
+        "clcd_analysis"
+      ],
+      "actual_tools": [
+        "clcd_analysis",
+        "land_transfer_analysis",
+        "spatial_stats_analysis"
+      ],
+      "expected_args": {
+        "clcd_analysis": {
+          "query_type": "trend",
+          "region": "曲靖市",
+          "level": "prefecture",
+          "year_range": [
+            2000,
+            2020
+          ],
+          "land_type": "耕地"
+        }
+      },
+      "actual_trace": [
+        {
+          "tool_name": "clcd_analysis",
+          "args": {
+            "query_type": "trend",
+            "region": "曲靖市",
+            "level": "prefecture",
+            "year_range": [
+              2000,
+              2020
+            ],
+            "land_type": "耕地"
+          },
+          "is_error": false,
+          "elapsed_ms": 1
+        },
+        {
+          "tool_name": "land_transfer_analysis",
+          "args": {
+            "region": "曲靖市",
+            "level": "prefecture",
+            "start_year": 2000,
+            "end_year": 2020
+          },
+          "is_error": false,
+          "elapsed_ms": 60
+        },
+        {
+          "tool_name": "spatial_stats_analysis",
+          "args": {
+            "yearStart": 2000,
+            "yearEnd": 2020,
+            "fromClassStr": "耕地",
+            "toClassStr": "全部",
+            "region": "曲靖市",
+            "top_n": 5
+          },
+          "is_error": false,
+          "elapsed_ms": 528
+        }
+      ],
+      "baseline_error": false,
+      "agent_error": null
+    },
+    {
+      "task_id": "trend-composite-001",
+      "category": "trend_analysis",
+      "difficulty": "composite",
+      "tool_accuracy": 1,
+      "tool_recall": 1,
+      "tool_precision": 0.3333333333333333,
+      "tool_f1": 0.5,
+      "param_accuracy": 1,
+      "param_accuracy_relaxed": 1,
+      "param_accuracy_strict": 1,
+      "success_rate": 1,
+      "strict_success": 1,
+      "valid_success_rate": 1,
+      "answer_available_rate": 1,
+      "tool_error_count": 0,
+      "mre": null,
+      "hit_k": null,
+      "trend_consistency": 1,
+      "fact_coverage": null,
+      "contradiction_rate": null,
+      "response_ms": 60411,
+      "tool_count": 3,
+      "expected_tools": [
+        "clcd_analysis"
+      ],
+      "actual_tools": [
+        "clcd_analysis",
+        "land_transfer_analysis",
+        "spatial_stats_analysis"
+      ],
+      "expected_args": {
+        "clcd_analysis": {
+          "query_type": "trend",
+          "region": "云南省",
+          "level": "province",
+          "year_range": [
+            1985,
+            2023
+          ],
+          "land_type": "林地"
+        }
+      },
+      "actual_trace": [
+        {
+          "tool_name": "clcd_analysis",
+          "args": {
+            "query_type": "trend",
+            "region": "云南省",
+            "level": "province",
+            "land_type": "林地",
+            "year_range": [
+              1985,
+              2023
+            ]
+          },
+          "is_error": false,
+          "elapsed_ms": 2
+        },
+        {
+          "tool_name": "land_transfer_analysis",
+          "args": {
+            "region": "云南省",
+            "level": "province",
+            "start_year": 1985,
+            "end_year": 2023
+          },
+          "is_error": false,
+          "elapsed_ms": 91
+        },
+        {
+          "tool_name": "spatial_stats_analysis",
+          "args": {
+            "yearStart": 1985,
+            "yearEnd": 2023,
+            "fromClassStr": "林地",
+            "toClassStr": "全部",
+            "region": "云南省"
+          },
+          "is_error": false,
+          "elapsed_ms": 8466
+        }
+      ],
+      "baseline_error": false,
+      "agent_error": null
+    },
+    {
+      "task_id": "trend-composite-002",
+      "category": "trend_analysis",
+      "difficulty": "composite",
+      "tool_accuracy": 1,
+      "tool_recall": 1,
+      "tool_precision": 0.3333333333333333,
+      "tool_f1": 0.5,
+      "param_accuracy": 1,
+      "param_accuracy_relaxed": 1,
+      "param_accuracy_strict": 1,
+      "success_rate": 1,
+      "strict_success": 1,
+      "valid_success_rate": 1,
+      "answer_available_rate": 1,
+      "tool_error_count": 0,
+      "mre": null,
+      "hit_k": null,
+      "trend_consistency": 1,
+      "fact_coverage": null,
+      "contradiction_rate": null,
+      "response_ms": 56201,
+      "tool_count": 3,
+      "expected_tools": [
+        "clcd_analysis"
+      ],
+      "actual_tools": [
+        "clcd_analysis",
+        "land_transfer_analysis",
+        "spatial_stats_analysis"
+      ],
+      "expected_args": {
+        "clcd_analysis": {
+          "query_type": "trend",
+          "region": "云南省",
+          "level": "province",
+          "year_range": [
+            2000,
+            2023
+          ],
+          "land_type": "建设用地"
+        }
+      },
+      "actual_trace": [
+        {
+          "tool_name": "clcd_analysis",
+          "args": {
+            "query_type": "trend",
+            "region": "云南省",
+            "level": "province",
+            "land_type": "建设用地",
+            "year_range": [
+              2000,
+              2023
+            ]
+          },
+          "is_error": false,
+          "elapsed_ms": 2
+        },
+        {
+          "tool_name": "land_transfer_analysis",
+          "args": {
+            "region": "云南省",
+            "level": "province",
+            "start_year": 2000,
+            "end_year": 2023
+          },
+          "is_error": false,
+          "elapsed_ms": 65
+        },
+        {
+          "tool_name": "spatial_stats_analysis",
+          "args": {
+            "yearStart": 2000,
+            "yearEnd": 2023,
+            "fromClassStr": "全部",
+            "toClassStr": "建设用地",
+            "region": "云南省"
+          },
+          "is_error": false,
+          "elapsed_ms": 5600
+        }
+      ],
+      "baseline_error": false,
+      "agent_error": null
+    },
+    {
+      "task_id": "trend-composite-003",
+      "category": "trend_analysis",
+      "difficulty": "composite",
+      "tool_accuracy": 1,
+      "tool_recall": 1,
+      "tool_precision": 0.5,
+      "tool_f1": 0.6666666666666666,
+      "param_accuracy": 1,
+      "param_accuracy_relaxed": 1,
+      "param_accuracy_strict": 1,
+      "success_rate": 1,
+      "strict_success": 1,
+      "valid_success_rate": 1,
+      "answer_available_rate": 1,
+      "tool_error_count": 0,
+      "mre": null,
+      "hit_k": null,
+      "trend_consistency": 1,
+      "fact_coverage": null,
+      "contradiction_rate": null,
+      "response_ms": 27743,
+      "tool_count": 2,
+      "expected_tools": [
+        "clcd_analysis"
+      ],
+      "actual_tools": [
+        "clcd_analysis",
+        "land_transfer_analysis"
+      ],
+      "expected_args": {
+        "clcd_analysis": {
+          "query_type": "trend",
+          "region": "云南省",
+          "level": "province",
+          "year_range": [
+            2010,
+            2020
+          ],
+          "land_type": "草地"
+        }
+      },
+      "actual_trace": [
+        {
+          "tool_name": "clcd_analysis",
+          "args": {
+            "query_type": "trend",
+            "region": "云南省",
+            "level": "province",
+            "year_range": [
+              2010,
+              2020
+            ],
+            "land_type": "草地"
+          },
+          "is_error": false,
+          "elapsed_ms": 1
+        },
+        {
+          "tool_name": "land_transfer_analysis",
+          "args": {
+            "region": "云南省",
+            "level": "province",
+            "start_year": 2010,
+            "end_year": 2020
+          },
+          "is_error": false,
+          "elapsed_ms": 35
+        }
+      ],
+      "baseline_error": false,
+      "agent_error": null
+    },
+    {
+      "task_id": "trend-composite-004",
+      "category": "trend_analysis",
+      "difficulty": "composite",
+      "tool_accuracy": 1,
+      "tool_recall": 1,
+      "tool_precision": 0.3333333333333333,
+      "tool_f1": 0.5,
+      "param_accuracy": 1,
+      "param_accuracy_relaxed": 1,
+      "param_accuracy_strict": 1,
+      "success_rate": 1,
+      "strict_success": 1,
+      "valid_success_rate": 1,
+      "answer_available_rate": 1,
+      "tool_error_count": 0,
+      "mre": null,
+      "hit_k": null,
+      "trend_consistency": 1,
+      "fact_coverage": null,
+      "contradiction_rate": null,
+      "response_ms": 29531,
+      "tool_count": 3,
+      "expected_tools": [
+        "clcd_analysis"
+      ],
+      "actual_tools": [
+        "clcd_analysis",
+        "land_transfer_analysis",
+        "spatial_stats_analysis"
+      ],
+      "expected_args": {
+        "clcd_analysis": {
+          "query_type": "trend",
+          "region": "红河哈尼族彝族自治州",
+          "level": "prefecture",
+          "year_range": [
+            2000,
+            2020
+          ],
+          "land_type": "建设用地"
+        }
+      },
+      "actual_trace": [
+        {
+          "tool_name": "clcd_analysis",
+          "args": {
+            "query_type": "trend",
+            "region": "红河哈尼族彝族自治州",
+            "level": "prefecture",
+            "land_type": "建设用地",
+            "year_range": [
+              2000,
+              2020
+            ]
+          },
+          "is_error": false,
+          "elapsed_ms": 2
+        },
+        {
+          "tool_name": "land_transfer_analysis",
+          "args": {
+            "region": "红河哈尼族彝族自治州",
+            "level": "prefecture",
+            "start_year": 2000,
+            "end_year": 2020
+          },
+          "is_error": false,
+          "elapsed_ms": 52
+        },
+        {
+          "tool_name": "spatial_stats_analysis",
+          "args": {
+            "yearStart": 2000,
+            "yearEnd": 2020,
+            "fromClassStr": "全部",
+            "toClassStr": "建设用地",
+            "region": "红河哈尼族彝族自治州",
+            "top_n": 5
+          },
+          "is_error": false,
+          "elapsed_ms": 866
+        }
+      ],
+      "baseline_error": false,
+      "agent_error": null
+    },
+    {
+      "task_id": "trend-interpretive-001",
+      "category": "trend_analysis",
+      "difficulty": "interpretive",
+      "tool_accuracy": 0,
+      "tool_recall": 0,
+      "tool_precision": 0.3333333333333333,
+      "tool_f1": 0,
+      "param_accuracy": 0.5,
+      "param_accuracy_relaxed": 0.5,
+      "param_accuracy_strict": 0.5,
+      "success_rate": 1,
+      "strict_success": 1,
+      "valid_success_rate": 1,
+      "answer_available_rate": 1,
+      "tool_error_count": 0,
+      "mre": null,
+      "hit_k": null,
+      "trend_consistency": 1,
+      "fact_coverage": null,
+      "contradiction_rate": null,
+      "response_ms": 53212,
+      "tool_count": 3,
+      "expected_tools": [
+        "clcd_analysis",
+        "knowledge_base_lookup"
+      ],
+      "actual_tools": [
+        "clcd_analysis",
+        "land_transfer_analysis",
+        "spatial_stats_analysis"
+      ],
+      "expected_args": {
+        "clcd_analysis": {
+          "query_type": "trend",
+          "region": "云南省",
+          "level": "province",
+          "year_range": [
+            1990,
+            2020
+          ],
+          "land_type": "建设用地"
+        },
+        "knowledge_base_lookup": {
+          "skill_name": "policy_expert"
+        }
+      },
+      "actual_trace": [
+        {
+          "tool_name": "clcd_analysis",
+          "args": {
+            "query_type": "trend",
+            "region": "云南省",
+            "level": "province",
+            "year_range": [
+              1990,
+              2020
+            ],
+            "land_type": "建设用地"
+          },
+          "is_error": false,
+          "elapsed_ms": 2
+        },
+        {
+          "tool_name": "land_transfer_analysis",
+          "args": {
+            "region": "云南省",
+            "level": "province",
+            "start_year": 1990,
+            "end_year": 2020
+          },
+          "is_error": false,
+          "elapsed_ms": 73
+        },
+        {
+          "tool_name": "spatial_stats_analysis",
+          "args": {
+            "yearStart": 1990,
+            "yearEnd": 2020,
+            "fromClassStr": "全部",
+            "toClassStr": "建设用地",
+            "region": "云南省"
+          },
+          "is_error": false,
+          "elapsed_ms": 7021
+        }
+      ],
+      "baseline_error": false,
+      "agent_error": null
+    },
+    {
+      "task_id": "trend-interpretive-002",
+      "category": "trend_analysis",
+      "difficulty": "interpretive",
+      "tool_accuracy": 0,
+      "tool_recall": 0,
+      "tool_precision": 0.3333333333333333,
+      "tool_f1": 0,
+      "param_accuracy": 0.5,
+      "param_accuracy_relaxed": 0.5,
+      "param_accuracy_strict": 0.5,
+      "success_rate": 1,
+      "strict_success": 1,
+      "valid_success_rate": 1,
+      "answer_available_rate": 1,
+      "tool_error_count": 0,
+      "mre": null,
+      "hit_k": null,
+      "trend_consistency": 1,
+      "fact_coverage": null,
+      "contradiction_rate": null,
+      "response_ms": 40609,
+      "tool_count": 3,
+      "expected_tools": [
+        "clcd_analysis",
+        "knowledge_base_lookup"
+      ],
+      "actual_tools": [
+        "clcd_analysis",
+        "land_transfer_analysis",
+        "spatial_stats_analysis"
+      ],
+      "expected_args": {
+        "clcd_analysis": {
+          "query_type": "trend",
+          "region": "昆明市",
+          "level": "prefecture",
+          "year_range": [
+            2000,
+            2023
+          ],
+          "land_type": "建设用地"
+        },
+        "knowledge_base_lookup": {
+          "skill_name": "policy_expert"
+        }
+      },
+      "actual_trace": [
+        {
+          "tool_name": "clcd_analysis",
+          "args": {
+            "query_type": "trend",
+            "region": "昆明市",
+            "level": "prefecture",
+            "year_range": [
+              2000,
+              2023
+            ],
+            "land_type": "建设用地"
+          },
+          "is_error": false,
+          "elapsed_ms": 2
+        },
+        {
+          "tool_name": "land_transfer_analysis",
+          "args": {
+            "region": "昆明市",
+            "level": "prefecture",
+            "start_year": 2000,
+            "end_year": 2023
+          },
+          "is_error": false,
+          "elapsed_ms": 67
+        },
+        {
+          "tool_name": "spatial_stats_analysis",
+          "args": {
+            "yearStart": 2000,
+            "yearEnd": 2023,
+            "fromClassStr": "耕地",
+            "toClassStr": "建设用地",
+            "region": "昆明市",
+            "top_n": 5
+          },
+          "is_error": false,
+          "elapsed_ms": 567
+        }
+      ],
+      "baseline_error": false,
+      "agent_error": null
+    },
+    {
+      "task_id": "trend-interpretive-003",
+      "category": "trend_analysis",
+      "difficulty": "interpretive",
+      "tool_accuracy": 1,
+      "tool_recall": 1,
+      "tool_precision": 0.5,
+      "tool_f1": 0.6666666666666666,
+      "param_accuracy": 0.5,
+      "param_accuracy_relaxed": 0.5,
+      "param_accuracy_strict": 0.5,
+      "success_rate": 0,
+      "strict_success": 0,
+      "valid_success_rate": 0,
+      "answer_available_rate": 1,
+      "tool_error_count": 3,
+      "mre": null,
+      "hit_k": null,
+      "trend_consistency": 1,
+      "fact_coverage": null,
+      "contradiction_rate": null,
+      "response_ms": 50510,
+      "tool_count": 5,
+      "expected_tools": [
+        "clcd_analysis",
+        "policy_reference_lookup"
+      ],
+      "actual_tools": [
+        "clcd_analysis",
+        "knowledge_base_lookup",
+        "policy_reference_lookup",
+        "knowledge_graph_query",
+        "land_transfer_analysis"
+      ],
+      "expected_args": {
+        "clcd_analysis": {
+          "query_type": "trend",
+          "region": "云南省",
+          "level": "province",
+          "year_range": [
+            1990,
+            2020
+          ],
+          "land_type": "耕地"
+        },
+        "policy_reference_lookup": {
+          "region": "云南省",
+          "level": "province",
+          "top_n": 5
+        }
+      },
+      "actual_trace": [
+        {
+          "tool_name": "clcd_analysis",
+          "args": {
+            "query_type": "trend",
+            "region": "云南省",
+            "level": "province",
+            "land_type": "耕地",
+            "year_range": [
+              1990,
+              2020
+            ]
+          },
+          "is_error": false,
+          "elapsed_ms": 2
+        },
+        {
+          "tool_name": "knowledge_base_lookup",
+          "args": {
+            "query": "耕地保护政策 云南省 1990-2020"
+          },
+          "is_error": true,
+          "elapsed_ms": 0
+        },
+        {
+          "tool_name": "policy_reference_lookup",
+          "args": {
+            "query": "耕地保护 云南省 1990-2020 三条控制线 用途管制"
+          },
+          "is_error": true,
+          "elapsed_ms": 0
+        },
+        {
+          "tool_name": "knowledge_graph_query",
+          "args": {
+            "query": "耕地保护 1990年 2020年 云南省 政策 退耕还林 占补平衡 基本农田"
+          },
+          "is_error": true,
+          "elapsed_ms": 0
+        },
+        {
+          "tool_name": "land_transfer_analysis",
+          "args": {
+            "region": "云南省",
+            "level": "province",
+            "start_year": 1990,
+            "end_year": 2020
+          },
+          "is_error": false,
+          "elapsed_ms": 92
+        }
+      ],
+      "baseline_error": false,
+      "agent_error": null
+    },
+    {
+      "task_id": "trend-interpretive-004",
+      "category": "trend_analysis",
+      "difficulty": "interpretive",
+      "tool_accuracy": 0,
+      "tool_recall": 0,
+      "tool_precision": 0.25,
+      "tool_f1": 0,
+      "param_accuracy": 0.5,
+      "param_accuracy_relaxed": 0.5,
+      "param_accuracy_strict": 0.5,
+      "success_rate": 1,
+      "strict_success": 1,
+      "valid_success_rate": 1,
+      "answer_available_rate": 1,
+      "tool_error_count": 0,
+      "mre": null,
+      "hit_k": null,
+      "trend_consistency": 1,
+      "fact_coverage": null,
+      "contradiction_rate": null,
+      "response_ms": 53159,
+      "tool_count": 4,
+      "expected_tools": [
+        "clcd_analysis",
+        "policy_reference_lookup"
+      ],
+      "actual_tools": [
+        "clcd_analysis",
+        "land_transfer_analysis",
+        "spatial_stats_analysis",
+        "spatial_stats_analysis"
+      ],
+      "expected_args": {
+        "clcd_analysis": {
+          "query_type": "trend",
+          "region": "云南省",
+          "level": "province",
+          "year_range": [
+            2010,
+            2023
+          ],
+          "land_type": "林地"
+        },
+        "policy_reference_lookup": {
+          "region": "云南省",
+          "level": "province",
+          "top_n": 5
+        }
+      },
+      "actual_trace": [
+        {
+          "tool_name": "clcd_analysis",
+          "args": {
+            "query_type": "trend",
+            "region": "云南省",
+            "level": "province",
+            "land_type": "林地",
+            "year_range": [
+              2010,
+              2023
+            ]
+          },
+          "is_error": false,
+          "elapsed_ms": 1
+        },
+        {
+          "tool_name": "land_transfer_analysis",
+          "args": {
+            "region": "云南省",
+            "level": "province",
+            "start_year": 2010,
+            "end_year": 2023
+          },
+          "is_error": false,
+          "elapsed_ms": 41
+        },
+        {
+          "tool_name": "spatial_stats_analysis",
+          "args": {
+            "yearStart": 2010,
+            "yearEnd": 2023,
+            "fromClassStr": "林地",
+            "toClassStr": "全部",
+            "region": "云南省",
+            "top_n": 5
+          },
+          "is_error": false,
+          "elapsed_ms": 3576
+        },
+        {
+          "tool_name": "spatial_stats_analysis",
+          "args": {
+            "yearStart": 2010,
+            "yearEnd": 2023,
+            "fromClassStr": "全部",
+            "toClassStr": "林地",
+            "region": "云南省",
+            "top_n": 5
+          },
+          "is_error": false,
+          "elapsed_ms": 3344
+        }
+      ],
+      "baseline_error": false,
+      "agent_error": null
+    }
+  ]
+}

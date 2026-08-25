@@ -1,0 +1,222 @@
+{
+  "annotation_file": "evaluation/reports/full_agent_72_policy_fact_annotations_codex.json",
+  "generated_at": "2026-06-15T09:59:17.115Z",
+  "evaluator": "Codex/GPT manual review in this thread; no project LLM or external judge was called",
+  "scope": "full_agent_72 policy_explanation tasks",
+  "scoring_note": "Reference facts are baseline.value entries from each policy_explanation task. covered_reference_ids records which reference facts are substantively covered by the Agent final answer. contradictions count only claims that clearly conflict with the reference facts, tool outputs, or policy-basis framing; unsupported extra detail is noted only when it creates a contradiction.",
+  "summary": {
+    "n": 12,
+    "macro_fact_coverage": 0.9166666666666666,
+    "macro_contradiction_rate": 0,
+    "micro_fact_coverage": 0.9722222222222222,
+    "micro_contradiction_rate": 0,
+    "reference_fact_total": 36,
+    "covered_fact_total": 35,
+    "agent_fact_total": 449,
+    "conflict_total": 0,
+    "rows": [
+      {
+        "task_id": "policy-simple-001",
+        "difficulty": "simple",
+        "reference_fact_count": 1,
+        "covered_reference_ids": [
+          "R1"
+        ],
+        "agent_fact_count": 26,
+        "conflicts": [],
+        "notes": "回答引用云南省国土空间规划发布入口，并说明具体约束指标需以正式文本为准，覆盖参考事实。",
+        "covered_fact_count": 1,
+        "conflict_count": 0,
+        "fact_coverage": 1,
+        "contradiction_rate": 0
+      },
+      {
+        "task_id": "policy-simple-002",
+        "difficulty": "simple",
+        "reference_fact_count": 5,
+        "covered_reference_ids": [
+          "R1",
+          "R2",
+          "R3",
+          "R4",
+          "R5"
+        ],
+        "agent_fact_count": 38,
+        "conflicts": [],
+        "notes": "回答覆盖三条控制线、建设用地增量控制、永久基本农田特殊保护、非农化约束和新型城镇化背景。",
+        "covered_fact_count": 5,
+        "conflict_count": 0,
+        "fact_coverage": 1,
+        "contradiction_rate": 0
+      },
+      {
+        "task_id": "policy-simple-003",
+        "difficulty": "simple",
+        "reference_fact_count": 5,
+        "covered_reference_ids": [
+          "R1",
+          "R2",
+          "R3",
+          "R4",
+          "R5"
+        ],
+        "agent_fact_count": 22,
+        "conflicts": [],
+        "notes": "回答覆盖生态保护红线若干意见、三条控制线、生态文明制度框架、永久基本农田衔接和退耕还林政策背景。",
+        "covered_fact_count": 5,
+        "conflict_count": 0,
+        "fact_coverage": 1,
+        "contradiction_rate": 0
+      },
+      {
+        "task_id": "policy-simple-004",
+        "difficulty": "simple",
+        "reference_fact_count": 5,
+        "covered_reference_ids": [
+          "R1",
+          "R2",
+          "R3",
+          "R4",
+          "R5"
+        ],
+        "agent_fact_count": 30,
+        "conflicts": [],
+        "notes": "回答覆盖非农化、非粮化、占补平衡、三位一体保护和三条控制线约束。",
+        "covered_fact_count": 5,
+        "conflict_count": 0,
+        "fact_coverage": 1,
+        "contradiction_rate": 0
+      },
+      {
+        "task_id": "policy-composite-001",
+        "difficulty": "composite",
+        "reference_fact_count": 1,
+        "covered_reference_ids": [
+          "R1"
+        ],
+        "agent_fact_count": 48,
+        "conflicts": [],
+        "notes": "回答明确检索云南省国土空间规划发布信息，并将其作为省级空间管控框架依据。",
+        "covered_fact_count": 1,
+        "conflict_count": 0,
+        "fact_coverage": 1,
+        "contradiction_rate": 0
+      },
+      {
+        "task_id": "policy-composite-002",
+        "difficulty": "composite",
+        "reference_fact_count": 1,
+        "covered_reference_ids": [
+          "R1"
+        ],
+        "agent_fact_count": 34,
+        "conflicts": [],
+        "notes": "回答引用昆明市国土空间总体规划批复入口，并说明城镇开发边界、永久基本农田和生态保护红线约束。",
+        "covered_fact_count": 1,
+        "conflict_count": 0,
+        "fact_coverage": 1,
+        "contradiction_rate": 0
+      },
+      {
+        "task_id": "policy-composite-003",
+        "difficulty": "composite",
+        "reference_fact_count": 5,
+        "covered_reference_ids": [
+          "R1",
+          "R2",
+          "R3",
+          "R4",
+          "R5"
+        ],
+        "agent_fact_count": 52,
+        "conflicts": [],
+        "notes": "回答覆盖2019年国土空间规划体系、三条控制线、用途管制实施、非农化约束和永久基本农田保护。",
+        "covered_fact_count": 5,
+        "conflict_count": 0,
+        "fact_coverage": 1,
+        "contradiction_rate": 0
+      },
+      {
+        "task_id": "policy-composite-004",
+        "difficulty": "composite",
+        "reference_fact_count": 5,
+        "covered_reference_ids": [
+          "R1",
+          "R2",
+          "R3",
+          "R4",
+          "R5"
+        ],
+        "agent_fact_count": 42,
+        "conflicts": [],
+        "notes": "回答覆盖2020年以来非农化、非粮化、三条控制线、占补平衡升级和建设用地增量控制。",
+        "covered_fact_count": 5,
+        "conflict_count": 0,
+        "fact_coverage": 1,
+        "contradiction_rate": 0
+      },
+      {
+        "task_id": "policy-interpretive-001",
+        "difficulty": "interpretive",
+        "reference_fact_count": 1,
+        "covered_reference_ids": [
+          "R1"
+        ],
+        "agent_fact_count": 38,
+        "conflicts": [],
+        "notes": "回答将建设用地热点与云南省国土空间规划管控关联，并引用省级规划发布信息作为依据。",
+        "covered_fact_count": 1,
+        "conflict_count": 0,
+        "fact_coverage": 1,
+        "contradiction_rate": 0
+      },
+      {
+        "task_id": "policy-interpretive-002",
+        "difficulty": "interpretive",
+        "reference_fact_count": 5,
+        "covered_reference_ids": [
+          "R1",
+          "R2",
+          "R3",
+          "R4",
+          "R5"
+        ],
+        "agent_fact_count": 40,
+        "conflicts": [],
+        "notes": "回答覆盖耕转建、永久基本农田、非农化、占补平衡、建设用地扩张与城镇化背景之间的关系。",
+        "covered_fact_count": 5,
+        "conflict_count": 0,
+        "fact_coverage": 1,
+        "contradiction_rate": 0
+      },
+      {
+        "task_id": "policy-interpretive-003",
+        "difficulty": "interpretive",
+        "reference_fact_count": 1,
+        "covered_reference_ids": [],
+        "agent_fact_count": 33,
+        "conflicts": [],
+        "notes": "回答主要引用国家层面的三条控制线、生态红线、永久基本农田和监测指标，未实质覆盖参考事实中的云南省级国土空间规划发布入口。",
+        "covered_fact_count": 0,
+        "conflict_count": 0,
+        "fact_coverage": 0,
+        "contradiction_rate": 0
+      },
+      {
+        "task_id": "policy-interpretive-004",
+        "difficulty": "interpretive",
+        "reference_fact_count": 1,
+        "covered_reference_ids": [
+          "R1"
+        ],
+        "agent_fact_count": 46,
+        "conflicts": [],
+        "notes": "回答明确将系统能力与云南省国土空间规划监测预警要求关联，并在结尾给出云南省自然资源厅规划发布信息来源。",
+        "covered_fact_count": 1,
+        "conflict_count": 0,
+        "fact_coverage": 1,
+        "contradiction_rate": 0
+      }
+    ]
+  }
+}
