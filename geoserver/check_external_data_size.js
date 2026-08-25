@@ -22,19 +22,19 @@ function getFolderSize(folderPath) {
 
 const targetPath = 'E:\\yunnan_CLCD_data';
 
-console.log(`\n🔍 正在检查真实的外部遥感数据目录: ${targetPath}`);
+console.log(`\n正在检查真实的外部遥感数据目录: ${targetPath}`);
 
 if (fs.existsSync(targetPath)) {
-    console.log('✅ 目录存在！正在计算文件夹体积，请稍候...');
+    console.log('[OK] 目录存在！正在计算文件夹体积，请稍候...');
     const sizeBytes = getFolderSize(targetPath);
     const sizeMB = (sizeBytes / (1024 * 1024)).toFixed(2);
     const sizeGB = (sizeBytes / (1024 * 1024 * 1024)).toFixed(2);
 
     if (sizeBytes > 1024 * 1024 * 1024) {
-        console.log(`📦 \x1b[36m${targetPath}\x1b[0m 总大小: \x1b[32m${sizeGB} GB\x1b[0m`);
+        console.log(`\x1b[36m${targetPath}\x1b[0m 总大小: \x1b[32m${sizeGB} GB\x1b[0m`);
     } else {
-        console.log(`📦 \x1b[36m${targetPath}\x1b[0m 总大小: \x1b[32m${sizeMB} MB\x1b[0m`);
+        console.log(`\x1b[36m${targetPath}\x1b[0m 总大小: \x1b[32m${sizeMB} MB\x1b[0m`);
     }
 } else {
-    console.log(`❌ 目录不存在: ${targetPath}`);
+    console.log(`[FAIL] 目录不存在: ${targetPath}`);
 }
