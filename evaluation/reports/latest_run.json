@@ -1,0 +1,13 @@
+{
+  "run_id": "full_agent_72",
+  "category": "all",
+  "profile": "full",
+  "model": "deepseek-v4-flash",
+  "baseline_only": false,
+  "task_count": 72,
+  "output_file": "evaluation/output/runs/full_agent_72.jsonl",
+  "started_at": "2026-06-15T07:55:57.087Z",
+  "completed": 71,
+  "failed": 1,
+  "finished_at": "2026-06-15T08:36:18.745Z"
+}

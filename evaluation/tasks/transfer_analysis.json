@@ -1,0 +1,422 @@
+[
+  {
+    "id": "transfer-simple-001",
+    "category": "transfer_analysis",
+    "difficulty": "simple",
+    "question": "2010—2020年云南省主要土地利用转移方向有哪些？请列出前5类。",
+    "expected_tools": [
+      "land_transfer_analysis"
+    ],
+    "expected_args": {
+      "land_transfer_analysis": {
+        "region": "云南省",
+        "level": "province",
+        "start_year": 2010,
+        "end_year": 2020
+      }
+    },
+    "baseline": {
+      "tool": "land_transfer_analysis",
+      "args": {
+        "region": "云南省",
+        "level": "province",
+        "start_year": 2010,
+        "end_year": 2020
+      },
+      "extract": {
+        "type": "top_transitions",
+        "path": "result.rows",
+        "k": 5,
+        "unit": "m2"
+      }
+    }
+  },
+  {
+    "id": "transfer-simple-002",
+    "category": "transfer_analysis",
+    "difficulty": "simple",
+    "question": "2000—2020年云南省主要地类转移方向Top5是什么？",
+    "expected_tools": [
+      "land_transfer_analysis"
+    ],
+    "expected_args": {
+      "land_transfer_analysis": {
+        "region": "云南省",
+        "level": "province",
+        "start_year": 2000,
+        "end_year": 2020
+      }
+    },
+    "baseline": {
+      "tool": "land_transfer_analysis",
+      "args": {
+        "region": "云南省",
+        "level": "province",
+        "start_year": 2000,
+        "end_year": 2020
+      },
+      "extract": {
+        "type": "top_transitions",
+        "path": "result.rows",
+        "k": 5,
+        "unit": "m2"
+      }
+    }
+  },
+  {
+    "id": "transfer-simple-003",
+    "category": "transfer_analysis",
+    "difficulty": "simple",
+    "question": "2010—2020年昆明市主要土地利用转移方向Top5是什么？",
+    "expected_tools": [
+      "land_transfer_analysis"
+    ],
+    "expected_args": {
+      "land_transfer_analysis": {
+        "region": "昆明市",
+        "level": "prefecture",
+        "start_year": 2010,
+        "end_year": 2020
+      }
+    },
+    "baseline": {
+      "tool": "land_transfer_analysis",
+      "args": {
+        "region": "昆明市",
+        "level": "prefecture",
+        "start_year": 2010,
+        "end_year": 2020
+      },
+      "extract": {
+        "type": "top_transitions",
+        "path": "result.rows",
+        "k": 5,
+        "unit": "m2"
+      }
+    }
+  },
+  {
+    "id": "transfer-simple-004",
+    "category": "transfer_analysis",
+    "difficulty": "simple",
+    "question": "2000—2023年云南省土地利用转移面积最大的前5个方向是什么？",
+    "expected_tools": [
+      "land_transfer_analysis"
+    ],
+    "expected_args": {
+      "land_transfer_analysis": {
+        "region": "云南省",
+        "level": "province",
+        "start_year": 2000,
+        "end_year": 2023
+      }
+    },
+    "baseline": {
+      "tool": "land_transfer_analysis",
+      "args": {
+        "region": "云南省",
+        "level": "province",
+        "start_year": 2000,
+        "end_year": 2023
+      },
+      "extract": {
+        "type": "top_transitions",
+        "path": "result.rows",
+        "k": 5,
+        "unit": "m2"
+      }
+    }
+  },
+  {
+    "id": "transfer-composite-001",
+    "category": "transfer_analysis",
+    "difficulty": "composite",
+    "question": "1990—2020年云南省地类转换最强的前5类是什么？请说明转入与转出关系。",
+    "expected_tools": [
+      "land_transfer_analysis"
+    ],
+    "expected_args": {
+      "land_transfer_analysis": {
+        "region": "云南省",
+        "level": "province",
+        "start_year": 1990,
+        "end_year": 2020
+      }
+    },
+    "baseline": {
+      "tool": "land_transfer_analysis",
+      "args": {
+        "region": "云南省",
+        "level": "province",
+        "start_year": 1990,
+        "end_year": 2020
+      },
+      "extract": {
+        "type": "top_transitions",
+        "path": "result.rows",
+        "k": 5,
+        "unit": "m2"
+      }
+    }
+  },
+  {
+    "id": "transfer-composite-002",
+    "category": "transfer_analysis",
+    "difficulty": "composite",
+    "question": "2000—2020年曲靖市主导土地利用转移方向是什么？请列出Top5。",
+    "expected_tools": [
+      "land_transfer_analysis"
+    ],
+    "expected_args": {
+      "land_transfer_analysis": {
+        "region": "曲靖市",
+        "level": "prefecture",
+        "start_year": 2000,
+        "end_year": 2020
+      }
+    },
+    "baseline": {
+      "tool": "land_transfer_analysis",
+      "args": {
+        "region": "曲靖市",
+        "level": "prefecture",
+        "start_year": 2000,
+        "end_year": 2020
+      },
+      "extract": {
+        "type": "top_transitions",
+        "path": "result.rows",
+        "k": 5,
+        "unit": "m2"
+      }
+    }
+  },
+  {
+    "id": "transfer-composite-003",
+    "category": "transfer_analysis",
+    "difficulty": "composite",
+    "question": "2010—2023年红河哈尼族彝族自治州主要地类转移方向有哪些？",
+    "expected_tools": [
+      "land_transfer_analysis"
+    ],
+    "expected_args": {
+      "land_transfer_analysis": {
+        "region": "红河哈尼族彝族自治州",
+        "level": "prefecture",
+        "start_year": 2010,
+        "end_year": 2023
+      }
+    },
+    "baseline": {
+      "tool": "land_transfer_analysis",
+      "args": {
+        "region": "红河哈尼族彝族自治州",
+        "level": "prefecture",
+        "start_year": 2010,
+        "end_year": 2023
+      },
+      "extract": {
+        "type": "top_transitions",
+        "path": "result.rows",
+        "k": 5,
+        "unit": "m2"
+      }
+    }
+  },
+  {
+    "id": "transfer-composite-004",
+    "category": "transfer_analysis",
+    "difficulty": "composite",
+    "question": "2000—2023年大理白族自治州主要土地利用转移方向Top5是什么？",
+    "expected_tools": [
+      "land_transfer_analysis"
+    ],
+    "expected_args": {
+      "land_transfer_analysis": {
+        "region": "大理白族自治州",
+        "level": "prefecture",
+        "start_year": 2000,
+        "end_year": 2023
+      }
+    },
+    "baseline": {
+      "tool": "land_transfer_analysis",
+      "args": {
+        "region": "大理白族自治州",
+        "level": "prefecture",
+        "start_year": 2000,
+        "end_year": 2023
+      },
+      "extract": {
+        "type": "top_transitions",
+        "path": "result.rows",
+        "k": 5,
+        "unit": "m2"
+      }
+    }
+  },
+  {
+    "id": "transfer-interpretive-001",
+    "category": "transfer_analysis",
+    "difficulty": "interpretive",
+    "question": "2000—2023年云南省耕地与建设用地相关转移反映了什么空间冲突？请先列出主导转移方向再解释。",
+    "expected_tools": [
+      "land_transfer_analysis",
+      "knowledge_base_lookup"
+    ],
+    "expected_args": {
+      "land_transfer_analysis": {
+        "region": "云南省",
+        "level": "province",
+        "start_year": 2000,
+        "end_year": 2023
+      },
+      "knowledge_base_lookup": {
+        "skill_name": "policy_expert"
+      }
+    },
+    "baseline": {
+      "tool": "land_transfer_analysis",
+      "args": {
+        "region": "云南省",
+        "level": "province",
+        "start_year": 2000,
+        "end_year": 2023
+      },
+      "extract": {
+        "type": "top_transitions",
+        "path": "result.rows",
+        "k": 5,
+        "unit": "m2"
+      }
+    },
+    "manual_fact_units": [
+      "回答应列出主导土地利用转移方向",
+      "回答应说明转入、转出或空间冲突含义",
+      "解释性判断应避免把土地利用转移写成土地流转"
+    ]
+  },
+  {
+    "id": "transfer-interpretive-002",
+    "category": "transfer_analysis",
+    "difficulty": "interpretive",
+    "question": "2010—2020年昆明市主导转移方向说明了怎样的城镇扩张特征？请结合转移矩阵回答。",
+    "expected_tools": [
+      "land_transfer_analysis",
+      "knowledge_base_lookup"
+    ],
+    "expected_args": {
+      "land_transfer_analysis": {
+        "region": "昆明市",
+        "level": "prefecture",
+        "start_year": 2010,
+        "end_year": 2020
+      },
+      "knowledge_base_lookup": {
+        "skill_name": "spatial_reasoning"
+      }
+    },
+    "baseline": {
+      "tool": "land_transfer_analysis",
+      "args": {
+        "region": "昆明市",
+        "level": "prefecture",
+        "start_year": 2010,
+        "end_year": 2020
+      },
+      "extract": {
+        "type": "top_transitions",
+        "path": "result.rows",
+        "k": 5,
+        "unit": "m2"
+      }
+    },
+    "manual_fact_units": [
+      "回答应列出主导土地利用转移方向",
+      "回答应说明转入、转出或空间冲突含义",
+      "解释性判断应避免把土地利用转移写成土地流转"
+    ]
+  },
+  {
+    "id": "transfer-interpretive-003",
+    "category": "transfer_analysis",
+    "difficulty": "interpretive",
+    "question": "1990—2020年云南省林地、草地、耕地之间的主要转移如何理解生态空间演变？",
+    "expected_tools": [
+      "land_transfer_analysis",
+      "knowledge_base_lookup"
+    ],
+    "expected_args": {
+      "land_transfer_analysis": {
+        "region": "云南省",
+        "level": "province",
+        "start_year": 1990,
+        "end_year": 2020
+      },
+      "knowledge_base_lookup": {
+        "skill_name": "spatial_reasoning"
+      }
+    },
+    "baseline": {
+      "tool": "land_transfer_analysis",
+      "args": {
+        "region": "云南省",
+        "level": "province",
+        "start_year": 1990,
+        "end_year": 2020
+      },
+      "extract": {
+        "type": "top_transitions",
+        "path": "result.rows",
+        "k": 5,
+        "unit": "m2"
+      }
+    },
+    "manual_fact_units": [
+      "回答应列出主导土地利用转移方向",
+      "回答应说明转入、转出或空间冲突含义",
+      "解释性判断应避免把土地利用转移写成土地流转"
+    ]
+  },
+  {
+    "id": "transfer-interpretive-004",
+    "category": "transfer_analysis",
+    "difficulty": "interpretive",
+    "question": "2000—2020年曲靖市转移矩阵中哪些地类转移方向值得预警？请用Top5结果支撑判断。",
+    "expected_tools": [
+      "land_transfer_analysis",
+      "knowledge_base_lookup"
+    ],
+    "expected_args": {
+      "land_transfer_analysis": {
+        "region": "曲靖市",
+        "level": "prefecture",
+        "start_year": 2000,
+        "end_year": 2020
+      },
+      "knowledge_base_lookup": {
+        "skill_name": "policy_expert"
+      }
+    },
+    "baseline": {
+      "tool": "land_transfer_analysis",
+      "args": {
+        "region": "曲靖市",
+        "level": "prefecture",
+        "start_year": 2000,
+        "end_year": 2020
+      },
+      "extract": {
+        "type": "top_transitions",
+        "path": "result.rows",
+        "k": 5,
+        "unit": "m2"
+      }
+    },
+    "manual_fact_units": [
+      "回答应列出主导土地利用转移方向",
+      "回答应说明转入、转出或空间冲突含义",
+      "解释性判断应避免把土地利用转移写成土地流转"
+    ]
+  }
+]

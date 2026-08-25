@@ -24,7 +24,7 @@ async function checkDatabaseSize() {
 
         // 1. 查询总大小
         const dbSizeRes = await client.query(`SELECT pg_size_pretty(pg_database_size(current_database())) AS size;`);
-        console.log(`\n📦 数据库 [${process.env.DB_DATABASE || 'yunnan_CLCD'}] 总大小: \x1b[32m${dbSizeRes.rows[0].size}\x1b[0m`);
+        console.log(`\n数据库 [${process.env.DB_DATABASE || 'yunnan_CLCD'}] 总大小: \x1b[32m${dbSizeRes.rows[0].size}\x1b[0m`);
 
         // 2. 查询前 10 张大表及其行数
         const topTablesRes = await client.query(`

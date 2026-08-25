@@ -1,0 +1,467 @@
+[
+  {
+    "id": "spatial-simple-001",
+    "category": "spatial_hotspot",
+    "difficulty": "simple",
+    "question": "2000—2020年云南省转为建设用地的县域热点集中在哪些地方？请给出Top5。",
+    "expected_tools": [
+      "spatial_stats_analysis"
+    ],
+    "expected_args": {
+      "spatial_stats_analysis": {
+        "yearStart": 2000,
+        "yearEnd": 2020,
+        "fromClassStr": "全部",
+        "toClassStr": "建设用地",
+        "region": "云南省",
+        "top_n": 5
+      }
+    },
+    "baseline": {
+      "tool": "spatial_stats_analysis",
+      "args": {
+        "yearStart": 2000,
+        "yearEnd": 2020,
+        "fromClassStr": "全部",
+        "toClassStr": "建设用地",
+        "region": "云南省",
+        "top_n": 5
+      },
+      "extract": {
+        "type": "top_regions",
+        "path": "result.computed.topRegions.items",
+        "key": "name",
+        "k": 5
+      }
+    }
+  },
+  {
+    "id": "spatial-simple-002",
+    "category": "spatial_hotspot",
+    "difficulty": "simple",
+    "question": "2010—2020年云南省耕地转为建设用地的县域热点Top5是哪些？",
+    "expected_tools": [
+      "spatial_stats_analysis"
+    ],
+    "expected_args": {
+      "spatial_stats_analysis": {
+        "yearStart": 2010,
+        "yearEnd": 2020,
+        "fromClassStr": "耕地",
+        "toClassStr": "建设用地",
+        "region": "云南省",
+        "top_n": 5
+      }
+    },
+    "baseline": {
+      "tool": "spatial_stats_analysis",
+      "args": {
+        "yearStart": 2010,
+        "yearEnd": 2020,
+        "fromClassStr": "耕地",
+        "toClassStr": "建设用地",
+        "region": "云南省",
+        "top_n": 5
+      },
+      "extract": {
+        "type": "top_regions",
+        "path": "result.computed.topRegions.items",
+        "key": "name",
+        "k": 5
+      }
+    }
+  },
+  {
+    "id": "spatial-simple-003",
+    "category": "spatial_hotspot",
+    "difficulty": "simple",
+    "question": "2000—2023年云南省草地转为建设用地的县域热点Top5是哪些？",
+    "expected_tools": [
+      "spatial_stats_analysis"
+    ],
+    "expected_args": {
+      "spatial_stats_analysis": {
+        "yearStart": 2000,
+        "yearEnd": 2023,
+        "fromClassStr": "草地",
+        "toClassStr": "建设用地",
+        "region": "云南省",
+        "top_n": 5
+      }
+    },
+    "baseline": {
+      "tool": "spatial_stats_analysis",
+      "args": {
+        "yearStart": 2000,
+        "yearEnd": 2023,
+        "fromClassStr": "草地",
+        "toClassStr": "建设用地",
+        "region": "云南省",
+        "top_n": 5
+      },
+      "extract": {
+        "type": "top_regions",
+        "path": "result.computed.topRegions.items",
+        "key": "name",
+        "k": 5
+      }
+    }
+  },
+  {
+    "id": "spatial-simple-004",
+    "category": "spatial_hotspot",
+    "difficulty": "simple",
+    "question": "1990—2020年云南省转为耕地的县域热点Top5是哪些？",
+    "expected_tools": [
+      "spatial_stats_analysis"
+    ],
+    "expected_args": {
+      "spatial_stats_analysis": {
+        "yearStart": 1990,
+        "yearEnd": 2020,
+        "fromClassStr": "全部",
+        "toClassStr": "耕地",
+        "region": "云南省",
+        "top_n": 5
+      }
+    },
+    "baseline": {
+      "tool": "spatial_stats_analysis",
+      "args": {
+        "yearStart": 1990,
+        "yearEnd": 2020,
+        "fromClassStr": "全部",
+        "toClassStr": "耕地",
+        "region": "云南省",
+        "top_n": 5
+      },
+      "extract": {
+        "type": "top_regions",
+        "path": "result.computed.topRegions.items",
+        "key": "name",
+        "k": 5
+      }
+    }
+  },
+  {
+    "id": "spatial-composite-001",
+    "category": "spatial_hotspot",
+    "difficulty": "composite",
+    "question": "2000—2020年云南省转为建设用地活动的空间重心迁移距离是多少？",
+    "expected_tools": [
+      "spatial_stats_analysis"
+    ],
+    "expected_args": {
+      "spatial_stats_analysis": {
+        "yearStart": 2000,
+        "yearEnd": 2020,
+        "fromClassStr": "全部",
+        "toClassStr": "建设用地",
+        "region": "云南省",
+        "top_n": 5
+      }
+    },
+    "baseline": {
+      "tool": "spatial_stats_analysis",
+      "args": {
+        "yearStart": 2000,
+        "yearEnd": 2020,
+        "fromClassStr": "全部",
+        "toClassStr": "建设用地",
+        "region": "云南省",
+        "top_n": 5
+      },
+      "extract": {
+        "type": "numeric",
+        "path": "result.computed.centerShift.distance_km",
+        "unit": "km"
+      }
+    }
+  },
+  {
+    "id": "spatial-composite-002",
+    "category": "spatial_hotspot",
+    "difficulty": "composite",
+    "question": "2010—2023年云南省耕地转为建设用地的空间重心迁移距离是多少？",
+    "expected_tools": [
+      "spatial_stats_analysis"
+    ],
+    "expected_args": {
+      "spatial_stats_analysis": {
+        "yearStart": 2010,
+        "yearEnd": 2023,
+        "fromClassStr": "耕地",
+        "toClassStr": "建设用地",
+        "region": "云南省",
+        "top_n": 5
+      }
+    },
+    "baseline": {
+      "tool": "spatial_stats_analysis",
+      "args": {
+        "yearStart": 2010,
+        "yearEnd": 2023,
+        "fromClassStr": "耕地",
+        "toClassStr": "建设用地",
+        "region": "云南省",
+        "top_n": 5
+      },
+      "extract": {
+        "type": "numeric",
+        "path": "result.computed.centerShift.distance_km",
+        "unit": "km"
+      }
+    }
+  },
+  {
+    "id": "spatial-composite-003",
+    "category": "spatial_hotspot",
+    "difficulty": "composite",
+    "question": "2000—2020年云南省转为建设用地活动末期标准差椭圆面积是多少？",
+    "expected_tools": [
+      "spatial_stats_analysis"
+    ],
+    "expected_args": {
+      "spatial_stats_analysis": {
+        "yearStart": 2000,
+        "yearEnd": 2020,
+        "fromClassStr": "全部",
+        "toClassStr": "建设用地",
+        "region": "云南省",
+        "top_n": 5
+      }
+    },
+    "baseline": {
+      "tool": "spatial_stats_analysis",
+      "args": {
+        "yearStart": 2000,
+        "yearEnd": 2020,
+        "fromClassStr": "全部",
+        "toClassStr": "建设用地",
+        "region": "云南省",
+        "top_n": 5
+      },
+      "extract": {
+        "type": "sde_last_numeric",
+        "path": "result.computed.sdeStatsByPeriod",
+        "field": "area_km2",
+        "unit": "km2"
+      }
+    }
+  },
+  {
+    "id": "spatial-composite-004",
+    "category": "spatial_hotspot",
+    "difficulty": "composite",
+    "question": "2000—2023年云南省草地转为建设用地活动末期标准差椭圆扁率是多少？",
+    "expected_tools": [
+      "spatial_stats_analysis"
+    ],
+    "expected_args": {
+      "spatial_stats_analysis": {
+        "yearStart": 2000,
+        "yearEnd": 2023,
+        "fromClassStr": "草地",
+        "toClassStr": "建设用地",
+        "region": "云南省",
+        "top_n": 5
+      }
+    },
+    "baseline": {
+      "tool": "spatial_stats_analysis",
+      "args": {
+        "yearStart": 2000,
+        "yearEnd": 2023,
+        "fromClassStr": "草地",
+        "toClassStr": "建设用地",
+        "region": "云南省",
+        "top_n": 5
+      },
+      "extract": {
+        "type": "sde_last_numeric",
+        "path": "result.computed.sdeStatsByPeriod",
+        "field": "flattening_ratio",
+        "unit": "ratio"
+      }
+    }
+  },
+  {
+    "id": "spatial-interpretive-001",
+    "category": "spatial_hotspot",
+    "difficulty": "interpretive",
+    "question": "2000—2020年云南省建设用地转入热点格局是否集中在滇中？请依据Top5县域结果解释。",
+    "expected_tools": [
+      "spatial_stats_analysis",
+      "knowledge_base_lookup"
+    ],
+    "expected_args": {
+      "spatial_stats_analysis": {
+        "yearStart": 2000,
+        "yearEnd": 2020,
+        "fromClassStr": "全部",
+        "toClassStr": "建设用地",
+        "region": "云南省",
+        "top_n": 5
+      },
+      "knowledge_base_lookup": {
+        "skill_name": "spatial_reasoning"
+      }
+    },
+    "baseline": {
+      "tool": "spatial_stats_analysis",
+      "args": {
+        "yearStart": 2000,
+        "yearEnd": 2020,
+        "fromClassStr": "全部",
+        "toClassStr": "建设用地",
+        "region": "云南省",
+        "top_n": 5
+      },
+      "extract": {
+        "type": "top_regions",
+        "path": "result.computed.topRegions.items",
+        "key": "name",
+        "k": 5
+      }
+    },
+    "manual_fact_units": [
+      "回答应给出热点县域或空间集聚区",
+      "回答应说明热点格局与空间统计证据之间的关系",
+      "回答应避免仅凭常识推断热点"
+    ]
+  },
+  {
+    "id": "spatial-interpretive-002",
+    "category": "spatial_hotspot",
+    "difficulty": "interpretive",
+    "question": "2010—2023年云南省耕地转为建设用地的重心迁移说明什么空间扩张方向？请引用迁移指标。",
+    "expected_tools": [
+      "spatial_stats_analysis",
+      "knowledge_base_lookup"
+    ],
+    "expected_args": {
+      "spatial_stats_analysis": {
+        "yearStart": 2010,
+        "yearEnd": 2023,
+        "fromClassStr": "耕地",
+        "toClassStr": "建设用地",
+        "region": "云南省",
+        "top_n": 5
+      },
+      "knowledge_base_lookup": {
+        "skill_name": "spatial_reasoning"
+      }
+    },
+    "baseline": {
+      "tool": "spatial_stats_analysis",
+      "args": {
+        "yearStart": 2010,
+        "yearEnd": 2023,
+        "fromClassStr": "耕地",
+        "toClassStr": "建设用地",
+        "region": "云南省",
+        "top_n": 5
+      },
+      "extract": {
+        "type": "numeric",
+        "path": "result.computed.centerShift.distance_km",
+        "unit": "km"
+      }
+    },
+    "manual_fact_units": [
+      "回答应引用重心迁移或标准差椭圆指标",
+      "回答应说明空间方向、离散程度或集聚变化",
+      "回答应区分定量指标与解释性判断"
+    ]
+  },
+  {
+    "id": "spatial-interpretive-003",
+    "category": "spatial_hotspot",
+    "difficulty": "interpretive",
+    "question": "2000—2023年云南省草地转为建设用地的热点格局说明了什么生态空间压力？",
+    "expected_tools": [
+      "spatial_stats_analysis",
+      "knowledge_base_lookup"
+    ],
+    "expected_args": {
+      "spatial_stats_analysis": {
+        "yearStart": 2000,
+        "yearEnd": 2023,
+        "fromClassStr": "草地",
+        "toClassStr": "建设用地",
+        "region": "云南省",
+        "top_n": 5
+      },
+      "knowledge_base_lookup": {
+        "skill_name": "policy_expert"
+      }
+    },
+    "baseline": {
+      "tool": "spatial_stats_analysis",
+      "args": {
+        "yearStart": 2000,
+        "yearEnd": 2023,
+        "fromClassStr": "草地",
+        "toClassStr": "建设用地",
+        "region": "云南省",
+        "top_n": 5
+      },
+      "extract": {
+        "type": "top_regions",
+        "path": "result.computed.topRegions.items",
+        "key": "name",
+        "k": 5
+      }
+    },
+    "manual_fact_units": [
+      "回答应给出热点县域或空间集聚区",
+      "回答应说明热点格局与空间统计证据之间的关系",
+      "回答应避免仅凭常识推断热点"
+    ]
+  },
+  {
+    "id": "spatial-interpretive-004",
+    "category": "spatial_hotspot",
+    "difficulty": "interpretive",
+    "question": "1990—2020年云南省转为建设用地的县域热点与城镇发展格局有什么关系？请用热点结果支撑判断。",
+    "expected_tools": [
+      "spatial_stats_analysis",
+      "knowledge_base_lookup"
+    ],
+    "expected_args": {
+      "spatial_stats_analysis": {
+        "yearStart": 1990,
+        "yearEnd": 2020,
+        "fromClassStr": "全部",
+        "toClassStr": "建设用地",
+        "region": "云南省",
+        "top_n": 5
+      },
+      "knowledge_base_lookup": {
+        "skill_name": "spatial_reasoning"
+      }
+    },
+    "baseline": {
+      "tool": "spatial_stats_analysis",
+      "args": {
+        "yearStart": 1990,
+        "yearEnd": 2020,
+        "fromClassStr": "全部",
+        "toClassStr": "建设用地",
+        "region": "云南省",
+        "top_n": 5
+      },
+      "extract": {
+        "type": "top_regions",
+        "path": "result.computed.topRegions.items",
+        "key": "name",
+        "k": 5
+      }
+    },
+    "manual_fact_units": [
+      "回答应给出热点县域或空间集聚区",
+      "回答应说明热点格局与空间统计证据之间的关系",
+      "回答应避免仅凭常识推断热点"
+    ]
+  }
+]

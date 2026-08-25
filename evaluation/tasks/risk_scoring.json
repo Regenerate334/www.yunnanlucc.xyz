@@ -1,0 +1,434 @@
+[
+  {
+    "id": "risk-simple-001",
+    "category": "risk_scoring",
+    "difficulty": "simple",
+    "question": "2020年昆明市在均衡协同情景下的综合生态风险评分是多少？",
+    "expected_tools": [
+      "clcd_analysis"
+    ],
+    "expected_args": {
+      "clcd_analysis": {
+        "query_type": "monitoring",
+        "region": "昆明市",
+        "level": "prefecture",
+        "year": 2020,
+        "policy": "balanced"
+      }
+    },
+    "baseline": {
+      "tool": "clcd_analysis",
+      "args": {
+        "query_type": "monitoring",
+        "region": "昆明市",
+        "level": "prefecture",
+        "year": 2020,
+        "policy": "balanced"
+      },
+      "extract": {
+        "type": "numeric",
+        "path": "result.compositeScore",
+        "unit": "score"
+      }
+    }
+  },
+  {
+    "id": "risk-simple-002",
+    "category": "risk_scoring",
+    "difficulty": "simple",
+    "question": "2023年云南省在均衡协同情景下的综合生态风险评分是多少？",
+    "expected_tools": [
+      "clcd_analysis"
+    ],
+    "expected_args": {
+      "clcd_analysis": {
+        "query_type": "monitoring",
+        "region": "云南省",
+        "level": "province",
+        "year": 2023,
+        "policy": "balanced"
+      }
+    },
+    "baseline": {
+      "tool": "clcd_analysis",
+      "args": {
+        "query_type": "monitoring",
+        "region": "云南省",
+        "level": "province",
+        "year": 2023,
+        "policy": "balanced"
+      },
+      "extract": {
+        "type": "numeric",
+        "path": "result.compositeScore",
+        "unit": "score"
+      }
+    }
+  },
+  {
+    "id": "risk-simple-003",
+    "category": "risk_scoring",
+    "difficulty": "simple",
+    "question": "2020年曲靖市在生态保护优先情景下的综合生态风险评分是多少？",
+    "expected_tools": [
+      "clcd_analysis"
+    ],
+    "expected_args": {
+      "clcd_analysis": {
+        "query_type": "monitoring",
+        "region": "曲靖市",
+        "level": "prefecture",
+        "year": 2020,
+        "policy": "ecological_protection"
+      }
+    },
+    "baseline": {
+      "tool": "clcd_analysis",
+      "args": {
+        "query_type": "monitoring",
+        "region": "曲靖市",
+        "level": "prefecture",
+        "year": 2020,
+        "policy": "ecological_protection"
+      },
+      "extract": {
+        "type": "numeric",
+        "path": "result.compositeScore",
+        "unit": "score"
+      }
+    }
+  },
+  {
+    "id": "risk-simple-004",
+    "category": "risk_scoring",
+    "difficulty": "simple",
+    "question": "2015年玉溪市在耕地保护优先情景下的综合生态风险评分是多少？",
+    "expected_tools": [
+      "clcd_analysis"
+    ],
+    "expected_args": {
+      "clcd_analysis": {
+        "query_type": "monitoring",
+        "region": "玉溪市",
+        "level": "prefecture",
+        "year": 2015,
+        "policy": "farmland_protection"
+      }
+    },
+    "baseline": {
+      "tool": "clcd_analysis",
+      "args": {
+        "query_type": "monitoring",
+        "region": "玉溪市",
+        "level": "prefecture",
+        "year": 2015,
+        "policy": "farmland_protection"
+      },
+      "extract": {
+        "type": "numeric",
+        "path": "result.compositeScore",
+        "unit": "score"
+      }
+    }
+  },
+  {
+    "id": "risk-composite-001",
+    "category": "risk_scoring",
+    "difficulty": "composite",
+    "question": "2020年昆明市在耕地保护优先情景下的综合生态风险评分及风险状态如何？",
+    "expected_tools": [
+      "clcd_analysis"
+    ],
+    "expected_args": {
+      "clcd_analysis": {
+        "query_type": "monitoring",
+        "region": "昆明市",
+        "level": "prefecture",
+        "year": 2020,
+        "policy": "farmland_protection"
+      }
+    },
+    "baseline": {
+      "tool": "clcd_analysis",
+      "args": {
+        "query_type": "monitoring",
+        "region": "昆明市",
+        "level": "prefecture",
+        "year": 2020,
+        "policy": "farmland_protection"
+      },
+      "extract": {
+        "type": "numeric",
+        "path": "result.compositeScore",
+        "unit": "score"
+      }
+    }
+  },
+  {
+    "id": "risk-composite-002",
+    "category": "risk_scoring",
+    "difficulty": "composite",
+    "question": "2020年昆明市在城镇发展优先情景下的综合生态风险评分是多少？",
+    "expected_tools": [
+      "clcd_analysis"
+    ],
+    "expected_args": {
+      "clcd_analysis": {
+        "query_type": "monitoring",
+        "region": "昆明市",
+        "level": "prefecture",
+        "year": 2020,
+        "policy": "urban_development"
+      }
+    },
+    "baseline": {
+      "tool": "clcd_analysis",
+      "args": {
+        "query_type": "monitoring",
+        "region": "昆明市",
+        "level": "prefecture",
+        "year": 2020,
+        "policy": "urban_development"
+      },
+      "extract": {
+        "type": "numeric",
+        "path": "result.compositeScore",
+        "unit": "score"
+      }
+    }
+  },
+  {
+    "id": "risk-composite-003",
+    "category": "risk_scoring",
+    "difficulty": "composite",
+    "question": "2023年云南省在生态保护优先情景下的综合生态风险评分是多少？",
+    "expected_tools": [
+      "clcd_analysis"
+    ],
+    "expected_args": {
+      "clcd_analysis": {
+        "query_type": "monitoring",
+        "region": "云南省",
+        "level": "province",
+        "year": 2023,
+        "policy": "ecological_protection"
+      }
+    },
+    "baseline": {
+      "tool": "clcd_analysis",
+      "args": {
+        "query_type": "monitoring",
+        "region": "云南省",
+        "level": "province",
+        "year": 2023,
+        "policy": "ecological_protection"
+      },
+      "extract": {
+        "type": "numeric",
+        "path": "result.compositeScore",
+        "unit": "score"
+      }
+    }
+  },
+  {
+    "id": "risk-composite-004",
+    "category": "risk_scoring",
+    "difficulty": "composite",
+    "question": "2020年大理白族自治州在退耕还林导向情景下的综合生态风险评分是多少？",
+    "expected_tools": [
+      "clcd_analysis"
+    ],
+    "expected_args": {
+      "clcd_analysis": {
+        "query_type": "monitoring",
+        "region": "大理白族自治州",
+        "level": "prefecture",
+        "year": 2020,
+        "policy": "reforestation"
+      }
+    },
+    "baseline": {
+      "tool": "clcd_analysis",
+      "args": {
+        "query_type": "monitoring",
+        "region": "大理白族自治州",
+        "level": "prefecture",
+        "year": 2020,
+        "policy": "reforestation"
+      },
+      "extract": {
+        "type": "numeric",
+        "path": "result.compositeScore",
+        "unit": "score"
+      }
+    }
+  },
+  {
+    "id": "risk-interpretive-001",
+    "category": "risk_scoring",
+    "difficulty": "interpretive",
+    "question": "2020年昆明市均衡协同情景下综合生态风险为什么较高或较低？请引用评分和核心指标解释。",
+    "expected_tools": [
+      "clcd_analysis",
+      "knowledge_base_lookup"
+    ],
+    "expected_args": {
+      "clcd_analysis": {
+        "query_type": "monitoring",
+        "region": "昆明市",
+        "level": "prefecture",
+        "year": 2020,
+        "policy": "balanced"
+      },
+      "knowledge_base_lookup": {
+        "skill_name": "monitoring_indices"
+      }
+    },
+    "baseline": {
+      "tool": "clcd_analysis",
+      "args": {
+        "query_type": "monitoring",
+        "region": "昆明市",
+        "level": "prefecture",
+        "year": 2020,
+        "policy": "balanced"
+      },
+      "extract": {
+        "type": "numeric",
+        "path": "result.compositeScore",
+        "unit": "score"
+      }
+    },
+    "manual_fact_units": [
+      "回答应说明均衡协同情景下的综合风险评分",
+      "回答应引用工具返回的核心指标或权重信息",
+      "回答应说明该分值属于相对预警评分而非真实生态过程直接测量"
+    ]
+  },
+  {
+    "id": "risk-interpretive-002",
+    "category": "risk_scoring",
+    "difficulty": "interpretive",
+    "question": "2023年云南省生态保护优先情景下的综合生态风险结果说明什么？请结合评分谨慎解释。",
+    "expected_tools": [
+      "clcd_analysis",
+      "knowledge_base_lookup"
+    ],
+    "expected_args": {
+      "clcd_analysis": {
+        "query_type": "monitoring",
+        "region": "云南省",
+        "level": "province",
+        "year": 2023,
+        "policy": "ecological_protection"
+      },
+      "knowledge_base_lookup": {
+        "skill_name": "monitoring_indices"
+      }
+    },
+    "baseline": {
+      "tool": "clcd_analysis",
+      "args": {
+        "query_type": "monitoring",
+        "region": "云南省",
+        "level": "province",
+        "year": 2023,
+        "policy": "ecological_protection"
+      },
+      "extract": {
+        "type": "numeric",
+        "path": "result.compositeScore",
+        "unit": "score"
+      }
+    },
+    "manual_fact_units": [
+      "回答应说明生态保护优先情景下的综合风险评分",
+      "回答应引用工具返回的核心指标或权重信息",
+      "回答应说明该分值属于相对预警评分而非真实生态过程直接测量"
+    ]
+  },
+  {
+    "id": "risk-interpretive-003",
+    "category": "risk_scoring",
+    "difficulty": "interpretive",
+    "question": "2020年曲靖市耕地保护优先情景下的综合生态风险对耕地保护预警有什么启示？",
+    "expected_tools": [
+      "clcd_analysis",
+      "knowledge_base_lookup"
+    ],
+    "expected_args": {
+      "clcd_analysis": {
+        "query_type": "monitoring",
+        "region": "曲靖市",
+        "level": "prefecture",
+        "year": 2020,
+        "policy": "farmland_protection"
+      },
+      "knowledge_base_lookup": {
+        "skill_name": "policy_expert"
+      }
+    },
+    "baseline": {
+      "tool": "clcd_analysis",
+      "args": {
+        "query_type": "monitoring",
+        "region": "曲靖市",
+        "level": "prefecture",
+        "year": 2020,
+        "policy": "farmland_protection"
+      },
+      "extract": {
+        "type": "numeric",
+        "path": "result.compositeScore",
+        "unit": "score"
+      }
+    },
+    "manual_fact_units": [
+      "回答应说明耕地保护优先情景下的综合风险评分",
+      "回答应引用工具返回的核心指标或权重信息",
+      "回答应说明该分值属于相对预警评分而非真实生态过程直接测量"
+    ]
+  },
+  {
+    "id": "risk-interpretive-004",
+    "category": "risk_scoring",
+    "difficulty": "interpretive",
+    "question": "2020年红河哈尼族彝族自治州城镇发展优先情景下的综合生态风险结果如何解释？",
+    "expected_tools": [
+      "clcd_analysis",
+      "knowledge_base_lookup"
+    ],
+    "expected_args": {
+      "clcd_analysis": {
+        "query_type": "monitoring",
+        "region": "红河哈尼族彝族自治州",
+        "level": "prefecture",
+        "year": 2020,
+        "policy": "urban_development"
+      },
+      "knowledge_base_lookup": {
+        "skill_name": "monitoring_indices"
+      }
+    },
+    "baseline": {
+      "tool": "clcd_analysis",
+      "args": {
+        "query_type": "monitoring",
+        "region": "红河哈尼族彝族自治州",
+        "level": "prefecture",
+        "year": 2020,
+        "policy": "urban_development"
+      },
+      "extract": {
+        "type": "numeric",
+        "path": "result.compositeScore",
+        "unit": "score"
+      }
+    },
+    "manual_fact_units": [
+      "回答应说明城镇发展优先情景下的综合风险评分",
+      "回答应引用工具返回的核心指标或权重信息",
+      "回答应说明该分值属于相对预警评分而非真实生态过程直接测量"
+    ]
+  }
+]
