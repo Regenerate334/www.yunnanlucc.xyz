@@ -17,7 +17,17 @@
     "sync:sld": "node ./ops/geo/gs_sync_all_slds.js",
     "mcp:build:kb": "node ./ops/ai/build_knowledge_graph.js",
     "mcp:build:kg": "node ./ops/ai/build_real_kg.js",
-    "mcp:build": "npm run mcp:build:kb && npm run mcp:build:kg"
+    "mcp:build": "npm run mcp:build:kb && npm run mcp:build:kg",
+    "mcp:check": "node ./ops/sys/check_mcp_system.js",
+    "eval:agent": "node ./evaluation/runEvaluation.js",
+    "eval:summary": "node ./evaluation/summarizeRun.js",
+    "eval:tasks": "node ./evaluation/tasks/buildTaskSet.js",
+    "eval:trace": "node ./evaluation/exportTraceTable.js",
+    "eval:compare": "node ./evaluation/compareRuns.js",
+    "eval:formal72": "node ./evaluation/runFormal72.js",
+    "eval:policy-facts": "node ./evaluation/buildPolicyFactBase.js",
+    "eval:answer-quality": "node ./evaluation/scoreAnswerQuality.js",
+    "eval:paper-tables": "node ./evaluation/exportPaperTables.js"
   },
   "dependencies": {
     "@llamaindex/ollama": "^0.1.23",
