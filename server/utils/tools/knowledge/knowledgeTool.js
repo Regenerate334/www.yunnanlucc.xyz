@@ -16,14 +16,14 @@ const SKILLS_DIR = path.resolve('server/knowledge/skills');
 
 const knowledgeTool = {
     name: 'knowledge_base_lookup',
-    description: '查询系统的专家知识库（专业技能）。当你对 LULC、LUCC 评价指标、空间重心迁移演算规则等业务逻辑不确定时，请务必查询此库。',
-    keywords: ['知识库', '指标定义', '业务逻辑', '算法说明', '专业词汇', '推理规则', '专家建议'],
+    description: '查询系统的专家知识库（专业技能）。用于获取自适应任务路由、LULC 与 LUCC 评价指标、空间推理及政策解释规则。',
+    keywords: ['知识库', '任务路由', '分析深度', '证据链', '指标定义', '业务逻辑', '算法说明', '专业词汇', '推理规则', '专家建议'],
     parameters: {
         type: 'object',
         properties: {
             skill_name: {
                 type: 'string',
-                enum: ['monitoring_indices', 'spatial_reasoning', 'policy_expert'],
+                enum: ['adaptive_analysis', 'monitoring_indices', 'spatial_reasoning', 'policy_expert'],
                 description: '要查询的技能模块名称'
             }
         },
@@ -47,7 +47,7 @@ const knowledgeTool = {
 
     format(data) {
         return [
-            `> ### 📖 [专家知识库] ${data.skill_name} 模块`,
+            `> ### [专家知识库] ${data.skill_name} 模块`,
             '',
             data.content,
             '',
