@@ -1,4 +1,4 @@
-﻿<!--
+<!--
   @component RateRightPanel
   @description 垦殖率/转换率专题监测 - 右侧面板（分布特征 + 阈值分级）
   @props year (保留与 Workbench v-model:year 兼容，不作为专题口径)
@@ -38,13 +38,13 @@
       <div class="divider-line"></div>
 
       <div class="subheader">
-        <span class="sub-title">分布曲线</span>
+        <span class="sub-title">频数分布直方图</span>
         <span class="sub-hint">{{ modeText }}</span>
       </div>
 
       <div class="chart-wrap">
         <div ref="chartRef" class="chart-box"></div>
-        <div v-if="!rows.length" class="empty-hint empty-overlay">暂无分布数据。</div>
+        <div v-if="!histogramData.length" class="empty-hint empty-overlay">暂无分布数据。</div>
       </div>
 
       <div class="insight-box">
@@ -122,6 +122,7 @@ const ctx = computed(() => globalStore.themeContext?.rate || null);
 const params = computed(() => ctx.value?.params || {});
 const stats = computed(() => ctx.value?.stats || { min: 0, max: 0, avg: 0, count: 0 });
 const topUnits = computed(() => Array.isArray(ctx.value?.top_units) ? ctx.value.top_units : []);
+const histogramData = computed(() => Array.isArray(ctx.value?.histogram) ? ctx.value.histogram : []);
 
 const modeText = computed(() => {
   const attr = params.value?.attribute;
@@ -160,11 +161,7 @@ const rangeRate = computed(() => {
 });
 
 const stdRate = computed(() => {
-  const vals = rows.value.map((r) => r.value).filter((v) => Number.isFinite(v));
-  if (vals.length <= 1) return 0;
-  const mean = vals.reduce((s, v) => s + v, 0) / vals.length;
-  const variance = vals.reduce((s, v) => s + ((v - mean) ** 2), 0) / vals.length;
-  return Math.sqrt(variance);
+  return Number(stats.value?.std || 0);
 });
 
 const top3Share = computed(() => {
@@ -462,22 +459,21 @@ function initChart() {
 
 function updateChart() {
   if (!chartInstance.value) return;
-  if (!rows.value.length) {
+  if (!histogramData.value.length) {
     chartInstance.value.clear();
     return;
   }
 
-  const vals = rows.value.map((r) => r.value);
-  const max = Math.max(...vals, 0);
-  const avg = Number(stats.value?.avg || 0);
-  const maxAxis = max > 0 ? Number((max * 1.2).toFixed(6)) : 1;
+  const counts = histogramData.value.map((item) => item.count);
+  const maxCount = Math.max(...counts, 0);
+  const maxAxis = maxCount > 0 ? Math.ceil(maxCount * 1.15) : 5;
 
   chartInstance.value.setOption({
     backgroundColor: 'transparent',
     animationDuration: 700,
     animationEasing: 'cubicOut',
     grid: {
-      top: 20,
+      top: 25,
       left: 8,
       right: 12,
       bottom: 8,
@@ -485,34 +481,42 @@ function updateChart() {
     },
     tooltip: {
       trigger: 'axis',
-      axisPointer: { type: 'cross' },
+      axisPointer: { type: 'shadow' },
       backgroundColor: 'rgba(4, 21, 51, 0.9)',
       borderColor: 'rgba(96, 165, 250, 0.45)',
       textStyle: { color: '#fff' },
       formatter: (params) => {
         const idx = Number(params?.[0]?.dataIndex ?? 0);
-        const row = rows.value[idx];
-        if (!row) return '';
-        return `${row.name}<br/>${modeText.value}：${fmtPct(row.value)}%`;
+        const item = histogramData.value[idx];
+        if (!item) return '';
+        const minPct = (item.min * 100).toFixed(2);
+        const maxPct = (item.max * 100).toFixed(2);
+        return `区间: ${minPct}% - ${maxPct}%<br/>县市数量: <b>${item.count}</b> 个`;
       }
     },
     xAxis: {
       type: 'category',
-      data: rows.value.map((r) => shortName(r.name)),
+      data: histogramData.value.map((item) => {
+        const minPct = (item.min * 100).toFixed(1);
+        const maxPct = (item.max * 100).toFixed(1);
+        return `${minPct}-${maxPct}%`;
+      }),
       axisTick: { show: false },
       axisLine: {
         lineStyle: { color: 'rgba(255, 255, 255, 0.22)' }
       },
       axisLabel: {
         color: 'rgba(255,255,255,0.82)',
-        fontSize: 11,
-        interval: 0
+        fontSize: 9,
+        interval: 0,
+        rotate: 15
       }
     },
     yAxis: {
       type: 'value',
       min: 0,
       max: maxAxis,
+      minInterval: 1,
       splitLine: {
         lineStyle: { color: 'rgba(59,130,246,0.12)', type: 'dashed' }
       },
@@ -521,45 +525,31 @@ function updateChart() {
       axisLabel: {
         color: 'rgba(255,255,255,0.66)',
         fontSize: 10,
-        formatter: (v) => `${fmtPct(v)}%`
+        formatter: (v) => `${v}个`
       }
     },
     series: [
       {
-        name: modeText.value,
-        type: 'line',
-        smooth: true,
-        symbol: 'circle',
-        symbolSize: 7,
-        data: rows.value.map((r) => Number(r.value.toFixed(6))),
-        lineStyle: {
-          width: 3,
-          color: 'rgba(96,165,250,0.95)'
-        },
+        name: '分布数量',
+        type: 'bar',
+        barWidth: '60%',
+        data: counts,
         itemStyle: {
-          color: 'rgba(219,234,254,0.96)',
-          borderColor: 'rgba(30,64,175,0.75)',
+          color: new echarts.graphic.LinearGradient(0, 0, 0, 1, [
+            { offset: 0, color: 'rgba(0, 245, 255, 0.85)' },
+            { offset: 1, color: 'rgba(59, 130, 246, 0.25)' }
+          ]),
+          borderRadius: [3, 3, 0, 0],
+          borderColor: 'rgba(0, 245, 255, 0.4)',
           borderWidth: 1
         },
-        areaStyle: {
-          color: new echarts.graphic.LinearGradient(0, 0, 0, 1, [
-            { offset: 0, color: 'rgba(59,130,246,0.28)' },
-            { offset: 1, color: 'rgba(59,130,246,0.03)' }
-          ])
-        },
-        markLine: {
-          silent: true,
-          symbol: 'none',
-          label: {
-            formatter: `均值 ${fmtPct(avg)}%`,
-            color: 'rgba(219,234,254,0.9)',
-            fontSize: 10
-          },
-          lineStyle: {
-            color: 'rgba(147,197,253,0.86)',
-            type: 'dashed'
-          },
-          data: [{ yAxis: Number(avg.toFixed(6)) }]
+        emphasis: {
+          itemStyle: {
+            color: new echarts.graphic.LinearGradient(0, 0, 0, 1, [
+              { offset: 0, color: 'rgba(0, 245, 255, 1)' },
+              { offset: 1, color: 'rgba(59, 130, 246, 0.45)' }
+            ])
+          }
         }
       }
     ]
@@ -593,7 +583,7 @@ onUnmounted(() => {
 });
 
 watch(
-  () => [rows.value, modeText.value, stats.value?.avg, stats.value?.max, stats.value?.min],
+  () => [histogramData.value, modeText.value, stats.value?.avg, stats.value?.max, stats.value?.min],
   async () => {
     await nextTick();
     if (!chartInstance.value && chartRef.value) initChart();
