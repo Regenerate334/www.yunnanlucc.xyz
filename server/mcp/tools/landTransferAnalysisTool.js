@@ -6,6 +6,7 @@
 
 import { z } from 'zod';
 import transferTool from '../../utils/tools/analysis/transferTool.js';
+import { toMcpToolError, toMcpToolResponse } from '../utils/toolResponse.js';
 
 export function registerLandTransferAnalysisTool(server) {
   server.tool(
@@ -19,10 +20,20 @@ export function registerLandTransferAnalysisTool(server) {
       period: z.string().optional().describe('周期编码，如 y0023')
     },
     async (args) => {
-      const result = await transferTool.query(args, {}, 2023);
-      const text = transferTool.format(result, {});
-      return { content: [{ type: 'text', text }] };
+      try {
+        const result = await transferTool.query(args, {}, 2023);
+        const text = transferTool.format(result, {});
+        return toMcpToolResponse({
+          text,
+          structuredContent: {
+            tool: 'land_transfer_analysis',
+            args,
+            result
+          }
+        });
+      } catch (err) {
+        return toMcpToolError(err, '土地利用转移分析失败');
+      }
     }
   );
 }
-
