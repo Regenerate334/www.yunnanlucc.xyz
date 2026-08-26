@@ -27,7 +27,8 @@
 4. 同一 session 内不得直接复用之前的数值结论：每个“为什么 + 数值”问题都应至少做一次工具核验。
 5. **政策与规划的“引用规则”**（新增硬约束）：
    - 只要回答中出现“某年/某政策/某规划/某通知/某意见”等确定性表述，必须先调用 `policy_reference_lookup` 或 `knowledge_graph_query` 检索到对应条目或节点。
-   - 正文中必须列出 `来源:` 链接（sources）。
+   - `policy_reference_lookup` 命中后，服务端会从条目的 `sources` 自动调用 `web_fetch` 读取完整提取正文；用户直接提供 URL 时则必须调用 `web_fetch(url=<用户链接>)`。不得自行猜测或拼接来源网址。
+   - 正文中必须列出 `来源:` 链接（本地索引或网页读取结果中的 sources/final_url）。
    - 若工具未命中：必须改为“系统政策库未检索到匹配条目”的表述，只能给出一般性解释假设，并建议用户补充关键词或扩大年份范围。
 
 ## 3. 意图 → 工具路由表
@@ -39,6 +40,7 @@
 | 解释“某地排名变化” | `clcd_analysis(query_type="ranking"/"comparison")` | 先拿到排名/对比数据，再解释可能的管控与发展逻辑 |
 | 解释“某类转化异常强（林→耕、耕→建）” | `land_transfer_analysis` 或 `spatial_stats_analysis` | 先确定主导转化路径与空间核心，再解释政策/产业驱动 |
 | 需要引用“重大政策/规划批复/三条控制线/用途管制” | `policy_reference_lookup`（必要时 `knowledge_graph_query`） | 先检索到条目与来源链接，再把它作为解释层证据引用 |
+| 需要核对政策原文或补充公开文献正文 | `policy_reference_lookup` → `web_fetch` | 仅读取 sources 中的 URL 或白名单内权威公开来源，并列出 `来源:` |
 | 需要回答“知识图谱里有什么关系/节点” | `knowledge_graph_query` | 先给出 node_id/关系，再结合业务工具解释与验证 |
 
 ## 4. 参数填写范式（建议）
@@ -83,6 +85,7 @@
 
 - 检索工具：`policy_reference_lookup(region?, year?, year_range?, keywords?, level?, top_n?)`
 - 输出要求：工具返回的每条命中必须包含 `来源:`（sources URL），正文引用时也必须把链接列出来。
+- 原文读取工具：`web_fetch(url)`。优先传入政策库命中的 `sources` URL；工具只读取 HTTPS 公开页面并返回完整提取正文，不执行网页脚本，不访问本机或私有网络。政策索引命中后，服务端会自动读取相关来源正文并回灌给模型。
 - 推荐关键词：
   - 国土空间规划/多规合一/用途管制/三条控制线/生态保护红线/永久基本农田/城镇开发边界
   - 耕地保护/占补平衡/非农化/非粮化
