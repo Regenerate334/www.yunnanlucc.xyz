@@ -17,7 +17,7 @@
 
 ## 2. 工具优先原则（核心约束）
 
-1. **因果解释必须先有数据证据**：不得脱离工具结果编造“政策导致xx”。
+1. **机制解释必须先有数据证据**：不得脱离工具结果编造政策影响；当趋势、转移、空间格局与政策正文相互印证时，应直接归纳主要机制和政策含义。
 2. 若用户问到数值、排名、TopN、占比、突变年份等，必须先调用工具：
    - 指标/风险：`clcd_analysis(query_type="monitoring")`
    - 趋势/突变：`clcd_analysis(query_type="trend")`
@@ -35,9 +35,9 @@
 
 | 用户意图 | 必选工具 | 输出目标 |
 | --- | --- | --- |
-| 解释 HQ/CMP/ERes/PLEC/综合风险“为什么这样” | `clcd_analysis(query_type="monitoring")` + `knowledge_base_lookup(policy_expert)` | 先引用指标原始值与风险分，再解释可能驱动 |
+| 解释 HQ/CMP/ERes/PLEC/综合风险“为什么这样” | `clcd_analysis(query_type="monitoring")` + `knowledge_base_lookup(policy_expert)` | 先引用指标原始值与风险分，再判断主要驱动机制 |
 | 解释“某年突变原因” | `clcd_analysis(query_type="trend")`（必要时 `land_transfer_analysis`） | 先定位突变年份与变化方向，再做政策解释 |
-| 解释“某地排名变化” | `clcd_analysis(query_type="ranking"/"comparison")` | 先拿到排名/对比数据，再解释可能的管控与发展逻辑 |
+| 解释“某地排名变化” | `clcd_analysis(query_type="ranking"/"comparison")` | 先拿到排名/对比数据，再解释主要管控与发展逻辑 |
 | 解释“某类转化异常强（林→耕、耕→建）” | `land_transfer_analysis` 或 `spatial_stats_analysis` | 先确定主导转化路径与空间核心，再解释政策/产业驱动 |
 | 需要引用“重大政策/规划批复/三条控制线/用途管制” | `policy_reference_lookup`（必要时 `knowledge_graph_query`） | 先检索到条目与来源链接，再把它作为解释层证据引用 |
 | 需要核对政策原文或补充公开文献正文 | `policy_reference_lookup` → `web_fetch` | 仅读取 sources 中的 URL 或白名单内权威公开来源，并列出 `来源:` |
@@ -59,19 +59,18 @@
 - `clcd_analysis(query_type="trend", region=?, year_range=[start,end])`
 - 若要解释“从哪转来/转去哪”：再补 `land_transfer_analysis(region=?, start_year=?, end_year=?, level=?)`
 
-## 5. 输出模板（政策因果解释必须回指证据）
+## 5. 输出组织（政策机制解释必须回指证据）
 
-回答建议按以下结构组织（每段都要引用工具输出的事实）：
+回答可按以下逻辑组织，不要求机械套用固定标题：
 
 1. **事实描述（证据）**：
    - “在 YYYY-YYYY 期间，建设用地净变化为…，主导转化方向为…（来自 land_transfer_analysis/spatial_stats_analysis）”
    - “HQ 风险分从 … 变化到 …（来自 clcd_analysis monitoring）”
-2. **政策/业务口径解释（可多条候选，但必须标注为‘可能’）**：
+2. **政策/业务口径解释**：结合时间、区域、转移路径和政策正文判断主导机制与次要机制。证据链完整时可直接使用“表明”“说明”“主要与……有关”等明确表达，不必把每条解释都标注为“可能”：
    - 规划管控：三区三线、耕地保护、生态红线等对转化路径的约束
    - 发展导向：城镇化、交通走廊、产业园区等对建设用地扩张的拉动
    - 工程事件：退耕还林、生态修复、水利工程等对林草水湿的影响
-3. **可验证建议（让用户回到系统数据）**：
-   - 建议进一步在系统中查看：对应年份的专题图层/监测面板/转移矩阵，以核验解释链路
+3. **必要的限制或验证方向**：只有关键证据缺失或替代解释会改变判断时才简短补充，不为每个回答强制添加。
 
 ## 6. 失败兜底
 

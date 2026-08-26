@@ -182,46 +182,73 @@ export const ANALYSIS_TEMPLATES = {
  * 快捷问题生成
  */
 export function generateQuickQuestions(type, params = {}) {
-    const { region = '云南省', year = 2023, landType = '耕地' } = params;
+    return generateQuickQuestionRows(type, params).flat();
+}
 
-    switch (type) {
-        case 'pie':
-            return [
-                ANALYSIS_TEMPLATES.pieStructure(region, year),
-                `${region}哪种地类占比最大？请结合空间分布详细说明`,
-                `分析${region}建设用地的占比，并评价其城市化水平`,
-                `${region}${year}年是否存在某类地类面积异常波动？`,
-                `计算${region}的生态用地总占比（林地+草地+水域）`,
-                ANALYSIS_TEMPLATES.ecologicalAssess(region, year)
-            ];
-        case 'trend':
-            return [
-                ANALYSIS_TEMPLATES.trendOverview(region),
-                ANALYSIS_TEMPLATES.trendDetail(region, landType),
-                ANALYSIS_TEMPLATES.policyAdvice(region),
-                `${region}哪一年建设用地增长最快？`,
-                `耕地减少的主要原因是什么？`,
-                `预测未来土地利用变化趋势`,
-                `哪些地类变化最剧烈？`,
-                `生态用地是否在扩张？`
-            ];
-        case 'regional':
-            return [
-                ANALYSIS_TEMPLATES.regionalCompare(year),
-                `对比 ${region || '昆明和曲靖'} 的土地利用动态度排名`,
-                `找出 ${year} 年建设用地扩张最快的前三个地区`,
-                `分析云南省边境地区（如西双版纳、德宏）的土地利用特点`,
-                `评价各地地级市的耕地保有量达成情况`,
-                `研究区域生产总值与建设用地扩张的关联性`
-            ];
-        default:
-            return [
-                '分析当前玉溪市土地利用结构',
-                '对比昆明和曲靖的耕地变化趋势',
-                '分析西双版纳建设用地扩张特点',
-                '评估全省生态环境质量演变情况',
-                '针对滇中城市群提出土地利用政策建议',
-                '预测云南省 2030 年土地利用空间格局'
-            ];
-    }
+/**
+ * 按分析深度生成三行预设问题：直接查询、过程分析、综合研判。
+ */
+export function generateQuickQuestionRows(type, params = {}) {
+    const { region = '云南省', year = 2023, landType = '耕地' } = params;
+    const targetRegion = String(region || '云南省').trim();
+    const targetYear = Number.isFinite(Number(year)) ? Number(year) : 2023;
+    const targetLandType = String(landType || '耕地').trim();
+
+    const contextualPrompts = {
+        pie: [
+            ANALYSIS_TEMPLATES.pieStructure(targetRegion, targetYear),
+            `比较${targetRegion}主要地类的结构变化与生态用地演变`,
+            `综合评价${targetRegion}土地利用结构的合理性及其优化方向`
+        ],
+        trend: [
+            `查询${targetRegion}${targetYear}年${targetLandType}面积及占比`,
+            ANALYSIS_TEMPLATES.trendOverview(targetRegion),
+            `综合解释${targetRegion}${targetLandType}演变的阶段、转移路径与主要机制`
+        ],
+        regional: [
+            `查询云南省各地级市${targetYear}年土地利用结构`,
+            ANALYSIS_TEMPLATES.regionalCompare(targetYear),
+            `综合研判云南省区域土地利用分异、生态风险与差异化治理重点`
+        ]
+    }[type] || [
+        `查询${targetRegion}${targetYear}年土地利用结构`,
+        `分析${targetRegion}长时序土地利用演变与主要转移路径`,
+        `综合研判${targetRegion}土地利用变化、生态风险与国土空间治理方向`
+    ];
+
+    return [
+        [
+            contextualPrompts[0],
+            `${targetRegion}${targetYear}年面积最大的地类是什么`,
+            `查询${targetRegion}${targetYear}年耕地、林地和建设用地面积`,
+            `列出${targetRegion}${targetYear}年各类土地面积及占比`,
+            `查询${targetRegion}${targetYear}年生态用地占比`,
+            `查询${targetRegion}${targetYear}年生境质量与生态韧性指标`,
+            `查看${targetRegion}${targetYear}年综合监测预警状态`,
+            `查询云南省各地级市${targetYear}年建设用地面积排名`,
+            `检索“三区三线”相关政策文件及正文`
+        ],
+        [
+            contextualPrompts[1],
+            `对比${targetRegion}2000年与${targetYear}年土地利用结构变化`,
+            `分析${targetRegion}1985—${targetYear}年建设用地增长阶段`,
+            `计算${targetRegion}2000—2020年土地利用转移矩阵`,
+            `分析${targetRegion}耕地减少的主要转出方向`,
+            `识别${targetRegion}建设用地扩张的主要土地来源`,
+            `分析${targetRegion}土地利用变化的县域集中格局`,
+            `对比昆明市与曲靖市耕地变化趋势及阶段差异`,
+            `分析${targetRegion}土地利用重心迁移与标准差椭圆特征`
+        ],
+        [
+            contextualPrompts[2],
+            `结合趋势、转移矩阵和空间分异解释${targetRegion}建设用地扩张机制`,
+            `综合分析${targetRegion}耕地变化、主要流向及耕地保护压力`,
+            `结合熵权结果研判${targetRegion}生态风险的主要贡献指标`,
+            `结合土地变化证据与政策正文研判“三区三线”的治理响应`,
+            `比较滇中城市群土地扩张路径、空间集聚与生态风险差异`,
+            `分析${targetRegion}生态用地演变、土地转移过程及政策作用机制`,
+            `形成${targetRegion}土地利用监测、预警与空间治理综合报告`,
+            `基于长时序证据提出${targetRegion}分区分类的国土空间优化建议`
+        ]
+    ];
 }
