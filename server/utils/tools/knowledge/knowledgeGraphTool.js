@@ -289,7 +289,7 @@ const knowledgeGraphTool = {
     },
 
     format(data) {
-        const title = `> ### 🧩 [知识图谱] knowledge_graph_query (${data.mode || 'unknown'})`;
+        const title = `> ### [知识图谱] knowledge_graph_query (${data.mode || 'unknown'})`;
         if (data.error) {
             return [
                 title,
