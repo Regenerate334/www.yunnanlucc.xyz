@@ -26,8 +26,8 @@ import { generateDeepSeekText, isDeepSeekOfficialModel } from './deepseekClient.
 /**
  * 动态获取模型配置，确保在 dotenv 加载后读取最新值
  */
-export const getReportModel = () => process.env.REPORT_MODEL || process.env.CHAT_MODEL || process.env.OLLAMA_MODEL || 'deepseek-v4-flash';
-export const getChatModel = () => process.env.CHAT_MODEL || process.env.OLLAMA_MODEL || 'deepseek-v4-flash';
+export const getReportModel = () => process.env.REPORT_MODEL || process.env.CHAT_MODEL || process.env.OLLAMA_MODEL || 'deepseek-v4-pro';
+export const getChatModel = () => process.env.CHAT_MODEL || process.env.OLLAMA_MODEL || 'deepseek-v4-pro';
 
 /**
  * 非流式调用：让模型输出纯 JSON。
@@ -56,7 +56,9 @@ export async function generateText(messages, opts = {}) {
                     model,
                     temperature: 0.2,
                     topP: 0.9,
-                    maxTokens: opts.maxTokens || Math.min(numCtx, 4096)
+                    ...(Number.isFinite(Number(opts.maxTokens)) && Number(opts.maxTokens) > 0
+                        ? { maxTokens: Number(opts.maxTokens) }
+                        : {})
                 });
                 logger.info(`[aiClient] DeepSeek 调用成功，输出长度: ${content.length}`);
                 return content;

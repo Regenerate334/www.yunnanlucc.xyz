@@ -11,22 +11,24 @@ import { ToolCallLLM } from '@llamaindex/core/llms';
 import { extractText } from '@llamaindex/core/utils';
 
 const DEFAULT_DEEPSEEK_BASE_URL = 'https://api.deepseek.com';
-const DEFAULT_DEEPSEEK_MODEL = 'deepseek-v4-flash';
-// DeepSeek 官方接口在高峰期可能出现排队/超时；给一个可配置的客户端超时，
-// 以便更快触发重试/降级，避免长时间挂起。
-const DEFAULT_DEEPSEEK_REQUEST_TIMEOUT_MS = 115000;
+const DEFAULT_DEEPSEEK_MODEL = 'deepseek-v4-pro';
 const LEGACY_CLOUD_MODELS = new Set([
   'deepseek-v3.1:671b-cloud',
   'deepseek-v3.1-671b-cloud',
   'deepseek-v3.1 671b',
-  'deepseek-v4-flash'
+  'deepseek-v4-flash',
+  'deepseek-v4-pro'
 ]);
 
 const normalizeModelName = (model = '') => String(model).trim().toLowerCase();
+const normalizeOptionalMaxTokens = (value) => {
+  const parsed = Number(value);
+  return Number.isFinite(parsed) && parsed > 0 ? Math.floor(parsed) : undefined;
+};
 const getDeepSeekRequestTimeoutMs = () => {
   const raw = process.env.DEEPSEEK_REQUEST_TIMEOUT_MS ?? process.env.DEEPSEEK_TIMEOUT_MS;
   const value = Number(raw);
-  if (!Number.isFinite(value) || value <= 0) return DEFAULT_DEEPSEEK_REQUEST_TIMEOUT_MS;
+  if (!Number.isFinite(value) || value <= 0) return null;
   return Math.floor(value);
 };
 
@@ -143,7 +145,6 @@ export class DeepSeekOfficialLLM extends ToolCallLLM {
     this.options = {
       temperature: 0.1,
       top_p: 0.9,
-      max_tokens: 4096,
       ...params.options
     };
     this.supportToolCall = true;
@@ -154,8 +155,8 @@ export class DeepSeekOfficialLLM extends ToolCallLLM {
       model: this.model,
       temperature: this.options.temperature,
       topP: this.options.top_p,
-      maxTokens: this.options.max_tokens,
-      contextWindow: 32768,
+      maxTokens: normalizeOptionalMaxTokens(this.options.max_tokens),
+      contextWindow: 1_000_000,
       tokenizer: undefined,
       structuredOutput: true
     };
@@ -171,9 +172,11 @@ export class DeepSeekOfficialLLM extends ToolCallLLM {
       messages: toDeepSeekMessages(params.messages),
       stream,
       temperature: this.options.temperature,
-      top_p: this.options.top_p,
-      max_tokens: this.options.max_tokens
+      top_p: this.options.top_p
     };
+
+    const maxTokens = normalizeOptionalMaxTokens(this.options.max_tokens);
+    if (maxTokens !== undefined) payload.max_tokens = maxTokens;
 
     if (params.tools?.length) {
       payload.tools = toDeepSeekTools(params.tools);
@@ -279,7 +282,7 @@ export async function requestDeepSeekChat(payload, baseURL = process.env.DEEPSEE
   const normalizedBaseURL = baseURL.replace(/\/$/, '');
   const timeoutMs = getDeepSeekRequestTimeoutMs();
   const controller = new AbortController();
-  const timeoutId = setTimeout(() => controller.abort(), timeoutMs);
+  const timeoutId = timeoutMs ? setTimeout(() => controller.abort(), timeoutMs) : null;
 
   let response;
   try {
@@ -307,7 +310,7 @@ export async function requestDeepSeekChat(payload, baseURL = process.env.DEEPSEE
     }
     throw err;
   } finally {
-    clearTimeout(timeoutId);
+    if (timeoutId) clearTimeout(timeoutId);
   }
 
   if (!response.ok) throw await parseDeepSeekError(response);
@@ -320,9 +323,11 @@ export async function createDeepSeekChatCompletion({ model, messages, tools = []
     messages: toDeepSeekMessages(messages),
     stream,
     temperature: options.temperature ?? 0.1,
-    top_p: options.top_p ?? 0.9,
-    max_tokens: options.max_tokens ?? 4096
+    top_p: options.top_p ?? 0.9
   };
+
+  const maxTokens = normalizeOptionalMaxTokens(options.max_tokens);
+  if (maxTokens !== undefined) payload.max_tokens = maxTokens;
 
   // DeepSeek V4: thinking mode is controlled via `thinking`, with optional `reasoning_effort`.
   // (When thinking mode is enabled and tool-calls happen, callers must round-trip reasoning_content.)
@@ -349,7 +354,9 @@ export async function generateDeepSeekText(messages, opts = {}) {
     options: {
       temperature: opts.temperature ?? 0.2,
       top_p: opts.topP ?? 0.9,
-      max_tokens: opts.maxTokens ?? 4096
+      ...(normalizeOptionalMaxTokens(opts.maxTokens) !== undefined
+        ? { max_tokens: normalizeOptionalMaxTokens(opts.maxTokens) }
+        : {})
     }
   });
   const response = await llm.chat({
