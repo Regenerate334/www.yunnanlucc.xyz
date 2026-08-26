@@ -123,7 +123,7 @@ export async function analyzeDataStream({ messages, year, landData, componentCon
                     const data = JSON.parse(line.slice(6));
                     if (!data) continue;
 
-                    if (data.content || data.thinking || data.workflow) {
+                    if (data.content || data.thinking || data.workflow || data.trace) {
                         onChunk?.(data);
                     }
                     if (data.done) {
@@ -142,7 +142,7 @@ export async function analyzeDataStream({ messages, year, landData, componentCon
         if (buffer && buffer.startsWith('data: ')) {
             try {
                 const data = JSON.parse(buffer.slice(6));
-                if (data.content || data.thinking || data.workflow) onChunk?.(data);
+                if (data.content || data.thinking || data.workflow || data.trace) onChunk?.(data);
                 if (data.done) emitDone();
             } catch (e) { }
         }
