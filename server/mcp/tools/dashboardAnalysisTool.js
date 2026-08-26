@@ -4,6 +4,7 @@
 
 import { z } from 'zod';
 import dashboardTool from '../../utils/tools/analysis/dashboardTool.js';
+import { toMcpToolError, toMcpToolResponse } from '../utils/toolResponse.js';
 
 export function registerDashboardAnalysisTool(server) {
   server.tool(
@@ -15,9 +16,20 @@ export function registerDashboardAnalysisTool(server) {
       level: z.enum(['province', 'prefecture', 'county']).optional().describe('行政级别')
     },
     async (args) => {
-      const result = await dashboardTool.query(args, {}, args.year || 2023);
-      const text = dashboardTool.format(result, {});
-      return { content: [{ type: 'text', text }] };
+      try {
+        const result = await dashboardTool.query(args, {}, args.year || 2023);
+        const text = dashboardTool.format(result, {});
+        return toMcpToolResponse({
+          text,
+          structuredContent: {
+            tool: 'dashboard_analysis',
+            args,
+            result
+          }
+        });
+      } catch (err) {
+        return toMcpToolError(err, '仪表盘综合分析失败');
+      }
     }
   );
 }
