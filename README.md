@@ -127,7 +127,6 @@ AI 决策模块采用数据计算与语义知识双轨协同机制。通过轻�
 | **LlamaIndex** | 0.12.1 | ReAct Agent 编排框架 |
 | **MCP SDK** | 1.29.0 | Model Context Protocol 协议适配 |
 | **DeepSeek API / Ollama** | V4 / 本地 | 云端与本地多模型推理调度 |
-| **Puppeteer** | 24.38.0 | 分析简报自动化排版与 PDF 导出 |
 | **Winston** | 3.19.0 | 分级日志记录与轮转 |
 | **PM2** | 集成 | 生产环境守护进程与服务管理 |
 
@@ -217,4 +216,4 @@ npm run stop:all            # 停止全套进程
 - [评价算法范式说明](./docs/algorithms/LUCC_Algorithms_2021_2026.md)
 - [预警方法论](./docs/algorithms/LUCC_warning_method_paper_ready_2026-04-21.md)
 - [AI 分析工作流](./docs/architecture/ai_analysis_workflow.md)
-- [GeoAI Agent 定量评价套件](./ops/ai/evaluation/README.md)
+- [GeoAI Agent 定量评价套件](./evaluation/README.md)

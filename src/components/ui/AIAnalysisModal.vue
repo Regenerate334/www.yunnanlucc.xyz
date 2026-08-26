@@ -13,8 +13,8 @@
     </transition>
 
     <transition name="modal-fade">
-      <div v-if="visible" class="ai-modal-container" @click.stop>
-        <div class="sidebar">
+      <div v-if="visible" class="ai-modal-container" :class="{ 'is-sidebar-resizing': isSidebarResizing }" @click.stop>
+        <div class="sidebar" :style="{ width: `${sidebarWidth}px` }">
             <div class="sidebar-header">
               <button class="new-chat-btn" @click="resetToNewChat">
                 <div class="plus-circle">
@@ -44,6 +44,22 @@
             </div>
           </div>
 
+          <div
+            class="sidebar-resizer"
+            role="separator"
+            tabindex="0"
+            aria-label="调整会话列表宽度"
+            :aria-valuenow="sidebarWidth"
+            :aria-valuemin="SIDEBAR_MIN_WIDTH"
+            :aria-valuemax="SIDEBAR_MAX_WIDTH"
+            @pointerdown.prevent="startSidebarResize"
+            @keydown="handleSidebarResizeKeydown"
+            @dblclick="resetSidebarWidth"
+            title="拖动调整会话列表宽度，双击恢复默认宽度"
+          >
+            <span aria-hidden="true"></span>
+          </div>
+
           <div class="main-content">
             <div class="ai-modal-header">
               <button class="close-btn" @click="handleClose" title="关闭">
@@ -53,7 +69,7 @@
               </button>
             </div>
 
-            <div class="ai-modal-body" :class="{ 'no-scroll': messages.length === 0 }" ref="messagesContainer">
+            <div class="ai-modal-body" :class="{ 'no-scroll': messages.length === 0 }" ref="messagesContainer" @scroll="handleMessagesScroll">
               <div v-if="messages.length === 0" class="welcome-container">
                 <div class="welcome-section">
                   <svg :width="160" :height="160" viewBox="0 0 1089 1024" xmlns="http://www.w3.org/2000/svg" class="welcome-logo">
@@ -143,7 +159,7 @@
               <div v-for="(msg, index) in messages" :key="index" :class="['message', msg.role]">
                 <div class="bubble-wrapper">
                   <div
-                    v-if="msg.role === 'assistant' && (parseMessage(msg).thinking || (loading && index === messages.length - 1))"
+                    v-if="msg.role === 'assistant' && parseMessage(msg).trace.length === 0 && (parseMessage(msg).thinking || (loading && index === messages.length - 1))"
                     class="thinking-process">
                     <div
                       class="thinking-header"
@@ -152,8 +168,8 @@
                       @click="toggleThinking(index)"
                       @keydown.enter.stop="toggleThinking(index)"
                       @keydown.space.prevent.stop="toggleThinking(index)"
-                      :aria-expanded="expandedThinking[index] !== false"
-                      :title="expandedThinking[index] !== false ? '点击折叠思考过程' : '点击展开思考过程'"
+                      :aria-expanded="expandedThinking[index] === true"
+                      :title="expandedThinking[index] === true ? '点击折叠思考过程' : '点击展开思考过程'"
                     >
                       <div class="thinking-title">
                         <!-- 默认显示灯泡 icon -->
@@ -167,45 +183,191 @@
                             d="M12 2a7 7 0 0 0-7 7c0 2.38 1.19 4.47 3 5.74V17a1 1 0 0 0 1 1h6a1 1 0 0 0 1-1v-2.26c1.81-1.27 3-3.36 3-5.74a7 7 0 0 0-7-7z">
                           </path>
                         </svg>
-                        <span v-if="loading && index === messages.length - 1">AI 正在深度思考...</span>
-                        <span v-else>耗时 {{ msg.thinkTime || '几' }} 秒完成分析</span>
+                        <span v-if="loading && index === messages.length - 1">正在形成分析判断...</span>
+                        <span v-else>分析用时 {{ msg.thinkTime || '几' }} 秒</span>
 
                         <!-- 展开/折叠箭头 -->
-                        <svg class="arrow-icon-svg" :class="{ open: expandedThinking[index] !== false }" width="16" height="16"
+                        <svg class="arrow-icon-svg" :class="{ open: expandedThinking[index] === true }" width="16" height="16"
                           viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"
                           stroke-linejoin="round">
                           <polyline points="6 9 12 15 18 9"></polyline>
                         </svg>
                       </div>
                     </div>
-                    <div v-if="parseMessage(msg).thinking && expandedThinking[index] !== false" class="thinking-content">
-                      {{ parseMessage(msg).thinking }}
+                    <div v-if="parseMessage(msg).thinking && expandedThinking[index] === true" class="thinking-content">
+                      {{ toBusinessTraceText(parseMessage(msg).thinking) }}
                     </div>
                   </div>
 
-                  <!-- 工业级状态步进器 (Industrial Progress Stepper) -->
-                  <div v-if="msg.role === 'assistant' && parseMessage(msg).statuses.length > 0" class="industrial-stepper">
+                  <!-- 基于真实 Trace 事件构建三级 GeoAI Agent 执行树 -->
+                  <section v-if="msg.role === 'assistant' && parseMessage(msg).trace.length > 0" class="agent-process-panel">
+                    <header
+                      class="agent-process-header"
+                      role="button"
+                      tabindex="0"
+                      :aria-expanded="isAgentProcessExpanded(index)"
+                      @click="toggleAgentProcess(index)"
+                      @keydown.enter.prevent="toggleAgentProcess(index)"
+                      @keydown.space.prevent="toggleAgentProcess(index)"
+                    >
+                      <div
+                        :key="getAgentProcessDisplayKey(msg, index)"
+                        class="agent-process-current-action"
+                        aria-live="polite"
+                        aria-atomic="true"
+                      >
+                        <span class="agent-process-mark" :class="{ running: isAgentProcessRunning(index, msg) }" aria-hidden="true">
+                          <img :class="getAgentProcessIconClass(msg, index)" :src="getAgentProcessIcon(msg, index)" alt="">
+                        </span>
+                        <h2
+                          class="agent-process-title"
+                          :class="{ 'is-running': isAgentProcessRunning(index, msg) }"
+                        >{{ getAgentProcessTitle(msg, index) }}</h2>
+                        <span v-if="isAgentProcessRunning(index, msg)" class="agent-process-state running">执行中</span>
+                        <svg class="agent-process-chevron" :class="{ open: isAgentProcessExpanded(index) }" width="17" height="17"
+                          viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"
+                          stroke-linejoin="round" aria-hidden="true">
+                          <polyline points="9 6 15 12 9 18"></polyline>
+                        </svg>
+                      </div>
+                    </header>
+
+                    <div v-if="isAgentProcessExpanded(index)" class="agent-trace-list">
+                      <article
+                        v-for="(event, traceIndex) in getTraceDisplayItems(msg)"
+                        :key="event.id || traceIndex"
+                        :class="['agent-trace-event', `phase-${event.phase || 'system'}`, `status-${event.status || 'completed'}`, { 'is-compact': isCompactTraceStage(event), 'is-open': isTraceStageExpanded(index, event) }]"
+                      >
+                        <div class="agent-trace-rail" aria-hidden="true">
+                          <span class="agent-trace-dot">
+                            <span v-if="event.status === 'error'" class="agent-trace-error-mark">!</span>
+                            <img v-else :class="[getTraceIconClass(event), { 'is-running': event.status === 'running' }]" :src="getTraceIconSource(event)" alt="">
+                          </span>
+                          <span v-if="traceIndex < getTraceDisplayItems(msg).length - 1" class="agent-trace-line"></span>
+                        </div>
+
+                        <div class="agent-trace-stage">
+                          <header
+                            :class="['agent-trace-stage-header', { 'is-expandable': isTraceStageExpandable(event, index) }]"
+                            :role="isTraceStageExpandable(event, index) ? 'button' : undefined"
+                            :tabindex="isTraceStageExpandable(event, index) ? 0 : undefined"
+                            :aria-expanded="isTraceStageExpandable(event, index) ? isTraceStageExpanded(index, event) : undefined"
+                            @click="isTraceStageExpandable(event, index) && toggleTraceStage(index, event)"
+                            @keydown.enter.prevent="isTraceStageExpandable(event, index) && toggleTraceStage(index, event)"
+                            @keydown.space.prevent="isTraceStageExpandable(event, index) && toggleTraceStage(index, event)"
+                          >
+                            <div class="agent-trace-stage-heading">
+                              <div class="agent-trace-title-row">
+                                <h3 class="agent-trace-title">{{ event.title }}</h3>
+                                <span v-if="event.status && event.status !== 'completed'" :class="['agent-trace-status', `status-${event.status}`]">
+                                  {{ getTraceStatusLabel(event.status) }}
+                                </span>
+                                <svg v-if="isTraceStageExpandable(event, index)" class="agent-trace-chevron"
+                                  :class="{ open: isTraceStageExpanded(index, event) }" width="16" height="16"
+                                  viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"
+                                  stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                                  <polyline points="9 6 15 12 9 18"></polyline>
+                                </svg>
+                              </div>
+                              <p v-if="event.summary" class="agent-trace-summary-text">{{ event.summary }}</p>
+                            </div>
+                          </header>
+
+                          <div v-if="isTraceStageExpanded(index, event)" class="agent-trace-branch">
+                            <div v-if="getTraceDecisionText(event)" class="trace-model-monologue">
+                              <span class="trace-model-monologue-icon" aria-hidden="true">
+                                <img class="trace-icon-deepseek" :src="traceIconSources.deepseek" alt="">
+                              </span>
+                              <div class="trace-model-monologue-copy">
+                                <span class="trace-model-monologue-label">模型推断</span>
+                                <p>{{ getTraceDecisionText(event) }}</p>
+                              </div>
+                            </div>
+
+                            <div v-if="getTraceDetailItems(event, index).length" class="trace-detail-tree">
+                              <section
+                                v-for="detail in getTraceDetailItems(event, index)"
+                                :key="detail.id"
+                                :class="['trace-detail-item', { 'is-open': isTraceDetailExpanded(index, event, detail.id) }]"
+                              >
+                                <button
+                                  type="button"
+                                  class="trace-detail-toggle"
+                                  :aria-expanded="isTraceDetailExpanded(index, event, detail.id)"
+                                  @click="toggleTraceDetail(index, event, detail.id)"
+                                >
+                                  <span class="trace-detail-icon" aria-hidden="true">
+                                    <img :class="getTraceIconClassBySource(detail.icon)" :src="detail.icon" alt="">
+                                  </span>
+                                  <span class="trace-detail-label">{{ detail.label }}</span>
+                                  <span v-if="detail.meta" class="trace-detail-meta">{{ detail.meta }}</span>
+                                  <svg class="trace-detail-chevron" :class="{ open: isTraceDetailExpanded(index, event, detail.id) }"
+                                    width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                                    stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                                    <polyline points="9 6 15 12 9 18"></polyline>
+                                  </svg>
+                                </button>
+
+                                <div v-if="isTraceDetailExpanded(index, event, detail.id)" class="trace-detail-content">
+                                  <p v-if="detail.type === 'text'" class="trace-section-text">{{ detail.text }}</p>
+
+                                  <div v-else-if="detail.type === 'tool'" class="trace-tool-row">
+                                    <span class="trace-tool-copy">
+                                      <strong>通过 MCP 调用</strong>
+                                      <code>{{ detail.script }}</code>
+                                      <span class="trace-tool-action">{{ detail.action }}</span>
+                                    </span>
+                                    <span class="trace-tool-source">MCP · {{ detail.tool }}</span>
+                                  </div>
+
+                                  <template v-else-if="detail.type === 'parameters'">
+                                    <dl class="trace-kv-grid">
+                                      <div v-for="entry in getTraceParameterEntries(detail.value)" :key="entry.key" class="trace-kv-item">
+                                        <dt class="trace-kv-key">{{ entry.label }}</dt>
+                                        <dd class="trace-kv-value">{{ entry.value }}</dd>
+                                      </div>
+                                    </dl>
+                                    <pre v-if="isComplexTraceData(detail.value)" class="trace-code-block">{{ formatTraceData(detail.value) }}</pre>
+                                  </template>
+
+                                  <template v-else-if="detail.type === 'result'">
+                                    <p v-if="detail.summary" class="trace-section-text trace-observation-summary">{{ detail.summary }}</p>
+                                    <pre v-if="detail.content" class="trace-code-block trace-result-block">{{ detail.content }}</pre>
+                                  </template>
+
+                                  <p v-else-if="detail.type === 'error'" class="trace-error-text">{{ detail.text }}</p>
+                                </div>
+                              </section>
+                            </div>
+                          </div>
+                        </div>
+                      </article>
+                    </div>
+                  </section>
+
+                  <!-- 历史消息兼容：没有结构化 trace 时显示旧工作流 -->
+                  <div v-else-if="msg.role === 'assistant' && parseMessage(msg).statuses.length > 0" class="industrial-stepper">
                     <div class="workflow-header" @click="toggleWorkflow(index)" role="button" tabindex="0"
                       @keydown.enter.prevent="toggleWorkflow(index)" @keydown.space.prevent="toggleWorkflow(index)"
-                      :aria-expanded="expandedWorkflow[index] !== false"
-                      :title="expandedWorkflow[index] !== false ? '点击折叠工作流' : '点击展开工作流'">
-                      <span class="workflow-title">数据工作流</span>
-                      <span class="workflow-subtitle">工具调用与数据链路追踪</span>
-                      <span class="workflow-legend" aria-label="Trace 分色图例">
-                        <span class="legend-dot lane-tool">工具</span>
-                        <span class="legend-dot lane-skill">Skill</span>
-                        <span class="legend-dot lane-knowledge-graph">图谱</span>
-                        <span class="legend-dot lane-policy">政策</span>
+                      :aria-expanded="expandedWorkflow[index] === true"
+                      :title="expandedWorkflow[index] === true ? '点击折叠工作流' : '点击展开工作流'">
+                      <span class="workflow-title">分析过程与依据</span>
+                      <span class="workflow-subtitle">问题理解与数据证据</span>
+                      <span class="workflow-legend" aria-label="分析类型图例">
+                        <span class="legend-dot lane-tool">分析工具</span>
+                        <span class="legend-dot lane-skill">知识资料</span>
+                        <span class="legend-dot lane-knowledge-graph">关系查询</span>
+                        <span class="legend-dot lane-policy">政策资料</span>
                       </span>
 
-                      <svg class="workflow-arrow" :class="{ open: expandedWorkflow[index] !== false }" width="14" height="14"
+                      <svg class="workflow-arrow" :class="{ open: expandedWorkflow[index] === true }" width="14" height="14"
                         viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"
                         stroke-linejoin="round">
                         <polyline points="6 9 12 15 18 9"></polyline>
                       </svg>
                     </div>
 
-                    <div v-if="expandedWorkflow[index] !== false">
+                    <div v-if="expandedWorkflow[index] === true">
                       <div v-for="(status, sIdx) in parseMessage(msg).statuses" :key="sIdx"
                         :class="['step-item', status.type, status.done ? 'done' : 'active', status.lane ? `lane-${status.lane}` : '']">
                         <div class="step-line" v-if="sIdx < parseMessage(msg).statuses.length - 1"></div>
@@ -214,7 +376,7 @@
                           <div class="step-pulse" v-if="!status.done"></div>
                         </div>
                         <div class="step-content">
-                          <div class="step-label">{{ status.label }}</div>
+                          <div class="step-label">{{ getBusinessWorkflowLabel(status.label) }}</div>
                         </div>
                       </div>
                     </div>
@@ -225,7 +387,8 @@
 
                   <!-- 消息正文 -->
                   <div class="bubble" v-if="parseMessage(msg).content">
-                    <div v-if="msg.role === 'assistant'" class="markdown-body"
+                    <div v-if="msg.role === 'assistant'"
+                      :class="['markdown-body', { 'is-streaming': loading && index === messages.length - 1 }]"
                       v-html="renderMarkdown(parseMessage(msg).content, loading && index === messages.length - 1)"></div>
                     <div v-else>{{ msg.content }}</div>
                   </div>
@@ -388,14 +551,11 @@
 <script setup>
 import { ref, watch, nextTick, computed, onMounted, onUnmounted } from 'vue';
 import { analyzeDataStream, generateQuickQuestions } from '@/utils/aiService.js';
-import MarkdownIt from 'markdown-it';
-import DOMPurify from 'dompurify';
-import hljs from 'highlight.js';
 import 'highlight.js/styles/atom-one-dark.css';
-import texmath from 'markdown-it-texmath';
-import katex from 'katex';
 import 'katex/dist/katex.min.css';
 import mermaid from 'mermaid';
+import { renderMarkdown } from '@/utils/aiMarkdownRenderer.js';
+import { buildDirectReportHtml } from '@/utils/aiReportTemplate.js';
 // ChatGptIcon 已在模版中内联，无需导入
 
 mermaid.initialize({
@@ -404,33 +564,7 @@ mermaid.initialize({
   securityLevel: 'loose',
 });
 
-const md = new MarkdownIt({
-  html: true,
-  linkify: true,
-  typographer: true,
-  breaks: true,
-  highlight: function (str, lang) {
-    if (lang && lang.toLowerCase() === 'mermaid') {
-      return '<div class="mermaid" style="background: rgba(15, 23, 42, 0.6); padding: 16px; border-radius: 8px; margin: 16px 0; overflow-x: auto;">' + md.utils.escapeHtml(str) + '</div>';
-    }
-    if (lang && hljs.getLanguage(lang)) {
-      try {
-        return '<pre class="hljs"><code>' +
-          hljs.highlight(str, { language: lang, ignoreIllegals: true }).value +
-          '</code></pre>';
-      } catch (__) { }
-    }
-    return '<pre class="hljs"><code>' + md.utils.escapeHtml(str) + '</code></pre>';
-  }
-}).use(texmath, {
-  engine: katex,
-  // 同时支持 dollars ($/$$) 和 brackets (\(...\)/\[...\]) 分隔符，深度兼容各种大模型输出
-  delimiters: ['dollars', 'brackets'],
-  katexOptions: { throwOnError: false }
-});
-
 const parseCache = new Map();
-const renderCache = new Map();
 
 const normalizeProtocolGlyphs = (text = '') => String(text || '')
   .replace(/[｜]/g, '|')
@@ -455,13 +589,16 @@ const stripCopyArtifacts = (text = '') => stripInternalProtocolNoise(text)
   .trim();
 
 const _parseMessage = (msg, skipCache = false) => {
-  if (!msg) return { thinking: '', content: '', statuses: [] };
+  if (!msg) return { thinking: '', content: '', statuses: [], trace: [] };
 
   let thinking = msg.thinking || '';
   let content = msg.content || '';
+  const trace = Array.isArray(msg.trace)
+    ? msg.trace.filter((event) => event && typeof event === 'object' && event.id)
+    : [];
   const cacheKey = typeof msg === 'string'
     ? msg
-    : (msg.content || '') + (msg.thinking || '') + JSON.stringify(msg.workflow || []);
+    : (msg.content || '') + (msg.thinking || '') + JSON.stringify(msg.workflow || []) + JSON.stringify(trace);
 
   // 流式输出期间跳过缓存，确保每次 chunk 后都能获取最新解析结果
   if (!skipCache && parseCache.has(cacheKey)) return parseCache.get(cacheKey);
@@ -530,59 +667,66 @@ const _parseMessage = (msg, skipCache = false) => {
 
   const toolMetaMap = {
     clcd_analysis: {
-      name: 'clcdTool.js',
-      start: 'clcdTool.js → 分析CLCD土地利用数据',
-      params: 'dataRouter.js → 组装 clcdTool.js 参数',
-      done: 'clcdTool.js → CLCD数据返回成功',
+      name: 'clcdTool',
+      start: 'clcdTool → 分析CLCD土地利用数据',
+      params: 'dataRouter → 组装 clcdTool 参数',
+      done: 'clcdTool → CLCD数据返回成功',
       icon: icons.database
     },
     dashboard_analysis: {
-      name: 'dashboardTool.js',
-      start: 'dashboardTool.js → 汇总综合指标数据',
-      params: 'dataRouter.js → 组装 dashboardTool.js 参数',
-      done: 'dashboardTool.js → 综合指标返回成功',
+      name: 'dashboardTool',
+      start: 'dashboardTool → 汇总综合指标数据',
+      params: 'dataRouter → 组装 dashboardTool 参数',
+      done: 'dashboardTool → 综合指标返回成功',
       icon: icons.database
     },
     spatial_stats_analysis: {
-      name: 'spatialStatsTool.js',
-      start: 'spatialStatsTool.js → 执行空间统计分析',
-      params: 'dataRouter.js → 组装 spatialStatsTool.js 参数',
-      done: 'spatialStatsTool.js → 空间统计返回成功',
+      name: 'spatialStatsTool',
+      start: 'spatialStatsTool → 执行空间统计分析',
+      params: 'dataRouter → 组装 spatialStatsTool 参数',
+      done: 'spatialStatsTool → 空间统计返回成功',
       icon: icons.radar
     },
     land_transfer_analysis: {
-      name: 'transferTool.js',
-      start: 'transferTool.js → 分析土地利用转移矩阵',
-      params: 'dataRouter.js → 组装 transferTool.js 参数',
-      done: 'transferTool.js → LUCC转移矩阵返回成功',
+      name: 'transferTool',
+      start: 'transferTool → 分析土地利用转移矩阵',
+      params: 'dataRouter → 组装 transferTool 参数',
+      done: 'transferTool → LUCC转移矩阵返回成功',
       icon: icons.database
     },
     weather_query: {
-      name: 'weatherTool.js',
-      start: 'weatherTool.js → 查询气象观测数据',
-      params: 'dataRouter.js → 组装 weatherTool.js 参数',
-      done: 'weatherTool.js → 气象观测返回成功',
+      name: 'weatherTool',
+      start: 'weatherTool → 查询气象观测数据',
+      params: 'dataRouter → 组装 weatherTool 参数',
+      done: 'weatherTool → 气象观测返回成功',
       icon: icons.search
     },
     knowledge_base_lookup: {
-      name: 'knowledgeTool.js',
-      start: 'knowledgeTool.js → 检索专家知识库',
-      params: 'dataRouter.js → 组装 knowledgeTool.js 参数',
-      done: 'knowledgeTool.js → 专家知识返回成功',
+      name: 'knowledgeTool',
+      start: 'knowledgeTool → 检索专家知识库',
+      params: 'dataRouter → 组装 knowledgeTool 参数',
+      done: 'knowledgeTool → 专家知识返回成功',
       icon: icons.search
     },
     knowledge_graph_query: {
-      name: 'knowledgeGraphTool.js',
-      start: 'knowledgeGraphTool.js → 遍历知识图谱网络',
-      params: 'dataRouter.js → 组装 knowledgeGraphTool.js 参数',
-      done: 'knowledgeGraphTool.js → 图谱实体与关系返回成功',
+      name: 'knowledgeGraphTool',
+      start: 'knowledgeGraphTool → 遍历知识图谱网络',
+      params: 'dataRouter → 组装 knowledgeGraphTool 参数',
+      done: 'knowledgeGraphTool → 图谱实体与关系返回成功',
       icon: icons.search
     },
     policy_reference_lookup: {
-      name: 'policyReferenceTool.js',
-      start: 'policyReferenceTool.js → 检索政策与规划库',
-      params: 'dataRouter.js → 组装 policyReferenceTool.js 参数',
-      done: 'policyReferenceTool.js → 政策条款数据返回成功',
+      name: 'policyReferenceTool',
+      start: 'policyReferenceTool → 检索政策与规划库',
+      params: 'dataRouter → 组装 policyReferenceTool 参数',
+      done: 'policyReferenceTool → 政策条款数据返回成功',
+      icon: icons.search
+    },
+    web_fetch: {
+      name: 'webFetchTool',
+      start: 'webFetchTool → 读取权威政策与文献来源',
+      params: 'MCP → 传入来源网页 URL',
+      done: 'webFetchTool → 网页正文返回成功',
       icon: icons.search
     }
     // map_control 已下线
@@ -635,15 +779,15 @@ const _parseMessage = (msg, skipCache = false) => {
     if (/空间重心|椭圆|轨迹|空间统计/.test(normalized)) return 'spatial_stats_analysis';
     if (/转移矩阵|流转|lucc|转化/.test(normalized)) return 'land_transfer_analysis';
     if (/气象|天气|风力|气温/.test(normalized)) return 'weather_query';
-    if (/知识库|知识图谱|专家知识|技能|spatial_reasoning|monitoring_indices/.test(normalized)) return 'knowledge_base_lookup';
+    if (/知识库|知识图谱|专家知识|技能|adaptive_analysis|spatial_reasoning|monitoring_indices|policy_expert/.test(normalized)) return 'knowledge_base_lookup';
     return '';
   };
 
   const resolveThoughtLabel = (detail = '') => {
     const normalized = normalizeWhitespace(detail);
-    if (/sql|select|from|where|group by|order by|数据库|查询语句/i.test(normalized)) return 'dataRouter.js → 规划SQL数据查询';
+    if (/sql|select|from|where|group by|order by|数据库|查询语句/i.test(normalized)) return 'dataRouter → 规划SQL数据查询';
     if (/意图|用户|问题|需求|asked|request|want|需要/.test(normalized)) return 'AI分析专家 → 解析业务意图';
-    if (/工具|调用|tool|function|参数|argument/i.test(normalized)) return 'dataRouter.js → 选择Agent工具';
+    if (/工具|调用|tool|function|参数|argument/i.test(normalized)) return 'dataRouter → 选择Agent工具';
     if (/知识库|知识图谱|政策|算法|指标/.test(normalized)) return 'MCP知识服务 → 规划知识检索';
     if (/地图|图层|视角|空间|坐标|区域/.test(normalized)) return 'GeoServer/Cesium → 规划空间联动';
     if (/比较|趋势|变化|转移|占比|排名|分析/.test(normalized)) return 'AI分析专家 → 推导分析方法';
@@ -728,11 +872,11 @@ const _parseMessage = (msg, skipCache = false) => {
         years.length ? `年份: ${years.slice(0, 2).join('、')}` : ''
       ].filter(Boolean).join('，') || '加载当前地图、年份与历史会话', icons.map, 'analysis', 46);
     }
-    if (!labelExists(/dataRouter.js|规划工具链/)) {
-      pushSemantic('dataRouter.js → 规划工具链路', dataHints.length ? dataHints.slice(0, 3).join('、') : topic, icons.tool, 'analysis', 44);
+    if (!labelExists(/dataRouter|规划工具链/)) {
+      pushSemantic('dataRouter → 规划工具链路', dataHints.length ? dataHints.slice(0, 3).join('、') : topic, icons.tool, 'analysis', 44);
     }
-    if (dataHints.length && !labelExists(/dataRouter.js|匹配/)) {
-      pushSemantic('dataRouter.js → 匹配业务分析工具', dataHints.slice(0, 3).join('、'), icons.tool, 'search', 46);
+    if (dataHints.length && !labelExists(/dataRouter|匹配/)) {
+      pushSemantic('dataRouter → 匹配业务分析工具', dataHints.slice(0, 3).join('、'), icons.tool, 'search', 46);
     }
     if (dataHints.some((item) => /CLCD|综合指标|转移矩阵|空间统计/.test(item)) && !labelExists(/PostgreSQL\/PostGIS|读取/)) {
       pushSemantic('PostgreSQL/PostGIS → 读取时空业务数据', dataHints.slice(0, 3).join('、'), icons.database, 'search', 48);
@@ -773,8 +917,8 @@ const _parseMessage = (msg, skipCache = false) => {
     // 知识图谱：图谱/graph/ontology 等关键词（与 skill 区分开）
     if (/知识图谱|ontology|graph|knowledge_graph/i.test(t)) return 'knowledge-graph';
 
-    // skill：写死规则（项目内就这么几个）
-    if (/knowledge_base_lookup|knowledgeTool|专家知识库/i.test(t) || /policy_expert|monitoring_indices|spatial_reasoning/i.test(t)) {
+    // skill：识别知识库中的分析与方法模块
+    if (/knowledge_base_lookup|knowledgeTool|专家知识库/i.test(t) || /adaptive_analysis|policy_expert|monitoring_indices|spatial_reasoning/i.test(t)) {
       return 'skill';
     }
 
@@ -841,18 +985,19 @@ const _parseMessage = (msg, skipCache = false) => {
       activeToolName = inferredToolName || normalized.match(/^([a-z_][a-z0-9_]*)/i)?.[1] || activeToolName;
       const actionTool = toolMetaMap[activeToolName];
       const toolFileMap = {
-        'clcd_analysis': 'clcdTool.js',
-        'dashboard_analysis': 'dashboardTool.js',
-        'spatial_stats_analysis': 'spatialStatsTool.js',
-        'land_transfer_analysis': 'transferTool.js',
-        'weather_query': 'weatherTool.js',
-        'knowledge_graph_query': 'knowledgeGraphTool.js',
-        'knowledge_base_lookup': 'knowledgeTool.js',
-        'policy_reference_lookup': 'policyReferenceTool.js'
+        'clcd_analysis': 'clcdTool',
+        'dashboard_analysis': 'dashboardTool',
+        'spatial_stats_analysis': 'spatialStatsTool',
+        'land_transfer_analysis': 'transferTool',
+        'weather_query': 'weatherTool',
+        'knowledge_graph_query': 'knowledgeGraphTool',
+        'knowledge_base_lookup': 'knowledgeTool',
+        'policy_reference_lookup': 'policyReferenceTool',
+        'web_fetch': 'webFetchTool'
       };
-      const fallbackName = activeToolName ? (toolFileMap[activeToolName] || `${activeToolName}Tool.js`) : 'unknownTool.js';
+      const fallbackName = activeToolName ? (toolFileMap[activeToolName] || `${activeToolName}Tool`) : 'unknownTool';
       return {
-        label: actionTool ? actionTool.start : `dataRouter.js → 调度 ${fallbackName}`.trim(),
+        label: actionTool ? actionTool.start : `dataRouter → 调度 ${fallbackName}`.trim(),
         type: 'search',
         detail: normalized,
         icon: actionTool?.icon || icons.tool,
@@ -896,7 +1041,7 @@ const _parseMessage = (msg, skipCache = false) => {
         return { label: toolMeta.start, type: 'search', detail: normalized, icon: toolMeta.icon, titleDetail: false };
       }
       if (/sql|查询语句|数据库/i.test(normalized)) {
-        return { label: 'dataRouter.js → 编写并提交SQL查询', type: 'search', detail: normalized, icon: icons.code, titleMaxLen: 34 };
+        return { label: 'dataRouter → 编写并提交SQL查询', type: 'search', detail: normalized, icon: icons.code, titleMaxLen: 34 };
       }
       if (/检索|查询|提取|获取|汇总|执行|同步|分析/i.test(normalized)) {
         return { label: 'dataSourceRegistry.js → 检索时空业务数据', type: 'search', detail: normalized, icon: icons.search, titleMaxLen: 34 };
@@ -1008,67 +1153,10 @@ const _parseMessage = (msg, skipCache = false) => {
     status.done = (!loading.value) || (idx < statuses.length - 1);
   });
 
-  const result = { thinking, content, statuses };
+  const result = { thinking, content, statuses, trace };
   if (!skipCache) {
     if (parseCache.size > 100) parseCache.clear();
     parseCache.set(cacheKey, result);
-  }
-  return result;
-};
-
-const getRenderedMarkdown = (text, isStreaming = false) => {
-  if (!text) return '';
-  const cacheKey = text;
-  // 流式输出期间跳过 renderCache，确保实时渲染
-  if (!isStreaming && renderCache.has(cacheKey)) return renderCache.get(cacheKey);
-
-  let result = md.render(text);
-  
-  // 3. 安全清洗 (Security Pro Max)
-  result = DOMPurify.sanitize(result, {
-    ALLOWED_TAGS: [
-      // 基础 HTML
-      'p', 'br', 'strong', 'em', 'b', 'i', 'u', 'del', 'sup', 'sub', 'blockquote', 'a', 'img',
-      'h1', 'h2', 'h3', 'h4', 'h5', 'h6',
-      'ul', 'ol', 'li', 'table', 'thead', 'tbody', 'tr', 'th', 'td', 'caption', 'colgroup', 'col',
-      'div', 'span', 'code', 'pre', 'hr',
-      // KaTeX 渲染输出标签
-      'eq', 'eqn', 'math', 'semantics', 'annotation', 'mrow', 'mi', 'mo', 'mn', 'ms', 'mtext',
-      'mfrac', 'msub', 'msup', 'msubsup', 'munder', 'mover', 'munderover',
-      'msqrt', 'mroot', 'mtable', 'mtr', 'mtd', 'mpadded', 'mspace', 'mstyle', 'menclose',
-      // SVG（Mermaid 图表 + 内联图标）
-      'svg', 'g', 'path', 'line', 'circle', 'ellipse', 'rect', 'polyline', 'polygon',
-      'text', 'tspan', 'defs', 'marker', 'clipPath', 'use', 'foreignObject', 'image',
-      'title', 'desc'
-    ],
-    ALLOWED_ATTR: [
-      // 通用
-      'class', 'style', 'id', 'title', 'role', 'tabindex',
-      // 链接 / 图片
-      'href', 'target', 'rel', 'src', 'alt',
-      // KaTeX / MathML
-      'xmlns', 'encoding', 'aria-hidden', 'data-*', 'mathvariant', 'stretchy', 'fence',
-      'separator', 'lspace', 'rspace', 'accent', 'accentunder', 'displaystyle',
-      'scriptlevel', 'columnalign', 'rowalign', 'columnspacing', 'rowspacing',
-      'columnlines', 'rowlines', 'frame', 'framespacing', 'minsize', 'maxsize', 'movablelimits',
-      // SVG 属性
-      'width', 'height', 'viewBox', 'fill', 'stroke', 'stroke-width', 'stroke-linecap',
-      'stroke-linejoin', 'stroke-dasharray', 'stroke-opacity', 'fill-opacity', 'opacity',
-      'points', 'cx', 'cy', 'r', 'rx', 'ry', 'x', 'y', 'x1', 'y1', 'x2', 'y2', 'd',
-      'transform', 'text-anchor', 'dominant-baseline', 'font-size', 'font-family', 'font-weight',
-      'dx', 'dy', 'markerWidth', 'markerHeight', 'refX', 'refY', 'orient', 'markerUnits',
-      'marker-end', 'marker-start', 'clip-path', 'xlink:href', 'preserveAspectRatio'
-    ],
-    // 允许 data-* 属性（KaTeX 需要）
-    ALLOW_DATA_ATTR: true
-  });
-
-  // 给 table 增加包装层
-  result = result.replace(/<table>/g, '<div class="table-container"><table>').replace(/<\/table>/g, '</table></div>');
-
-  if (!isStreaming) {
-    if (renderCache.size > 200) renderCache.clear();
-    renderCache.set(cacheKey, result);
   }
   return result;
 };
@@ -1092,9 +1180,269 @@ const messagesContainer = ref(null);
 const inputField = ref(null);
 const expandedThinking = ref({});
 
+const SIDEBAR_DEFAULT_WIDTH = 260;
+const SIDEBAR_MIN_WIDTH = 220;
+const SIDEBAR_MAX_WIDTH = 520;
+const SIDEBAR_WIDTH_STORAGE_KEY = 'webgis_ai_sidebar_width';
+
+const clampSidebarWidth = (value) => {
+  const numericValue = Number(value);
+  const viewportLimit = typeof window === 'undefined'
+    ? SIDEBAR_MAX_WIDTH
+    : Math.max(SIDEBAR_MIN_WIDTH, Math.min(SIDEBAR_MAX_WIDTH, window.innerWidth * 0.45));
+  return Math.round(Math.min(viewportLimit, Math.max(SIDEBAR_MIN_WIDTH, numericValue || SIDEBAR_DEFAULT_WIDTH)));
+};
+
+const readStoredSidebarWidth = () => {
+  try {
+    return clampSidebarWidth(localStorage.getItem(SIDEBAR_WIDTH_STORAGE_KEY));
+  } catch {
+    return SIDEBAR_DEFAULT_WIDTH;
+  }
+};
+
+const sidebarWidth = ref(readStoredSidebarWidth());
+const isSidebarResizing = ref(false);
+let previousBodyCursor = '';
+let previousBodyUserSelect = '';
+
+const persistSidebarWidth = () => {
+  try {
+    localStorage.setItem(SIDEBAR_WIDTH_STORAGE_KEY, String(sidebarWidth.value));
+  } catch { }
+};
+
+const setSidebarWidth = (value, persist = false) => {
+  sidebarWidth.value = clampSidebarWidth(value);
+  if (persist) persistSidebarWidth();
+};
+
+const resizeSidebarFromPointer = (event) => {
+  const modal = event.currentTarget?.closest?.('.ai-modal-container') || document.querySelector('.ai-modal-container');
+  const rect = modal?.getBoundingClientRect();
+  if (!rect) return;
+  setSidebarWidth(event.clientX - rect.left);
+};
+
+const stopSidebarResize = () => {
+  if (!isSidebarResizing.value) return;
+  isSidebarResizing.value = false;
+  window.removeEventListener('pointermove', resizeSidebarFromPointer);
+  window.removeEventListener('pointerup', stopSidebarResize);
+  window.removeEventListener('pointercancel', stopSidebarResize);
+  document.body.style.cursor = previousBodyCursor;
+  document.body.style.userSelect = previousBodyUserSelect;
+  persistSidebarWidth();
+};
+
+const startSidebarResize = (event) => {
+  if (event.button !== 0) return;
+  isSidebarResizing.value = true;
+  previousBodyCursor = document.body.style.cursor;
+  previousBodyUserSelect = document.body.style.userSelect;
+  document.body.style.cursor = 'col-resize';
+  document.body.style.userSelect = 'none';
+  window.addEventListener('pointermove', resizeSidebarFromPointer);
+  window.addEventListener('pointerup', stopSidebarResize);
+  window.addEventListener('pointercancel', stopSidebarResize);
+};
+
+const handleSidebarResizeKeydown = (event) => {
+  const step = event.shiftKey ? 32 : 12;
+  if (event.key === 'ArrowLeft') {
+    event.preventDefault();
+    setSidebarWidth(sidebarWidth.value - step, true);
+  } else if (event.key === 'ArrowRight') {
+    event.preventDefault();
+    setSidebarWidth(sidebarWidth.value + step, true);
+  } else if (event.key === 'Home') {
+    event.preventDefault();
+    setSidebarWidth(SIDEBAR_MIN_WIDTH, true);
+  } else if (event.key === 'End') {
+    event.preventDefault();
+    setSidebarWidth(SIDEBAR_MAX_WIDTH, true);
+  }
+};
+
+const resetSidebarWidth = () => setSidebarWidth(SIDEBAR_DEFAULT_WIDTH, true);
+const clampSidebarToViewport = () => setSidebarWidth(sidebarWidth.value);
+
 // 会话管理状态
 const sessions = ref([]);
 const currentSessionId = ref(null);
+
+const SESSION_SCROLL_STORAGE_KEY = 'webgis_ai_session_scroll_positions';
+const sessionScrollPositions = (() => {
+  try {
+    const stored = JSON.parse(localStorage.getItem(SESSION_SCROLL_STORAGE_KEY) || '{}');
+    return stored && typeof stored === 'object' ? stored : {};
+  } catch {
+    return {};
+  }
+})();
+const userIsNearBottom = ref(true);
+let scrollPositionTimer = null;
+
+// 仅平滑折叠栏的阅读节奏；完整 Trace 与后端工具链仍按真实速度更新。
+const TRACE_HEADLINE_MIN_DURATION_MS = 900;
+const TRACE_HEADLINE_PHASES = new Set(['intent', 'decision', 'planning', 'tool_call', 'observation', 'synthesis']);
+const TRACE_HEADLINE_EXCLUDED_IDS = new Set(['trace_ingress', 'trace_context', 'trace_delivery']);
+const activeTraceEventId = ref('');
+const traceHeadlineActive = ref(false);
+const traceHeadlineMessageIndex = ref(-1);
+const traceHeadlineRequestComplete = ref(false);
+const traceHeadlineFinalStatus = ref('completed');
+let traceHeadlineQueue = [];
+let traceHeadlineSeenIds = new Set();
+let traceHeadlineTimer = null;
+let traceHeadlineStartedAt = 0;
+
+const clearTraceHeadlineTimer = () => {
+  if (!traceHeadlineTimer) return;
+  clearTimeout(traceHeadlineTimer);
+  traceHeadlineTimer = null;
+};
+
+const finishTraceHeadlinePlayback = () => {
+  clearTraceHeadlineTimer();
+  traceHeadlineQueue = [];
+  traceHeadlineActive.value = false;
+  activeTraceEventId.value = '';
+  traceHeadlineStartedAt = 0;
+};
+
+function advanceTraceHeadlineQueue() {
+  clearTraceHeadlineTimer();
+  const nextItem = traceHeadlineQueue.shift();
+  if (nextItem) {
+    activateTraceHeadline(nextItem);
+    return;
+  }
+  if (traceHeadlineRequestComplete.value) finishTraceHeadlinePlayback();
+}
+
+function activateTraceHeadline(item) {
+  if (!item) return;
+  clearTraceHeadlineTimer();
+  traceHeadlineMessageIndex.value = item.messageIndex;
+  activeTraceEventId.value = item.id;
+  traceHeadlineActive.value = true;
+  traceHeadlineStartedAt = Date.now();
+  traceHeadlineTimer = setTimeout(() => {
+    traceHeadlineTimer = null;
+    advanceTraceHeadlineQueue();
+  }, TRACE_HEADLINE_MIN_DURATION_MS);
+}
+
+const enqueueTraceHeadline = (event, messageIndex) => {
+  const id = String(event?.id || '');
+  const phase = String(event?.phase || '');
+  if ((traceHeadlineRequestComplete.value && !traceHeadlineActive.value)
+    || !id
+    || TRACE_HEADLINE_EXCLUDED_IDS.has(id)
+    || /^trace_model_/.test(id)
+    || !TRACE_HEADLINE_PHASES.has(phase)
+    || traceHeadlineSeenIds.has(id)) return;
+
+  traceHeadlineSeenIds.add(id);
+  const item = { id, messageIndex };
+  if (!traceHeadlineActive.value) {
+    activateTraceHeadline(item);
+    return;
+  }
+
+  const elapsed = Date.now() - traceHeadlineStartedAt;
+  if (!traceHeadlineTimer && elapsed >= TRACE_HEADLINE_MIN_DURATION_MS) {
+    activateTraceHeadline(item);
+    return;
+  }
+  traceHeadlineQueue.push(item);
+};
+
+const completeTraceHeadlinePlayback = (status = 'completed', messageIndex = traceHeadlineMessageIndex.value) => {
+  if (messageIndex !== traceHeadlineMessageIndex.value) return;
+  traceHeadlineRequestComplete.value = true;
+  if (status === 'error'
+    || (status === 'stopped' && traceHeadlineFinalStatus.value !== 'error')
+    || !['error', 'stopped'].includes(traceHeadlineFinalStatus.value)) {
+    traceHeadlineFinalStatus.value = status;
+  }
+
+  if (!traceHeadlineActive.value) {
+    const nextItem = traceHeadlineQueue.shift();
+    if (nextItem) activateTraceHeadline(nextItem);
+    else finishTraceHeadlinePlayback();
+    return;
+  }
+
+  if (!traceHeadlineTimer) {
+    const remaining = Math.max(0, TRACE_HEADLINE_MIN_DURATION_MS - (Date.now() - traceHeadlineStartedAt));
+    if (remaining === 0) advanceTraceHeadlineQueue();
+    else {
+      traceHeadlineTimer = setTimeout(() => {
+        traceHeadlineTimer = null;
+        advanceTraceHeadlineQueue();
+      }, remaining);
+    }
+  }
+};
+
+const terminateTraceHeadlinePlayback = (status = 'error', messageIndex = traceHeadlineMessageIndex.value) => {
+  if (messageIndex !== traceHeadlineMessageIndex.value) return;
+  traceHeadlineRequestComplete.value = true;
+  if (status === 'error' || traceHeadlineFinalStatus.value !== 'error') {
+    traceHeadlineFinalStatus.value = status;
+  }
+  finishTraceHeadlinePlayback();
+};
+
+const resetTraceHeadlinePlayback = (messageIndex = -1) => {
+  clearTraceHeadlineTimer();
+  traceHeadlineQueue = [];
+  traceHeadlineSeenIds = new Set();
+  traceHeadlineStartedAt = 0;
+  activeTraceEventId.value = '';
+  traceHeadlineActive.value = false;
+  traceHeadlineMessageIndex.value = messageIndex;
+  traceHeadlineRequestComplete.value = false;
+  traceHeadlineFinalStatus.value = 'completed';
+};
+
+const persistSessionScrollPositions = () => {
+  try {
+    localStorage.setItem(SESSION_SCROLL_STORAGE_KEY, JSON.stringify(sessionScrollPositions));
+  } catch { }
+};
+
+const saveSessionScrollPosition = (sessionId = currentSessionId.value) => {
+  const container = messagesContainer.value;
+  const numericSessionId = Number(sessionId);
+  if (!container || !Number.isFinite(numericSessionId) || numericSessionId <= 0) return;
+  sessionScrollPositions[numericSessionId] = Math.max(0, Math.round(container.scrollTop));
+  persistSessionScrollPositions();
+};
+
+const restoreSessionScrollPosition = async (sessionId = currentSessionId.value) => {
+  await nextTick();
+  const container = messagesContainer.value;
+  if (!container) return;
+  const storedPosition = Number(sessionScrollPositions[Number(sessionId)]);
+  container.scrollTop = Number.isFinite(storedPosition) ? Math.max(0, storedPosition) : 0;
+  const distanceToBottom = container.scrollHeight - container.clientHeight - container.scrollTop;
+  userIsNearBottom.value = distanceToBottom <= 96;
+};
+
+const handleMessagesScroll = () => {
+  const container = messagesContainer.value;
+  if (!container) return;
+  const distanceToBottom = container.scrollHeight - container.clientHeight - container.scrollTop;
+  userIsNearBottom.value = distanceToBottom <= 96;
+  if (scrollPositionTimer) clearTimeout(scrollPositionTimer);
+  scrollPositionTimer = setTimeout(() => {
+    saveSessionScrollPosition();
+    scrollPositionTimer = null;
+  }, 120);
+};
 
 // 会话选择的“标签页级”记忆：
 // - 同一 tab 内关闭/打开弹窗：回到上次选中的 session
@@ -1144,10 +1492,16 @@ const loadSessions = async () => {
  * 数据库记录延迟到用户真正发送第一条消息时才创建（惰性创建）。
  */
 const resetToNewChat = () => {
+  if (abortController.value) stopGeneration();
+  resetTraceHeadlinePlayback();
+  saveSessionScrollPosition();
   currentSessionId.value = null;
   messages.value = [];
   expandedThinking.value = {};
   expandedWorkflow.value = {};
+  expandedAgentProcesses.value = {};
+  expandedTraceStages.value = {};
+  expandedTraceDetails.value = {};
 };
 
 /**
@@ -1182,14 +1536,19 @@ const createNewSession = async () => {
 const selectSession = async (sessionId) => {
   if (!sessionId) return;
   if (currentSessionId.value === sessionId) return;
+  saveSessionScrollPosition();
    // console.log('[Sessions] Selecting session:', sessionId);
   currentSessionId.value = sessionId;
   writeStoredSessionId(sessionId);
   messages.value = [];
   expandedThinking.value = {}; // 清空之前的展开状态，防止索引错乱
   expandedWorkflow.value = {};
-  loading.value = false;
+  expandedAgentProcesses.value = {};
+  expandedTraceStages.value = {};
+  expandedTraceDetails.value = {};
   stopGeneration();
+  resetTraceHeadlinePlayback();
+  loading.value = false;
 
   try {
     const token = localStorage.getItem('auth_token');
@@ -1200,13 +1559,13 @@ const selectSession = async (sessionId) => {
     const data = await response.json();
     if (data.success) {
       messages.value = data.messages;
-       // console.log('[Sessions] Messages loaded:', messages.value.length);
-      // 默认展开所有工作流，避免历史会话里看不到 Trace
+        // console.log('[Sessions] Messages loaded:', messages.value.length);
+      // 历史会话默认保持收起，用户点击具体节点后再查看执行细节。
       expandedWorkflow.value = {};
-      for (let i = 0; i < messages.value.length; i += 1) {
-        if (messages.value[i]?.role === 'assistant') expandedWorkflow.value[i] = true;
-      }
-      nextTick(() => scrollToBottom(true));
+      expandedAgentProcesses.value = {};
+      expandedTraceStages.value = {};
+      expandedTraceDetails.value = {};
+      await restoreSessionScrollPosition(sessionId);
     }
   } catch (err) {
     console.error('[Sessions] Load messages failed:', err);
@@ -1227,6 +1586,8 @@ const deleteSession = async (sessionId) => {
     const data = await response.json();
     if (data.success) {
        // console.log('[Sessions] Deleted successfully');
+      delete sessionScrollPositions[Number(sessionId)];
+      persistSessionScrollPositions();
       await loadSessions();
 
       // 若删除的是“当前会话”，也同步清理 tab 内记忆，避免下次打开指向不存在的会话
@@ -1248,7 +1609,7 @@ const deleteSession = async (sessionId) => {
   }
 };
 
-const saveMessage = async (role, content, thinking = '', thinkTime = 0, workflow = []) => {
+const saveMessage = async (role, content, thinking = '', thinkTime = 0, workflow = [], trace = []) => {
   if (!currentSessionId.value) return;
   try {
     await fetch(`/api/chat-sessions/${currentSessionId.value}/messages`, {
@@ -1257,7 +1618,7 @@ const saveMessage = async (role, content, thinking = '', thinkTime = 0, workflow
         'Content-Type': 'application/json',
         'Authorization': `Bearer ${localStorage.getItem('auth_token')}`
       },
-      body: JSON.stringify({ role, content, thinking, thinkTime, workflow })
+      body: JSON.stringify({ role, content, thinking, thinkTime, workflow, trace })
     });
   } catch (err) {
     console.error('保存消息失败:', err);
@@ -1277,10 +1638,10 @@ const isReasoningModel = computed(() => {
 const deepThinking = computed(() => isReasoningModel.value);
 
 // 模型选择
-const selectedModel = ref('deepseek-v4-flash');
+const selectedModel = ref('deepseek-v4-pro');
 const showModelDropdown = ref(false);
 const availableModels = [
-  { value: 'deepseek-v4-flash', label: 'DeepSeek-V4 Flash', desc: '官方云端超大模型 · 最强推理能力' },
+  { value: 'deepseek-v4-pro', label: 'DeepSeek-V4 Pro', desc: '官方云端旗舰模型 · 最强推理能力' },
   { value: 'deepseek-r1:8b', label: 'DeepSeek-R1 8B', desc: '标准模式 · 性能平衡' },
   { value: 'gemma4:e4b', label: 'Gemma 4', desc: '快速模式 · 响应灵敏' }
 ];
@@ -1308,16 +1669,22 @@ const handleClickOutside = (e) => {
 
 onMounted(() => {
   window.addEventListener('click', handleClickOutside);
+  window.addEventListener('resize', clampSidebarToViewport);
 });
 
 onUnmounted(() => {
   window.removeEventListener('click', handleClickOutside);
+  window.removeEventListener('resize', clampSidebarToViewport);
+  stopSidebarResize();
+  if (scrollPositionTimer) clearTimeout(scrollPositionTimer);
+  saveSessionScrollPosition();
   // 组件卸载时取消正在进行的请求
   if (abortController.value) {
     // console.log('[AI Modal] 组件卸载，取消正在进行的请求');
     abortController.value.abort();
     abortController.value = null;
   }
+  resetTraceHeadlinePlayback();
 });
 
 const quickQuestions = computed(() => {
@@ -1346,17 +1713,18 @@ watch(() => props.visible, async (visible) => {
       }
     }
 
-    // 兜底：打开弹窗时，确保现有 assistant 消息的工作流默认展开
-    if (messages.value.length) {
-      expandedWorkflow.value = {};
-      for (let i = 0; i < messages.value.length; i += 1) {
-        if (messages.value[i]?.role === 'assistant') expandedWorkflow.value[i] = true;
-      }
-    }
-
+    await restoreSessionScrollPosition();
     nextTick(() => {
       inputField.value?.focus();
     });
+  } else {
+    saveSessionScrollPosition();
+    if (abortController.value) {
+      abortController.value.abort();
+      abortController.value = null;
+      loading.value = false;
+    }
+    resetTraceHeadlinePlayback();
   }
 });
 
@@ -1369,6 +1737,7 @@ const handleClose = () => {
     abortController.value = null;
     loading.value = false;
   }
+  resetTraceHeadlinePlayback();
   emit('update:visible', false);
   emit('close');
 };
@@ -1393,14 +1762,15 @@ const adjustInputHeight = () => {
   });
 };
 
-const stopGeneration = () => {
+function stopGeneration() {
   if (abortController.value) {
     // console.log('[AI Modal] 用户点击停止生成');
     abortController.value.abort();
     abortController.value = null;
     loading.value = false;
+    terminateTraceHeadlinePlayback('stopped');
   }
-};
+}
 
 const clearMessages = () => {
   resetToNewChat();
@@ -1408,6 +1778,9 @@ const clearMessages = () => {
 
 const userInteractedThinking = ref(false); // 追踪用户是否手动调整过折叠状态
 const expandedWorkflow = ref({}); // 每条 assistant 消息的“数据工作流”折叠状态（true=展开）
+const expandedAgentProcesses = ref({}); // GeoAI 工作流根节点，默认收起
+const expandedTraceStages = ref({}); // 业务阶段，默认收起
+const expandedTraceDetails = ref({}); // 参数、工具与结果等第三级明细，默认收起
 
 const sendMessage = async (text) => {
   if (!text || !text.trim() || loading.value) return;
@@ -1422,24 +1795,27 @@ const sendMessage = async (text) => {
   });
 
   // 移除前端手动更新标题的逻辑，完全交给后端 AI 处理
-  await scrollToBottom();
+  userIsNearBottom.value = true;
+  await scrollToBottom(true);
   loading.value = true;
   abortController.value = new AbortController();
 
   const assistantMsgIndex = messages.value.length;
+  resetTraceHeadlinePlayback(assistantMsgIndex);
   const startTime = Date.now();
   messages.value.push({
     role: 'assistant',
     content: '',
     thinking: '',
     thinkTime: 0,
-    workflow: []
+    workflow: [],
+    trace: []
   });
 
   // 初始默认折叠（透明但不打扰阅读）
   expandedThinking.value[assistantMsgIndex] = false;
-  // 数据工作流默认展开：默认“看得见链路”，但可折叠减少挤压
-  expandedWorkflow.value[assistantMsgIndex] = true;
+  expandedWorkflow.value[assistantMsgIndex] = false;
+  expandedAgentProcesses.value[assistantMsgIndex] = false;
   userInteractedThinking.value = false; 
 
   try {
@@ -1473,6 +1849,25 @@ const sendMessage = async (text) => {
         sessionId: currentSessionId.value
       },
       (chunkObj) => {
+        if (chunkObj.trace) {
+          const trace = messages.value[assistantMsgIndex].trace || [];
+          const id = chunkObj.trace.id;
+          const traceIndex = trace.findIndex((event) => event?.id === id);
+          if (traceIndex >= 0) {
+            const next = [...trace];
+            next[traceIndex] = { ...next[traceIndex], ...chunkObj.trace };
+            messages.value[assistantMsgIndex].trace = next;
+          } else {
+            const next = [...trace];
+            const intentIndex = id === 'trace_context'
+              ? next.findIndex((event) => event?.id === 'trace_intent')
+              : -1;
+            if (intentIndex >= 0) next.splice(intentIndex, 0, chunkObj.trace);
+            else next.push(chunkObj.trace);
+            messages.value[assistantMsgIndex].trace = next;
+          }
+          enqueueTraceHeadline(chunkObj.trace, assistantMsgIndex);
+        }
         if (chunkObj.workflow) {
           const wf = messages.value[assistantMsgIndex].workflow || [];
           const id = chunkObj.workflow.id;
@@ -1526,6 +1921,7 @@ const sendMessage = async (text) => {
       async () => {
         loading.value = false;
         abortController.value = null;
+        completeTraceHeadlinePlayback('completed', assistantMsgIndex);
         
         const lastMsg = messages.value[assistantMsgIndex];
         // 如果结束还没统计到时间（可能是极短的回答或只有状态标签），则补全总耗时
@@ -1542,7 +1938,14 @@ const sendMessage = async (text) => {
         // map_control 已下线：不再解析/下发 MAP_COMMAND 地图指令
 
         // 完成后保存 AI 消息 (持久化所有逻辑字段)
-        await saveMessage('assistant', lastMsg.content, lastMsg.thinking, lastMsg.thinkTime, lastMsg.workflow || []);
+        await saveMessage(
+          'assistant',
+          lastMsg.content,
+          lastMsg.thinking,
+          lastMsg.thinkTime,
+          lastMsg.workflow || [],
+          lastMsg.trace || []
+        );
         
         // 延迟 2 秒刷新会话列表，确保后端 AI 已完成标题生成
         setTimeout(() => {
@@ -1556,12 +1959,14 @@ const sendMessage = async (text) => {
         }
         loading.value = false;
         abortController.value = null;
+        terminateTraceHeadlinePlayback('error', assistantMsgIndex);
       },
       abortController.value.signal
     );
   } catch (err) {
     loading.value = false;
     abortController.value = null;
+    terminateTraceHeadlinePlayback('error', assistantMsgIndex);
   }
   await scrollToBottom();
 };
@@ -1569,11 +1974,13 @@ const sendMessage = async (text) => {
 const lastScrollTime = ref(0);
 const scrollToBottom = async (force = false) => {
   const now = Date.now();
+  if (!force && !userIsNearBottom.value) return;
   if (!force && now - lastScrollTime.value < 100) return;
 
   await nextTick();
   if (messagesContainer.value) {
     messagesContainer.value.scrollTop = messagesContainer.value.scrollHeight;
+    userIsNearBottom.value = true;
     lastScrollTime.value = now;
   }
 };
@@ -1581,10 +1988,7 @@ const scrollToBottom = async (force = false) => {
 
 
 const toggleThinking = (index) => {
-  if (expandedThinking.value[index] === undefined) {
-    expandedThinking.value[index] = true;
-  }
-  expandedThinking.value[index] = !expandedThinking.value[index];
+  expandedThinking.value[index] = expandedThinking.value[index] !== true;
   
   // 如果是当前正在生成的 AI 消息，记录用户交互
   if (loading.value && index === messages.value.length - 1) {
@@ -1593,10 +1997,504 @@ const toggleThinking = (index) => {
 };
 
 const toggleWorkflow = (index) => {
-  if (expandedWorkflow.value[index] === undefined) {
-    expandedWorkflow.value[index] = true;
+  expandedWorkflow.value[index] = expandedWorkflow.value[index] !== true;
+};
+
+const getTraceStageKey = (messageIndex, event = {}) => `${messageIndex}:${String(event.id || 'stage')}`;
+const getTraceDetailKey = (messageIndex, event = {}, detailId = '') => `${getTraceStageKey(messageIndex, event)}:${detailId}`;
+
+const isAgentProcessExpanded = (messageIndex) => expandedAgentProcesses.value[messageIndex] === true;
+
+const toggleAgentProcess = (messageIndex) => {
+  expandedAgentProcesses.value[messageIndex] = !isAgentProcessExpanded(messageIndex);
+};
+
+const isTraceStageExpanded = (messageIndex, event = {}) => (
+  expandedTraceStages.value[getTraceStageKey(messageIndex, event)] === true
+);
+
+const toggleTraceStage = (messageIndex, event = {}) => {
+  const key = getTraceStageKey(messageIndex, event);
+  expandedTraceStages.value[key] = !isTraceStageExpanded(messageIndex, event);
+};
+
+const isTraceDetailExpanded = (messageIndex, event = {}, detailId = '') => (
+  expandedTraceDetails.value[getTraceDetailKey(messageIndex, event, detailId)] === true
+);
+
+const toggleTraceDetail = (messageIndex, event = {}, detailId = '') => {
+  const key = getTraceDetailKey(messageIndex, event, detailId);
+  expandedTraceDetails.value[key] = !isTraceDetailExpanded(messageIndex, event, detailId);
+};
+
+const traceToolMeta = {
+  clcd_analysis: { script: 'clcdTool', label: '土地利用数据分析', action: '分析 CLCD 土地利用数据', result: 'CLCD 土地利用统计结果' },
+  dashboard_analysis: { script: 'dashboardTool', label: '综合指标评估', action: '计算 LUCC 监测预警指标', result: 'LUCC 监测预警指标结果' },
+  spatial_stats_analysis: { script: 'spatialStatsTool', label: '空间统计分析', action: '计算县域空间分异与格局特征', result: '县域空间统计结果' },
+  land_transfer_analysis: { script: 'transferTool', label: '土地利用转移分析', action: '计算土地利用转移矩阵', result: '土地利用转移矩阵' },
+  weather_query: { script: 'weatherTool', label: '气象数据查询', action: '查询区域气象数据', result: '区域气象数据' },
+  knowledge_base_lookup: { script: 'knowledgeTool', label: '专业知识检索', action: '检索专业知识依据', result: '专业知识条目' },
+  knowledge_graph_query: { script: 'knowledgeGraphTool', label: '知识图谱查询', action: '查询知识图谱关系', result: '知识图谱关系结果' },
+  knowledge_query: { script: 'knowledgeGraphTool', label: '知识图谱查询', action: '查询知识图谱关系', result: '知识图谱关系结果' },
+  policy_reference_lookup: { script: 'policyReferenceTool', label: '政策规划资料检索', action: '检索政策与规划资料', result: '政策与规划文献条目' },
+  web_fetch: { script: 'webFetchTool', label: '权威网页资料读取', action: '读取权威网页正文', result: '网页正文内容' }
+};
+
+const traceIconSources = {
+  agent: '/assets/agent-trace/agent.svg',
+  context: '/assets/agent-trace/context.svg',
+  nlp: '/assets/agent-trace/advanced-nlp.svg',
+  reasoning: '/assets/agent-trace/reasoning.svg',
+  deepseek: '/assets/agent-trace/deepseek.svg',
+  parameters: '/assets/agent-trace/parameters.svg',
+  js: '/assets/agent-trace/js.svg',
+  tool: '/assets/agent-trace/tool.svg',
+  data: '/assets/agent-trace/data.svg',
+  policy: '/assets/agent-trace/policy.svg',
+  time: '/assets/agent-trace/time.svg'
+};
+
+const knowledgeTraceTools = new Set([
+  'knowledge_query',
+  'knowledge_base_lookup',
+  'knowledge_graph_query',
+  'policy_reference_lookup',
+  'web_fetch'
+]);
+
+const getTraceToolMeta = (tool = '') => traceToolMeta[String(tool)] || {
+  script: String(tool || 'analysisTool'),
+  label: '空间分析工具',
+  action: '执行空间分析',
+  result: '空间分析结果'
+};
+
+const getTraceToolScript = (tool = '') => getTraceToolMeta(tool).script;
+const getTraceToolLabel = (tool = '') => getTraceToolMeta(tool).label;
+const getTraceToolAction = (tool = '') => getTraceToolMeta(tool).action;
+const getTraceToolResult = (tool = '') => getTraceToolMeta(tool).result;
+const isKnowledgeTraceTool = (tool = '') => knowledgeTraceTools.has(String(tool || ''));
+const getTraceToolStageIconName = (event = {}) => {
+  if (isKnowledgeTraceTool(event.tool)) return 'policy';
+  if (event.phase === 'observation') return 'data';
+  if (event.phase === 'tool_call') return 'js';
+  return 'tool';
+};
+const getTraceObservationLabel = (event = {}) => (
+  isKnowledgeTraceTool(event.tool) ? '返回模型的知识资料' : '返回模型的数据'
+);
+const getTraceObservationIconSource = (event = {}) => (
+  traceIconSources[getTraceToolStageIconName({ ...event, phase: 'observation' })] || traceIconSources.data
+);
+
+const getTraceObservationSummary = (observation = {}) => {
+  return toBusinessTraceText(observation?.summary || '已获得数据结果。');
+};
+
+// 只转换界面文案，不改动 Trace 事件本身。
+const toBusinessTraceText = (value = '') => String(value || '')
+  .replace(/\n?\[\u6a21\u578b\u63a8\u7406\u8bb0\u5f55\u5df2\u6309\u5b89\u5168\u8fb9\u754c\u622a\u65ad\]/g, '')
+  .replace(/DeepSeek(?:\s+Tool\s+Router)?/gi, '分析模型')
+  .replace(/Ollama\s*LLM/gi, '分析模型')
+  .replace(/MCP\s*Client/gi, 'MCP 知识服务')
+  .replace(/Agent\s*Tool/gi, '空间分析工具')
+  .replace(/AI\s*Middleware/gi, '地理空间上下文')
+  .replace(/SSE(?:\s*Result\s*Aggregator|流)?/gi, '实时响应')
+  .replace(/Agent\s*Observation/gi, '工具结果')
+  .replace(/Observation/gi, '工具结果')
+  .replace(/reasoning_content/gi, '决策依据')
+  .replace(/结果已作为下一轮上下文回传给分析模型/gi, '该结果将用于后续路径判断')
+  .replace(/回灌(?:给)?(?:分析)?模型/gi, '用于后续分析')
+  .replace(/回灌/gi, '用于后续分析')
+  .replace(/执行工具|工具调用/gi, '数据分析')
+  .replace(/POST\s*\/[^\s，。]*/gi, '分析请求')
+  .replace(/[ \t]{2,}/g, ' ')
+  .replace(/\n{3,}/g, '\n\n')
+  .trim();
+
+const getTraceBusinessTitle = (event = {}) => {
+  const id = String(event.id || '');
+  if (id === 'trace_ingress') return '接收分析任务';
+  if (id === 'trace_context') return '建立时空分析语境';
+  if (id === 'trace_intent' || event.phase === 'intent') return '识别分析意图并提取关键参数';
+  if (event.phase === 'decision') {
+    return toBusinessTraceText(event.title)
+      || `模型分析与决策 · 第 ${Number(event.round || 0) + 1} 轮`;
   }
-  expandedWorkflow.value[index] = !expandedWorkflow.value[index];
+  if (event.phase === 'planning') {
+    return `模型分析与决策 · 第 ${Number(event.round || 0) + 1} 轮`;
+  }
+  if (event.phase === 'tool_call') {
+    return `通过 MCP 调用 ${getTraceToolScript(event.tool)} ${getTraceToolAction(event.tool)}`;
+  }
+  if (event.phase === 'observation') {
+    return `接收 ${getTraceToolScript(event.tool)} 返回的${getTraceToolResult(event.tool)}`;
+  }
+  if (event.phase === 'synthesis') return '综合分析结果并形成解释';
+  if (id === 'trace_delivery') return '归档本轮分析结果';
+  if (id === 'trace_error') return '复核异常分析过程';
+  return toBusinessTraceText(event.title || '分析阶段');
+};
+
+const getTraceStageSummary = (event = {}) => {
+  const id = String(event.id || '');
+  const parameters = event.parameters || {};
+  if (id === 'trace_ingress') return '已接收空间分析问题并建立实时响应。';
+  if (id === 'trace_context') {
+    const backendSummary = toBusinessTraceText(event.summary || '');
+    if (backendSummary) return backendSummary;
+    const yearRange = Array.isArray(parameters.year_range) && parameters.year_range.length >= 2
+      ? `${parameters.year_range[0]}—${parameters.year_range[1]}年`
+      : '';
+    const years = !yearRange && Array.isArray(parameters.years) && parameters.years.length
+      ? `${parameters.years.join('、')}年`
+      : '';
+    const year = !yearRange && !years && parameters.year ? `${parameters.year}年` : '';
+    const scope = [parameters.region, yearRange || years || year].filter(Boolean).join('、');
+    return scope ? `已将${scope}纳入本轮分析范围。` : '';
+  }
+  if (id === 'trace_delivery') return '分析结论与执行记录已归入当前对话。';
+  if (event.status === 'error') return toBusinessTraceText(event.summary);
+  if (event.phase === 'tool_call') {
+    return event.status === 'running'
+      ? `MCP 脚本 ${getTraceToolScript(event.tool)} 正在${getTraceToolAction(event.tool)}。`
+      : `MCP 脚本 ${getTraceToolScript(event.tool)} 已完成${getTraceToolAction(event.tool)}。`;
+  }
+  if (event.phase === 'observation' && event.observation) {
+    return getTraceObservationSummary(event.observation);
+  }
+  return toBusinessTraceText(event.summary || '');
+};
+
+const getTraceDisplayItems = (msg) => {
+  const trace = Array.isArray(msg?.trace) ? msg.trace : [];
+  return trace
+    .filter((event) => {
+      if (!event?.id || /^trace_model_/.test(String(event.id))) return false;
+      if (String(event.id) !== 'trace_context') return true;
+      return ['question', 'tool', 'question+tool'].includes(String(event.scope_source || ''));
+    })
+    .map((event) => ({
+      ...event,
+      title: getTraceBusinessTitle(event),
+      summary: getTraceStageSummary(event),
+      detail: toBusinessTraceText(event.detail),
+      reasoning: toBusinessTraceText(event.reasoning),
+      error: toBusinessTraceText(event.error)
+    }));
+};
+
+const getLatestTraceEvent = (msg) => {
+  const trace = getTraceDisplayItems(msg);
+  return trace[trace.length - 1] || null;
+};
+
+const getAgentProcessActiveEvent = (msg, messageIndex) => {
+  if (!traceHeadlineActive.value || messageIndex !== traceHeadlineMessageIndex.value) return null;
+  const trace = getTraceDisplayItems(msg);
+  if (!trace.length) return null;
+  return trace.find((event) => String(event.id) === activeTraceEventId.value)
+    || trace[trace.length - 1];
+};
+
+const getAgentProcessTitle = (msg, messageIndex) => {
+  if (messageIndex === traceHeadlineMessageIndex.value) {
+    const activeEvent = getAgentProcessActiveEvent(msg, messageIndex);
+    if (activeEvent) return activeEvent.title;
+    if (!traceHeadlineRequestComplete.value && loading.value) return '接收分析任务';
+    if (traceHeadlineFinalStatus.value === 'error') return 'GeoAI Agent · ReAct Workflow 执行异常';
+    if (traceHeadlineFinalStatus.value === 'stopped') return 'GeoAI Agent · ReAct Workflow 执行已停止';
+    if (traceHeadlineRequestComplete.value) return 'GeoAI Agent · ReAct Workflow 执行结束';
+  }
+
+  const latestEvent = getLatestTraceEvent(msg);
+  return latestEvent?.status === 'error' || latestEvent?.id === 'trace_error'
+    ? 'GeoAI Agent · ReAct Workflow 执行异常'
+    : 'GeoAI Agent · ReAct Workflow 执行结束';
+};
+
+const getAgentProcessIcon = (msg, messageIndex) => {
+  const event = getAgentProcessActiveEvent(msg, messageIndex);
+  if (event) return getTraceIconSource(event);
+  if (messageIndex === traceHeadlineMessageIndex.value && ['error', 'stopped'].includes(traceHeadlineFinalStatus.value)) {
+    return traceIconSources.time;
+  }
+  return traceIconSources.agent;
+};
+
+const getAgentProcessIconClass = (msg, messageIndex) => {
+  const event = getAgentProcessActiveEvent(msg, messageIndex);
+  if (event) return getTraceIconClass(event);
+  if (messageIndex === traceHeadlineMessageIndex.value && ['error', 'stopped'].includes(traceHeadlineFinalStatus.value)) {
+    return 'trace-icon-time';
+  }
+  return 'trace-icon-agent';
+};
+
+const getAgentProcessDisplayKey = (msg, messageIndex) => {
+  const event = getAgentProcessActiveEvent(msg, messageIndex);
+  return event
+    ? `${messageIndex}:${event.id || event.phase || 'trace'}`
+    : getAgentProcessTitle(msg, messageIndex);
+};
+
+const isAgentProcessRunning = (messageIndex, msg) => (
+  ((loading.value && messageIndex === messages.value.length - 1)
+    || (traceHeadlineActive.value && messageIndex === traceHeadlineMessageIndex.value))
+  && Boolean(msg)
+);
+
+const getTraceIconName = (event = {}) => {
+  const id = String(event.id || '');
+  if (id === 'trace_ingress' || id === 'trace_delivery') return 'agent';
+  if (id === 'trace_context') return 'context';
+  if (event.phase === 'intent') return 'nlp';
+  if (event.phase === 'decision' || event.phase === 'planning') return 'reasoning';
+  if (event.phase === 'tool_call' || event.phase === 'observation') return getTraceToolStageIconName(event);
+  if (event.phase === 'synthesis') return 'reasoning';
+  return 'time';
+};
+
+const getTraceIconSource = (event = {}) => traceIconSources[getTraceIconName(event)] || traceIconSources.time;
+const getTraceIconClass = (event = {}) => `trace-icon-${getTraceIconName(event)}`;
+const getTraceIconClassBySource = (source = '') => {
+  const iconName = Object.entries(traceIconSources).find(([, iconSource]) => iconSource === source)?.[0] || 'time';
+  return `trace-icon-${iconName}`;
+};
+
+const isCompactTraceStage = (event = {}) => ['trace_ingress', 'trace_context', 'trace_delivery']
+  .includes(String(event.id || ''));
+
+const getTraceUserQuestion = (event = {}, messageIndex) => {
+  if (String(event.id || '') !== 'trace_intent') return '';
+  const parameterQuestion = event.parameters?.question;
+  if (parameterQuestion) return String(parameterQuestion);
+  for (let index = Number(messageIndex) - 1; index >= 0; index -= 1) {
+    if (messages.value[index]?.role === 'user') return String(messages.value[index].content || '').trim();
+  }
+  return '';
+};
+
+const getTraceDecisionText = (event = {}) => {
+  if (event.phase === 'observation' || event.phase === 'tool_call' || event.phase === 'system') return '';
+  const text = toBusinessTraceText(event.reasoning || event.detail);
+  return text && text !== event.summary ? text : '';
+};
+
+const getTraceFollowUpText = (event = {}) => {
+  if (event.phase !== 'observation') return '';
+  return toBusinessTraceText(event.detail)
+    || '该结果已进入模型上下文，用于下一阶段的路径判断与结论生成。';
+};
+
+const getTraceToolSource = (event = {}) => /MCP/i.test(String(event.source || '')) ? 'MCP 知识服务' : '';
+
+const tracePrivateFieldPattern = /(authorization|api[_-]?key|access[_-]?token|refresh[_-]?token|password|secret|cookie)/i;
+
+const sanitizeTraceData = (value, depth = 0) => {
+  if (depth > 6) return '...';
+  if (Array.isArray(value)) return value.map((item) => sanitizeTraceData(item, depth + 1));
+  if (!value || typeof value !== 'object') return value;
+
+  return Object.fromEntries(Object.entries(value).map(([key, item]) => [
+    key,
+    tracePrivateFieldPattern.test(key) ? '***' : sanitizeTraceData(item, depth + 1)
+  ]));
+};
+
+const formatTraceData = (value) => {
+  try {
+    const parsed = typeof value === 'string' ? JSON.parse(value) : value;
+    return JSON.stringify(sanitizeTraceData(parsed), null, 2);
+  } catch {
+    return String(value || '');
+  }
+};
+
+const getTraceStatusLabel = (status = 'completed') => ({
+  running: '进行中',
+  completed: '已完成',
+  error: '需复核'
+}[status] || '已记录');
+
+const traceParameterLabels = {
+  region: '区域',
+  year: '年份',
+  year_range: '年份范围',
+  start_year: '起始年份',
+  end_year: '结束年份',
+  question: '分析问题',
+  calls: '分析路径',
+  analysis_tools: '分析方法',
+  model: '分析模型',
+  provider: '服务类型',
+  thinking_enabled: '推理模式',
+  history_messages: '参考对话',
+  level: '行政层级',
+  unit: '统计单元',
+  land_type: '地类',
+  top_n: '返回数量',
+  method: '计算方法',
+  mode: '分析模式'
+};
+
+const formatTraceValue = (value) => {
+  if (value === null || value === undefined || value === '') return '未指定';
+  if (typeof value === 'boolean') return value ? '是' : '否';
+  if (Array.isArray(value)) {
+    return value.every((item) => ['string', 'number', 'boolean'].includes(typeof item))
+      ? value.join('、')
+      : `${value.length} 项`;
+  }
+  if (typeof value === 'object') return `${Object.keys(value).length} 个字段`;
+  return String(value);
+};
+
+const getTraceParameterEntries = (value) => {
+  let parsed = value;
+  if (typeof value === 'string') {
+    try { parsed = JSON.parse(value); } catch { parsed = value; }
+  }
+  parsed = sanitizeTraceData(parsed);
+  if (!parsed || typeof parsed !== 'object' || Array.isArray(parsed)) {
+    return [{ key: 'value', label: '内容', value: formatTraceValue(parsed) }];
+  }
+  return Object.entries(parsed).map(([key, item]) => ({
+    key,
+    label: traceParameterLabels[key] || key,
+    value: formatTraceValue(item)
+  }));
+};
+
+const isComplexTraceData = (value) => {
+  let parsed = value;
+  if (typeof value === 'string') {
+    try { parsed = JSON.parse(value); } catch { return false; }
+  }
+  if (!parsed || typeof parsed !== 'object' || Array.isArray(parsed)) return Array.isArray(parsed);
+  const entries = Object.entries(parsed);
+  return entries.length > 4 || entries.some(([, item]) => item && typeof item === 'object');
+};
+
+const shouldShowTraceParameters = (event = {}) => {
+  if (isCompactTraceStage(event) || !event.parameters) return false;
+  if (!['intent', 'decision', 'planning', 'tool_call'].includes(event.phase)) return false;
+  return typeof event.parameters !== 'object' || Object.keys(event.parameters).length > 0;
+};
+
+const getTraceParameterLabel = (event = {}) => {
+  if (event.phase === 'intent') return '提取参数';
+  if (event.phase === 'decision') return '模型选择的工具路径';
+  if (event.phase === 'planning') return '规划的工具路径';
+  if (event.phase === 'tool_call') return '调用参数';
+  return '分析参数';
+};
+
+const getTraceObservationContent = (observation = {}) => {
+  const content = String(observation?.preview || '').trim();
+  if (!content) return '';
+  return content
+    .replace(/\n?\.\.\. \[OBSERVATION_TRUNCATED \d+ CHARS\]/g, '\n...')
+    .replace(/\n?\.\.\. \[OBSERVATION_STRUCTURE_TRUNCATED\]/g, '\n...')
+    .replace(/\[REDACTED\]/g, '***')
+    .trim();
+};
+
+const getTraceDetailItems = (event = {}, messageIndex) => {
+  const details = [];
+  const question = getTraceUserQuestion(event, messageIndex);
+
+  if (question) {
+    details.push({
+      id: 'question',
+      label: '模型接收到的问题',
+      type: 'text',
+      text: question,
+      icon: traceIconSources.nlp
+    });
+  }
+
+  if (event.phase === 'tool_call' && event.tool) {
+    details.push({
+      id: 'tool',
+      label: '调用 MCP 脚本',
+      type: 'tool',
+      tool: String(event.tool),
+      script: getTraceToolScript(event.tool),
+      toolLabel: getTraceToolLabel(event.tool),
+      action: getTraceToolAction(event.tool),
+      source: getTraceToolSource(event),
+      icon: traceIconSources.js
+    });
+  }
+
+  if (shouldShowTraceParameters(event)) {
+    details.push({
+      id: 'parameters',
+      label: getTraceParameterLabel(event),
+      type: 'parameters',
+      value: event.parameters,
+      icon: event.phase === 'tool_call'
+        ? traceIconSources.parameters
+        : (['decision', 'planning'].includes(event.phase) ? traceIconSources.tool : traceIconSources.parameters)
+    });
+  }
+
+  if (event.observation) {
+    details.push({
+      id: 'result',
+      label: getTraceObservationLabel(event),
+      type: 'result',
+      summary: getTraceObservationSummary(event.observation),
+      content: getTraceObservationContent(event.observation),
+      icon: getTraceObservationIconSource(event)
+    });
+  }
+
+  const followUp = getTraceFollowUpText(event);
+  if (followUp) {
+    details.push({
+      id: 'follow-up',
+      label: '后续分析依据',
+      type: 'text',
+      text: followUp,
+      icon: traceIconSources.reasoning
+    });
+  }
+
+  if (event.error) {
+    details.push({
+      id: 'error',
+      label: '异常信息',
+      type: 'error',
+      text: event.error,
+      icon: traceIconSources.time
+    });
+  }
+
+  return details;
+};
+
+const isTraceStageExpandable = (event = {}, messageIndex) => {
+  if (isCompactTraceStage(event)) return false;
+  return Boolean(getTraceDecisionText(event) || getTraceDetailItems(event, messageIndex).length);
+};
+
+const getBusinessWorkflowLabel = (label = '') => {
+  const text = String(label || '');
+  if (/App用户端|提交空间分析问题/.test(text)) return '问题理解';
+  if (/POST接口|建立SSE|重试模型调用链路|数据链路准备/.test(text)) return '建立分析连接';
+  if (/AI Middleware|挂载地理空间上下文|注入地图/.test(text)) return '确定分析范围';
+  if (/dataRouter|规划工具链|匹配业务分析工具|调度/.test(text)) return '规划分析路径';
+  if (/PostgreSQL|PostGIS|读取时空业务数据/.test(text)) return '获取空间数据';
+  if (/MCP知识服务|专家知识|知识图谱/.test(text)) return '补充知识资料';
+  if (/Ollama|DeepSeek|生成专业分析结论|解析意图/.test(text)) return '形成分析判断';
+  if (/Result Aggregator|汇总发现|证据链/.test(text)) return '整理分析结论';
+  if (/SSE流|回传答案|工作流状态/.test(text)) return '输出分析结果';
+  return toBusinessTraceText(text)
+    .replace(/\s*[→➜]\s*/g, ' · ')
+    .replace(/\.js/g, '')
+    .trim();
 };
 
 // 智能包装：当消息正在流式生成时（当前回答的最后一条），自动跳过缓存
@@ -1605,8 +2503,6 @@ const parseMessage = (msg) => {
   const isStreaming = loading.value && msg === messages.value[messages.value.length - 1];
   return _parseMessage(msg, isStreaming);
 };
-const renderMarkdown = getRenderedMarkdown;
-
 const copyMessage = (assistantIndex) => {
   const idx = Number(assistantIndex);
   if (!Number.isFinite(idx) || idx < 0 || idx >= messages.value.length) return;
@@ -1618,6 +2514,17 @@ const copyMessage = (assistantIndex) => {
   const cleanForCopy = (text) => stripCopyArtifacts(text);
 
   const getWorkflowLinesForCopy = (msg, parsed) => {
+    const trace = getTraceDisplayItems(msg);
+    const linesFromTrace = trace
+      .map((event) => {
+        const phase = getTraceBusinessTitle(event || {});
+        const tool = event?.tool ? ` · ${event.tool}` : '';
+        const summary = String(event?.summary || '').trim();
+        return `${phase}${tool}${summary ? `：${summary}` : ''}`;
+      })
+      .filter(Boolean);
+    if (linesFromTrace.length) return linesFromTrace;
+
     // 优先使用 workflow（结构化节点，通常比 parseMessage.statuses 更完整）
     const nodes = Array.isArray(msg?.workflow) ? msg.workflow : [];
     const linesFromWorkflow = nodes
@@ -1659,7 +2566,7 @@ const copyMessage = (assistantIndex) => {
     }
   };
 
-  // 仅复制“当前对话轮次”：最近一条用户问题 + 当前AI回答 + 当前回答的绿色工作流
+  // 仅复制当前对话轮次；过程记录只复制阶段摘要，不把展开内容带入正文。
   const parts = [];
 
   // 1) 最近一条用户问题（向上回溯）
@@ -1679,7 +2586,7 @@ const copyMessage = (assistantIndex) => {
     .map(cleanForCopy)
     .filter(Boolean);
   if (workflowLines.length) {
-    parts.push(`数据工作流：\n- ${workflowLines.join('\n- ')}`);
+    parts.push(`分析过程摘要：\n- ${workflowLines.join('\n- ')}`);
   }
 
   const answerText = cleanForCopy(parsed.content || assistantMsg.content || '');
@@ -1699,7 +2606,7 @@ watch(messages, (newMsgs) => {
     const lastIndex = newMsgs.length - 1;
     const lastMsg = newMsgs[lastIndex];
     if (lastMsg.role === 'assistant' && parseMessage(lastMsg).thinking && expandedThinking.value[lastIndex] === undefined) {
-      expandedThinking.value[lastIndex] = true;
+      expandedThinking.value[lastIndex] = false;
     }
   }
   nextTick(async () => {
@@ -1735,255 +2642,6 @@ const reportIframe   = ref(null);
 const lastReportMsgSlice = ref(null);
 
 /**
- * 将 Markdown 文本转为完整优化排版的 HTML 报告字符串。
- * 无需任何后端调用。
- */
-const buildDirectReportHtml = (title, markdownContent, meta, modelLabel = '未知模型') => {
-  // 把已有的 renderMarkdown 转换Markdown → HTML
-  const bodyHtml = renderMarkdown(markdownContent);
-  const now = new Date().toLocaleString('zh-CN', { hour12: false });
-  const regionInfo = [meta.region, meta.year ? `${meta.year}年` : ''].filter(Boolean).join(' · ');
-
-  return `<!DOCTYPE html>
-<html lang="zh-CN">
-<head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>${title}</title>
-  <link rel="preconnect" href="https://fonts.googleapis.com">
-  <link href="https://fonts.googleapis.com/css2?family=Noto+Serif+SC:wght@400;600;700&family=Noto+Sans+SC:wght@400;500;600&display=swap" rel="stylesheet">
-  <style>
-    /* ── 全局重置 ── */
-    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
-
-    body {
-      font-family: 'Noto Sans SC', 'PingFang SC', 'Microsoft YaHei', sans-serif;
-      font-size: 14px;
-      line-height: 1.8;
-      color: #1a202c;
-      background: #f7f8fa;
-    }
-
-    /* ── 页面容器 ── */
-    .report-page {
-      max-width: 860px;
-      margin: 40px auto;
-      background: #fff;
-      border-radius: 8px;
-      box-shadow: 0 4px 24px rgba(0,0,0,0.08);
-      overflow: hidden;
-    }
-
-    /* ── 页眉 ── */
-    .report-header {
-      background: linear-gradient(135deg, #1a365d 0%, #2a4a8a 100%);
-      color: #fff;
-      padding: 40px 52px 36px;
-    }
-    .report-header .tag {
-      font-size: 11px;
-      font-weight: 600;
-      letter-spacing: 3px;
-      text-transform: uppercase;
-      color: rgba(255,255,255,0.55);
-      margin-bottom: 16px;
-    }
-    .report-header h1 {
-      font-family: 'Noto Serif SC', serif;
-      font-size: 28px;
-      font-weight: 700;
-      line-height: 1.3;
-      color: #fff;
-      margin-bottom: 12px;
-    }
-    .report-header .meta {
-      font-size: 12px;
-      color: rgba(255,255,255,0.5);
-      display: flex;
-      gap: 20px;
-      flex-wrap: wrap;
-    }
-    .report-header .meta span::before {
-      content: '▪ ';
-      opacity: 0.4;
-    }
-
-    /* ── 主体内容 ── */
-    .report-body {
-      padding: 44px 52px 52px;
-    }
-
-    /* ── Markdown 内容排版 ── */
-    .md-content h1, .md-content h2, .md-content h3,
-    .md-content h4, .md-content h5, .md-content h6 {
-      font-family: 'Noto Serif SC', serif;
-      color: #1a365d;
-      margin-top: 2em;
-      margin-bottom: 0.6em;
-      line-height: 1.4;
-    }
-    .md-content h1 { font-size: 22px; border-bottom: 2px solid #2a4a8a; padding-bottom: 8px; }
-    .md-content h2 { font-size: 18px; border-bottom: 1px solid #e2e8f0; padding-bottom: 6px; }
-    .md-content h3 { font-size: 16px; }
-    .md-content h4, .md-content h5, .md-content h6 { font-size: 14px; }
-
-    .md-content p {
-      margin-bottom: 1em;
-      text-align: justify;
-      color: #2d3748;
-    }
-
-    /* ── 强调文字 ── */
-    .md-content strong { color: #1a365d; font-weight: 600; }
-    .md-content em { color: #4a5568; font-style: italic; }
-
-    /* ── 列表 ── */
-    .md-content ul, .md-content ol {
-      padding-left: 1.6em;
-      margin-bottom: 1em;
-    }
-    .md-content li {
-      margin-bottom: 0.4em;
-      color: #2d3748;
-    }
-    .md-content li > ul, .md-content li > ol {
-      margin-top: 0.3em;
-      margin-bottom: 0;
-    }
-
-    /* ── 表格容器（对应 getRenderedMarkdown 生成的 .table-container 包装层）── */
-    .md-content .table-container {
-      overflow-x: auto;
-      margin: 1.4em 0;
-      border-radius: 6px;
-      border: 1px solid #e2e8f0;
-    }
-
-    /* ── 表格（核心优化）── */
-    .md-content table {
-      width: 100%;
-      border-collapse: collapse;
-      font-size: 13px;
-      margin: 0;
-    }
-    .md-content thead tr {
-      background: #1a365d;
-      color: #fff;
-    }
-    .md-content th {
-      padding: 10px 14px;
-      font-weight: 600;
-      text-align: left;
-      white-space: nowrap;
-    }
-    .md-content td {
-      padding: 9px 14px;
-      border-bottom: 1px solid #e2e8f0;
-      color: #2d3748;
-    }
-    .md-content tbody tr:nth-child(even) {
-      background: #f7f8fa;
-    }
-    .md-content tbody tr:hover {
-      background: #ebf4ff;
-    }
-
-    /* ── 引用块 ── */
-    .md-content blockquote {
-      border-left: 4px solid #2a4a8a;
-      background: #ebf4ff;
-      margin: 1.2em 0;
-      padding: 12px 18px;
-      border-radius: 0 6px 6px 0;
-      color: #2c5282;
-    }
-    .md-content blockquote p { margin: 0; color: inherit; }
-
-    /* ── 代码 ── */
-    .md-content code {
-      background: #edf2f7;
-      padding: 2px 6px;
-      border-radius: 3px;
-      font-size: 12px;
-      font-family: 'JetBrains Mono', 'Consolas', monospace;
-      color: #c53030;
-    }
-    .md-content pre {
-      background: #1a202c;
-      color: #e2e8f0;
-      padding: 16px 20px;
-      border-radius: 6px;
-      overflow-x: auto;
-      margin: 1.2em 0;
-      font-size: 12px;
-      line-height: 1.6;
-    }
-    .md-content pre code {
-      background: none;
-      padding: 0;
-      color: inherit;
-      font-size: inherit;
-    }
-
-    /* ── 分割线 ── */
-    .md-content hr {
-      border: none;
-      border-top: 1px solid #e2e8f0;
-      margin: 2em 0;
-    }
-
-    /* ── 页脚 ── */
-    .report-footer {
-      border-top: 1px solid #e2e8f0;
-      padding: 18px 52px;
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      font-size: 11px;
-      color: #a0aec0;
-      background: #fafbfc;
-    }
-
-    /* ── 打印样式 ── */
-    @media print {
-      body { background: #fff; }
-      .report-page {
-        margin: 0;
-        box-shadow: none;
-        border-radius: 0;
-        max-width: 100%;
-      }
-      .report-header { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
-      .md-content thead tr { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
-      .md-content tbody tr:nth-child(even) { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
-      .md-content h1, .md-content h2 { page-break-after: avoid; }
-      .md-content table, .md-content pre { page-break-inside: avoid; }
-    }
-  </style>
-</head>
-<body>
-  <div class="report-page">
-    <div class="report-header">
-      <div class="tag">AI 分析报告 · GIS Intelligence Platform</div>
-      <h1>${title}</h1>
-      <div class="meta">
-        <span>AI 模型：${modelLabel}</span>
-        <span>生成时间：${now}</span>
-      </div>
-    </div>
-    <div class="report-body">
-      <div class="md-content">${bodyHtml}</div>
-    </div>
-    <div class="report-footer">
-      <span>© 昆明理工大学国土资源工程学院 彭派GIS课题组</span>
-      <span>${now}</span>
-    </div>
-  </div>
-</body>
-</html>`;
-};
-
-/**
  * 核心：直接从已有AI对话提取内容生成报告，无需二次调用AI。
  * @param {Array} msgSlice - 截至当前消息的对话记录
  */
@@ -1992,7 +2650,7 @@ const generateReport = (msgSlice) => {
   const lastAssistantMsg = [...msgSlice].reverse().find(m => m.role === 'assistant');
 
   if (!lastUserMsg || !lastAssistantMsg) return;
-  
+
   // 内容：AI 回复的纯 Markdown（去掉 <think> 思考块）
   const markdownContent = parseMessage(lastAssistantMsg).content;
 
@@ -2030,10 +2688,16 @@ const generateReport = (msgSlice) => {
   }
 
   try {
-    const html = buildDirectReportHtml(title, markdownContent, {
-      region: props.region,
-      year:   props.year
-    }, getModelLabel.value);
+    const bodyHtml = renderMarkdown(markdownContent);
+    const html = buildDirectReportHtml({
+      title,
+      bodyHtml,
+      meta: {
+        region: props.region,
+        year: props.year
+      },
+      modelLabel: getModelLabel.value
+    });
     const blob = new Blob([html], { type: 'text/html;charset=utf-8' });
     reportHtmlUrl.value = URL.createObjectURL(blob);
   } catch (err) {
@@ -2116,6 +2780,19 @@ const retryReport = () => {
   box-shadow: 0 24px 64px rgba(0, 0, 0, 0.5);
   border: 1px solid rgba(255, 255, 255, 0.08);
   transition: all 0.3s ease;
+  user-select: text;
+  -webkit-user-select: text;
+}
+
+.ai-modal-container * {
+  user-select: text;
+  -webkit-user-select: text;
+}
+
+.ai-modal-container.is-sidebar-resizing,
+.ai-modal-container.is-sidebar-resizing * {
+  user-select: none !important;
+  -webkit-user-select: none !important;
 }
 
 /* 全屏模式下的响应式调整 */
@@ -2124,15 +2801,52 @@ const retryReport = () => {
 }
 
 .sidebar {
-  width: 260px;
+  flex: 0 0 auto;
+  box-sizing: border-box;
+  min-width: 220px;
+  max-width: 520px;
   background: rgba(15, 23, 42, 0.1);
   border-right: 1px solid rgba(255, 255, 255, 0.08); /* 加深分割线 */
   display: flex;
   flex-direction: column;
   padding: 16px;
-  transition: all 0.3s ease;
+  transition: background-color 0.3s ease;
   border-top-left-radius: 16px;
   border-bottom-left-radius: 16px;
+}
+
+.sidebar-resizer {
+  position: relative;
+  z-index: 2;
+  flex: 0 0 8px;
+  width: 8px;
+  margin: 0 -3px;
+  cursor: col-resize;
+  touch-action: none;
+  outline: none;
+}
+
+.sidebar-resizer span {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: 3px;
+  width: 1px;
+  background: rgba(255, 255, 255, 0.08);
+  transition: width 160ms ease, left 160ms ease, background-color 160ms ease;
+}
+
+.sidebar-resizer:hover span,
+.sidebar-resizer:focus-visible span,
+.ai-modal-container.is-sidebar-resizing .sidebar-resizer span {
+  left: 2px;
+  width: 3px;
+  background: rgba(191, 219, 254, 0.72);
+}
+
+.sidebar-resizer:focus-visible {
+  outline: 1px solid rgba(191, 219, 254, 0.74);
+  outline-offset: -1px;
 }
 
 .sidebar-header {
@@ -2267,6 +2981,7 @@ const retryReport = () => {
 
 .main-content {
   flex: 1;
+  min-width: 0;
   display: flex;
   flex-direction: column;
   height: 100%;
@@ -2751,8 +3466,8 @@ const retryReport = () => {
 }
 
 .message.user .bubble-wrapper {
-  width: auto;
-  max-width: 80%;
+  width: 100%;
+  max-width: 1600px;
   display: flex;
   justify-content: flex-end;
 }
@@ -2770,15 +3485,20 @@ const retryReport = () => {
 }
 
 .user .bubble {
+  width: fit-content;
+  max-width: min(72ch, 76%);
+  margin-left: auto;
   color: #ffffff;
-  background: #3b82f6;
-  /* 蓝色背景 */
-  padding: 10px 16px;
-  border-radius: 16px 16px 4px 16px;
-  /* 气泡圆角 */
-  font-weight: 500;
-  font-size: 14px;
-  box-shadow: 0 4px 12px rgba(59, 130, 246, 0.3);
+  background: rgba(27, 53, 95, 0.96);
+  padding: 14px 20px;
+  border-radius: 20px 20px 6px 20px;
+  font-weight: 400;
+  font-size: 16px;
+  line-height: 1.7;
+  white-space: pre-wrap;
+  word-break: break-word;
+  overflow-wrap: anywhere;
+  box-shadow: 0 1px 2px rgba(2, 6, 23, 0.18);
   text-align: left;
 }
 
@@ -2801,7 +3521,8 @@ const retryReport = () => {
   cursor: pointer;
   font-size: 13px;
   color: #94a3b8;
-  user-select: none;
+  user-select: text;
+  -webkit-user-select: text;
   background: transparent;
   border-radius: 0;
   margin-bottom: 4px;
@@ -2866,6 +3587,12 @@ const retryReport = () => {
     height: 100vh;
     max-width: none;
     border-radius: 0;
+  }
+
+  .user .bubble {
+    max-width: 92%;
+    padding: 12px 16px;
+    font-size: 16px;
   }
 }
 
@@ -2986,160 +3713,343 @@ const retryReport = () => {
   color: #64748b;
 }
 
-/* Markdown 中文排版深度优化 */
+/* AI 正文使用稳定的双栏阅读结构；Agent 执行树仍保持全宽。 */
+.assistant .bubble,
+.assistant .message-actions {
+  width: min(100%, 1320px);
+  margin-right: auto;
+  margin-left: auto;
+}
+
+.assistant .message-actions {
+  margin-top: 6px;
+}
+
 .markdown-body {
-  font-size: 14px;
-  line-height: 1.62;
-  color: #e2e8f0;
+  color: #d9e1ea;
+  font-family: "Times New Roman", SimSun, "Songti SC", serif;
+  font-size: 15.5px;
+  line-height: 1.76;
+  letter-spacing: 0;
   text-align: left;
-  letter-spacing: 0.15px;
-  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", sans-serif;
+  overflow-wrap: anywhere;
+}
+
+/* 仅在回答完成后分栏，避免流式内容随新增文本反复重排。 */
+.assistant .markdown-body:not(.is-streaming) {
+  column-count: 2;
+  column-gap: 38px;
+  column-rule: 1px solid rgba(148, 163, 184, 0.2);
+  column-fill: balance;
+}
+
+.assistant .markdown-body:not(.is-streaming) :deep(h1) {
+  column-span: all;
+}
+
+.assistant .markdown-body:not(.is-streaming) :deep(h2),
+.assistant .markdown-body:not(.is-streaming) :deep(h3),
+.assistant .markdown-body:not(.is-streaming) :deep(h4),
+.assistant .markdown-body:not(.is-streaming) :deep(h5),
+.assistant .markdown-body:not(.is-streaming) :deep(h6),
+.assistant .markdown-body:not(.is-streaming) :deep(.table-container),
+.assistant .markdown-body:not(.is-streaming) :deep(pre),
+.assistant .markdown-body:not(.is-streaming) :deep(.katex-display),
+.assistant .markdown-body:not(.is-streaming) :deep(.mermaid) {
+  break-inside: avoid-column;
+}
+
+.assistant .markdown-body:not(.is-streaming) :deep(h2),
+.assistant .markdown-body:not(.is-streaming) :deep(h3),
+.assistant .markdown-body:not(.is-streaming) :deep(h4),
+.assistant .markdown-body:not(.is-streaming) :deep(h5),
+.assistant .markdown-body:not(.is-streaming) :deep(h6) {
+  break-after: avoid-column;
+}
+
+.markdown-body > :deep(:first-child) {
+  margin-top: 0;
 }
 
 .markdown-body :deep(p) {
-  text-indent: 0;
-  margin-bottom: 8px;
-  margin-top: 0;
+  margin: 0 0 0.9em;
+  color: #d4dde7;
+  line-height: 1.76;
+  text-align: justify;
+  text-indent: 2em;
 }
 
-/* 标题不需要缩进，加粗且保持适当间距 */
+.markdown-body :deep(li > p),
+.markdown-body :deep(blockquote p),
+.markdown-body :deep(td p),
+.markdown-body :deep(th p) {
+  text-indent: 0;
+}
+
+.markdown-body :deep(li > p),
+.markdown-body :deep(blockquote p),
+.markdown-body :deep(td p),
+.markdown-body :deep(th p) {
+  margin: 0;
+}
+
 .markdown-body :deep(h1),
 .markdown-body :deep(h2),
 .markdown-body :deep(h3),
-.markdown-body :deep(h4) {
-  text-indent: 0; 
-  color: #f8fafc;
-  margin-top: 14px;
-  margin-bottom: 6px;
-  font-weight: 600;
+.markdown-body :deep(h4),
+.markdown-body :deep(h5),
+.markdown-body :deep(h6) {
+  margin: 1.7em 0 0.65em;
+  color: #f1f5f9;
+  font-family: "Times New Roman", SimHei, "Heiti SC", sans-serif;
+  font-weight: 650;
+  line-height: 1.45;
+  letter-spacing: 0;
   text-align: left;
 }
 
-.markdown-body :deep(h1) { font-size: 19px; }
-.markdown-body :deep(h2) { font-size: 16px; }
-.markdown-body :deep(h3) { font-size: 15px; }
+.markdown-body :deep(h1) {
+  padding-bottom: 0.45em;
+  border-bottom: 2px solid rgba(126, 160, 202, 0.7);
+  font-size: 22px;
+}
 
-/* 列表不随段落缩进，使用自身 padding */
+.markdown-body :deep(h2) {
+  padding-bottom: 0.38em;
+  border-bottom: 1px solid rgba(148, 163, 184, 0.24);
+  font-size: 19px;
+}
+
+.markdown-body :deep(h3) {
+  font-size: 17px;
+}
+
+.markdown-body :deep(h4),
+.markdown-body :deep(h5),
+.markdown-body :deep(h6) {
+  font-size: 15.5px;
+}
+
 .markdown-body :deep(ul),
 .markdown-body :deep(ol) {
+  margin: 0.45em 0 1em;
+  padding-left: 1.75em;
   text-indent: 0;
-  padding-left: 1.4em;
-  margin-bottom: 8px;
-  margin-top: 0;
 }
 
 .markdown-body :deep(li) {
-  margin-bottom: 2px;
-  line-height: 1.55;
+  margin: 0 0 0.42em;
+  color: #d4dde7;
+  line-height: 1.7;
+}
+
+.markdown-body :deep(li::marker) {
+  color: #9aacc0;
+  font-weight: 600;
 }
 
 .markdown-body :deep(strong) {
   color: #60a5fa;
-  font-weight: 600;
+  font-weight: 700;
+}
+
+.markdown-body :deep(em) {
+  color: #c4cfdb;
+}
+
+.markdown-body :deep(a) {
+  color: #8fb9e8;
+  text-decoration: none;
+  text-underline-offset: 3px;
+}
+
+.markdown-body :deep(a:hover) {
+  text-decoration: underline;
 }
 
 .markdown-body :deep(blockquote) {
-  text-indent: 0;
-  border-left: 4px solid rgba(96, 165, 250, 0.5);
-  margin: 10px 0;
-  padding: 6px 12px;
-  background: rgba(255, 255, 255, 0.05);
+  margin: 1.15em 0;
+  padding: 10px 16px;
+  border: 0;
+  border-left: 3px solid rgba(126, 160, 202, 0.72);
+  border-radius: 0;
+  background: rgba(126, 160, 202, 0.08);
   color: #cbd5e1;
-  border-radius: 0 4px 4px 0;
+  text-indent: 0;
 }
 
-/* 表格排版优化：取消强制 100% 宽度，支持按内容自适应并横向滚动 */
 .markdown-body :deep(.table-container) {
   width: 100%;
-  text-align: center; /* 配合 inline-table 实现安全居中 */
+  margin: 1.35em 0;
   overflow-x: auto;
-  margin: 10px 0;
-  text-indent: 0; /* 表格内绝不缩进 */
-  padding-bottom: 4px;
+  border: 1px solid rgba(148, 163, 184, 0.2);
+  border-radius: 5px;
+  background: rgba(8, 18, 33, 0.38);
+  text-align: left;
+  text-indent: 0;
 }
 
 .markdown-body :deep(table) {
-  display: inline-table; /* 核心修改：确保溢出时左侧内容不丢失 */
-  border-collapse: separate;
-  border-spacing: 0;
-  width: auto; /* 改为自适应内容 */
+  width: 100%;
+  min-width: 0;
   max-width: 100%;
-  min-width: 60%; /* 保证表格不会太窄 */
-  background: rgba(15, 23, 42, 0.4);
-  border-radius: 8px;
-  border: 1px solid rgba(255, 255, 255, 0.1);
-  overflow: hidden;
+  margin: 0;
+  border-spacing: 0;
+  border-collapse: collapse;
   table-layout: auto;
+  font-family: "Times New Roman", SimSun, "Songti SC", serif;
+  font-size: 13.5px;
 }
 
 .markdown-body :deep(th) {
-  padding: 8px 12px;
-  background: rgba(255, 255, 255, 0.05);
-  color: #93c5fd;
-  font-weight: 600;
+  padding: 10px 13px;
+  border-right: 1px solid rgba(255, 255, 255, 0.07);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.13);
+  background: #172b46;
+  color: #edf3f9;
+  font-weight: 650;
+  line-height: 1.55;
   text-align: center;
-  font-size: 13px;
-  line-height: 1.5;
-  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
-  white-space: nowrap; /* 表头强制不换行，确保视觉整齐 */
+  vertical-align: middle;
+  white-space: nowrap;
 }
 
 .markdown-body :deep(td) {
-  padding: 7px 12px;
+  min-width: 72px;
+  padding: 9px 13px;
+  border-right: 1px solid rgba(148, 163, 184, 0.1);
+  border-bottom: 1px solid rgba(148, 163, 184, 0.13);
+  color: #cfdae5;
+  line-height: 1.55;
   text-align: center;
-  font-size: 12.5px;
-  line-height: 1.45;
-  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
-  white-space: normal; /* 允许内容换行 */
-  word-break: keep-all; /* 核心：防止年份、数字等被强制截断换行 */
-  overflow-wrap: break-word; /* 针对超长连续字符（如URL）强制折行 */
-  min-width: 60px; /* 给短文本预留基本宽度 */
+  vertical-align: middle;
+  white-space: normal;
+  word-break: normal;
+  overflow-wrap: anywhere;
 }
 
-/* 双栏排版：仅助手正文，适配论文截图信息密度 */
-.assistant .markdown-body {
-  column-count: 2;
-  column-gap: 28px;
-  column-rule: 1px solid rgba(148, 163, 184, 0.2);
+.markdown-body :deep(th p),
+.markdown-body :deep(td p) {
+  text-align: inherit;
 }
 
-.assistant .markdown-body :deep(h1),
-.assistant .markdown-body :deep(h2),
-.assistant .markdown-body :deep(h3),
-.assistant .markdown-body :deep(h4),
-.assistant .markdown-body :deep(blockquote),
-.assistant .markdown-body :deep(pre),
-.assistant .markdown-body :deep(.table-container) {
-  break-inside: avoid;
-  -webkit-column-break-inside: avoid;
-  page-break-inside: avoid;
+.markdown-body :deep(tbody tr:nth-child(even)) {
+  background: rgba(148, 163, 184, 0.045);
 }
 
-/* 小屏自动回退单栏，避免拥挤 */
-@media (max-width: 1280px) {
-  .assistant .markdown-body {
-    column-count: 1;
-    column-gap: 0;
-    column-rule: none;
-  }
-}
-
-/* 中等屏宽时适度放宽正文但不至于过长 */
-@media (max-width: 1600px) {
-  .message {
-    max-width: 1320px;
-  }
-  .bubble-wrapper {
-    max-width: 1320px;
-  }
+.markdown-body :deep(th:last-child),
+.markdown-body :deep(td:last-child) {
+  border-right: 0;
 }
 
 .markdown-body :deep(tr:last-child td) {
-  border-bottom: none;
+  border-bottom: 0;
 }
 
-.markdown-body :deep(tr:hover td) {
-  background: rgba(255, 255, 255, 0.03);
+.markdown-body :deep(tbody tr:hover) {
+  background: rgba(148, 163, 184, 0.075);
+}
+
+.markdown-body :deep(code) {
+  padding: 0.12em 0.38em;
+  border-radius: 3px;
+  background: rgba(148, 163, 184, 0.13);
+  color: #dce7f3;
+  font-family: "Cascadia Code", Consolas, "Courier New", monospace;
+  font-size: 0.88em;
+}
+
+.markdown-body :deep(pre) {
+  margin: 1.2em 0;
+  padding: 15px 17px;
+  overflow-x: auto;
+  border: 1px solid rgba(148, 163, 184, 0.16);
+  border-radius: 5px;
+  background: rgba(5, 13, 25, 0.76);
+  color: #d7e0e9;
+  font-size: 13px;
+  line-height: 1.65;
+  text-indent: 0;
+}
+
+.markdown-body :deep(pre code) {
+  padding: 0;
+  background: transparent;
+  color: inherit;
+  font-size: inherit;
+}
+
+.markdown-body :deep(hr) {
+  margin: 1.8em 0;
+  border: 0;
+  border-top: 1px solid rgba(148, 163, 184, 0.22);
+}
+
+.markdown-body :deep(.katex-display) {
+  margin: 1.2em 0;
+  padding: 4px 0;
+  overflow-x: auto;
+  overflow-y: hidden;
+  text-align: center;
+}
+
+.markdown-body :deep(.mermaid) {
+  width: 100%;
+  margin: 1.3em 0;
+  padding: 14px 0;
+  overflow-x: auto;
+  border-top: 1px solid rgba(148, 163, 184, 0.16);
+  border-bottom: 1px solid rgba(148, 163, 184, 0.16);
+  background: transparent;
+  text-align: center;
+}
+
+.markdown-body :deep(.mermaid svg) {
+  display: block;
+  max-width: 100%;
+  height: auto;
+  margin: 0 auto;
+}
+
+.markdown-body :deep(.md-stream-tail) {
+  display: block;
+}
+
+.markdown-body :deep(.md-stream-tail > :last-child) {
+  margin-bottom: 0;
+}
+
+@media (max-width: 1180px) {
+  .assistant .markdown-body:not(.is-streaming) {
+    column-count: 1;
+    column-gap: 0;
+    column-rule: 0;
+  }
+}
+
+@media (max-width: 760px) {
+  .assistant .bubble,
+  .assistant .message-actions {
+    width: 100%;
+  }
+
+  .markdown-body {
+    font-size: 15px;
+    line-height: 1.72;
+  }
+
+  .markdown-body :deep(p) {
+    line-height: 1.72;
+  }
+
+  .markdown-body :deep(h1) {
+    font-size: 20px;
+  }
+
+  .markdown-body :deep(h2) {
+    font-size: 18px;
+  }
+
 }
 
 /* ── AI 步进器 (Industrial Progress Stepper) ────────────────────────────────── */
@@ -3160,7 +4070,8 @@ const retryReport = () => {
   margin: 0 0 9px 0;
   flex-wrap: wrap;
   cursor: pointer;
-  user-select: none;
+  user-select: text;
+  -webkit-user-select: text;
 }
 
 .workflow-title {
@@ -3214,7 +4125,8 @@ const retryReport = () => {
   color: #cbd5e1;
   background: rgba(15, 23, 42, 0.35);
   border: 1px solid rgba(148, 163, 184, 0.18);
-  user-select: none;
+  user-select: text;
+  -webkit-user-select: text;
   white-space: nowrap;
 }
 
@@ -3648,5 +4560,853 @@ const retryReport = () => {
 .report-fade-leave-to {
   opacity: 0;
   transform: scale(0.96);
+}
+
+/* GeoAI Agent trace: three-level execution tree */
+.agent-process-panel {
+  --trace-text-strong: #e7edf4;
+  --trace-text: #c5d0dc;
+  --trace-text-muted: #96a5b5;
+  --trace-line: rgba(255, 255, 255, 0.2);
+  --trace-line-soft: rgba(255, 255, 255, 0.1);
+  --trace-link-hover: #93c5fd;
+  margin: 18px 0 24px;
+  overflow: visible;
+  border: 0;
+  border-top: 0;
+  border-bottom: 0;
+  border-radius: 0;
+  background: transparent;
+  box-shadow: none;
+  color: var(--trace-text);
+  font-family: "Times New Roman", SimSun, "Songti SC", serif;
+  letter-spacing: 0;
+}
+
+.agent-process-header {
+  display: flex;
+  align-items: center;
+  gap: 11px;
+  width: 100%;
+  min-height: 62px;
+  margin: 0;
+  padding: 12px 2px;
+  border: 0;
+  border-bottom: 0;
+  border-radius: 0;
+  outline: none;
+  background: transparent;
+  color: inherit;
+  cursor: pointer;
+  user-select: text;
+  -webkit-user-select: text;
+}
+
+.agent-process-header:hover {
+  background: transparent;
+}
+
+.agent-process-header:focus-visible,
+.agent-trace-stage-header.is-expandable:focus-visible,
+.trace-detail-toggle:focus-visible {
+  outline: none;
+}
+
+.agent-process-mark {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex: 0 0 34px;
+  width: 34px;
+  height: 34px;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+}
+
+.agent-process-mark img,
+.agent-trace-dot img,
+.trace-model-monologue-icon img,
+.trace-detail-icon img {
+  display: block;
+  width: 23px;
+  height: 23px;
+  object-fit: contain;
+  transform: scale(var(--trace-icon-optical-scale, 1));
+  transform-origin: center;
+  filter: brightness(0) invert(1);
+  opacity: 0.9;
+}
+
+.agent-process-mark img {
+  width: 27px;
+  height: 27px;
+}
+
+.trace-icon-deepseek {
+  --trace-icon-optical-scale: 1.12;
+}
+
+.trace-icon-data {
+  --trace-icon-optical-scale: 1.08;
+}
+
+.trace-icon-reasoning,
+.trace-icon-context,
+.trace-icon-policy,
+.trace-icon-nlp {
+  --trace-icon-optical-scale: 1.05;
+}
+
+.trace-icon-js,
+.trace-icon-tool {
+  --trace-icon-optical-scale: 1.03;
+}
+
+.agent-process-mark.running {
+  border: 0;
+  background: transparent;
+  animation: agentMarkPulse 1.8s ease-in-out infinite;
+}
+
+.agent-process-current-action {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  min-width: 0;
+  flex: 0 1 auto;
+  overflow: hidden;
+  animation: agentProcessActionIn 220ms ease-out both;
+}
+
+.agent-process-title {
+  min-width: 0;
+  flex: 0 1 auto;
+  margin: 0;
+  color: #edf2f7;
+  font-size: 18px;
+  font-weight: 650;
+  line-height: 1.45;
+  letter-spacing: 0;
+  text-align: left;
+  text-wrap: balance;
+  font-family: "Times New Roman", SimHei, "Heiti SC", sans-serif;
+  transition: color 150ms ease, text-decoration-color 150ms ease;
+}
+
+.agent-process-title:hover,
+.agent-process-header:focus-visible .agent-process-title {
+  color: var(--trace-link-hover);
+  text-decoration: underline;
+  text-decoration-color: rgba(147, 197, 253, 0.52);
+  text-decoration-thickness: 1px;
+  text-underline-offset: 4px;
+}
+
+.agent-process-title.is-running {
+  color: transparent;
+  background: linear-gradient(
+    100deg,
+    #aebbc9 0%,
+    #aebbc9 39%,
+    #f8fafc 49%,
+    #dbeafe 53%,
+    #aebbc9 63%,
+    #aebbc9 100%
+  );
+  background-size: 240% 100%;
+  background-position: 100% 50%;
+  -webkit-background-clip: text;
+  background-clip: text;
+  animation: agentProcessTextWave 2.35s ease-in-out infinite;
+}
+
+.agent-process-state {
+  flex: 0 0 auto;
+  color: #aab7c5;
+  font-size: 13px;
+  line-height: 1.5;
+}
+
+.agent-process-state.running {
+  color: #bfdbfe;
+}
+
+.agent-process-chevron,
+.agent-trace-chevron,
+.trace-detail-chevron {
+  flex: 0 0 auto;
+  color: #8797a8;
+  opacity: 0.62;
+  transform: rotate(0);
+  transition: transform 160ms ease, color 160ms ease;
+}
+
+.agent-process-chevron.open,
+.agent-trace-chevron.open,
+.trace-detail-chevron.open {
+  transform: rotate(90deg);
+}
+
+.agent-process-title:hover ~ .agent-process-chevron,
+.agent-process-header:focus-visible .agent-process-chevron,
+.agent-trace-stage-header.is-expandable .agent-trace-title:hover ~ .agent-trace-chevron,
+.agent-trace-stage-header.is-expandable:focus-visible .agent-trace-chevron,
+.trace-detail-label:hover ~ .trace-detail-chevron,
+.trace-detail-toggle:focus-visible .trace-detail-chevron {
+  color: var(--trace-link-hover);
+  opacity: 1;
+}
+
+.agent-trace-list {
+  display: block;
+  padding: 15px 0 11px;
+  background: transparent;
+}
+
+.agent-trace-event {
+  position: relative;
+  display: grid;
+  grid-template-columns: 36px minmax(0, 1fr);
+  gap: 12px;
+  min-width: 0;
+  margin: 0;
+  padding: 0 0 7px;
+}
+
+.agent-trace-rail {
+  position: relative;
+  display: flex;
+  justify-content: center;
+}
+
+.agent-trace-dot {
+  position: relative;
+  z-index: 1;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex: 0 0 34px;
+  width: 34px;
+  height: 34px;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  color: #ffffff;
+}
+
+.agent-trace-dot img {
+  width: 24px;
+  height: 24px;
+  opacity: 0.96;
+}
+
+.agent-trace-line {
+  position: absolute;
+  top: 34px;
+  bottom: -7px;
+  width: 1px;
+  background: var(--trace-line);
+}
+
+.agent-trace-stage {
+  min-width: 0;
+  margin: 0;
+  padding: 0 0 12px;
+  border: 0;
+  border-bottom: 0;
+  background: transparent;
+}
+
+.agent-trace-event:last-child .agent-trace-stage {
+  border-bottom: 0;
+}
+
+.agent-trace-stage-header {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  width: 100%;
+  min-width: 0;
+  min-height: 44px;
+  margin: -2px 0 0;
+  padding: 3px 4px 9px 0;
+  border: 0;
+  border-radius: 0;
+  outline: none;
+  background: transparent;
+  color: inherit;
+  text-align: left;
+}
+
+.agent-trace-stage-header.is-expandable {
+  cursor: pointer;
+}
+
+.agent-trace-stage-header.is-expandable:hover {
+  background: transparent;
+}
+
+.agent-trace-stage-heading {
+  min-width: 0;
+  flex: 1;
+}
+
+.agent-trace-title-row {
+  display: flex;
+  align-items: baseline;
+  flex-wrap: wrap;
+  gap: 8px;
+  width: fit-content;
+  max-width: 100%;
+  min-width: 0;
+}
+
+.agent-trace-title {
+  min-width: 0;
+  margin: 0;
+  color: var(--trace-text-strong);
+  font-size: 16px;
+  font-weight: 650;
+  line-height: 1.55;
+  letter-spacing: 0;
+  white-space: normal;
+  font-family: "Times New Roman", SimHei, "Heiti SC", sans-serif;
+  transition: color 150ms ease, text-decoration-color 150ms ease;
+}
+
+.agent-trace-stage-header.is-expandable .agent-trace-title:hover,
+.agent-trace-stage-header.is-expandable:focus-visible .agent-trace-title {
+  color: var(--trace-link-hover);
+  text-decoration: underline;
+  text-decoration-color: rgba(147, 197, 253, 0.5);
+  text-decoration-thickness: 1px;
+  text-underline-offset: 4px;
+}
+
+.agent-trace-status {
+  flex: 0 0 auto;
+  margin: 0;
+  color: #8999aa;
+  font-size: 12.5px;
+  font-weight: 500;
+  line-height: 1.5;
+}
+
+.agent-trace-status.status-running {
+  color: #bfdbfe;
+}
+
+.agent-trace-status.status-error {
+  color: #d99a9a;
+}
+
+.agent-trace-summary-text {
+  margin: 3px 0 0;
+  color: #aab6c5;
+  font-size: 14px;
+  line-height: 1.68;
+  white-space: normal;
+  overflow-wrap: anywhere;
+}
+
+.agent-trace-chevron {
+  margin-top: 1px;
+}
+
+.agent-trace-branch {
+  position: relative;
+  margin: -1px 0 8px 13px;
+  padding: 4px 0 3px 20px;
+  border-left: 1px solid var(--trace-line);
+}
+
+.trace-model-monologue {
+  display: grid;
+  grid-template-columns: 28px minmax(0, 1fr);
+  gap: 10px;
+  min-width: 0;
+  margin: 1px 0 10px;
+  padding: 5px 4px 8px 0;
+}
+
+.trace-model-monologue-icon {
+  display: inline-flex;
+  align-items: flex-start;
+  justify-content: center;
+  padding-top: 3px;
+}
+
+.trace-model-monologue-icon img {
+  width: 23px;
+  height: 23px;
+  opacity: 0.92;
+}
+
+.trace-model-monologue-copy {
+  min-width: 0;
+}
+
+.trace-model-monologue-label {
+  display: block;
+  margin: 0 0 3px;
+  color: #9eadbd;
+  font-size: 13px;
+  font-weight: 600;
+  line-height: 1.5;
+  font-family: "Times New Roman", SimHei, "Heiti SC", sans-serif;
+}
+
+.trace-model-monologue-copy p {
+  max-height: none;
+  margin: 0;
+  padding-right: 8px;
+  overflow: visible;
+  color: #c3ceda;
+  font-size: 14.5px;
+  line-height: 1.75;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+
+.trace-detail-tree {
+  position: relative;
+  min-width: 0;
+  margin: 1px 0 0 11px;
+  padding: 0 0 0 18px;
+  border-left: 1px solid rgba(143, 158, 177, 0.2);
+}
+
+.trace-detail-item {
+  position: relative;
+  min-width: 0;
+  margin: 0;
+}
+
+.trace-detail-item::before {
+  content: "";
+  position: absolute;
+  top: 21px;
+  left: -18px;
+  width: 13px;
+  border-top: 1px solid rgba(143, 158, 177, 0.2);
+}
+
+.trace-detail-toggle {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  width: 100%;
+  min-height: 43px;
+  margin: 0;
+  padding: 6px 4px 6px 0;
+  border: 0;
+  border-radius: 0;
+  outline: none;
+  background: transparent;
+  color: var(--trace-text);
+  text-align: left;
+  cursor: pointer;
+}
+
+.trace-detail-toggle:hover {
+  background: transparent;
+}
+
+.trace-detail-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex: 0 0 28px;
+  width: 28px;
+  height: 28px;
+}
+
+.trace-detail-icon img {
+  width: 22px;
+  height: 22px;
+  opacity: 0.92;
+}
+
+.trace-detail-label {
+  min-width: 0;
+  flex: 0 1 auto;
+  color: #d2dbe5;
+  font-size: 14.5px;
+  font-weight: 560;
+  line-height: 1.55;
+  font-family: "Times New Roman", SimHei, "Heiti SC", sans-serif;
+  transition: color 150ms ease, text-decoration-color 150ms ease;
+}
+
+.trace-detail-label:hover,
+.trace-detail-toggle:focus-visible .trace-detail-label {
+  color: var(--trace-link-hover);
+  text-decoration: underline;
+  text-decoration-color: rgba(147, 197, 253, 0.48);
+  text-decoration-thickness: 1px;
+  text-underline-offset: 4px;
+}
+
+.agent-process-title,
+.agent-trace-stage-header.is-expandable .agent-trace-title,
+.trace-detail-label {
+  cursor: pointer;
+}
+
+.trace-detail-meta {
+  flex: 0 1 auto;
+  overflow: hidden;
+  color: #8797a8;
+  font-size: 12.5px;
+  line-height: 1.5;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.trace-detail-chevron {
+  margin: 0 2px 0 -3px;
+}
+
+.trace-detail-content {
+  min-width: 0;
+  margin: 0 0 4px 31px;
+  padding: 3px 6px 14px 0;
+  color: var(--trace-text);
+}
+
+.trace-section-text {
+  margin: 0;
+  color: #bdc9d6;
+  font-size: 14px;
+  line-height: 1.75;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+
+.trace-tool-row {
+  display: flex;
+  align-items: baseline;
+  gap: 10px;
+  min-width: 0;
+  padding: 2px 0;
+}
+
+.trace-tool-copy {
+  display: flex;
+  align-items: baseline;
+  flex-wrap: wrap;
+  gap: 5px 11px;
+  min-width: 0;
+  flex: 1;
+}
+
+.trace-tool-copy strong {
+  color: #d8e1eb;
+  font-size: 14px;
+  font-weight: 600;
+  line-height: 1.55;
+}
+
+.trace-tool-copy code {
+  color: #9eafc0;
+  font-family: "Cascadia Code", Consolas, monospace;
+  font-size: 13px;
+  line-height: 1.6;
+  overflow-wrap: anywhere;
+}
+
+.trace-tool-action {
+  color: #c4ced9;
+  font-size: 14px;
+  line-height: 1.55;
+}
+
+.trace-tool-source {
+  flex: 0 0 auto;
+  color: #9eacbb;
+  font-size: 12.5px;
+  line-height: 1.5;
+}
+
+.trace-kv-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(210px, 1fr));
+  gap: 0 22px;
+  margin: 0;
+  padding: 0;
+}
+
+.trace-kv-item {
+  display: grid;
+  grid-template-columns: minmax(76px, max-content) minmax(0, 1fr);
+  gap: 11px;
+  min-width: 0;
+  margin: 0;
+  padding: 7px 0;
+  border-bottom: 1px solid rgba(143, 158, 177, 0.1);
+  font-size: 14px;
+  line-height: 1.62;
+}
+
+.trace-kv-key,
+.trace-kv-value {
+  margin: 0;
+}
+
+.trace-kv-key {
+  color: #8fa0b1;
+  white-space: nowrap;
+}
+
+.trace-kv-value {
+  min-width: 0;
+  color: #c6d0dc;
+  white-space: normal;
+  overflow-wrap: anywhere;
+}
+
+.trace-code-block {
+  box-sizing: border-box;
+  width: 100%;
+  max-height: 360px;
+  margin: 10px 0 0;
+  padding: 12px 14px;
+  overflow: auto;
+  border: 1px solid rgba(143, 158, 177, 0.16);
+  border-radius: 5px;
+  background: rgba(7, 15, 26, 0.54);
+  color: #b9c6d4;
+  font-family: "Cascadia Code", Consolas, monospace;
+  font-size: 13px;
+  line-height: 1.65;
+  letter-spacing: 0;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+
+.trace-observation-summary {
+  margin: 0;
+}
+
+.trace-result-block {
+  max-height: 420px;
+}
+
+.trace-error-text {
+  margin: 0;
+  padding: 8px 11px;
+  border-left: 2px solid rgba(217, 119, 119, 0.68);
+  background: rgba(127, 29, 29, 0.08);
+  color: #e0a7a7;
+  font-size: 14px;
+  line-height: 1.65;
+  white-space: pre-wrap;
+}
+
+.agent-trace-event.is-compact {
+  padding-bottom: 2px;
+}
+
+.agent-trace-event.is-compact .agent-trace-stage {
+  padding-bottom: 9px;
+}
+
+.agent-trace-event.is-compact .agent-trace-stage-header {
+  min-height: 38px;
+  padding-bottom: 5px;
+}
+
+.agent-trace-event.phase-tool_call .agent-trace-dot {
+  border: 0;
+}
+
+.agent-trace-event.phase-observation .agent-trace-dot {
+  border: 0;
+}
+
+.agent-trace-event.phase-synthesis .agent-trace-dot {
+  border: 0;
+}
+
+.agent-trace-event.status-error .agent-trace-dot {
+  border: 0;
+  background: transparent;
+  color: #ffffff;
+}
+
+.agent-trace-spinner {
+  width: 11px;
+  height: 11px;
+  border: 1.5px solid #ffffff;
+  border-right-color: transparent;
+  border-radius: 50%;
+  animation: traceSpin 0.8s linear infinite;
+}
+
+.agent-trace-error-mark {
+  font-size: 14px;
+  font-weight: 700;
+}
+
+.agent-process-panel ::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+.agent-process-panel ::-webkit-scrollbar-thumb {
+  border-radius: 6px;
+  background: rgba(126, 145, 166, 0.34);
+}
+
+.agent-process-panel ::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+@keyframes agentMarkPulse {
+  0%, 100% { opacity: 0.62; }
+  50% { opacity: 1; }
+}
+
+@keyframes agentProcessActionIn {
+  from {
+    opacity: 0;
+    transform: translateX(-9px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+@keyframes agentProcessTextWave {
+  0% { background-position: 100% 50%; }
+  100% { background-position: 0% 50%; }
+}
+
+@keyframes traceSpin {
+  to { transform: rotate(360deg); }
+}
+
+@media (max-width: 760px) {
+  .agent-process-panel {
+    margin: 14px 0 20px;
+  }
+
+  .agent-process-header {
+    align-items: flex-start;
+    min-height: 58px;
+    padding: 12px 0;
+  }
+
+  .agent-process-title {
+    font-size: 16px;
+    line-height: 1.5;
+  }
+
+  .agent-process-state {
+    padding-top: 2px;
+  }
+
+  .agent-process-chevron {
+    margin-top: 4px;
+  }
+
+  .agent-trace-list {
+    padding-top: 12px;
+  }
+
+  .agent-trace-event {
+    grid-template-columns: 34px minmax(0, 1fr);
+    gap: 9px;
+  }
+
+  .agent-trace-dot {
+    flex-basis: 30px;
+    width: 30px;
+    height: 30px;
+  }
+
+  .agent-trace-line {
+    top: 30px;
+  }
+
+  .agent-trace-title {
+    font-size: 15px;
+  }
+
+  .agent-trace-summary-text,
+  .trace-model-monologue-copy p,
+  .trace-detail-label,
+  .trace-section-text,
+  .trace-kv-item,
+  .trace-tool-copy strong,
+  .trace-error-text {
+    font-size: 14px;
+  }
+
+  .agent-trace-branch {
+    margin-left: 10px;
+    padding-left: 14px;
+  }
+
+  .trace-detail-tree {
+    margin-left: 6px;
+    padding-left: 14px;
+  }
+
+  .trace-detail-item::before {
+    left: -14px;
+    width: 10px;
+  }
+
+  .trace-detail-content {
+    margin-left: 24px;
+  }
+
+  .trace-kv-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .trace-kv-item {
+    grid-template-columns: minmax(68px, max-content) minmax(0, 1fr);
+  }
+
+  .trace-tool-row {
+    align-items: flex-start;
+    flex-wrap: wrap;
+  }
+
+  .trace-tool-source {
+    width: 100%;
+  }
+
+  .trace-code-block {
+    max-height: 300px;
+    padding: 11px;
+    font-size: 12.5px;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .agent-process-mark.running,
+  .agent-trace-spinner,
+  .agent-process-title.is-running,
+  .agent-process-current-action {
+    animation: none;
+  }
+
+  .agent-process-title.is-running {
+    color: #edf2f7;
+    background: none;
+    -webkit-background-clip: initial;
+    background-clip: initial;
+  }
+
+  .agent-process-chevron,
+  .agent-trace-chevron,
+  .trace-detail-chevron {
+    transition: none;
+  }
 }
 </style>

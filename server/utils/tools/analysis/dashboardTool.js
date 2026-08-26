@@ -52,8 +52,8 @@ const dashboardTool = {
 
         const m = data.csponMetrics;
         const alertsText = data.alerts && data.alerts.length > 0
-            ? data.alerts.map(a => `⚠️ **${a.title}**: ${a.content}`).join('\n')
-            : '✅ 暂无严重预警信息';
+            ? data.alerts.map(a => `[注意] **${a.title}**: ${a.content}`).join('\n')
+            : '[正常] 暂无严重预警信息';
 
         // 提取带符号的变化值
         const formatTrend = (trend) => {

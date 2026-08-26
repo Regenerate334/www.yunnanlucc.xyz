@@ -40,15 +40,15 @@
             <svg viewBox="0 0 24 24" style="margin-left:-12px"><path fill="currentColor" d="M10 6L8.59 7.41 13.17 12l-4.58 4.59L10 18l6-6z"/></svg>
           </button>
           <div class="tool-divider"></div>
-          <button class="tool-btn" title="数据库"><span class="emoji-icon">🗄️</span></button>
-          <button class="tool-btn" title="保存"><span class="emoji-icon">💾</span></button>
+          <button class="tool-btn" title="数据库"><span class="emoji-icon">️</span></button>
+          <button class="tool-btn" title="保存"><span class="emoji-icon"></span></button>
           <div class="tool-divider"></div>
           <button class="tool-btn active" title="时序分析"><span class="emoji-icon">⏱️</span></button>
-          <button class="tool-btn" title="图层管理"><span class="emoji-icon">📑</span></button>
-          <button class="tool-btn" title="三维地球"><span class="emoji-icon">🌍</span></button>
-          <button class="tool-btn" title="空间定位"><span class="emoji-icon">📍</span></button>
+          <button class="tool-btn" title="图层管理"><span class="emoji-icon"></span></button>
+          <button class="tool-btn" title="三维地球"><span class="emoji-icon"></span></button>
+          <button class="tool-btn" title="空间定位"><span class="emoji-icon"></span></button>
           <button class="tool-btn with-arrow" title="业务工具箱">
-            <span class="emoji-icon">💼</span>
+            <span class="emoji-icon"></span>
             <span class="small-arrow">▾</span>
           </button>
         </div>

@@ -414,10 +414,15 @@ router.get('/', [
 
             let dataValues = dataRows.map(r => Number(r.val));
 
+            const avg = dataValues.reduce((a, b) => a + b, 0) / dataValues.length;
+            const variance = dataValues.reduce((a, b) => a + Math.pow(b - avg, 2), 0) / dataValues.length;
+            const std = Math.sqrt(variance);
+
             const stats = {
                 min: dataValues[0],
                 max: dataValues[dataValues.length - 1],
-                avg: dataValues.reduce((a, b) => a + b, 0) / dataValues.length,
+                avg,
+                std,
                 count: dataValues.length
             };
 
@@ -433,6 +438,20 @@ router.get('/', [
 
             // 保留 6 位小数精度
             const breaks = rawBreaks.map(v => Math.round(v * 1000000) / 1000000);
+
+            // 计算频数直方图 (Histogram)
+            const histogram = [];
+            for (let i = 0; i < breaks.length - 1; i++) {
+                const minVal = breaks[i];
+                const maxVal = breaks[i + 1];
+                const count = dataValues.filter(v => {
+                    if (i === breaks.length - 2) {
+                        return v >= minVal && v <= maxVal;
+                    }
+                    return v >= minVal && v < maxVal;
+                }).length;
+                histogram.push({ min: minVal, max: maxVal, count });
+            }
 
             logger.info(`[breaks/rate] attr=${attr}, ${stats.count} rows, classes=${numClasses}, breaks:`, breaks);
 
@@ -468,6 +487,7 @@ router.get('/', [
                 classes: numClasses,
                 breaks,
                 stats,
+                histogram,
                 unit_label: '%',
                 top_units
             });

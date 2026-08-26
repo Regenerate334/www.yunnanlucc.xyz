@@ -141,10 +141,10 @@ const clcdTool = {
             const score = data.compositeScore.toFixed(1);
 
             const getStatusTxt = (s, labels) => {
-                if (s > 75) return `🔴 ${labels[3]}`;
-                if (s > 50) return `🟠 ${labels[2]}`;
-                if (s > 25) return `🟡 ${labels[1]}`;
-                return `🟢 ${labels[0]}`;
+                if (s > 75) return `[重度预警] ${labels[3]}`;
+                if (s > 50) return `[中度预警] ${labels[2]}`;
+                if (s > 25) return `[轻度预警] ${labels[1]}`;
+                return `[稳定] ${labels[0]}`;
             };
 
             return [
@@ -171,7 +171,7 @@ const clcdTool = {
                 data.policyMetrics ? `| PLE耦合协调度 | ${data.policyMetrics.couplingCoordination.value.toFixed(3)} | 1.000 | ${data.policyMetrics.couplingCoordination.score.toFixed(1)} | 生产/生活/生态协同 |` : '',
                 '',
                 '**评估结论**：',
-                data.compositeScore > 50 ? '⚠️ 该区域存在显著的生态环境风险，建议加强空间规划管制。' : '✅ 区域生态状态相对稳定，建议配合“三区三线”进行持续监测。'
+                data.compositeScore > 50 ? '[注意] 该区域存在显著的生态环境风险，建议加强空间规划管制。' : '[正常] 区域生态状态相对稳定，建议配合“三区三线”进行持续监测。'
             ].join('\n');
         }
 

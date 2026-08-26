@@ -17,14 +17,15 @@ import weatherTool from "../../tools/analysis/weatherTool.js";
 import knowledgeTool from "../../tools/knowledge/knowledgeTool.js";
 import knowledgeGraphTool from "../../tools/knowledge/knowledgeGraphTool.js";
 import policyReferenceTool from "../../tools/knowledge/policyReferenceTool.js";
+import webFetchTool from "../../tools/knowledge/webFetchTool.js";
 
 const clcdFunctionTool = FunctionTool.from(
-    async ({ query_type, region, level, year, year_range, land_type, top_n }) => {
+    async ({ query_type, region, level, year, year_range, land_type, top_n, policy }) => {
         try {
             // 提供默认值
             const finalQueryType = query_type || 'structure';
             const finalRegion = region || '云南省';
-            const args = { query_type: finalQueryType, region: finalRegion, level, year, year_range, land_type, top_n };
+            const args = { query_type: finalQueryType, region: finalRegion, level, year, year_range, land_type, top_n, policy };
             const result = await clcdTool.query(args, {}, year);
             return clcdTool.format(result, {});
         } catch (e) {
@@ -41,7 +42,8 @@ const clcdFunctionTool = FunctionTool.from(
             year: z.number().optional().describe('目标年份'),
             year_range: z.array(z.number()).optional().describe('年份区间如 [1985, 2023]'),
             land_type: z.string().optional().describe('限定地类如"耕地", "林地"'),
-            top_n: z.number().optional().describe('排名查询时的数量限制')
+            top_n: z.number().optional().describe('排名查询时的数量限制'),
+            policy: z.enum(['farmland_protection', 'balanced', 'ecological_protection', 'urban_development', 'reforestation']).optional().describe('监测评估策略场景')
         })
     }
 );
@@ -143,9 +145,9 @@ const knowledgeFunctionTool = FunctionTool.from(
     },
     {
         name: "knowledge_base_lookup",
-        description: "检索系统专家知识库（专业技能）。当遇到 LULC 指标、LUCC 评价算法或空间推理逻辑不确定时，请务必查询此库。",
+        description: "检索系统专家知识库（专业技能）。用于自适应任务路由、LULC 指标口径、LUCC 评价算法、空间推理与政策解释规则。复杂组合任务的分析深度、证据组合或停止条件不明确时，查询 adaptive_analysis。",
         parameters: z.object({
-            skill_name: z.enum(['monitoring_indices', 'spatial_reasoning', 'policy_expert']).describe('知识模块名称')
+            skill_name: z.enum(['adaptive_analysis', 'monitoring_indices', 'spatial_reasoning', 'policy_expert']).describe('知识模块名称')
         })
     }
 );
@@ -184,7 +186,7 @@ const policyReferenceFunctionTool = FunctionTool.from(
     },
     {
         name: "policy_reference_lookup",
-        description: "检索内置“政策/规划文献索引库”，返回可引用条目与来源链接（sources）。当用户问某年重大政策、规划要求、用途管制、红线、耕地保护等解释时优先使用。",
+        description: "检索内置“政策/规划文献索引库”，返回可引用条目与来源链接（sources）；命中后系统会自动读取相关来源网页的完整提取正文并回灌给模型。当用户问某年重大政策、规划要求、用途管制、红线、耕地保护等解释时优先使用。",
         parameters: z.object({
             region: z.string().optional().describe('区域名称，如“云南省”“昆明市”。不传则不过滤'),
             year: z.number().optional().describe('目标年份，如 2019'),
@@ -192,6 +194,24 @@ const policyReferenceFunctionTool = FunctionTool.from(
             keywords: z.array(z.string()).optional().describe('关键词数组，如 ["三条控制线","用途管制"]'),
             level: z.enum(['national', 'province', 'city', 'county']).optional().describe('层级：national/province/city/county'),
             top_n: z.number().optional().describe('返回条目数量，默认 5，最大 20')
+        })
+    }
+);
+
+const webFetchFunctionTool = FunctionTool.from(
+    async ({ url }) => {
+        try {
+            const result = await webFetchTool.query({ url });
+            return webFetchTool.format(result);
+        } catch (e) {
+            return `网页资料读取失败: ${e.message}`;
+        }
+    },
+    {
+        name: "web_fetch",
+        description: "读取政策/规划文献索引中已登记的来源网页，提取完整公开页面正文供模型引用。优先使用 policy_reference_lookup 返回的 sources 链接；仅允许 HTTPS、已登记链接或权威公开站点白名单，不执行网页脚本。",
+        parameters: z.object({
+            url: z.string().url().describe('来源网页 URL，优先填写 policy_reference_lookup 返回的 sources 链接')
         })
     }
 );
@@ -204,5 +224,6 @@ export const agentTools = [
     weatherFunctionTool,
     knowledgeFunctionTool,
     knowledgeGraphFunctionTool,
-    policyReferenceFunctionTool
+    policyReferenceFunctionTool,
+    webFetchFunctionTool
 ];

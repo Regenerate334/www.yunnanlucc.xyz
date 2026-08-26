@@ -11,10 +11,10 @@ import logger from '../../../config/logger.js';
 import registry from '../../dataSourceRegistry.js';
 
 const WEATHER_ICONS = {
-    '晴': '☀️', '多云': '⛅', '阴': '☁️',
-    '小雨': '🌧️', '中雨': '🌧️', '大雨': '🌧️', '暴雨': '⛈️', '雷阵雨': '⛈️',
-    '雪': '❄️', '小雪': '🌨️', '中雪': '🌨️', '大雪': '❄️',
-    '雾': '🌫️', '霾': '😷', '沙尘暴': '🌪️', '浮尘': '🌫️'
+    '晴': '', '多云': '', '阴': '',
+    '小雨': '', '中雨': '', '大雨': '', '暴雨': '', '雷阵雨': '',
+    '雪': '', '小雪': '', '中雪': '', '大雪': '',
+    '雾': '', '霾': '', '沙尘暴': '', '浮尘': ''
 };
 
 const weatherTool = {
@@ -54,7 +54,7 @@ const weatherTool = {
 
             if (data.lives && data.lives.length > 0) {
                 const w = data.lives[0];
-                w.icon = WEATHER_ICONS[w.weather] || '🌡️';
+                w.icon = WEATHER_ICONS[w.weather] || '';
                 return { type: 'weather', data: w, success: true };
             } else {
                 return { type: 'weather', data: null, success: false, msg: '未查询到对应城市的天气数据' };

@@ -23,6 +23,7 @@ import { registerKnowledgeBaseLookupTool } from './tools/knowledgeBaseLookupTool
 import { registerKnowledgeGraphQueryTool } from './tools/knowledgeGraphQueryTool.js';
 import { registerPolicyReferenceLookupTool } from './tools/policyReferenceLookupTool.js';
 import { registerWeatherQueryTool } from './tools/weatherQueryTool.js';
+import { registerWebFetchTool } from './tools/webFetchTool.js';
 
 const server = new McpServer({
   name: 'WebGIS-Professional-Server',
@@ -42,6 +43,7 @@ registerKnowledgeBaseLookupTool(server);
 registerKnowledgeGraphQueryTool(server);
 registerPolicyReferenceLookupTool(server);
 registerWeatherQueryTool(server);
+registerWebFetchTool(server);
 
 async function main() {
   const transport = new StdioServerTransport();

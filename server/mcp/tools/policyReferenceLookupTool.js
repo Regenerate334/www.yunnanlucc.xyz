@@ -6,11 +6,12 @@
 
 import { z } from 'zod';
 import policyReferenceTool from '../../utils/tools/knowledge/policyReferenceTool.js';
+import { toMcpToolError, toMcpToolResponse } from '../utils/toolResponse.js';
 
 export function registerPolicyReferenceLookupTool(server) {
   server.tool(
     'policy_reference_lookup',
-    '检索政策/规划文献索引，返回可引用条目与来源链接',
+    '检索政策/规划文献索引，返回可引用条目与来源链接；在 Agent 对话中命中后会自动读取来源网页正文',
     {
       region: z.string().optional().describe('区域名称，如“云南省”“昆明市”'),
       year: z.number().optional().describe('目标年份，如 2019'),
@@ -20,10 +21,20 @@ export function registerPolicyReferenceLookupTool(server) {
       top_n: z.number().optional().describe('返回条目数量，默认 5，最大 20')
     },
     async (args) => {
-      const result = await policyReferenceTool.query(args);
-      const text = policyReferenceTool.format(result);
-      return { content: [{ type: 'text', text }] };
+      try {
+        const result = await policyReferenceTool.query(args);
+        const text = policyReferenceTool.format(result);
+        return toMcpToolResponse({
+          text,
+          structuredContent: {
+            tool: 'policy_reference_lookup',
+            args,
+            result
+          }
+        });
+      } catch (err) {
+        return toMcpToolError(err, '政策/规划文献检索失败');
+      }
     }
   );
 }
-

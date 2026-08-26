@@ -6,6 +6,7 @@
 
 import { z } from 'zod';
 import clcdTool from '../../utils/tools/analysis/clcdTool.js';
+import { toMcpToolError, toMcpToolResponse } from '../utils/toolResponse.js';
 
 export function registerClcdAnalysisTool(server) {
   server.tool(
@@ -21,17 +22,32 @@ export function registerClcdAnalysisTool(server) {
       year: z.number().optional().describe('目标年份'),
       year_range: z.array(z.number()).optional().describe('年份区间，如 [1985, 2023]'),
       land_type: z.string().optional().describe('限定地类，如“耕地”“林地”'),
-      top_n: z.number().optional().describe('排名查询时的数量限制')
+      top_n: z.number().optional().describe('排名查询时的数量限制'),
+      policy: z
+        .enum(['farmland_protection', 'balanced', 'ecological_protection', 'urban_development', 'reforestation'])
+        .optional()
+        .describe('监测评估策略场景：耕地保护优先/均衡协同/生态保护优先/城镇发展优先/退耕还林导向')
     },
     async (args) => {
-      const finalArgs = {
-        ...args,
-        query_type: args.query_type || 'structure',
-        region: args.region || '云南省'
-      };
-      const result = await clcdTool.query(finalArgs, {}, args.year);
-      const text = clcdTool.format(result, {});
-      return { content: [{ type: 'text', text }] };
+      try {
+        const finalArgs = {
+          ...args,
+          query_type: args.query_type || 'structure',
+          region: args.region || '云南省'
+        };
+        const result = await clcdTool.query(finalArgs, {}, args.year);
+        const text = clcdTool.format(result, {});
+        return toMcpToolResponse({
+          text,
+          structuredContent: {
+            tool: 'clcd_analysis',
+            args: finalArgs,
+            result
+          }
+        });
+      } catch (err) {
+        return toMcpToolError(err, 'CLCD 分析失败');
+      }
     }
   );
 }

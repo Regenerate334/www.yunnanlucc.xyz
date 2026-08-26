@@ -8,6 +8,7 @@
 
 - `core/`
   - AI 核心运行模块（客户端/中间件/工具清单/路由器等）。
+  - `aiMiddleware.js` 保存跨任务稳定的自适应分析原则与能力边界；T1-T7 详细路由和示例位于 `server/knowledge/skills/adaptive_analysis.md`，由 Agent 按需检索。
 - `checkOllama.js`
   - 本地 Ollama 服务可用性检查（启动时运行）。
 

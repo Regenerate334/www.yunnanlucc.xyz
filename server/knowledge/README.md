@@ -6,6 +6,10 @@
 
 - `skills/`
   - 面向模型的技能手册（Markdown）。用于解释框架、工具调用规范、引用规则等。
+  - `adaptive_analysis.md`：复杂任务的 T1-T7 可组合路由、D0-D4 分析深度、最短充分证据链与论断强度控制。
+  - `monitoring_indices.md`：生态监测代理指标的定义、公式与评价口径。
+  - `spatial_reasoning.md`：空间统计、重心迁移与标准差椭圆的解释规则。
+  - `policy_expert.md`：政策规划资料的引用、解释与证据边界。
 - `corpus/`
   - 可维护的知识条目/索引库（JSON）。例如政策与规划文献索引库。
 - `graph/`
@@ -18,5 +22,5 @@
 ## 关键原则
 
 - 所有中文文本与 JSON 必须使用 UTF-8 编码（遵循仓库 `AGENTS.md`）。
+- 稳定、通用的分析原则保留在 `server/utils/ai/core/aiMiddleware.js`；详细任务路由、示例和专业口径存放在 `skills/`，由 `knowledge_base_lookup` 按需加载，避免把全部知识文本重复注入每次请求。
 - 模型在回答中引用政策/规划等权威出处时，必须先通过工具检索命中条目，再在正文中输出 `来源:` 链接。
-

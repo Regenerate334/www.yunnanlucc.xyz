@@ -6,6 +6,7 @@
 
 import { z } from 'zod';
 import spatialStatsTool from '../../utils/tools/analysis/spatialStatsTool.js';
+import { toMcpToolError, toMcpToolResponse } from '../utils/toolResponse.js';
 
 export function registerSpatialStatsAnalysisTool(server) {
   server.tool(
@@ -20,10 +21,20 @@ export function registerSpatialStatsAnalysisTool(server) {
       top_n: z.number().optional().describe('核心高发区 TopN 数量，默认 5')
     },
     async (args) => {
-      const result = await spatialStatsTool.query(args, {}, 2023);
-      const text = spatialStatsTool.format(result, {});
-      return { content: [{ type: 'text', text }] };
+      try {
+        const result = await spatialStatsTool.query(args, {}, 2023);
+        const text = spatialStatsTool.format(result, {});
+        return toMcpToolResponse({
+          text,
+          structuredContent: {
+            tool: 'spatial_stats_analysis',
+            args,
+            result
+          }
+        });
+      } catch (err) {
+        return toMcpToolError(err, '空间统计分析失败');
+      }
     }
   );
 }
-

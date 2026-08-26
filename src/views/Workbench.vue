@@ -990,6 +990,7 @@ async function handleRateQuery(params) {
       stats: breaksData.stats || {},
       breaks: breaksData.breaks || [],
       field: breaksData.field,
+      histogram: breaksData.histogram || [],
       unit_label: breaksData.unit_label || '%',
       top_units: breaksData.top_units || []
     });
@@ -2527,7 +2528,7 @@ async function handleTransferQuery(params) {
 
     // 调试: 输出拼接在浏览器测试的 WMS GetMap URL
     const testUrl = `/geoserver/WebGIS/wms?service=WMS&version=1.1.1&request=GetMap&layers=${layerName}&styles=transfer_dynamic&format=image/png&transparent=true&width=256&height=256&srs=EPSG:4326&bbox=97.5,21.1,106.2,29.3&env=${encodeURIComponent(envParams)}`;
-    // console.log('[Transfer] 🚀 WMS Test URL:', testUrl);
+    // console.log('[Transfer]  WMS Test URL:', testUrl);
 
     // 错误日志: 瓦片加载失败时输出详情（首屏输出完整信息，后续静默）
     let tileErrorCount = 0;

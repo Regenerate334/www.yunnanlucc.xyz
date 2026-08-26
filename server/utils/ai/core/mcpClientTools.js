@@ -61,6 +61,14 @@ function contentToText(result) {
   return result?.isError ? '工具调用失败: MCP Server 未返回有效内容' : '';
 }
 
+function contentToDetailedResult(result) {
+  return {
+    text: contentToText(result),
+    structuredContent: result?.structuredContent || null,
+    isError: !!result?.isError
+  };
+}
+
 async function connectMcpClient() {
   if (client) return client;
   if (clientPromise) return clientPromise;
@@ -129,6 +137,18 @@ async function callMcpTool(name, args = {}) {
   return contentToText(result);
 }
 
+export async function callMcpToolDetailed(name, args = {}) {
+  const activeClient = await connectMcpClient();
+  const result = await activeClient.request({
+    method: 'tools/call',
+    params: {
+      name,
+      arguments: args && typeof args === 'object' ? args : {}
+    }
+  }, CallToolResultSchema);
+  return contentToDetailedResult(result);
+}
+
 function toAgentTool(tool) {
   return {
     metadata: {
@@ -137,7 +157,8 @@ function toAgentTool(tool) {
       parameters: tool.inputSchema || { type: 'object', properties: {} },
       source: 'mcp'
     },
-    call: (args) => callMcpTool(tool.name, args)
+    call: (args) => callMcpTool(tool.name, args),
+    callDetailed: (args) => callMcpToolDetailed(tool.name, args)
   };
 }
 
