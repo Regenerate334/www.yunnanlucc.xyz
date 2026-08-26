@@ -11,6 +11,7 @@
 import { z } from 'zod';
 import fs from 'fs/promises';
 import path from 'path';
+import { toMcpToolError, toMcpToolResponse } from '../utils/toolResponse.js';
 
 const KG_PATH = path.resolve('server/knowledge/graph/knowledge_graph.json');
 
@@ -129,11 +130,17 @@ export function registerKnowledgeQueryTool(server) {
           result = { direct: direct.slice(0, 10), indirect: indirect.slice(0, 10) };
         }
 
-        return { content: [{ type: 'text', text: JSON.stringify(result, null, 2) }] };
+        return toMcpToolResponse({
+          text: JSON.stringify(result, null, 2),
+          structuredContent: {
+            tool: 'knowledge_query',
+            args,
+            result
+          }
+        });
       } catch (e) {
-        return { content: [{ type: 'text', text: `知识查询失败: ${e.message}` }], isError: true };
+        return toMcpToolError(e, '知识查询失败');
       }
     }
   );
 }
-
