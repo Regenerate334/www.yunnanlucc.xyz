@@ -44,6 +44,7 @@ import './utils/tools/analysis/spatialStatsTool.js'; // 空间特征统计工具
 import './utils/tools/knowledge/knowledgeTool.js';  // 专家技能库工具（注册到 Registry）
 import './utils/tools/knowledge/knowledgeGraphTool.js'; // 知识图谱查询工具（注册到 Registry）
 import './utils/tools/knowledge/policyReferenceTool.js'; // 政策/规划文献索引工具（注册到 Registry）
+import './utils/tools/knowledge/webFetchTool.js'; // 权威网页资料读取工具（注册到 Registry）
 import { checkOllamaStatus } from './utils/ai/checkOllama.js';
 
 const app = express();
