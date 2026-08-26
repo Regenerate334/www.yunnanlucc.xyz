@@ -17,10 +17,10 @@ import logger from '../../config/logger.js';
 const router = express.Router();
 
 const WEATHER_ICONS = {
-    '晴': '☀️', '多云': '⛅', '阴': '☁️',
-    '小雨': '🌧️', '中雨': '🌧️', '大雨': '🌧️', '暴雨': '⛈️', '雷阵雨': '⛈️',
-    '雪': '❄️', '小雪': '🌨️', '中雪': '🌨️', '大雪': '❄️',
-    '雾': '🌫️', '霾': '😷', '沙尘暴': '🌪️', '浮尘': '🌫️'
+    '晴': '', '多云': '', '阴': '',
+    '小雨': '', '中雨': '', '大雨': '', '暴雨': '', '雷阵雨': '',
+    '雪': '', '小雪': '', '中雪': '', '大雪': '',
+    '雾': '', '霾': '', '沙尘暴': '', '浮尘': ''
 };
 
 router.get('/', async (req, res) => {
@@ -49,7 +49,7 @@ router.get('/', async (req, res) => {
         }
 
         if (extensions === 'base' && data.lives && data.lives.length > 0) {
-            data.lives[0].icon = WEATHER_ICONS[data.lives[0].weather] || '🌡️';
+            data.lives[0].icon = WEATHER_ICONS[data.lives[0].weather] || '';
         }
 
         res.json(data);
