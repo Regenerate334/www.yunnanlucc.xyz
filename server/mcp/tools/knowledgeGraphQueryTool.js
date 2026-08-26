@@ -6,6 +6,7 @@
 
 import { z } from 'zod';
 import knowledgeGraphTool from '../../utils/tools/knowledge/knowledgeGraphTool.js';
+import { toMcpToolError, toMcpToolResponse } from '../utils/toolResponse.js';
 
 export function registerKnowledgeGraphQueryTool(server) {
   server.tool(
@@ -21,10 +22,20 @@ export function registerKnowledgeGraphQueryTool(server) {
       relation: z.string().optional().describe('可选关系类型过滤')
     },
     async (args) => {
-      const result = await knowledgeGraphTool.query(args);
-      const text = knowledgeGraphTool.format(result);
-      return { content: [{ type: 'text', text }] };
+      try {
+        const result = await knowledgeGraphTool.query(args);
+        const text = knowledgeGraphTool.format(result);
+        return toMcpToolResponse({
+          text,
+          structuredContent: {
+            tool: 'knowledge_graph_query',
+            args,
+            result
+          }
+        });
+      } catch (err) {
+        return toMcpToolError(err, '知识图谱查询失败');
+      }
     }
   );
 }
-
