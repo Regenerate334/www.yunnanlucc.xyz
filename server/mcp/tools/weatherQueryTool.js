@@ -6,6 +6,7 @@
 
 import { z } from 'zod';
 import weatherTool from '../../utils/tools/analysis/weatherTool.js';
+import { toMcpToolError, toMcpToolResponse } from '../utils/toolResponse.js';
 
 export function registerWeatherQueryTool(server) {
   server.tool(
@@ -15,10 +16,20 @@ export function registerWeatherQueryTool(server) {
       city: z.string().describe('目标城市名称，如“昆明”')
     },
     async (args) => {
-      const result = await weatherTool.query(args);
-      const text = weatherTool.format(result);
-      return { content: [{ type: 'text', text }] };
+      try {
+        const result = await weatherTool.query(args);
+        const text = weatherTool.format(result);
+        return toMcpToolResponse({
+          text,
+          structuredContent: {
+            tool: 'weather_query',
+            args,
+            result
+          }
+        });
+      } catch (err) {
+        return toMcpToolError(err, '天气查询失败');
+      }
     }
   );
 }
-
