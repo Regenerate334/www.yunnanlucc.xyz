@@ -199,7 +199,7 @@ const policyReferenceTool = {
     },
 
     format(data) {
-        const title = `> ### 📚 [政策/规划文献索引] policy_reference_lookup`;
+        const title = `> ### [政策/规划文献索引] policy_reference_lookup`;
         if (data?.error) {
             return [
                 title,
