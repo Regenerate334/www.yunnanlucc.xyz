@@ -9,11 +9,12 @@
 <template>
   <Teleport to="body">
     <transition name="modal-fade">
-      <div v-if="visible" class="ai-modal-overlay" @click="handleClose"></div>
+      <div v-if="visible" class="ai-modal-overlay" :class="{ 'is-light-theme': isLightTheme }" @click="handleClose"></div>
     </transition>
 
     <transition name="modal-fade">
-      <div v-if="visible" class="ai-modal-container" :class="{ 'is-sidebar-resizing': isSidebarResizing }" @click.stop>
+      <div v-if="visible" class="ai-modal-container"
+        :class="{ 'is-sidebar-resizing': isSidebarResizing, 'is-light-theme': isLightTheme }" @click.stop>
         <div class="sidebar" :style="{ width: `${sidebarWidth}px` }">
             <div class="sidebar-header">
               <button class="new-chat-btn" @click="resetToNewChat">
@@ -62,11 +63,28 @@
 
           <div class="main-content">
             <div class="ai-modal-header">
-              <button class="close-btn" @click="handleClose" title="关闭">
-                <svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2">
-                  <path d="M18 6L6 18M6 6l12 12" />
-                </svg>
-              </button>
+              <div class="header-actions">
+                <button type="button" class="theme-toggle-btn" :class="{ active: isLightTheme }"
+                  @click="toggleColorTheme" :title="themeToggleLabel" :aria-label="themeToggleLabel"
+                  :aria-pressed="isLightTheme">
+                  <svg v-if="isLightTheme" viewBox="0 0 24 24" width="17" height="17" fill="none"
+                    stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"
+                    aria-hidden="true">
+                    <path d="M20.35 15.35A9 9 0 0 1 8.65 3.65 9 9 0 1 0 20.35 15.35Z" />
+                  </svg>
+                  <svg v-else viewBox="0 0 24 24" width="17" height="17" fill="none" stroke="currentColor"
+                    stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                    <circle cx="12" cy="12" r="4" />
+                    <path d="M12 2V4M12 20V22M4.93 4.93L6.34 6.34M17.66 17.66L19.07 19.07M2 12H4M20 12H22M4.93 19.07L6.34 17.66M17.66 6.34L19.07 4.93" />
+                  </svg>
+                </button>
+                <button type="button" class="close-btn" @click="handleClose" title="关闭" aria-label="关闭 AI 对话窗口">
+                  <svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2"
+                    aria-hidden="true">
+                    <path d="M18 6L6 18M6 6l12 12" />
+                  </svg>
+                </button>
+              </div>
             </div>
 
             <div class="ai-modal-body" :class="{ 'no-scroll': messages.length === 0 }" ref="messagesContainer" @scroll="handleMessagesScroll">
@@ -96,9 +114,7 @@
                           </svg>
                         </div>
                         <transition name="dropdown-fade">
-                          <div v-if="showModelDropdown" 
-                            class="model-dropdown-menu" 
-                            style="background-color: #0f172a !important; background: #0f172a !important; opacity: 1 !important; visibility: visible !important; backdrop-filter: blur(30px) !important; border: 1px solid rgba(255, 255, 255, 0.1) !important;">
+                          <div v-if="showModelDropdown" class="model-dropdown-menu">
                             <div v-for="model in availableModels" :key="model.value" class="model-dropdown-item"
                               :class="{ active: selectedModel === model.value }" @click.stop="selectModel(model.value)">
                               <div class="model-info">
@@ -440,9 +456,7 @@
                       </svg>
                     </div>
                     <transition name="dropdown-fade">
-                      <div v-if="showModelDropdown" 
-                        class="model-dropdown-menu"
-                        style="background-color: #0f172a !important; background: #0f172a !important; opacity: 1 !important; visibility: visible !important; backdrop-filter: blur(30px) !important; border: 1px solid rgba(255, 255, 255, 0.1) !important;">
+                      <div v-if="showModelDropdown" class="model-dropdown-menu">
                         <div v-for="model in availableModels" :key="model.value" class="model-dropdown-item"
                           :class="{ active: selectedModel === model.value }" @click.stop="selectModel(model.value)">
                           <div class="model-info">
@@ -1177,6 +1191,29 @@ const SIDEBAR_DEFAULT_WIDTH = 260;
 const SIDEBAR_MIN_WIDTH = 220;
 const SIDEBAR_MAX_WIDTH = 520;
 const SIDEBAR_WIDTH_STORAGE_KEY = 'webgis_ai_sidebar_width';
+const COLOR_THEME_STORAGE_KEY = 'webgis_ai_modal_color_theme';
+
+const readStoredColorTheme = () => {
+  try {
+    return localStorage.getItem(COLOR_THEME_STORAGE_KEY) === 'light';
+  } catch {
+    return false;
+  }
+};
+
+const isLightTheme = ref(readStoredColorTheme());
+const themeToggleLabel = computed(() => isLightTheme.value ? '切换至夜间主题' : '切换至白天主题');
+
+const persistColorTheme = () => {
+  try {
+    localStorage.setItem(COLOR_THEME_STORAGE_KEY, isLightTheme.value ? 'light' : 'dark');
+  } catch { }
+};
+
+const toggleColorTheme = () => {
+  isLightTheme.value = !isLightTheme.value;
+  persistColorTheme();
+};
 
 const clampSidebarWidth = (value) => {
   const numericValue = Number(value);
@@ -3025,23 +3062,47 @@ const retryReport = () => {
   padding: 12px 20px;
   display: flex;
   justify-content: flex-end;
+  align-items: center;
   border-bottom: 1px solid rgba(255, 255, 255, 0.05);
 }
 
-.close-btn {
+.header-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.close-btn,
+.theme-toggle-btn {
   background: rgba(255, 255, 255, 0.05);
-  border: none;
+  border: 1px solid transparent;
   color: rgba(255, 255, 255, 0.5);
-  font-size: 24px;
   cursor: pointer;
   line-height: 1;
-  width: 32px;
-  height: 32px;
+  width: 34px;
+  height: 34px;
   display: flex;
   align-items: center;
   justify-content: center;
   border-radius: 50%;
   transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.theme-toggle-btn:hover {
+  border-color: rgba(96, 165, 250, 0.28);
+  background: rgba(96, 165, 250, 0.14);
+  color: #bfdbfe;
+  transform: translateY(-1px);
+}
+
+.theme-toggle-btn:active {
+  transform: translateY(0) scale(0.95);
+}
+
+.theme-toggle-btn:focus-visible,
+.close-btn:focus-visible {
+  outline: 2px solid rgba(147, 197, 253, 0.78);
+  outline-offset: 2px;
 }
 
 .close-btn:hover {
@@ -3234,17 +3295,16 @@ const retryReport = () => {
   right: 0;
   left: auto;
   min-width: 280px;
-  background-color: #0f172a !important; /* 强制纯色深蓝背景，绝不透明 */
-  background: #0f172a !important; 
-  opacity: 1 !important;
-  backdrop-filter: blur(30px) !important; /* 深度模糊 */
-  -webkit-backdrop-filter: blur(30px) !important;
-  border: 1px solid rgba(255, 255, 255, 0.1) !important; /* 取消亮边，改为极弱的浅灰色分割线 */
+  background: #0f172a;
+  opacity: 1;
+  backdrop-filter: blur(30px);
+  -webkit-backdrop-filter: blur(30px);
+  border: 1px solid rgba(255, 255, 255, 0.1);
   border-radius: 12px;
   box-shadow: 0 20px 50px rgba(0, 0, 0, 0.9), 
               0 0 30px rgba(59, 130, 246, 0.2);
   overflow: hidden;
-  z-index: 1000000 !important; /* 极致层级 */
+  z-index: 1000000;
   pointer-events: all;
   transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
 }
@@ -3253,15 +3313,14 @@ const retryReport = () => {
   bottom: calc(100% + 12px); /* 统一向上展开 */
   top: auto;
   left: 50%;
-  transform: translateX(-50%) !important;
+  transform: translateX(-50%);
   margin-left: 0;
-  background-color: #0f172a !important;
-  background: #0f172a !important;
+  background: #0f172a;
 }
 
 .model-dropdown-item {
   padding: 14px 18px;
-  background-color: #0f172a !important; /* 强制项背景也为纯色 */
+  background: #0f172a;
   cursor: pointer;
   transition: all 0.2s;
   text-align: left;
@@ -3269,7 +3328,7 @@ const retryReport = () => {
 }
 
 .model-dropdown-item:hover {
-  background: rgba(59, 130, 246, 0.12) !important; /* 对齐滚动词条的悬停感 */
+  background: rgba(59, 130, 246, 0.12);
 }
 
 .model-dropdown-item:last-child {
@@ -5394,6 +5453,511 @@ const retryReport = () => {
     padding: 11px;
     font-size: 12.5px;
   }
+}
+
+/* ── 对话窗口白天主题 ─────────────────────────────────────────────────────── */
+.ai-modal-overlay.is-light-theme {
+  background: rgba(15, 23, 42, 0.22);
+}
+
+.ai-modal-container.is-light-theme {
+  color-scheme: light;
+  color: #263548;
+  background: rgba(248, 250, 252, 0.97);
+  border-color: rgba(100, 116, 139, 0.24);
+  box-shadow: 0 26px 72px rgba(15, 23, 42, 0.24);
+}
+
+.ai-modal-container.is-light-theme .sidebar {
+  background: rgba(236, 242, 248, 0.94);
+  border-right-color: rgba(100, 116, 139, 0.2);
+}
+
+.ai-modal-container.is-light-theme .sidebar-resizer span {
+  background: rgba(100, 116, 139, 0.24);
+}
+
+.ai-modal-container.is-light-theme .sidebar-resizer:hover span,
+.ai-modal-container.is-light-theme .sidebar-resizer:focus-visible span,
+.ai-modal-container.is-light-theme.is-sidebar-resizing .sidebar-resizer span {
+  background: rgba(37, 99, 235, 0.58);
+}
+
+.ai-modal-container.is-light-theme .new-chat-btn {
+  background: rgba(255, 255, 255, 0.78);
+  border-color: rgba(37, 99, 235, 0.22);
+  box-shadow: 0 1px 2px rgba(15, 23, 42, 0.04);
+}
+
+.ai-modal-container.is-light-theme .new-chat-btn:hover {
+  background: #ffffff;
+  border-color: rgba(37, 99, 235, 0.42);
+  box-shadow: 0 5px 16px rgba(37, 99, 235, 0.1);
+}
+
+.ai-modal-container.is-light-theme .plus-circle {
+  background: rgba(37, 99, 235, 0.12);
+}
+
+.ai-modal-container.is-light-theme .plus-icon,
+.ai-modal-container.is-light-theme .btn-text {
+  color: #1d5fae;
+}
+
+.ai-modal-container.is-light-theme .group-title,
+.ai-modal-container.is-light-theme .delete-session-btn {
+  color: #758397;
+}
+
+.ai-modal-container.is-light-theme .history-item:hover {
+  background: rgba(255, 255, 255, 0.74);
+}
+
+.ai-modal-container.is-light-theme .history-item.active {
+  background: rgba(37, 99, 235, 0.1);
+}
+
+.ai-modal-container.is-light-theme .item-title {
+  color: #34455b;
+}
+
+.ai-modal-container.is-light-theme .history-item.active .item-title {
+  color: #155da8;
+}
+
+.ai-modal-container.is-light-theme .delete-session-btn:hover {
+  background: rgba(220, 38, 38, 0.1);
+  color: #c24141;
+}
+
+.ai-modal-container.is-light-theme .main-content,
+.ai-modal-container.is-light-theme .ai-modal-body {
+  background: rgba(255, 255, 255, 0.44);
+}
+
+.ai-modal-container.is-light-theme .ai-modal-header {
+  background: rgba(255, 255, 255, 0.58);
+  border-bottom-color: rgba(100, 116, 139, 0.14);
+}
+
+.ai-modal-container.is-light-theme .close-btn,
+.ai-modal-container.is-light-theme .theme-toggle-btn {
+  color: #66758a;
+  background: rgba(255, 255, 255, 0.8);
+  border-color: rgba(100, 116, 139, 0.16);
+}
+
+.ai-modal-container.is-light-theme .theme-toggle-btn:hover {
+  color: #145fae;
+  background: rgba(37, 99, 235, 0.09);
+  border-color: rgba(37, 99, 235, 0.26);
+}
+
+.ai-modal-container.is-light-theme .close-btn:hover {
+  color: #b4232c;
+  background: rgba(220, 38, 38, 0.09);
+}
+
+.ai-modal-container.is-light-theme ::-webkit-scrollbar-thumb {
+  background: rgba(71, 85, 105, 0.24);
+}
+
+.ai-modal-container.is-light-theme ::-webkit-scrollbar-thumb:hover {
+  background: rgba(37, 99, 235, 0.38);
+}
+
+.ai-modal-container.is-light-theme .ai-modal-body::-webkit-scrollbar-track {
+  background: rgba(226, 232, 240, 0.54);
+}
+
+.ai-modal-container.is-light-theme .welcome-logo {
+  filter: brightness(0) saturate(100%) invert(34%) sepia(73%) saturate(1122%) hue-rotate(174deg) brightness(87%) contrast(95%)
+    drop-shadow(0 12px 28px rgba(30, 100, 170, 0.16));
+}
+
+.ai-modal-container.is-light-theme .welcome-title {
+  color: #17293f;
+}
+
+.ai-modal-container.is-light-theme .welcome-subtitle {
+  color: #68778b;
+}
+
+.ai-modal-container.is-light-theme .input-pill {
+  background: rgba(255, 255, 255, 0.96);
+  border-color: rgba(100, 116, 139, 0.24);
+  box-shadow: 0 9px 30px rgba(15, 23, 42, 0.1);
+}
+
+.ai-modal-container.is-light-theme .input-pill:focus-within {
+  background: #ffffff;
+  border-color: rgba(37, 99, 235, 0.52);
+  box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.08), 0 12px 32px rgba(15, 23, 42, 0.1);
+}
+
+.ai-modal-container.is-light-theme .input-area textarea {
+  color: #1f2d3d;
+  caret-color: #2563eb;
+}
+
+.ai-modal-container.is-light-theme .input-area textarea::placeholder {
+  color: #8a97a8;
+}
+
+.ai-modal-container.is-light-theme .model-selector-pill {
+  color: #526277;
+  background: #f4f7fa;
+  border-color: rgba(100, 116, 139, 0.22);
+}
+
+.ai-modal-container.is-light-theme .model-selector-pill:hover,
+.ai-modal-container.is-light-theme .model-selector-pill.active {
+  color: #155da8;
+  background: #edf5fd;
+  border-color: rgba(37, 99, 235, 0.4);
+}
+
+.ai-modal-container.is-light-theme .model-dropdown-menu,
+.ai-modal-container.is-light-theme .welcome-container .model-dropdown-menu {
+  background: #ffffff;
+  border-color: rgba(100, 116, 139, 0.22);
+  box-shadow: 0 18px 48px rgba(15, 23, 42, 0.18), 0 0 0 1px rgba(255, 255, 255, 0.72);
+}
+
+.ai-modal-container.is-light-theme .model-dropdown-item {
+  background: #ffffff;
+  border-bottom-color: rgba(100, 116, 139, 0.13);
+}
+
+.ai-modal-container.is-light-theme .model-dropdown-item:hover {
+  background: #f0f6fc;
+}
+
+.ai-modal-container.is-light-theme .model-dropdown-item.active {
+  background: #e7f1fb;
+}
+
+.ai-modal-container.is-light-theme .model-name {
+  color: #263548;
+}
+
+.ai-modal-container.is-light-theme .model-desc {
+  color: #718095;
+}
+
+.ai-modal-container.is-light-theme .model-dropdown-item.active .model-name {
+  color: #155da8;
+}
+
+.ai-modal-container.is-light-theme .quick-btn {
+  color: #526277;
+  background: rgba(255, 255, 255, 0.72);
+  border-color: rgba(100, 116, 139, 0.18);
+}
+
+.ai-modal-container.is-light-theme .quick-btn:hover {
+  color: #174f87;
+  background: #eaf3fc;
+  border-color: rgba(37, 99, 235, 0.32);
+  box-shadow: 0 4px 12px rgba(37, 99, 235, 0.08);
+}
+
+.ai-modal-container.is-light-theme .bubble,
+.ai-modal-container.is-light-theme .assistant .bubble {
+  color: #2c3b4f;
+}
+
+.ai-modal-container.is-light-theme .user .bubble {
+  color: #ffffff;
+  background: #1b4f83;
+  box-shadow: 0 3px 10px rgba(30, 64, 110, 0.16);
+}
+
+.ai-modal-container.is-light-theme .thinking-header,
+.ai-modal-container.is-light-theme .thinking-icon-svg,
+.ai-modal-container.is-light-theme .arrow-icon-svg,
+.ai-modal-container.is-light-theme .thinking-content,
+.ai-modal-container.is-light-theme .footer-hint {
+  color: #718095;
+}
+
+.ai-modal-container.is-light-theme .thinking-header:hover {
+  color: #263548;
+}
+
+.ai-modal-container.is-light-theme .thinking-expand-mask:hover {
+  background: linear-gradient(to bottom, transparent, rgba(248, 250, 252, 0.98));
+}
+
+.ai-modal-container.is-light-theme .expand-hint {
+  color: #155da8;
+  background: rgba(37, 99, 235, 0.08);
+  border-color: rgba(37, 99, 235, 0.2);
+}
+
+.ai-modal-container.is-light-theme .action-btn {
+  color: #758397;
+}
+
+.ai-modal-container.is-light-theme .action-btn:hover {
+  color: #155da8;
+  background: rgba(37, 99, 235, 0.08);
+}
+
+.ai-modal-container.is-light-theme .ai-modal-footer {
+  background: linear-gradient(to top, rgba(248, 250, 252, 0.98) 0%, rgba(248, 250, 252, 0) 100%);
+}
+
+.ai-modal-container.is-light-theme .assistant .markdown-body:not(.is-streaming) {
+  column-rule-color: rgba(100, 116, 139, 0.2);
+}
+
+.ai-modal-container.is-light-theme .markdown-body,
+.ai-modal-container.is-light-theme .markdown-body :deep(p),
+.ai-modal-container.is-light-theme .markdown-body :deep(li) {
+  color: #2b394b;
+}
+
+.ai-modal-container.is-light-theme .markdown-body :deep(h1),
+.ai-modal-container.is-light-theme .markdown-body :deep(h2),
+.ai-modal-container.is-light-theme .markdown-body :deep(h3),
+.ai-modal-container.is-light-theme .markdown-body :deep(h4),
+.ai-modal-container.is-light-theme .markdown-body :deep(h5),
+.ai-modal-container.is-light-theme .markdown-body :deep(h6) {
+  color: #17293f;
+}
+
+.ai-modal-container.is-light-theme .markdown-body :deep(h1) {
+  border-bottom-color: rgba(43, 103, 164, 0.56);
+}
+
+.ai-modal-container.is-light-theme .markdown-body :deep(h2) {
+  border-bottom-color: rgba(100, 116, 139, 0.22);
+}
+
+.ai-modal-container.is-light-theme .markdown-body :deep(li::marker) {
+  color: #536b84;
+}
+
+.ai-modal-container.is-light-theme .markdown-body :deep(strong) {
+  color: #0b62ad;
+}
+
+.ai-modal-container.is-light-theme .markdown-body :deep(em) {
+  color: #506176;
+}
+
+.ai-modal-container.is-light-theme .markdown-body :deep(a) {
+  color: #1169b4;
+}
+
+.ai-modal-container.is-light-theme .markdown-body :deep(blockquote) {
+  color: #43566d;
+  border-left-color: rgba(43, 103, 164, 0.64);
+  background: rgba(43, 103, 164, 0.07);
+}
+
+.ai-modal-container.is-light-theme .markdown-body :deep(.table-container) {
+  background: rgba(255, 255, 255, 0.86);
+  border-color: rgba(100, 116, 139, 0.24);
+}
+
+.ai-modal-container.is-light-theme .markdown-body :deep(th) {
+  color: #17324f;
+  background: #e5eef7;
+  border-right-color: rgba(100, 116, 139, 0.16);
+  border-bottom-color: rgba(72, 94, 119, 0.22);
+}
+
+.ai-modal-container.is-light-theme .markdown-body :deep(td) {
+  color: #34455b;
+  border-right-color: rgba(100, 116, 139, 0.13);
+  border-bottom-color: rgba(100, 116, 139, 0.16);
+}
+
+.ai-modal-container.is-light-theme .markdown-body :deep(tbody tr:nth-child(even)) {
+  background: rgba(226, 232, 240, 0.36);
+}
+
+.ai-modal-container.is-light-theme .markdown-body :deep(tbody tr:hover) {
+  background: rgba(219, 234, 254, 0.58);
+}
+
+.ai-modal-container.is-light-theme .markdown-body :deep(code) {
+  color: #174f87;
+  background: #eaf0f6;
+}
+
+.ai-modal-container.is-light-theme .markdown-body :deep(pre) {
+  color: #e6edf5;
+  background: #182536;
+  border-color: rgba(51, 65, 85, 0.38);
+  box-shadow: 0 8px 22px rgba(15, 23, 42, 0.12);
+}
+
+.ai-modal-container.is-light-theme .markdown-body :deep(pre code) {
+  color: inherit;
+  background: transparent;
+}
+
+.ai-modal-container.is-light-theme .markdown-body :deep(hr),
+.ai-modal-container.is-light-theme .markdown-body :deep(.mermaid) {
+  border-color: rgba(100, 116, 139, 0.22);
+}
+
+.ai-modal-container.is-light-theme .workflow-title {
+  color: #263548;
+}
+
+.ai-modal-container.is-light-theme .workflow-subtitle,
+.ai-modal-container.is-light-theme .workflow-arrow {
+  color: #6e7f93;
+}
+
+.ai-modal-container.is-light-theme .workflow-collapsed,
+.ai-modal-container.is-light-theme .legend-dot {
+  color: #526277;
+  background: rgba(255, 255, 255, 0.72);
+  border-color: rgba(100, 116, 139, 0.22);
+}
+
+.ai-modal-container.is-light-theme .step-label {
+  --lane-label-color: #047857;
+  --lane-label-glow: transparent;
+  text-shadow: none;
+}
+
+.ai-modal-container.is-light-theme .step-item.lane-tool {
+  --lane-label-color: #a94f08;
+  --lane-label-glow: transparent;
+}
+
+.ai-modal-container.is-light-theme .step-item.lane-skill {
+  --lane-label-color: #036a9d;
+  --lane-label-glow: transparent;
+}
+
+.ai-modal-container.is-light-theme .step-item.lane-knowledge-graph {
+  --lane-label-color: #6941c6;
+  --lane-label-glow: transparent;
+}
+
+.ai-modal-container.is-light-theme .step-item.lane-policy {
+  --lane-label-color: #0f766e;
+  --lane-label-glow: transparent;
+}
+
+.ai-modal-container.is-light-theme .agent-process-panel {
+  --trace-text-strong: #1d2d41;
+  --trace-text: #34455a;
+  --trace-text-muted: #6c7c90;
+  --trace-line: rgba(79, 98, 120, 0.3);
+  --trace-line-soft: rgba(79, 98, 120, 0.16);
+  --trace-link-hover: #0b62ad;
+  color: var(--trace-text);
+}
+
+.ai-modal-container.is-light-theme .agent-process-mark img,
+.ai-modal-container.is-light-theme .agent-trace-dot img,
+.ai-modal-container.is-light-theme .trace-model-monologue-icon img,
+.ai-modal-container.is-light-theme .trace-detail-icon img {
+  filter: brightness(0) saturate(100%) invert(30%) sepia(31%) saturate(1300%) hue-rotate(169deg) brightness(86%) contrast(91%);
+  opacity: 0.88;
+}
+
+.ai-modal-container.is-light-theme .agent-process-title,
+.ai-modal-container.is-light-theme .agent-trace-title {
+  color: var(--trace-text-strong);
+}
+
+.ai-modal-container.is-light-theme .agent-process-title.is-running {
+  color: transparent;
+  background-image: linear-gradient(100deg, #526277 0%, #526277 39%, #0b62ad 49%, #1d4f7f 54%, #526277 64%, #526277 100%);
+}
+
+.ai-modal-container.is-light-theme .agent-process-state,
+.ai-modal-container.is-light-theme .agent-trace-status,
+.ai-modal-container.is-light-theme .trace-detail-meta,
+.ai-modal-container.is-light-theme .agent-process-chevron,
+.ai-modal-container.is-light-theme .agent-trace-chevron,
+.ai-modal-container.is-light-theme .trace-detail-chevron {
+  color: #718095;
+}
+
+.ai-modal-container.is-light-theme .agent-process-state.running,
+.ai-modal-container.is-light-theme .agent-trace-status.status-running {
+  color: #155da8;
+}
+
+.ai-modal-container.is-light-theme .agent-trace-status.status-error {
+  color: #b54747;
+}
+
+.ai-modal-container.is-light-theme .agent-trace-summary-text,
+.ai-modal-container.is-light-theme .trace-model-monologue-copy p,
+.ai-modal-container.is-light-theme .trace-section-text,
+.ai-modal-container.is-light-theme .trace-tool-action {
+  color: #43546a;
+}
+
+.ai-modal-container.is-light-theme .trace-model-monologue-label,
+.ai-modal-container.is-light-theme .trace-kv-key,
+.ai-modal-container.is-light-theme .trace-tool-source {
+  color: #6c7c90;
+}
+
+.ai-modal-container.is-light-theme .trace-detail-tree,
+.ai-modal-container.is-light-theme .trace-detail-item::before {
+  border-color: rgba(79, 98, 120, 0.2);
+}
+
+.ai-modal-container.is-light-theme .trace-detail-label,
+.ai-modal-container.is-light-theme .trace-tool-copy strong,
+.ai-modal-container.is-light-theme .trace-kv-value {
+  color: #304157;
+}
+
+.ai-modal-container.is-light-theme .trace-tool-copy code {
+  color: #315b82;
+}
+
+.ai-modal-container.is-light-theme .trace-kv-item {
+  border-bottom-color: rgba(79, 98, 120, 0.14);
+}
+
+.ai-modal-container.is-light-theme .trace-code-block {
+  color: #31445a;
+  background: #eef3f7;
+  border-color: rgba(79, 98, 120, 0.2);
+}
+
+.ai-modal-container.is-light-theme .trace-error-text {
+  color: #a23f43;
+  background: rgba(220, 38, 38, 0.06);
+  border-left-color: rgba(185, 56, 62, 0.64);
+}
+
+.ai-modal-container.is-light-theme .agent-trace-dot,
+.ai-modal-container.is-light-theme .agent-trace-event.status-error .agent-trace-dot {
+  color: #27496b;
+}
+
+.ai-modal-container.is-light-theme .agent-trace-spinner {
+  border-color: #315b82;
+  border-right-color: transparent;
+}
+
+.ai-modal-container.is-light-theme .agent-process-panel ::-webkit-scrollbar-thumb {
+  background: rgba(79, 98, 120, 0.28);
+}
+
+.ai-modal-container.is-light-theme .report-btn {
+  color: #155da8;
+}
+
+.ai-modal-container.is-light-theme .report-btn:hover:not(:disabled) {
+  color: #0b4f91;
+  background: rgba(37, 99, 235, 0.08);
 }
 
 @media (prefers-reduced-motion: reduce) {
