@@ -5,7 +5,7 @@
 ![Vue.js](https://img.shields.io/badge/Vue.js-Latest-4FC08D?style=flat-square&logo=vuedotjs)
 ![Vite](https://img.shields.io/badge/Vite-Latest-646CFF?style=flat-square&logo=vite)
 
-这是论文《基于WebGIS和GeoAI Agent的土地利用变化智能监测评估系统》的配套实现代码。项目使用 Vue 3 和 Cesium 构建前端，接入 CLCD 土地覆盖数据集（30 m，1985-2023 年），用于云南省土地利用变化的查询、统计、可视化和预警评估。
+论文《基于WebGIS和GeoAI Agent的土地利用变化智能监测评估系统的设计与实现》的配套实现代码。项目使用 Vue 3 和 Cesium 构建前端，接入 CLCD 土地覆盖数据集（30 m，1985-2023 年），用于云南省土地利用变化的查询、统计、可视化和综合风险预警评估。
 
 <div align="center">
   <img src="./docs/assets/readme_banner.png" alt="系统界面" width="960" />
