@@ -44,7 +44,7 @@ module.exports = {
         {
             name: "tunnel",
             script: "C:\\Program Files (x86)\\cloudflared\\cloudflared.exe",
-            args: `tunnel run --token ${process.env.CLOUDFLARE_TUNNEL_TOKEN}`,
+            args: `tunnel --protocol http2 --edge-ip-version 4 run --token ${process.env.CLOUDFLARE_TUNNEL_TOKEN}`,
             exec_mode: "fork",
             instances: 1,
             autorestart: true,

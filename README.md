@@ -34,23 +34,15 @@
 
 ## 系统架构
 
-### 1. 全栈技术架构
+### 1. 系统总体架构与 AI 数据感知架构
 
-系统按数据层、服务层、适配层、可视化层和 GeoAI 层组织，各层通过接口和数据服务连接。
+系统总体围绕“数据组织—服务支撑—智能感知—业务应用—结果表达”全流程，自下而上划分为数据层、服务层、AI 数据感知层、应用层与用户表现层；AI 数据感知架构基于 ReAct 框架与 MCP 协议，连接 LLM 推理引擎、空间分析算子库与领域知识资产（知识图谱、专家技能库与政策库），实现自然语言驱动的土地利用变化智能监测与归因解释。
 
-<div align="center">
-  <img src="./docs/assets/system_architecture_v5.png" alt="系统总体架构图" width="720" />
-</div>
+| 系统总体架构 | AI 数据感知架构 |
+| :---: | :---: |
+| <img src="./docs/assets/system_architecture_v5.png" alt="系统总体架构图" width="420" /> | <img src="./docs/assets/ai_architecture_v2.png" alt="AI 数据感知架构图" width="420" /> |
 
-### 2. GeoAI Agent 双轨协同架构
-
-AI 模块将数据计算和知识检索分开处理。MCP 适配层负责封装空间分析算子，知识图谱和政策文献库用于补充领域信息和政策依据。
-
-<div align="center">
-  <img src="./docs/assets/ai_architecture_v2.png" alt="GeoAI Agent 架构图" width="720" />
-</div>
-
-### 3. 数据感知与推理工作流
+### 2. 数据感知与推理工作流
 
 用户输入先经过参数解析和语义路由，再由 Prompt 构建和 ReAct Agent 编排工具调用，最后返回统计结果、空间分析结果和相关政策资料。
 
@@ -70,15 +62,13 @@ AI 模块将数据计算和知识检索分开处理。MCP 适配层负责封装�
 
 ### 二、时序演变与多维指标看板
 
-使用 ECharts 展示 1985-2023 年九类土地利用面积变化、结构占比和转入转出情况。
+使用 ECharts 展示 1985-2023 年九类土地利用面积变化、结构占比和转入转出情况。对耕地、林地等地类统计转入量、转出量和净变化，展示不同年份的变化情况。
 
 | 地类面积结构玫瑰图与生态雷达图 | 土地利用演变 K 线与均线波动图 |
 | :---: | :---: |
 | <img src="./docs/assets/chart_structure_rose.jpg" alt="地类结构分析" width="420" /> | <img src="./docs/assets/chart_trend_kline.jpg" alt="土地利用时序演变" width="420" /> |
-
-| 地类时序流转盈亏监测看板 | 说明 |
-| :---: | :--- |
-| <img src="./docs/assets/chart_profit_loss_dashboard.jpg" alt="时序盈亏监测看板" width="420" /> | 对耕地、林地等地类统计转入量、转出量和净变化，展示不同年份的变化情况。 |
+| 地类时序流转盈亏监测看板（耕地） | 地类时序流转盈亏监测看板（林地） |
+| <img src="./docs/assets/chart_profit_loss_dashboard.jpg" alt="耕地时序盈亏监测看板" width="420" /> | <img src="./docs/assets/chart_profit_loss_forest.jpg" alt="林地时序盈亏监测看板" width="420" /> |
 
 ### 三、空间流转与空间统计分析
 
